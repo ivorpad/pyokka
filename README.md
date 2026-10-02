@@ -13,8 +13,6 @@ Quokka. It contains no Quokka source code. Its command names, settings and keys
 follow Quokka's so that the two feel the same in the editor, and `examples/demo.py`
 follows the outline of Quokka's interactive demo, rewritten in Python.
 
-https://github.com/user-attachments/assets/914cc414-bc3e-43c2-b1b2-4d4bc3da5c10
-
 [![Pyokka's debugger driven from a terminal: stops at each stage of demo.py, steps into reciprocal_rank, values next to the code](docs/media/pyokka.gif)](docs/media/pyokka.mp4)
 
 *An agent drives the debugger from a terminal: `pyokka debug demo.py --at rrf --at reciprocal_rank
