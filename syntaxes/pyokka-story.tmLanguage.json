@@ -1,0 +1,55 @@
+{
+  "scopeName": "source.pyokka-story",
+  "comment": "Every row is Python except a row holding nothing but the fold marker (D6). Each block is its own region, opened by the empty first row or a `…` row and closed by the next `…` row, so an unclosed string in one block's context rows (the closing line of a docstring, say) never bleeds into the blocks below.",
+  "patterns": [
+    {
+      "include": "#first"
+    },
+    {
+      "include": "#block"
+    }
+  ],
+  "repository": {
+    "first": {
+      "begin": "\\A$",
+      "while": "^(?!\\s*…\\s*$)",
+      "patterns": [
+        {
+          "include": "#lonequote"
+        },
+        {
+          "include": "source.python"
+        }
+      ]
+    },
+    "block": {
+      "begin": "^\\s*…\\s*$",
+      "beginCaptures": {
+        "0": {
+          "name": "comment.line.fold.pyokka-story"
+        }
+      },
+      "while": "^(?!\\s*…\\s*$)",
+      "patterns": [
+        {
+          "include": "#lonequote"
+        },
+        {
+          "include": "source.python"
+        }
+      ]
+    },
+    "lonequote": {
+      "comment": "a row that is only a line number and a triple quote is the edge of a docstring listed as context; colour it as a string without opening one, so the rows below stay Python",
+      "match": "^(\\s*\\d+)\\s{2}(\"\"\"|''')\\s*$",
+      "captures": {
+        "1": {
+          "name": "constant.numeric.dec.python"
+        },
+        "2": {
+          "name": "string.quoted.docstring.multi.python punctuation.definition.string.end.python"
+        }
+      }
+    }
+  }
+}

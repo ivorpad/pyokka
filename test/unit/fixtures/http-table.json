@@ -1,0 +1,86 @@
+{
+ "runId": "cli-fixture",
+ "running": false,
+ "count": 3,
+ "truncated": false,
+ "totals": {
+  "requests": 3,
+  "bytes": 46,
+  "ms": 60,
+  "misses": 0,
+  "missAttempts": 0
+ },
+ "finished": {
+  "mode": "record",
+  "requests": 3,
+  "recorded": 3,
+  "served": 0,
+  "misses": 0,
+  "file": "/fixture/.pyokka/replay/3f2a9c1e5b7d0246.jsonl",
+  "exists": true,
+  "recordedAt": "2026-09-11T10:12:03Z",
+  "entries": 3
+ },
+ "requests": [
+  {
+   "n": 1,
+   "client": "http.client",
+   "method": "GET",
+   "url": "http://127.0.0.1:0/json",
+   "name": "json",
+   "status": 200,
+   "reason": "OK",
+   "bytes": 18,
+   "ms": 10,
+   "recordedMs": null,
+   "source": "recorded",
+   "step": 8,
+   "location": {
+    "file": "/fixture/main.py",
+    "line": 11,
+    "col": 4,
+    "fileId": 1
+   }
+  },
+  {
+   "n": 2,
+   "client": "http.client",
+   "method": "POST",
+   "url": "http://127.0.0.1:0/echo",
+   "name": "echo",
+   "status": 200,
+   "reason": "OK",
+   "bytes": 24,
+   "ms": 20,
+   "recordedMs": null,
+   "source": "recorded",
+   "step": 13,
+   "location": {
+    "file": "/fixture/main.py",
+    "line": 17,
+    "col": 4,
+    "fileId": 1
+   }
+  },
+  {
+   "n": 3,
+   "client": "http.client",
+   "method": "GET",
+   "url": "http://127.0.0.1:0/json?key&v",
+   "name": "json",
+   "status": 404,
+   "reason": "Not Found",
+   "bytes": 4,
+   "ms": 30,
+   "recordedMs": null,
+   "source": "recorded",
+   "step": 16,
+   "location": {
+    "file": "/fixture/main.py",
+    "line": 24,
+    "col": 0,
+    "fileId": 1
+   }
+  }
+ ]
+}

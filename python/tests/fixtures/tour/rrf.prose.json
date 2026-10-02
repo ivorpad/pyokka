@@ -1,0 +1,20 @@
+{
+  "intro": "The script fuses two rankings of the same documents with reciprocal rank fusion, then prints how each document's score was built. A document's score is the sum of one small fraction per list it appears in.",
+  "chapters": {
+    "c1": {"title": "Two rankings", "text": "The input: a BM25 list and a vector list over the same documents."},
+    "c4": {"title": "Scoring each rank", "text": "`reciprocal_rank` turns each rank into a small fraction that is added to that document's score."},
+    "c5": {"title": "The fused order", "text": "Sorting by score puts 'C' first, ahead of the BM25 leader."},
+    "c6": {"title": "One document explained", "text": "The breakdown for a document missing from one list."}
+  },
+  "pick": ["s3-1cc568", "s53-189112", "s45-ce0cc1", "s104-8b1200", "s117-f589a6", "s156-b082d5", "s222-d2e3b6", "s242-9eb311"],
+  "stops": {
+    "s3-1cc568": {"title": "BM25 puts A first", "text": "The keyword ranking is the first input; 'A' leads it and 'C' is second."},
+    "s53-189112": {"title": "The top rank is worth 0.01639344262295082", "text": "`reciprocal_rank` gives the top rank 0.01639344262295082, so a first place is worth little more than a second."},
+    "s45-ce0cc1": {"title": "Scores after both lists", "text": "C ends highest because it is near the top of both lists.", "quote": {"field": "v1", "from": 54, "to": 78}},
+    "s104-8b1200": {"title": "Sorted by fused score", "text": "The sort puts C at 0.03252247488101534 ahead of A."},
+    "s117-f589a6": {"title": "The winner printed", "text": "The report rounds the score to 0.032522."},
+    "s156-b082d5": {"title": "A running total starts", "text": "The breakdown adds each list's contribution into `total`."},
+    "s222-d2e3b6": {"title": "A document missing from a list", "text": "This arm runs only when a document is absent from a ranking, so it adds nothing."},
+    "s242-9eb311": {"title": "The total", "text": "The last line prints the summed contribution, 0.016129."}
+  }
+}

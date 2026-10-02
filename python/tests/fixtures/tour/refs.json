@@ -1,0 +1,380 @@
+{
+ "rrf": {
+  "author": "me (ablation agent), from source + walkthrough, before signals",
+  "stops": [
+   [
+    45,
+    "main calls rrf with the two rankings and k=60: the fusion starts"
+   ],
+   [
+    55,
+    "reciprocal_rank: 1/(60+1) = 0.0164, the whole formula"
+   ],
+   [
+    57,
+    "first accumulation: scores['A'] = 0.0164"
+   ],
+   [
+    84,
+    "C's second contribution lands on the same key: a doc in both lists sums (C ends 0.0325)"
+   ],
+   [
+    103,
+    "rrf returns the five scores"
+   ],
+   [
+    104,
+    "sorted by score: C beats A by 0.00026"
+   ],
+   [
+    117,
+    "the result printed: 1. C RRF=0.032522"
+   ],
+   [
+    222,
+    "rare arm: D is not in the Vector list, so it gets +0"
+   ]
+  ],
+  "phases": [
+   "show the two input rankings",
+   "compute contributions and sum per doc (rrf)",
+   "sort and print the fused ranking",
+   "explain each doc's score"
+  ]
+ },
+ "logscan": {
+  "author": "me, before signals",
+  "stops": [
+   [
+    12,
+    "make_log(300) returns the input lines, two of them planted bad"
+   ],
+   [
+    1525,
+    "first parse: a line becomes {ts, path, status, ms}"
+   ],
+   [
+    2765,
+    "line 137 has '-' for ms: int() raises, caught at line 63"
+   ],
+   [
+    3434,
+    "line 211 has 6 fields: parse raises its own ValueError"
+   ],
+   [
+    4230,
+    "slow = the 2 rows over 800 ms"
+   ],
+   [
+    4236,
+    "summarize(rows) returns the per-path table"
+   ],
+   [
+    4861,
+    "/static/app.js row: 17 errors of 60, error_rate 0.283, the surprise"
+   ],
+   [
+    4864,
+    "worst = max by error_rate picks /static/app.js"
+   ],
+   [
+    4870,
+    "open('report.csv', 'w'): the file write"
+   ],
+   [
+    4885,
+    "final print: worst error rate /static/app.js 28.3%"
+   ]
+  ],
+  "phases": [
+   "make the log",
+   "parse with 2 failures",
+   "find slow rows",
+   "summarize per path",
+   "pick worst + write report"
+  ]
+ },
+ "lg_fake": {
+  "author": "me, before signals",
+  "stops": [
+   [
+    42,
+    "route_intent sends the chitchat question straight to finalize (agent never runs)"
+   ],
+   [
+    53,
+    "second ask: graph.invoke(state) with budget 150"
+   ],
+   [
+    57,
+    "classify returns intent 'trip'"
+   ],
+   [
+    59,
+    "route_intent returns 'agent'"
+   ],
+   [
+    72,
+    "model turn 1: AIMessage with 3 get_weather tool calls"
+   ],
+   [
+    82,
+    "get_weather('Oslo') -> 6 C rain, the city that gets dropped"
+   ],
+   [
+    97,
+    "model turn 2: warm = ['lisbon', 'cairo']"
+   ],
+   [
+    112,
+    "get_fare Madrid->Cairo raises; ToolNode turns it into an error message"
+   ],
+   [
+    126,
+    "model turn 3: cheapest = [(89, 'lisbon')]"
+   ],
+   [
+    133,
+    "should_continue returns 'finalize'"
+   ],
+   [
+    138,
+    "budget check: 89 <= 150, no warning"
+   ],
+   [
+    143,
+    "ANSWER 2 printed"
+   ]
+  ],
+  "phases": [
+   "build graph",
+   "question 1: chitchat short-circuit",
+   "question 2: route",
+   "turn 1 weather",
+   "turn 2 fares + error",
+   "turn 3 answer + finalize"
+  ]
+ },
+ "lg_llm": {
+  "author": "me, before signals",
+  "stops": [
+   [
+    44,
+    "route_intent sends chitchat to finalize"
+   ],
+   [
+    55,
+    "second ask: graph.invoke(state)"
+   ],
+   [
+    59,
+    "classify returns 'trip'"
+   ],
+   [
+    63,
+    "LLM turn 1: MODEL(messages) returns 6 tool calls at once (HTTP 1)"
+   ],
+   [
+    73,
+    "get_weather('Oslo') -> 6 C rain"
+   ],
+   [
+    88,
+    "get_fare Madrid->Cairo raises, handled by ToolNode"
+   ],
+   [
+    90,
+    "LLM turn 2: the answer text (HTTP 2)"
+   ],
+   [
+    94,
+    "should_continue returns 'finalize'"
+   ],
+   [
+    99,
+    "budget check in finalize"
+   ],
+   [
+    104,
+    "ANSWER 2 printed"
+   ]
+  ],
+  "phases": [
+   "build graph",
+   "question 1: chitchat",
+   "question 2: route",
+   "LLM turn 1 + 6 tools",
+   "LLM turn 2 answer + finalize"
+  ]
+ },
+ "pi_all": {
+  "author": "independent: the 14 cards of pageindex/history.json (earlier session, run.json has identical step numbers)",
+  "stops": [
+   [
+    355,
+    "Phase 1: parse the PDF into headings (no LLM)"
+   ],
+   [
+    7951,
+    "Phase 2: measure the raw tree"
+   ],
+   [
+    8675,
+    "Phase 3: merge small sections (no LLM)"
+   ],
+   [
+    13855,
+    "Phase 4: one summary prompt per leaf"
+   ],
+   [
+    19058,
+    "The optimized tree"
+   ],
+   [
+    19726,
+    "Phase 4: the first reply comes back"
+   ],
+   [
+    20181,
+    "Phase 4: the parent summary"
+   ],
+   [
+    20896,
+    "Phase 5: one description for the whole document"
+   ],
+   [
+    22178,
+    "The index is stored. The question starts."
+   ],
+   [
+    22702,
+    "Phase 6: the chat model reads the ToC"
+   ],
+   [
+    22989,
+    "Phase 6: it opens page 4"
+   ],
+   [
+    23251,
+    "Phase 6: it opens page 5"
+   ],
+   [
+    23558,
+    "Cost of the question"
+   ],
+   [
+    23566,
+    "Phase 7: the answer"
+   ]
+  ],
+  "phases": [
+   "client setup",
+   "parse PDF",
+   "measure/merge tree",
+   "leaf + parent summaries (LLM)",
+   "doc description",
+   "get_tree",
+   "chat"
+  ]
+ },
+ "pi_ch6": {
+  "author": "me, written AFTER seeing chat-tour.json (biased toward it)",
+  "stops": [
+   [
+    22179,
+    "chat receives the question and doc_id"
+   ],
+   [
+    22410,
+    "the agent's system prompt is built"
+   ],
+   [
+    22690,
+    "model call 1 (HTTP 16): replies with a tool call"
+   ],
+   [
+    22702,
+    "invoke get_document_structure"
+   ],
+   [
+    22966,
+    "the tree the tool hands back"
+   ],
+   [
+    22989,
+    "invoke get_page_content pages=4"
+   ],
+   [
+    23251,
+    "invoke get_page_content pages=5"
+   ],
+   [
+    23474,
+    "_get_page_content returns page 5 with h=8, dk=64"
+   ],
+   [
+    23501,
+    "model call 4 (HTTP 19): the final answer"
+   ],
+   [
+    23558,
+    "usage sums: 19,681 input tokens"
+   ],
+   [
+    23566,
+    "ANSWER printed"
+   ]
+  ],
+  "phases": [
+   "question in + agent setup",
+   "turn 1 ToC",
+   "turn 2 page 4",
+   "turn 3 page 5",
+   "answer + cost"
+  ]
+ },
+ "pi_ch6_cards": {
+  "author": "independent: the 8 cards of chat-tour.json (earlier session)",
+  "stops": [
+   [
+    22179,
+    "1. The question goes in"
+   ],
+   [
+    22410,
+    "2. Turn 1: the model's instructions"
+   ],
+   [
+    22702,
+    "3. The model asks for the table of contents"
+   ],
+   [
+    22889,
+    "4. One entry of that tree"
+   ],
+   [
+    22989,
+    "5. Turn 2: it opens page 4"
+   ],
+   [
+    23497,
+    "6. Turn 3: page 5 has the sentence"
+   ],
+   [
+    23558,
+    "7. What the question cost"
+   ],
+   [
+    23566,
+    "8. The answer"
+   ]
+  ],
+  "phases": [
+   "question in + agent setup",
+   "turn 1 ToC",
+   "turn 2 page 4",
+   "turn 3 page 5",
+   "answer + cost"
+  ]
+ }
+}

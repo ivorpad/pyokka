@@ -1,0 +1,17 @@
+{
+  "scopeName": "source.pyokka-recent",
+  "patterns": [
+    { "include": "#python_fragment" },
+    { "comment": "file", "match": "⁠{1}[^⁠]+⁠{1}", "name": "string.value markup.underline" },
+    { "comment": "date", "match": " {1}[^ ]+ {1}", "name": "constant.numeric" }
+  ],
+  "repository": {
+    "python_fragment": {
+      "begin": "​",
+      "end": "​",
+      "patterns": [
+        { "begin": ".*", "while": "(^|\\G)(?!\\s*(​))", "patterns": [{ "include": "source.python" }] }
+      ]
+    }
+  }
+}

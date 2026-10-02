@@ -1,0 +1,1899 @@
+{
+  "name": "pyokka",
+  "displayName": "Pyokka",
+  "publisher": "ivor",
+  "description": "Python playground in your editor: live values, coverage, and a time-travel debugger with an interactive timeline.",
+  "version": "0.3.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ivorpad/pyokka.git"
+  },
+  "homepage": "https://github.com/ivorpad/pyokka#readme",
+  "bugs": {
+    "url": "https://github.com/ivorpad/pyokka/issues"
+  },
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.93.0"
+  },
+  "categories": [
+    "Debuggers",
+    "Testing",
+    "Other"
+  ],
+  "keywords": [
+    "python",
+    "scratchpad",
+    "playground",
+    "REPL",
+    "time travel"
+  ],
+  "activationEvents": [
+    "onLanguage:python",
+    "onStartupFinished",
+    "onUri"
+  ],
+  "main": "./dist/extension.js",
+  "icon": "media/logo.png",
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "description": "Pyokka runs your code; it asks before starting in an untrusted workspace."
+    }
+  },
+  "contributes": {
+    "viewsContainers": {
+      "panel": [
+        {
+          "id": "pyokka-output",
+          "title": "Pyokka",
+          "icon": "media/logo-outline.svg"
+        }
+      ]
+    },
+    "views": {
+      "pyokka-output": [
+        {
+          "id": "pyokka.output",
+          "name": "Output",
+          "type": "webview",
+          "visibility": "visible"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "pyokka.createFile",
+        "title": "New File",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.createSnippetFromSelection",
+        "title": "Create Snippet from Selection",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.openStartView",
+        "title": "Open Start View",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.showOutput",
+        "title": "Show Output",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.focusOutput",
+        "title": "Focus Output",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.showInstrumentedFile",
+        "title": "Show Instrumented Code",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.startOnCurrentFile",
+        "title": "Start on Current File",
+        "category": "Pyokka",
+        "icon": "$(debug-start)"
+      },
+      {
+        "command": "pyokka.toggle",
+        "title": "Toggle (Start/Stop) on Current File",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.runOnSave",
+        "title": "Run on save for Current File",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.runAutomatically",
+        "title": "Run automatically for Current File",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.runOnDemand",
+        "title": "Run on demand for Current File",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.reexecute",
+        "title": "Re-execute file",
+        "category": "Pyokka",
+        "icon": "$(play)"
+      },
+      {
+        "command": "pyokka.stopCurrent",
+        "title": "Stop Current",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.stopAll",
+        "title": "Stop All",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.installMissingPackageToProject",
+        "title": "Install Missing Package into Project",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.installMissingPackageForFile",
+        "title": "Install Missing Package only for Pyokka File",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.showValue",
+        "title": "Show Value",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.showLineValues",
+        "title": "Show Line Value(s)",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.showLineTimings",
+        "title": "Show Line Timing(s)",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.copyValue",
+        "title": "Copy Value",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.focusActiveFile",
+        "title": "Focus Active Pyokka File",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.selectWorkspaceFolder",
+        "title": "Select Workspace Folder",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.copyExpressionPath",
+        "title": "Copy Path",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.copyExpressionData",
+        "title": "Copy Data",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.profile",
+        "title": "Profile",
+        "category": "Pyokka",
+        "icon": "$(dashboard)"
+      },
+      {
+        "command": "pyokka.clearValue",
+        "title": "Clear Value",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.clearFileValues",
+        "title": "Clear File Values",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.enableShowValueOnSelection",
+        "title": "Toggle Show Value On Selection",
+        "category": "Pyokka",
+        "icon": "$(eye-closed)"
+      },
+      {
+        "command": "pyokka.disableShowValueOnSelection",
+        "title": "Toggle Show Value On Selection",
+        "category": "Pyokka",
+        "icon": "$(eye)",
+        "when": "!pyokka.autoLogEnabled"
+      },
+      {
+        "command": "pyokka.enableShowSingleInlineValue",
+        "title": "Show Last Displayed Value Only",
+        "category": "Pyokka",
+        "icon": "$(list-flat)"
+      },
+      {
+        "command": "pyokka.disableShowSingleInlineValue",
+        "title": "Show All Displayed Values",
+        "category": "Pyokka",
+        "icon": "$(list-selection)"
+      },
+      {
+        "command": "pyokka.viewRecentFiles",
+        "title": "View Recent Files",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.runRecentFile",
+        "title": "Run Recent File",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.removeRecentFiles",
+        "title": "Remove Recent Files",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.disableAutoLog",
+        "title": "Toggle Auto Log (Disable)",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.enableAutoLog",
+        "title": "Toggle Auto Log (Enable)",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.editSessionSettings",
+        "title": "Edit Current Pyokka Session Settings",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.debug",
+        "title": "Start Time Machine On The Current Line",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.debugAutoPlay",
+        "title": "Start Time Machine With Auto Play",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.playTraceNextStep",
+        "title": "Step Into",
+        "category": "Pyokka",
+        "icon": "$(debug-step-into)"
+      },
+      {
+        "command": "pyokka.playTracePrevStep",
+        "title": "Step Back Into",
+        "category": "Pyokka",
+        "icon": "$(debug-step-back)"
+      },
+      {
+        "command": "pyokka.playTraceForwardToSelection",
+        "title": "Run to Active Line",
+        "category": "Pyokka",
+        "icon": "$(debug-continue)"
+      },
+      {
+        "command": "pyokka.playTraceBackwardToSelection",
+        "title": "Run Back to Active Line",
+        "category": "Pyokka",
+        "icon": "$(debug-reverse-continue)"
+      },
+      {
+        "command": "pyokka.playTraceForwardToBreakpoint",
+        "title": "Run to Breakpoint",
+        "category": "Pyokka",
+        "icon": "$(run-below)"
+      },
+      {
+        "command": "pyokka.playTraceBackwardToBreakpoint",
+        "title": "Run Back to Breakpoint",
+        "category": "Pyokka",
+        "icon": "$(run-above)"
+      },
+      {
+        "command": "pyokka.playTraceNextStepOver",
+        "title": "Step Over",
+        "category": "Pyokka",
+        "icon": "$(debug-step-over)"
+      },
+      {
+        "command": "pyokka.playTracePrevStepOver",
+        "title": "Step Back Over",
+        "category": "Pyokka",
+        "icon": "$(triangle-left)"
+      },
+      {
+        "command": "pyokka.playTraceNextStepOut",
+        "title": "Step Out",
+        "category": "Pyokka",
+        "icon": "$(debug-step-out)"
+      },
+      {
+        "command": "pyokka.playTracePrevStepOut",
+        "title": "Step Back Out",
+        "category": "Pyokka",
+        "icon": "$(reply)"
+      },
+      {
+        "command": "pyokka.openCallStackFrame",
+        "title": "Open Call Stack Frame",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.viewCallStack",
+        "title": "View Call Stack",
+        "category": "Pyokka",
+        "icon": "$(list-tree)"
+      },
+      {
+        "command": "pyokka.hideCallStack",
+        "title": "Hide Call Stack",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.stopTraceNavigation",
+        "title": "Stop Time Machine",
+        "category": "Pyokka",
+        "icon": "$(debug-stop)"
+      },
+      {
+        "command": "pyokka.revealTraceStep",
+        "title": "Reveal Trace Step",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.autoPlayCode",
+        "title": "Auto Play Code",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.pauseCodeExecution",
+        "title": "Pause Code Execution",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.viewCodeStory",
+        "title": "View Code Story",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.allowFileSnapsExecution",
+        "title": "Allow File Snaps Execution",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.insertSnapOutput",
+        "title": "Insert Snap Output",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.deleteSnapOutput",
+        "title": "Delete Snap Output",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.stopFileSnapsDiscovery",
+        "title": "Stop Snaps Discovery in Current File",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.startFileSnapsDiscovery",
+        "title": "Start Snaps Discovery in Current File",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.selectAction",
+        "title": "Select Action",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.showLogs",
+        "title": "Show Logs",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.hoverCopy",
+        "title": "Copy Hover Value to Clipboard",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.exploreEntity",
+        "title": "Explore Value",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.editSnippets",
+        "title": "Edit Pyokka Snippets",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.newPythonFile",
+        "title": "New Python File",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.newRecentOrSnippet",
+        "title": "From Recent / Snippet",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.addWatchExpression",
+        "title": "Add Watch Expression",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.removeWatchExpression",
+        "title": "Remove Watch Expression",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.toggleCodePreview",
+        "title": "Toggle Code Preview Display",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.toggleStepEcho",
+        "title": "Show/Hide Current Step Echo",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.selectInterpreter",
+        "title": "Select Python Interpreter for Pyokka",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.openStartView",
+        "title": "Open Start View",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.narrateWalkthrough",
+        "title": "Narrate Walkthrough",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.showTour",
+        "title": "Show Tour",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.narrateTour",
+        "title": "Narrate Tour",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.showVariableHistory",
+        "title": "Show Variable History",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.whyValue",
+        "title": "Why This Value",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.whyVariable",
+        "title": "Why This Value",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.showExecutionDiagram",
+        "title": "Show Execution Diagram",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.showHttp",
+        "title": "Show HTTP Requests",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.openHttpRecording",
+        "title": "Open HTTP Recording",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.clearLibraryCache",
+        "title": "Clear Library Cache",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.debugCurrentFile",
+        "title": "Debug Current File",
+        "category": "Pyokka",
+        "icon": "$(debug-alt)"
+      },
+      {
+        "command": "pyokka.debugCurrentFileRecording",
+        "title": "Debug Current File (Recording)",
+        "category": "Pyokka",
+        "icon": "$(debug-alt-small)"
+      },
+      {
+        "command": "pyokka.debugContinue",
+        "title": "Continue (Debug)",
+        "category": "Pyokka",
+        "icon": "$(debug-continue)"
+      },
+      {
+        "command": "pyokka.debugPause",
+        "title": "Pause (Debug)",
+        "category": "Pyokka",
+        "icon": "$(debug-pause)"
+      },
+      {
+        "command": "pyokka.debugStop",
+        "title": "Stop Debugging",
+        "category": "Pyokka",
+        "icon": "$(debug-stop)"
+      },
+      {
+        "command": "pyokka.debugStepOver",
+        "title": "Step Over (Debug)",
+        "category": "Pyokka",
+        "icon": "$(debug-step-over)"
+      },
+      {
+        "command": "pyokka.debugStepInto",
+        "title": "Step Into (Debug)",
+        "category": "Pyokka",
+        "icon": "$(debug-step-into)"
+      },
+      {
+        "command": "pyokka.debugStepOut",
+        "title": "Step Out (Debug)",
+        "category": "Pyokka",
+        "icon": "$(debug-step-out)"
+      },
+      {
+        "command": "pyokka.debugRestart",
+        "title": "Restart (Debug)",
+        "category": "Pyokka",
+        "icon": "$(debug-restart)"
+      },
+      {
+        "command": "pyokka.showDebugger",
+        "title": "Show Debugger",
+        "category": "Pyokka",
+        "icon": "$(debug-alt)"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "pyokka.createFile",
+          "when": "!false"
+        },
+        {
+          "command": "pyokka.showInstrumentedFile",
+          "when": "pyokka.hasActiveSession"
+        },
+        {
+          "command": "pyokka.showOutput"
+        },
+        {
+          "command": "pyokka.focusOutput"
+        },
+        {
+          "command": "pyokka.startOnCurrentFile"
+        },
+        {
+          "command": "pyokka.toggle",
+          "when": "activeEditor"
+        },
+        {
+          "command": "pyokka.runOnSave",
+          "when": "activeEditor"
+        },
+        {
+          "command": "pyokka.runOnDemand",
+          "when": "activeEditor"
+        },
+        {
+          "command": "pyokka.runAutomatically",
+          "when": "activeEditor"
+        },
+        {
+          "command": "pyokka.reexecute",
+          "when": "activeEditor && pyokka.isActiveEditorRunningPyokka && !pyokka.traceBeingNavigated"
+        },
+        {
+          "command": "pyokka.stopCurrent",
+          "when": "pyokka.hasActiveSession"
+        },
+        {
+          "command": "pyokka.stopAll",
+          "when": "pyokka.hasActiveSession"
+        },
+        {
+          "command": "pyokka.installMissingPackageToProject",
+          "when": "pyokka.hasActiveSession"
+        },
+        {
+          "command": "pyokka.installMissingPackageForFile",
+          "when": "pyokka.hasActiveSession"
+        },
+        {
+          "command": "pyokka.showValue",
+          "when": "activeEditor && pyokka.isActiveEditorRunningPyokka"
+        },
+        {
+          "command": "pyokka.copyValue",
+          "when": "activeEditor && pyokka.isActiveEditorRunningPyokka"
+        },
+        {
+          "command": "pyokka.showLineValues",
+          "when": "activeEditor && pyokka.isActiveEditorRunningPyokka"
+        },
+        {
+          "command": "pyokka.showLineTimings",
+          "when": "activeEditor && pyokka.isActiveEditorRunningPyokka"
+        },
+        {
+          "command": "pyokka.focusActiveFile",
+          "when": "pyokka.hasActiveSession"
+        },
+        {
+          "command": "pyokka.selectWorkspaceFolder",
+          "when": "workspaceFolderCount >= 2"
+        },
+        {
+          "command": "pyokka.copyExpressionPath",
+          "when": "false"
+        },
+        {
+          "command": "pyokka.copyExpressionData",
+          "when": "false"
+        },
+        {
+          "command": "pyokka.profile",
+          "when": "pyokka.isProfilingEnabled && pyokka.isActiveEditorRunningPyokka"
+        },
+        {
+          "command": "pyokka.clearValue",
+          "when": "activeEditor && pyokka.isActiveEditorRunningPyokka"
+        },
+        {
+          "command": "pyokka.clearFileValues",
+          "when": "activeEditor && pyokka.isActiveEditorRunningPyokka"
+        },
+        {
+          "command": "pyokka.enableShowValueOnSelection",
+          "when": "activeEditor && pyokka.isActiveEditorRunningPyokka && !pyokka.showValueOnSelectionEnabled && !pyokka.autoLogEnabled"
+        },
+        {
+          "command": "pyokka.disableShowValueOnSelection",
+          "when": "activeEditor && pyokka.isActiveEditorRunningPyokka && pyokka.showValueOnSelectionEnabled && !pyokka.autoLogEnabled"
+        },
+        {
+          "command": "pyokka.enableShowSingleInlineValue",
+          "when": "activeEditor && pyokka.isActiveEditorRunningPyokka && !pyokka.showSingleInlineValueEnabled && !pyokka.autoLogEnabled"
+        },
+        {
+          "command": "pyokka.disableShowSingleInlineValue",
+          "when": "activeEditor && pyokka.isActiveEditorRunningPyokka && pyokka.showSingleInlineValueEnabled && !pyokka.autoLogEnabled"
+        },
+        {
+          "command": "pyokka.viewRecentFiles",
+          "when": "!false"
+        },
+        {
+          "command": "pyokka.runRecentFile",
+          "when": "false"
+        },
+        {
+          "command": "pyokka.removeRecentFiles",
+          "when": "false"
+        },
+        {
+          "command": "pyokka.disableAutoLog",
+          "when": "activeEditor && pyokka.isActiveEditorRunningPyokka && pyokka.autoLogEnabled"
+        },
+        {
+          "command": "pyokka.enableAutoLog",
+          "when": "activeEditor && pyokka.isActiveEditorRunningPyokka && !pyokka.autoLogEnabled"
+        },
+        {
+          "command": "pyokka.debug",
+          "when": "activeEditor && pyokka.isActiveEditorRunningPyokka && !pyokka.traceBeingNavigated && (editorLangId == python || editorLangId == pyokka-story)"
+        },
+        {
+          "command": "pyokka.editSessionSettings",
+          "when": "activeEditor && pyokka.isActiveEditorRunningPyokka && !pyokka.traceBeingNavigated"
+        },
+        {
+          "command": "pyokka.debugAutoPlay",
+          "when": "false && activeEditor && pyokka.isActiveEditorRunningPyokka && !pyokka.traceBeingNavigated && (editorLangId == python || editorLangId == pyokka-story)"
+        },
+        {
+          "command": "pyokka.playTraceNextStep",
+          "when": "false"
+        },
+        {
+          "command": "pyokka.playTracePrevStep",
+          "when": "false"
+        },
+        {
+          "command": "pyokka.playTraceForwardToSelection",
+          "when": "false"
+        },
+        {
+          "command": "pyokka.playTraceBackwardToSelection",
+          "when": "false"
+        },
+        {
+          "command": "pyokka.playTraceForwardToBreakpoint",
+          "when": "false"
+        },
+        {
+          "command": "pyokka.playTraceBackwardToBreakpoint",
+          "when": "false"
+        },
+        {
+          "command": "pyokka.playTraceNextStepOver",
+          "when": "false"
+        },
+        {
+          "command": "pyokka.playTracePrevStepOver",
+          "when": "false"
+        },
+        {
+          "command": "pyokka.playTraceNextStepOut",
+          "when": "false"
+        },
+        {
+          "command": "pyokka.playTracePrevStepOut",
+          "when": "false"
+        },
+        {
+          "command": "pyokka.openCallStackFrame",
+          "when": "false"
+        },
+        {
+          "command": "pyokka.viewCallStack",
+          "when": "false"
+        },
+        {
+          "command": "pyokka.hideCallStack",
+          "when": "false"
+        },
+        {
+          "command": "pyokka.stopTraceNavigation",
+          "when": "activeEditor && pyokka.isActiveEditorRunningPyokka && pyokka.traceBeingNavigated && (editorLangId == python || editorLangId == pyokka-story)"
+        },
+        {
+          "command": "pyokka.revealTraceStep",
+          "when": "false"
+        },
+        {
+          "command": "pyokka.autoPlayCode",
+          "when": "false && activeEditor && pyokka.isActiveEditorRunningPyokka && pyokka.traceBeingNavigated && !pyokka.traceBeingAutoPlayed && (editorLangId == python || editorLangId == pyokka-story)"
+        },
+        {
+          "command": "pyokka.pauseCodeExecution",
+          "when": "activeEditor && pyokka.isActiveEditorRunningPyokka && pyokka.traceBeingNavigated && pyokka.traceBeingAutoPlayed && (editorLangId == python || editorLangId == pyokka-story)"
+        },
+        {
+          "command": "pyokka.viewCodeStory",
+          "when": "pyokka.isCodeStoryEnabled && activeEditor && pyokka.isActiveEditorRunningPyokka && (editorLangId == python || editorLangId == pyokka-story)"
+        },
+        {
+          "command": "pyokka.allowFileSnapsExecution",
+          "when": "activeEditor && pyokka.hasActiveSession && pyokka.isActiveEditorRunningPyokka && !pyokka.snapsExecutionAllowed"
+        },
+        {
+          "command": "pyokka.insertSnapOutput",
+          "when": "activeEditor && pyokka.hasActiveSession && pyokka.isActiveEditorRunningPyokka && pyokka.snapsExecutionAllowed"
+        },
+        {
+          "command": "pyokka.deleteSnapOutput",
+          "when": "activeEditor && pyokka.hasActiveSession && pyokka.isActiveEditorRunningPyokka && pyokka.snapsExecutionAllowed"
+        },
+        {
+          "command": "pyokka.stopFileSnapsDiscovery",
+          "when": "activeEditor"
+        },
+        {
+          "command": "pyokka.startFileSnapsDiscovery",
+          "when": "activeEditor"
+        },
+        {
+          "command": "pyokka.selectAction",
+          "when": "false"
+        },
+        {
+          "command": "pyokka.showLogs",
+          "when": "pyokka.debug"
+        },
+        {
+          "command": "pyokka.hoverCopy",
+          "when": "false"
+        },
+        {
+          "command": "pyokka.exploreEntity",
+          "when": "activeEditor && pyokka.isActiveEditorRunningPyokka"
+        },
+        {
+          "command": "pyokka.editSnippets",
+          "when": "true"
+        },
+        {
+          "command": "pyokka.createSnippetFromSelection",
+          "when": "editorHasSelection && activeEditor"
+        },
+        {
+          "command": "pyokka.newPythonFile"
+        },
+        {
+          "command": "pyokka.newRecentOrSnippet",
+          "when": "false"
+        },
+        {
+          "command": "pyokka.addWatchExpression",
+          "when": "false"
+        },
+        {
+          "command": "pyokka.removeWatchExpression",
+          "when": "false"
+        },
+        {
+          "command": "pyokka.toggleCodePreview",
+          "when": "pyokka.traceBeingNavigated"
+        },
+        {
+          "command": "pyokka.toggleStepEcho",
+          "when": "pyokka.traceBeingNavigated"
+        },
+        {
+          "command": "pyokka.selectInterpreter"
+        },
+        {
+          "command": "pyokka.openStartView"
+        },
+        {
+          "command": "pyokka.showVariableHistory",
+          "when": "pyokka.hasActiveSession"
+        },
+        {
+          "command": "pyokka.showHttp",
+          "when": "pyokka.hasActiveSession"
+        },
+        {
+          "command": "pyokka.showTour",
+          "when": "pyokka.hasActiveSession"
+        },
+        {
+          "command": "pyokka.narrateTour",
+          "when": "pyokka.hasActiveSession"
+        },
+        {
+          "command": "pyokka.openHttpRecording",
+          "when": "pyokka.hasActiveSession"
+        },
+        {
+          "command": "pyokka.whyValue",
+          "when": "pyokka.hasActiveSession"
+        },
+        {
+          "command": "pyokka.whyVariable",
+          "when": "false"
+        },
+        {
+          "command": "pyokka.clearLibraryCache"
+        },
+        {
+          "command": "pyokka.debugCurrentFile"
+        },
+        {
+          "command": "pyokka.debugCurrentFileRecording"
+        },
+        {
+          "command": "pyokka.debugContinue",
+          "when": "pyokka.hasActiveSession"
+        },
+        {
+          "command": "pyokka.debugPause",
+          "when": "pyokka.hasActiveSession"
+        },
+        {
+          "command": "pyokka.debugStop",
+          "when": "pyokka.hasActiveSession"
+        },
+        {
+          "command": "pyokka.debugStepOver",
+          "when": "pyokka.debugActive"
+        },
+        {
+          "command": "pyokka.debugStepInto",
+          "when": "pyokka.debugActive"
+        },
+        {
+          "command": "pyokka.debugStepOut",
+          "when": "pyokka.debugActive"
+        },
+        {
+          "command": "pyokka.debugRestart",
+          "when": "pyokka.debugActive"
+        },
+        {
+          "command": "pyokka.showDebugger",
+          "when": "pyokka.debugSessionActive"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "pyokka.debugCurrentFile",
+          "when": "view =~ /pyokka.output/ && !pyokka.debugActive",
+          "group": "navigation@0"
+        },
+        {
+          "command": "pyokka.debugCurrentFileRecording",
+          "when": "view =~ /pyokka.output/ && !pyokka.debugActive",
+          "group": "navigation@1"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "pyokka.copyExpressionPath",
+          "when": "viewItem =~ /PyokkaAllowToCopyPath/"
+        },
+        {
+          "command": "pyokka.copyExpressionData",
+          "when": "viewItem =~ /PyokkaAllowToCopyData/"
+        }
+      ],
+      "file/newFile": [
+        {
+          "command": "pyokka.newPythonFile"
+        },
+        {
+          "command": "pyokka.newRecentOrSnippet"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "pyokka.playTraceBackwardToSelection",
+          "when": "activeEditor && pyokka.traceBeingNavigated && !pyokka.traceBeingAutoPlayed && resourceScheme == pyokka-code-timeline",
+          "group": "navigation@-998"
+        },
+        {
+          "command": "pyokka.playTracePrevStepOut",
+          "when": "activeEditor && pyokka.traceBeingNavigated && !pyokka.traceBeingAutoPlayed && resourceScheme == pyokka-code-timeline",
+          "group": "navigation@-997"
+        },
+        {
+          "command": "pyokka.playTracePrevStep",
+          "when": "activeEditor && pyokka.traceBeingNavigated && !pyokka.traceBeingAutoPlayed && resourceScheme == pyokka-code-timeline",
+          "group": "navigation@-996"
+        },
+        {
+          "command": "pyokka.playTracePrevStepOver",
+          "when": "activeEditor && pyokka.traceBeingNavigated && !pyokka.traceBeingAutoPlayed && resourceScheme == pyokka-code-timeline",
+          "group": "navigation@-995"
+        },
+        {
+          "command": "pyokka.stopTraceNavigation",
+          "when": "activeEditor && pyokka.traceBeingNavigated && !pyokka.traceBeingAutoPlayed && resourceScheme == pyokka-code-timeline",
+          "group": "navigation@-994"
+        },
+        {
+          "command": "pyokka.playTraceNextStepOver",
+          "when": "activeEditor && pyokka.traceBeingNavigated && !pyokka.traceBeingAutoPlayed && resourceScheme == pyokka-code-timeline",
+          "group": "navigation@-993"
+        },
+        {
+          "command": "pyokka.playTraceNextStep",
+          "when": "activeEditor && pyokka.traceBeingNavigated && !pyokka.traceBeingAutoPlayed && resourceScheme == pyokka-code-timeline",
+          "group": "navigation@-992"
+        },
+        {
+          "command": "pyokka.playTraceNextStepOut",
+          "when": "activeEditor && pyokka.traceBeingNavigated && !pyokka.traceBeingAutoPlayed && resourceScheme == pyokka-code-timeline",
+          "group": "navigation@-991"
+        },
+        {
+          "command": "pyokka.playTraceForwardToSelection",
+          "when": "activeEditor && pyokka.traceBeingNavigated && !pyokka.traceBeingAutoPlayed && resourceScheme == pyokka-code-timeline",
+          "group": "navigation@-990"
+        },
+        {
+          "command": "pyokka.playTraceBackwardToBreakpoint",
+          "when": "activeEditor && pyokka.traceBeingNavigated && pyokka.hasAnyEnabledBreakpointsInActiveEditor && !pyokka.traceBeingAutoPlayed && resourceScheme == pyokka-code-timeline",
+          "group": "navigation@-989"
+        },
+        {
+          "command": "pyokka.playTraceForwardToBreakpoint",
+          "when": "activeEditor && pyokka.traceBeingNavigated && pyokka.hasAnyEnabledBreakpointsInActiveEditor && !pyokka.traceBeingAutoPlayed && resourceScheme == pyokka-code-timeline",
+          "group": "navigation@-988"
+        }
+      ],
+      "editor/title/run": [
+        {
+          "command": "pyokka.reexecute",
+          "when": "activeEditor && pyokka.isActiveEditorRunningPyokka && !pyokka.traceBeingNavigated",
+          "group": "navigation@1"
+        },
+        {
+          "command": "pyokka.startOnCurrentFile",
+          "when": "editorLangId == python && !pyokka.isActiveEditorRunningPyokka",
+          "group": "navigation@2"
+        }
+      ],
+      "debug/variables/context": [
+        {
+          "command": "pyokka.whyVariable",
+          "when": "debugType == pyokka && pyokka.traceBeingNavigated",
+          "group": "navigation"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "pyokka.startOnCurrentFile",
+        "key": "ctrl+k q",
+        "mac": "cmd+k q",
+        "when": "!terminalFocus"
+      },
+      {
+        "command": "pyokka.createFile",
+        "key": "ctrl+k l",
+        "mac": "cmd+k l",
+        "when": "!terminalFocus"
+      },
+      {
+        "command": "pyokka.stopCurrent",
+        "key": "ctrl+k e",
+        "mac": "cmd+k s",
+        "when": "!terminalFocus && pyokka.hasActiveSession"
+      },
+      {
+        "command": "pyokka.showValue",
+        "key": "ctrl+k v",
+        "mac": "cmd+k v",
+        "when": "!terminalFocus && pyokka.hasActiveSession && pyokka.isActiveEditorRunningPyokka"
+      },
+      {
+        "command": "pyokka.showLineValues",
+        "when": "!terminalFocus && pyokka.hasActiveSession && pyokka.isActiveEditorRunningPyokka"
+      },
+      {
+        "command": "pyokka.showLineTimings",
+        "when": "!terminalFocus && pyokka.hasActiveSession && pyokka.isActiveEditorRunningPyokka"
+      },
+      {
+        "command": "pyokka.copyValue",
+        "key": "ctrl+k x",
+        "mac": "cmd+k x",
+        "when": "!terminalFocus && pyokka.hasActiveSession && pyokka.isActiveEditorRunningPyokka"
+      },
+      {
+        "command": "pyokka.installMissingPackageForFile",
+        "key": "ctrl+k i",
+        "mac": "cmd+k i",
+        "when": "!terminalFocus && pyokka.hasActiveSession"
+      },
+      {
+        "command": "pyokka.clearValue",
+        "key": "Escape",
+        "mac": "Escape",
+        "when": "pyokka.isActiveEditorRunningPyokka && pyokka.lineHasRemovableInlineValues && editorTextFocus && !suggestWidgetVisible && !findWidgetVisible && !renameInputVisible && !referenceSearchVisible && !inReferenceSearchEditor && !quickFixWidgetVisible && !parameterHintsVisible && !vim.active || pyokka.isActiveEditorRunningPyokka && pyokka.lineHasRemovableInlineValues && editorTextFocus && !suggestWidgetVisible && !findWidgetVisible && !renameInputVisible && !referenceSearchVisible && !inReferenceSearchEditor && !quickFixWidgetVisible && !parameterHintsVisible && vim.mode=='Normal'"
+      },
+      {
+        "command": "pyokka.clearFileValues",
+        "key": "Escape Escape",
+        "mac": "Escape Escape",
+        "when": "pyokka.isActiveEditorRunningPyokka && !pyokka.lineHasRemovableInlineValues && pyokka.fileHasRemovableInlineValues && editorTextFocus && !suggestWidgetVisible && !findWidgetVisible && !renameInputVisible && !referenceSearchVisible && !inReferenceSearchEditor && !quickFixWidgetVisible && !parameterHintsVisible && !editorHasSelection && !vim.active || pyokka.isActiveEditorRunningPyokka && !pyokka.lineHasRemovableInlineValues && pyokka.fileHasRemovableInlineValues && editorTextFocus && !suggestWidgetVisible && !findWidgetVisible && !renameInputVisible && !referenceSearchVisible && !inReferenceSearchEditor && !quickFixWidgetVisible && !parameterHintsVisible && !editorHasSelection && vim.mode=='Normal'"
+      },
+      {
+        "command": "pyokka.stopTraceNavigation",
+        "key": "shift+f5",
+        "mac": "shift+f5",
+        "when": "activeEditor && pyokka.isActiveEditorRunningPyokka && pyokka.traceBeingNavigated && !inDebugMode || activeEditor && pyokka.traceBeingNavigated && !inDebugMode && resourceScheme == pyokka-code-timeline"
+      },
+      {
+        "command": "pyokka.debug",
+        "key": "shift+f5",
+        "mac": "shift+f5",
+        "when": "activeEditor && pyokka.isActiveEditorRunningPyokka && !pyokka.traceBeingNavigated && !inDebugMode || activeEditor && !pyokka.traceBeingNavigated && !inDebugMode && resourceScheme == pyokka-code-timeline"
+      },
+      {
+        "command": "pyokka.debugAutoPlay",
+        "key": "alt+shift+f5",
+        "mac": "alt+shift+f5",
+        "when": "false && activeEditor && pyokka.isActiveEditorRunningPyokka && !pyokka.traceBeingNavigated && !inDebugMode || activeEditor && !pyokka.traceBeingNavigated && !inDebugMode && resourceScheme == pyokka-code-timeline"
+      },
+      {
+        "command": "pyokka.playTraceNextStep",
+        "key": "f11",
+        "mac": "f11",
+        "when": "activeEditor && pyokka.isActiveEditorRunningPyokka && pyokka.traceBeingNavigated && !inDebugMode || activeEditor && pyokka.traceBeingNavigated && !inDebugMode && resourceScheme == pyokka-code-timeline"
+      },
+      {
+        "command": "pyokka.playTraceForwardToSelection",
+        "key": "f5",
+        "mac": "f5",
+        "when": "(activeEditor && pyokka.isActiveEditorRunningPyokka && pyokka.traceBeingNavigated && !inDebugMode || activeEditor && pyokka.traceBeingNavigated && !inDebugMode && resourceScheme == pyokka-code-timeline) && !pyokka.activeFileHasBreakpoints"
+      },
+      {
+        "command": "pyokka.playTraceForwardToBreakpoint",
+        "key": "f8",
+        "mac": "f8",
+        "when": "activeEditor && pyokka.isActiveEditorRunningPyokka && pyokka.traceBeingNavigated && (!inDebugMode || debugType == pyokka) || activeEditor && pyokka.traceBeingNavigated && (!inDebugMode || debugType == pyokka) && resourceScheme == pyokka-code-timeline"
+      },
+      {
+        "command": "pyokka.playTraceNextStepOver",
+        "key": "f10",
+        "mac": "f10",
+        "when": "activeEditor && pyokka.isActiveEditorRunningPyokka && pyokka.traceBeingNavigated && !inDebugMode || activeEditor && pyokka.traceBeingNavigated && !inDebugMode && resourceScheme == pyokka-code-timeline"
+      },
+      {
+        "command": "pyokka.playTraceNextStepOut",
+        "key": "shift+f11",
+        "mac": "shift+f11",
+        "when": "activeEditor && pyokka.isActiveEditorRunningPyokka && pyokka.traceBeingNavigated && !inDebugMode || activeEditor && pyokka.traceBeingNavigated && !inDebugMode && resourceScheme == pyokka-code-timeline"
+      },
+      {
+        "command": "pyokka.playTracePrevStep",
+        "key": "ctrl+f11",
+        "mac": "ctrl+f11",
+        "when": "activeEditor && pyokka.isActiveEditorRunningPyokka && pyokka.traceBeingNavigated && (!inDebugMode || debugType == pyokka) || activeEditor && pyokka.traceBeingNavigated && (!inDebugMode || debugType == pyokka) && resourceScheme == pyokka-code-timeline"
+      },
+      {
+        "command": "pyokka.playTraceBackwardToSelection",
+        "key": "ctrl+f5",
+        "mac": "ctrl+f5",
+        "when": "activeEditor && pyokka.isActiveEditorRunningPyokka && pyokka.traceBeingNavigated && (!inDebugMode || debugType == pyokka) || activeEditor && pyokka.traceBeingNavigated && (!inDebugMode || debugType == pyokka) && resourceScheme == pyokka-code-timeline"
+      },
+      {
+        "command": "pyokka.playTraceBackwardToBreakpoint",
+        "key": "ctrl+f8",
+        "mac": "ctrl+f8",
+        "when": "activeEditor && pyokka.isActiveEditorRunningPyokka && pyokka.traceBeingNavigated && (!inDebugMode || debugType == pyokka) || activeEditor && pyokka.traceBeingNavigated && (!inDebugMode || debugType == pyokka) && resourceScheme == pyokka-code-timeline"
+      },
+      {
+        "command": "pyokka.playTracePrevStepOver",
+        "key": "ctrl+f10",
+        "mac": "ctrl+f10",
+        "when": "activeEditor && pyokka.isActiveEditorRunningPyokka && pyokka.traceBeingNavigated && (!inDebugMode || debugType == pyokka) || activeEditor && pyokka.traceBeingNavigated && (!inDebugMode || debugType == pyokka) && resourceScheme == pyokka-code-timeline"
+      },
+      {
+        "command": "pyokka.playTracePrevStepOut",
+        "key": "ctrl+shift+f11",
+        "mac": "ctrl+shift+f11",
+        "when": "activeEditor && pyokka.isActiveEditorRunningPyokka && pyokka.traceBeingNavigated && (!inDebugMode || debugType == pyokka) || activeEditor && pyokka.traceBeingNavigated && (!inDebugMode || debugType == pyokka) && resourceScheme == pyokka-code-timeline"
+      },
+      {
+        "command": "pyokka.reexecute",
+        "key": "f5",
+        "mac": "f5",
+        "when": "(activeEditor && pyokka.isActiveEditorRunningPyokka && !pyokka.traceBeingNavigated) && !pyokka.activeFileHasBreakpoints"
+      },
+      {
+        "command": "pyokka.startOnCurrentFile",
+        "key": "ctrl+alt+p q",
+        "mac": "ctrl+alt+p q",
+        "when": "!terminalFocus"
+      },
+      {
+        "command": "pyokka.createFile",
+        "key": "ctrl+alt+p l",
+        "mac": "ctrl+alt+p l",
+        "when": "!terminalFocus"
+      },
+      {
+        "command": "pyokka.stopCurrent",
+        "key": "ctrl+alt+p e",
+        "mac": "ctrl+alt+p s",
+        "when": "!terminalFocus && pyokka.hasActiveSession"
+      },
+      {
+        "command": "pyokka.showValue",
+        "key": "ctrl+alt+p v",
+        "mac": "ctrl+alt+p v",
+        "when": "!terminalFocus && pyokka.hasActiveSession && pyokka.isActiveEditorRunningPyokka"
+      },
+      {
+        "command": "pyokka.copyValue",
+        "key": "ctrl+alt+p x",
+        "mac": "ctrl+alt+p x",
+        "when": "!terminalFocus && pyokka.hasActiveSession && pyokka.isActiveEditorRunningPyokka"
+      },
+      {
+        "command": "pyokka.installMissingPackageForFile",
+        "key": "ctrl+alt+p i",
+        "mac": "ctrl+alt+p i",
+        "when": "!terminalFocus && pyokka.hasActiveSession"
+      },
+      {
+        "command": "pyokka.newPythonFile",
+        "key": "ctrl+k j",
+        "mac": "cmd+k j",
+        "when": "!terminalFocus"
+      },
+      {
+        "command": "pyokka.newPythonFile",
+        "key": "ctrl+alt+p j",
+        "mac": "ctrl+alt+p j",
+        "when": "!terminalFocus"
+      }
+    ],
+    "languages": [
+      {
+        "id": "pyokka-recent"
+      },
+      {
+        "id": "pyokka-story",
+        "aliases": [
+          "Pyokka Code Story"
+        ]
+      }
+    ],
+    "grammars": [
+      {
+        "language": "pyokka-recent",
+        "scopeName": "source.pyokka-recent",
+        "path": "./syntaxes/pyokka-recent.tmLanguage.json"
+      },
+      {
+        "language": "pyokka-story",
+        "scopeName": "source.pyokka-story",
+        "path": "./syntaxes/pyokka-story.tmLanguage.json"
+      },
+      {
+        "injectTo": [
+          "source.python"
+        ],
+        "scopeName": "source.pyokka-snap",
+        "path": "./syntaxes/pyokka-snap.tmLanguage.json"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "python",
+        "path": "./snippets/pyokka.code-snippets"
+      }
+    ],
+    "debuggers": [
+      {
+        "type": "pyokka",
+        "label": "Pyokka",
+        "languages": [
+          "python"
+        ],
+        "configurationAttributes": {
+          "launch": {
+            "required": [],
+            "properties": {
+              "program": {
+                "type": "string",
+                "default": "${file}",
+                "description": "The Python file to run. Give this or \"module\"."
+              },
+              "module": {
+                "type": "string",
+                "description": "A dotted module name to run like `python -m`, instead of \"program\"."
+              },
+              "args": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "default": [],
+                "description": "Arguments for the program (sys.argv[1:])."
+              },
+              "cwd": {
+                "type": "string",
+                "default": "${workspaceFolder}",
+                "description": "Working directory the program runs in."
+              },
+              "env": {
+                "type": "object",
+                "default": {},
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "description": "Environment variables added to the program's environment."
+              },
+              "python": {
+                "type": "string",
+                "description": "Interpreter to run with. Default: the Python extension's environment, then pyokka.python.interpreter, then python3."
+              },
+              "stopOnEntry": {
+                "type": "boolean",
+                "default": false,
+                "description": "Pause before the first statement instead of running to the first breakpoint."
+              },
+              "breakOnException": {
+                "type": "string",
+                "enum": [
+                  "off",
+                  "uncaught",
+                  "raised"
+                ],
+                "default": "uncaught",
+                "description": "Where the debugger pauses on an exception: never, on one nobody caught, or at every raise in your code."
+              },
+              "libraryCode": {
+                "type": "boolean",
+                "default": false,
+                "description": "Step into third-party packages (never the standard library)."
+              },
+              "record": {
+                "type": "boolean",
+                "default": false,
+                "description": "Also record the run, so the Time Machine, the Code Story and `why` open over it at every pause. Slower; needs \"program\"."
+              }
+            }
+          }
+        },
+        "initialConfigurations": [
+          {
+            "type": "pyokka",
+            "request": "launch",
+            "name": "Pyokka: Debug Current File",
+            "program": "${file}"
+          },
+          {
+            "type": "pyokka",
+            "request": "launch",
+            "name": "Pyokka: Debug Current File (Recording)",
+            "program": "${file}",
+            "record": true
+          },
+          {
+            "type": "pyokka",
+            "request": "launch",
+            "name": "Pyokka: Debug Module",
+            "module": "app.server",
+            "args": [],
+            "cwd": "${workspaceFolder}"
+          }
+        ],
+        "configurationSnippets": [
+          {
+            "label": "Pyokka: Debug Current File",
+            "description": "Run the current Python file under the Pyokka debugger: it runs at full speed and stops at a breakpoint or an exception.",
+            "body": {
+              "type": "pyokka",
+              "request": "launch",
+              "name": "Pyokka: Debug Current File",
+              "program": "^\"\\${file}\""
+            }
+          },
+          {
+            "label": "Pyokka: Debug Current File (Recording)",
+            "description": "The same, and record the run: the Time Machine, the Code Story and `why` open over it at every pause.",
+            "body": {
+              "type": "pyokka",
+              "request": "launch",
+              "name": "Pyokka: Debug Current File (Recording)",
+              "program": "^\"\\${file}\"",
+              "record": true
+            }
+          },
+          {
+            "label": "Pyokka: Debug Module",
+            "description": "Run a dotted module like `python -m`, with arguments. A server started with --reload runs your code in a worker the debugger never sees.",
+            "body": {
+              "type": "pyokka",
+              "request": "launch",
+              "name": "Pyokka: Debug Module",
+              "module": "app.server",
+              "args": [],
+              "cwd": "^\"\\${workspaceFolder}\""
+            }
+          }
+        ]
+      }
+    ],
+    "breakpoints": [
+      {
+        "language": "python"
+      }
+    ],
+    "configurationDefaults": {
+      "[pyokka-recent]": {
+        "editor.unicodeHighlight.invisibleCharacters": false,
+        "editor.unicodeHighlight.excludedCharacters": [],
+        "editor.unicodeHighlight.nonBasicASCII": false,
+        "editor.unicodeHighlight.ambiguousCharacters": false,
+        "editor.unicodeHighlight.includeComments": false
+      },
+      "[pyokka-story]": {
+        "editor.unicodeHighlight.invisibleCharacters": false,
+        "editor.unicodeHighlight.excludedCharacters": [],
+        "editor.unicodeHighlight.nonBasicASCII": false,
+        "editor.unicodeHighlight.ambiguousCharacters": false,
+        "editor.unicodeHighlight.includeComments": false,
+        "editor.lineNumbers": "off",
+        "editor.glyphMargin": false,
+        "editor.folding": false,
+        "editor.minimap.enabled": false
+      }
+    },
+    "configuration": {
+      "type": "object",
+      "title": "Pyokka",
+      "properties": {
+        "pyokka.showOutputOnStart": {
+          "type": "boolean",
+          "default": true,
+          "description": "Bring the Pyokka panel up when a session starts: the Output view for a run, the Debugger view for a debug session."
+        },
+        "pyokka.suppressGlyphMarginNotifications": {
+          "description": "Suppress Pyokka Glyph Margin Notifications",
+          "type": "boolean",
+          "default": true
+        },
+        "pyokka.lightTheme.log.decorationAttachmentRenderOptions": {
+          "description": "Override Pyokka Light Theme Log",
+          "type": "object",
+          "default": {
+            "border": null,
+            "borderColor": null,
+            "fontStyle": null,
+            "fontWeight": null,
+            "textDecoration": null,
+            "color": "#0000ff",
+            "backgroundColor": null,
+            "margin": "1.2em",
+            "width": null,
+            "height": null
+          }
+        },
+        "pyokka.lightTheme.system.decorationAttachmentRenderOptions": {
+          "description": "Override Pyokka Light Theme System Log",
+          "type": "object",
+          "default": {
+            "border": null,
+            "borderColor": null,
+            "fontStyle": null,
+            "fontWeight": null,
+            "textDecoration": null,
+            "color": "rgb(153, 153, 153)",
+            "backgroundColor": null,
+            "margin": "1.2em",
+            "width": null,
+            "height": null
+          }
+        },
+        "pyokka.lightTheme.error.decorationAttachmentRenderOptions": {
+          "description": "Override Pyokka Light Theme Error",
+          "type": "object",
+          "default": {
+            "border": null,
+            "borderColor": null,
+            "fontStyle": null,
+            "fontWeight": null,
+            "textDecoration": null,
+            "color": "#c80000",
+            "backgroundColor": null,
+            "margin": "1.2em",
+            "width": null,
+            "height": null
+          }
+        },
+        "pyokka.darkTheme.log.decorationAttachmentRenderOptions": {
+          "description": "Override Pyokka Dark Theme Log",
+          "type": "object",
+          "default": {
+            "border": null,
+            "borderColor": null,
+            "fontStyle": null,
+            "fontWeight": null,
+            "textDecoration": null,
+            "color": "rgba(86, 156, 214, 1)",
+            "backgroundColor": null,
+            "margin": "1.2em",
+            "width": null,
+            "height": null
+          }
+        },
+        "pyokka.darkTheme.system.decorationAttachmentRenderOptions": {
+          "description": "Override Pyokka Dark Theme System Log",
+          "type": "object",
+          "default": {
+            "border": null,
+            "borderColor": null,
+            "fontStyle": null,
+            "fontWeight": null,
+            "textDecoration": null,
+            "color": "rgb(153, 153, 153)",
+            "backgroundColor": null,
+            "margin": "1.2em",
+            "width": null,
+            "height": null
+          }
+        },
+        "pyokka.darkTheme.error.decorationAttachmentRenderOptions": {
+          "description": "Override Pyokka Dark Theme Error",
+          "type": "object",
+          "default": {
+            "border": null,
+            "borderColor": null,
+            "fontStyle": null,
+            "fontWeight": null,
+            "textDecoration": null,
+            "color": "#fe536a",
+            "backgroundColor": null,
+            "margin": "1.2em",
+            "width": null,
+            "height": null
+          }
+        },
+        "pyokka.colors": {
+          "description": "Pyokka gutter indicators colors (requires a restart after change)",
+          "type": "object",
+          "default": {
+            "covered": "#62b455",
+            "errorPath": "#ffa0a0",
+            "errorSource": "#fe536a",
+            "notCovered": "#cccccc",
+            "partiallyCovered": "#d2a032"
+          }
+        },
+        "pyokka.automaticRestart": {
+          "description": "Automatically start on file open if Pyokka was last running when the file was closed",
+          "type": "boolean",
+          "default": false
+        },
+        "pyokka.automaticStartRegex": {
+          "description": "Automatically start on file open when the file path matches the regular expression",
+          "type": "string",
+          "default": ""
+        },
+        "pyokka.showStartViewOnFeatureRelease": {
+          "description": "Display information about new features when they are released",
+          "type": "boolean",
+          "default": true
+        },
+        "pyokka.codeAutoPlayDelay": {
+          "description": "Code auto-play delay in milliseconds",
+          "type": "number",
+          "default": 1000
+        },
+        "pyokka.untrustedWorkspaceBehavior": {
+          "markdownDescription": "Specifies whether Pyokka is allowed to run in an [untrusted workspace](https://code.visualstudio.com/docs/editor/workspace-trust).",
+          "type": "string",
+          "default": "Prompt to allow",
+          "enum": [
+            "Prompt to allow",
+            "Never allow",
+            "Always allow"
+          ],
+          "enumDescriptions": [
+            "Prompt for confirmation before starting Pyokka in an untrusted workspace.",
+            "Never start Pyokka in an untrusted workspace.",
+            "Always start Pyokka (without prompts) in an untrusted workspace."
+          ]
+        },
+        "pyokka.showValueOnMultilineSelection": {
+          "description": "Show expression value on multiline selection",
+          "type": "boolean",
+          "default": false
+        },
+        "pyokka.snapsAutoDiscovery": {
+          "description": "Automatically discover snaps when a file is opened or edited",
+          "type": "boolean",
+          "default": true
+        },
+        "pyokka.snapsAutoRunConfirmOnOpen": {
+          "description": "Confirm before running existing snaps when a file is opened",
+          "type": "boolean",
+          "default": true
+        },
+        "pyokka.snapsAutoRunConfirmOnEdit": {
+          "description": "Confirm before running newly added snaps when a file is edited. This confirmation will run ALL (existing and newly added) snaps in file.",
+          "type": "boolean",
+          "default": true
+        },
+        "pyokka.fontSize": {
+          "type": "integer",
+          "default": 13,
+          "markdownDescription": "Controls the font size (in pixels) of the Pyokka output panel."
+        },
+        "pyokka.python.interpreter": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Python executable used to run files (absolute, or relative to the workspace folder, e.g. `.venv/bin/python`). Pick one with \"Pyokka: Select Python Interpreter for Pyokka\". Empty = the interpreter selected in the Python extension, then `python.defaultInterpreterPath`, then `python3` on PATH. Python 3.12 or newer is required. Variables from `python.envFile` (default `${workspaceFolder}/.env`) are passed to the run."
+        },
+        "pyokka.runTimeout": {
+          "type": "number",
+          "default": 30000,
+          "description": "Kill a run after this many milliseconds (0 = wait forever)."
+        },
+        "pyokka.http": {
+          "type": "string",
+          "default": "off",
+          "enum": [
+            "off",
+            "record",
+            "replay"
+          ],
+          "enumDescriptions": [
+            "Requests reach the network; nothing is recorded.",
+            "Requests reach the network and every exchange is written to .pyokka/replay/ in the workspace.",
+            "Every request is answered from the recording; nothing reaches the network."
+          ],
+          "markdownDescription": "The HTTP layer of a run. `record` writes every HTTP exchange of the run (httpx, requests, urllib / http.client) to `.pyokka/replay/` in the workspace, one file per source file. `replay` answers every request from that file without touching the network, so a re-run of API-driven code costs nothing and returns the same values; a request with no recorded response fails as a connection error. Also a per-session choice in the panel Settings (\"HTTP\"); the next run uses it."
+        },
+        "pyokka.httpObserve": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Observe the HTTP clients (httpx, requests, urllib / http.client) in every run so the HTTP view lists the requests with their status, size, time and the statement that made them. Off leaves the clients untouched: no rows, no HTTP view. Record and replay (`pyokka.http`) work either way."
+        },
+        "pyokka.delay": {
+          "type": "number",
+          "default": 0,
+          "description": "Milliseconds to wait after the last edit before re-running."
+        },
+        "pyokka.runMode": {
+          "type": "string",
+          "default": "onSave",
+          "enum": [
+            "onSave",
+            "onDemand",
+            "auto",
+            "smart"
+          ],
+          "enumDescriptions": [
+            "Run when the file is saved (the default).",
+            "Run only on Re-execute.",
+            "Run on every edit, and for hovers, watches, Show Value and the Time Machine: a paid run each time for a file that calls an API.",
+            "Scratch files run on every edit; files inside a project (pyproject.toml, requirements.txt, a lock file, ...) run on save."
+          ],
+          "description": "Default run mode for new sessions. Only the automatic mode executes the file without an explicit action (hover, watch, Show Value)."
+        },
+        "pyokka.autoLog": {
+          "type": "boolean",
+          "default": false,
+          "description": "Start sessions with Auto Log (show a value for every line) enabled."
+        },
+        "pyokka.showValueOnSelection": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show the runtime value of an expression when it is selected."
+        },
+        "pyokka.showSingleInlineValue": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show only the last selected/shown value inline; false shows all of them."
+        },
+        "pyokka.valuePeek": {
+          "type": "boolean",
+          "default": true,
+          "description": "Evaluate and show values when hovering expressions."
+        },
+        "pyokka.resolveGetters": {
+          "type": "boolean",
+          "default": false,
+          "description": "Invoke properties/descriptors when serializing values (may run code)."
+        },
+        "pyokka.logLimit": {
+          "type": "number",
+          "default": 100,
+          "description": "Maximum values logged per expression / print site."
+        },
+        "pyokka.maxConsoleMessages": {
+          "type": "number",
+          "default": 1000,
+          "description": "Maximum logged values per run."
+        },
+        "pyokka.maxTraceSteps": {
+          "type": "number",
+          "default": 999999,
+          "markdownDescription": "Maximum recorded Time Machine steps per run. Past it the program runs on unrecorded; the Time Machine says where the recording stopped and which files spent the steps, so you can leave them out with `pyokka.timeMachine.exclude`."
+        },
+        "pyokka.maxValueChars": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "default": null,
+          "markdownDescription": "Characters one recorded value keeps in its inline text. Unset: 120 for a local variable, 200 for a logged value. `0` keeps the whole value up to a ceiling of 1,000,000 characters. A cut value ends in `\u2026(+N chars)`. Same as `pyokka run --max-value-chars`."
+        },
+        "pyokka.timeMachine.autoLog": {
+          "type": "boolean",
+          "default": true,
+          "description": "Turn on Auto Log while the Time Machine is active so every step shows the value its statement produced (assignments, returns, conditions)."
+        },
+        "pyokka.timeMachine.inlineValues": {
+          "type": "string",
+          "default": "dimOthers",
+          "enum": [
+            "dimOthers",
+            "currentStep",
+            "all"
+          ],
+          "enumDescriptions": [
+            "Show the values as of the current step: the current step's values in full, values from earlier steps dimmed, nothing for a statement that has not run yet.",
+            "Show only the values produced at the current step (Quokka behaviour).",
+            "Show every value unchanged (the last hit of the run)."
+          ],
+          "description": "Which inline values to show while the Time Machine is navigating."
+        },
+        "pyokka.timeMachine.libraryCode": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Instrument third-party packages so the Time Machine can step into their code (Step Into enters the library, values and coverage render in its files). Off by default: the first run of a session instruments every imported module and library steps count toward `pyokka.maxTraceSteps`. The standard library is never instrumented. Also a per-session toggle in the panel menu (\"Step Into Library Code\")."
+        },
+        "pyokka.timeMachine.libraryPackages": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "markdownDescription": "With `pyokka.timeMachine.libraryCode` on, limit instrumentation to these top-level package names or dotted globs, e.g. `[\"requests\", \"mypkg.*\"]`. Empty = every third-party package."
+        },
+        "pyokka.timeMachine.exclude": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "markdownDescription": "Leave code out of the recording: dotted module names (`pkg.flash` covers `pkg.flash.*`) or path globs relative to the workspace (`pkg/flash`, `*/parser.py`). Excluded code runs at full speed and records no steps, values or coverage. Same as `pyokka run --exclude`."
+        },
+        "pyokka.timeMachine.recordLocals": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Record every changed local variable at every step: the Variable pane lists where a name changed with its values, and the Time Machine shows Step Variables. Costs CPU on hot loops; the runtime keeps at most 100 000 entries per run. Also a per-session toggle in the panel Settings (\"Record Variable Changes\"); without it the Variable pane knows only logged values and assignment sites."
+        },
+        "pyokka.installPackageCommand": {
+          "type": "string",
+          "default": "",
+          "description": "Command template for Quick Package Install, e.g. \"uv pip install {packageName}\". Empty = auto-detect uv / pip for the interpreter."
+        },
+        "pyokka.env": {
+          "type": "object",
+          "default": {},
+          "description": "Environment variables for the run child process."
+        },
+        "pyokka.secrets.mask": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Mask secrets in every value Pyokka shows. Two rules, both by provenance rather than by what a value looks like: the value of an environment variable with a secret-looking name (`OPENAI_API_KEY`, `DB_PASSWORD`, also ones set by `load_dotenv()`) is replaced wherever it appears, and a string under a secret-looking name (attribute `api_key`, key `password`, keyword `token=`) is replaced. Masking happens in the run process; the value never reaches the editor. Also a per-session toggle in the Settings view."
+        },
+        "pyokka.secrets.names": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "markdownDescription": "Extra words that make a name secret, e.g. `[\"licence\", \"pin\"]`. Built in: api key, access / secret / private / signing key, secret, password, passwd, passphrase, credential(s), token(s), auth, authorization, bearer, dsn."
+        },
+        "pyokka.args": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "description": "sys.argv[1:] for the run."
+        },
+        "pyokka.plugins": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "description": "Python modules exposing before(config) / before_each(config)."
+        },
+        "pyokka.smartStart": {
+          "type": "array",
+          "default": [],
+          "description": "Auto-start rules: [{\"pattern\": \"**/*.py\", \"startMode\": \"always|never|edit|open\"}]."
+        },
+        "pyokka.agentAccess": {
+          "type": "boolean",
+          "default": false,
+          "description": "Let local agents (the pyokka CLI) read this window's runs and drive the Time Machine over a local socket. Also installs `pyokka` in ~/.local/bin (macOS and Linux), kept pointing at this version's runtime"
+        },
+        "pyokka.story.values": {
+          "type": "string",
+          "default": "all",
+          "enum": [
+            "all",
+            "asOf",
+            "step"
+          ],
+          "enumDescriptions": [
+            "Every value a block's lines logged during that block's steps, so each turn of a loop carries its own.",
+            "The values logged at or before the current Time Machine step, each in its own block.",
+            "Only what the current step logged, on its line in its block (what Quokka shows)."
+          ],
+          "markdownDescription": "Which values the Code Story shows after its lines. `all` (the default) paints every block's values; `asOf` hides what the run has not reached yet; `step` shows only the current step's, as Quokka does."
+        },
+        "pyokka.story.walkthrough": {
+          "type": "boolean",
+          "default": false,
+          "description": "List the walkthrough (what happened, in order: one line per moment with its step number) at the top of the Code Story."
+        },
+        "pyokka.explain.command": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Command that narrates the walkthrough and the tour when you click Narrate or Narrate Tour: it gets the prompt on stdin and must answer with a JSON object on stdout. Empty = `claude -p --output-format json` when `claude` is on the PATH, else `codex exec`, else the language model of GitHub Copilot inside VS Code. Never called automatically; no API keys are stored."
+        },
+        "pyokka.diagram.build": {
+          "type": "string",
+          "default": "onOpen",
+          "enum": [
+            "onOpen",
+            "onRun"
+          ],
+          "enumDescriptions": [
+            "Build the graph when the Execution Diagram is opened, or when a run finishes while it is open.",
+            "Build the graph as every run finishes, whether or not the diagram is showing."
+          ],
+          "markdownDescription": "When the Execution Diagram walks the run to build its graph. `onOpen` (the default) does it only when the view is open or opened (the command, the rail, the Time Machine toolbar), so a run costs nothing extra while the diagram is closed; `onRun` builds it after every run."
+        },
+        "pyokka.diagram.detail": {
+          "type": "string",
+          "default": "scopes",
+          "enum": [
+            "scopes",
+            "statements"
+          ],
+          "enumDescriptions": [
+            "One card per module, function and package with its calls and values; a card opens its statements and decisions on click.",
+            "Every statement and decision that ran, under its module or function, from the start."
+          ],
+          "markdownDescription": "How much of the run the Execution Diagram draws at first. `scopes` (the default) draws the cards only and opens a scope's statements when you click its chevron; `statements` draws everything, the shape of `pyokka graph`. The diagram toolbar switches this for the open panel without changing the setting."
+        },
+        "pyokka.diagram.dataEdges": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Draw the data edges of the Execution Diagram: a value assigned in one statement flowing into the statements and calls that read it. Off by default, they are the noisiest layer and short literals such as `0` or `None` match by text. The diagram toolbar toggles them for the open panel."
+        },
+        "pyokka.diagram.phases": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Group the statements of a scope into phases in the Execution Diagram's story tree: consecutive statements the source separates with a blank line or a comment, labelled by the comment above them or the names they assign. Off lists the statements directly under their scope."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node esbuild.mjs",
+    "watch": "node esbuild.mjs --watch",
+    "package": "node esbuild.mjs --production && vsce package --no-dependencies",
+    "typecheck": "tsc --noEmit -p .",
+    "test": "npm run typecheck && vitest run && npm run test:py",
+    "test:py": "cd python && uv run --group dev pytest -q",
+    "test:e2e": "vscode-test",
+    "manifest": "python3 scripts/gen-manifest.py"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "@types/vscode": "^1.93.0",
+    "@vscode/test-cli": "^0.0.11",
+    "@vscode/test-electron": "^2.5.0 || ^3",
+    "@vscode/vsce": "^3.0.0",
+    "esbuild": "^0.25.0",
+    "handlebars": "^4.7.9",
+    "preact-render-to-string": "^6.7.0",
+    "shiki": "^4.4.3",
+    "typescript": "^6.0.0",
+    "vitest": "^4 || ^5"
+  },
+  "dependencies": {
+    "@dagrejs/dagre": "^1.1.0 || ^2 || ^3",
+    "@vscode/codicons": "^0.0.36",
+    "@vscode/python-extension": "^1.0.5",
+    "diff": "^7 || ^8 || ^9",
+    "monaco-editor": "^0.52.0",
+    "preact": "^10.24.0"
+  },
+  "allowScripts": {
+    "esbuild@0.25.12": true,
+    "esbuild@0.28.2": true
+  }
+}

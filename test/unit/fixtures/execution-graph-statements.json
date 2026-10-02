@@ -1,0 +1,1490 @@
+{
+ "default": {
+  "count": 33,
+  "nodes": [
+   {
+    "id": "n0",
+    "kind": "module",
+    "label": "<module>",
+    "file": "/fixture/main.py",
+    "line": 1,
+    "fileId": 1,
+    "function": "<module>",
+    "calls": 1,
+    "firstStep": 0,
+    "spans": [
+     [
+      0,
+      32
+     ]
+    ],
+    "rows": []
+   },
+   {
+    "id": "n1",
+    "kind": "statement",
+    "parent": "n0",
+    "label": "text = \"fair|Sep 16|alice,bob\"",
+    "file": "/fixture/main.py",
+    "line": 36,
+    "fileId": 1,
+    "text": "text = \"fair|Sep 16|alice,bob\"",
+    "targets": [
+     "text"
+    ],
+    "reads": [],
+    "firstStep": 1,
+    "hits": 1,
+    "rows": [
+     {
+      "kind": "out",
+      "name": "text",
+      "text": "'fair|Sep 16|alice,bob'",
+      "step": 1
+     }
+    ]
+   },
+   {
+    "id": "n2",
+    "kind": "function",
+    "label": "parse_event",
+    "file": "/fixture/main.py",
+    "line": 18,
+    "fileId": 1,
+    "function": "parse_event",
+    "calls": 1,
+    "firstStep": 2,
+    "spans": [
+     [
+      3,
+      11
+     ]
+    ],
+    "rows": [
+     {
+      "kind": "in",
+      "name": "text",
+      "text": "'fair|Sep 16|alice,bob'",
+      "step": 3
+     },
+     {
+      "kind": "in",
+      "name": "year",
+      "text": "2026",
+      "step": 3
+     },
+     {
+      "kind": "out",
+      "name": "return",
+      "text": "<__main__.Event object at 0x0>",
+      "step": 11
+     }
+    ]
+   },
+   {
+    "id": "n3",
+    "kind": "statement",
+    "parent": "n0",
+    "label": "event = parse_event(text, year=2026)",
+    "file": "/fixture/main.py",
+    "line": 37,
+    "fileId": 1,
+    "text": "event = parse_event(text, year=2026)",
+    "targets": [
+     "event"
+    ],
+    "reads": [
+     "parse_event",
+     "text"
+    ],
+    "firstStep": 2,
+    "hits": 1,
+    "rows": [
+     {
+      "kind": "out",
+      "name": "event",
+      "text": "<__main__.Event object at 0x0>",
+      "step": 11
+     }
+    ]
+   },
+   {
+    "id": "n4",
+    "kind": "statement",
+    "parent": "n2",
+    "label": "name, date, people = text.split(\"|\")",
+    "file": "/fixture/main.py",
+    "line": 20,
+    "fileId": 1,
+    "text": "name, date, people = text.split(\"|\")",
+    "targets": [
+     "name",
+     "date",
+     "people"
+    ],
+    "reads": [
+     "text"
+    ],
+    "firstStep": 4,
+    "hits": 1,
+    "rows": [
+     {
+      "kind": "out",
+      "name": "name, date, people",
+      "text": "['fair', 'Sep 16', 'alice,bob']",
+      "step": 4
+     }
+    ]
+   },
+   {
+    "id": "n5",
+    "kind": "statement",
+    "parent": "n2",
+    "label": "participants = people.split(\",\")",
+    "file": "/fixture/main.py",
+    "line": 21,
+    "fileId": 1,
+    "text": "participants = people.split(\",\")",
+    "targets": [
+     "participants"
+    ],
+    "reads": [
+     "people"
+    ],
+    "firstStep": 5,
+    "hits": 1,
+    "rows": [
+     {
+      "kind": "out",
+      "name": "participants",
+      "text": "['alice', 'bob']",
+      "step": 5
+     }
+    ]
+   },
+   {
+    "id": "n6",
+    "kind": "function",
+    "label": "Event.__init__",
+    "file": "/fixture/main.py",
+    "line": 12,
+    "fileId": 1,
+    "function": "Event.__init__",
+    "calls": 1,
+    "firstStep": 6,
+    "spans": [
+     [
+      7,
+      10
+     ]
+    ],
+    "rows": [
+     {
+      "kind": "in",
+      "name": "name",
+      "text": "'fair'",
+      "step": 7
+     },
+     {
+      "kind": "in",
+      "name": "date",
+      "text": "'Sep 16 2026'",
+      "step": 7
+     },
+     {
+      "kind": "in",
+      "name": "participants",
+      "text": "['alice', 'bob']",
+      "step": 7
+     }
+    ]
+   },
+   {
+    "id": "n7",
+    "kind": "statement",
+    "parent": "n2",
+    "label": "event = Event( name=name, date=f\"{date} {year}\", participan…",
+    "file": "/fixture/main.py",
+    "line": 22,
+    "fileId": 1,
+    "text": "event = Event( name=name, date=f\"{date} {year}\", participants=participants, )",
+    "targets": [
+     "event"
+    ],
+    "reads": [
+     "Event",
+     "name",
+     "date",
+     "year",
+     "participants"
+    ],
+    "firstStep": 6,
+    "hits": 1,
+    "rows": [
+     {
+      "kind": "out",
+      "name": "event",
+      "text": "<__main__.Event object at 0x0>",
+      "step": 10
+     }
+    ]
+   },
+   {
+    "id": "n8",
+    "kind": "statement",
+    "parent": "n6",
+    "label": "self.name = name",
+    "file": "/fixture/main.py",
+    "line": 13,
+    "fileId": 1,
+    "text": "self.name = name",
+    "targets": [],
+    "reads": [
+     "self",
+     "name"
+    ],
+    "firstStep": 8,
+    "hits": 1,
+    "rows": [
+     {
+      "kind": "out",
+      "name": "self.name",
+      "text": "'fair'",
+      "step": 8
+     }
+    ]
+   },
+   {
+    "id": "n9",
+    "kind": "statement",
+    "parent": "n6",
+    "label": "self.date = date",
+    "file": "/fixture/main.py",
+    "line": 14,
+    "fileId": 1,
+    "text": "self.date = date",
+    "targets": [],
+    "reads": [
+     "self",
+     "date"
+    ],
+    "firstStep": 9,
+    "hits": 1,
+    "rows": [
+     {
+      "kind": "out",
+      "name": "self.date",
+      "text": "'Sep 16 2026'",
+      "step": 9
+     }
+    ]
+   },
+   {
+    "id": "n10",
+    "kind": "statement",
+    "parent": "n6",
+    "label": "self.participants = participants",
+    "file": "/fixture/main.py",
+    "line": 15,
+    "fileId": 1,
+    "text": "self.participants = participants",
+    "targets": [],
+    "reads": [
+     "self",
+     "participants"
+    ],
+    "firstStep": 10,
+    "hits": 1,
+    "rows": [
+     {
+      "kind": "out",
+      "name": "self.participants",
+      "text": "['alice', 'bob']",
+      "step": 10
+     }
+    ]
+   },
+   {
+    "id": "n11",
+    "kind": "statement",
+    "parent": "n2",
+    "label": "return event",
+    "file": "/fixture/main.py",
+    "line": 27,
+    "fileId": 1,
+    "text": "return event",
+    "targets": [],
+    "reads": [
+     "event"
+    ],
+    "firstStep": 11,
+    "hits": 1,
+    "rows": []
+   },
+   {
+    "id": "n12",
+    "kind": "statement",
+    "parent": "n0",
+    "label": "count = 0",
+    "file": "/fixture/main.py",
+    "line": 38,
+    "fileId": 1,
+    "text": "count = 0",
+    "targets": [
+     "count"
+    ],
+    "reads": [],
+    "firstStep": 12,
+    "hits": 1,
+    "rows": [
+     {
+      "kind": "out",
+      "name": "count",
+      "text": "0",
+      "step": 12
+     }
+    ]
+   },
+   {
+    "id": "n13",
+    "kind": "decision",
+    "parent": "n0",
+    "label": "for person in event.participants",
+    "file": "/fixture/main.py",
+    "line": 39,
+    "fileId": 1,
+    "text": "for person in event.participants ran 2 times",
+    "firstStep": 13,
+    "hits": 2,
+    "notRun": [],
+    "rows": []
+   },
+   {
+    "id": "n14",
+    "kind": "statement",
+    "parent": "n0",
+    "label": "count += 1",
+    "file": "/fixture/main.py",
+    "line": 40,
+    "fileId": 1,
+    "text": "count += 1",
+    "targets": [
+     "count"
+    ],
+    "reads": [
+     "count"
+    ],
+    "firstStep": 15,
+    "hits": 2,
+    "rows": [
+     {
+      "kind": "out",
+      "name": "count",
+      "text": "1",
+      "step": 15
+     }
+    ]
+   },
+   {
+    "id": "n15",
+    "kind": "statement",
+    "parent": "n0",
+    "label": "print(f\"Participant: {person}\")",
+    "file": "/fixture/main.py",
+    "line": 41,
+    "fileId": 1,
+    "text": "print(f\"Participant: {person}\")",
+    "targets": [],
+    "reads": [
+     "print",
+     "person"
+    ],
+    "firstStep": 16,
+    "hits": 2,
+    "rows": [
+     {
+      "kind": "print",
+      "name": "stdout",
+      "text": "Participant: alice",
+      "step": 16
+     }
+    ]
+   },
+   {
+    "id": "n16",
+    "kind": "function",
+    "label": "shout",
+    "file": "/fixture/main.py",
+    "line": 30,
+    "fileId": 1,
+    "function": "shout",
+    "calls": 2,
+    "firstStep": 20,
+    "spans": [
+     [
+      21,
+      23
+     ],
+     [
+      29,
+      31
+     ]
+    ],
+    "rows": [
+     {
+      "kind": "in",
+      "name": "word",
+      "text": "'fair'",
+      "step": 21
+     },
+     {
+      "kind": "out",
+      "name": "return",
+      "text": "'FAIR'",
+      "step": 23
+     }
+    ]
+   },
+   {
+    "id": "n17",
+    "kind": "statement",
+    "parent": "n0",
+    "label": "label = shout(event.name)",
+    "file": "/fixture/main.py",
+    "line": 42,
+    "fileId": 1,
+    "text": "label = shout(event.name)",
+    "targets": [
+     "label"
+    ],
+    "reads": [
+     "shout",
+     "event"
+    ],
+    "firstStep": 20,
+    "hits": 1,
+    "rows": [
+     {
+      "kind": "out",
+      "name": "label",
+      "text": "'FAIR'",
+      "step": 23
+     }
+    ]
+   },
+   {
+    "id": "n18",
+    "kind": "decision",
+    "parent": "n16",
+    "label": "if not word",
+    "file": "/fixture/main.py",
+    "line": 31,
+    "fileId": 1,
+    "text": "if not word took False",
+    "taken": "False",
+    "firstStep": 22,
+    "hits": 2,
+    "notRun": [],
+    "rows": []
+   },
+   {
+    "id": "n19",
+    "kind": "statement",
+    "parent": "n16",
+    "label": "return word.upper()",
+    "file": "/fixture/main.py",
+    "line": 33,
+    "fileId": 1,
+    "text": "return word.upper()",
+    "targets": [],
+    "reads": [
+     "word"
+    ],
+    "firstStep": 23,
+    "hits": 1,
+    "rows": []
+   },
+   {
+    "id": "n20",
+    "kind": "decision",
+    "parent": "n0",
+    "label": "if count > 1",
+    "file": "/fixture/main.py",
+    "line": 43,
+    "fileId": 1,
+    "text": "if count > 1 took True",
+    "taken": "True",
+    "firstStep": 24,
+    "hits": 1,
+    "notRun": [
+     46
+    ],
+    "rows": []
+   },
+   {
+    "id": "n21",
+    "kind": "statement",
+    "parent": "n0",
+    "label": "summary = f\"{label} with {count} people on {event.date}\"",
+    "file": "/fixture/main.py",
+    "line": 44,
+    "fileId": 1,
+    "text": "summary = f\"{label} with {count} people on {event.date}\"",
+    "targets": [
+     "summary"
+    ],
+    "reads": [
+     "label",
+     "count",
+     "event"
+    ],
+    "firstStep": 25,
+    "hits": 1,
+    "rows": [
+     {
+      "kind": "out",
+      "name": "summary",
+      "text": "'FAIR with 2 people on Sep 16 2026'",
+      "step": 25
+     }
+    ]
+   },
+   {
+    "id": "n22",
+    "kind": "statement",
+    "parent": "n0",
+    "label": "print(summary)",
+    "file": "/fixture/main.py",
+    "line": 47,
+    "fileId": 1,
+    "text": "print(summary)",
+    "targets": [],
+    "reads": [
+     "print",
+     "summary"
+    ],
+    "firstStep": 26,
+    "hits": 1,
+    "rows": [
+     {
+      "kind": "print",
+      "name": "stdout",
+      "text": "FAIR with 2 people on Sep 16 2026",
+      "step": 26
+     }
+    ]
+   },
+   {
+    "id": "n23",
+    "kind": "statement",
+    "parent": "n0",
+    "label": "shout(\"\")",
+    "file": "/fixture/main.py",
+    "line": 49,
+    "fileId": 1,
+    "text": "shout(\"\")",
+    "targets": [],
+    "reads": [
+     "shout"
+    ],
+    "firstStep": 28,
+    "hits": 1,
+    "rows": []
+   },
+   {
+    "id": "n24",
+    "kind": "statement",
+    "parent": "n16",
+    "label": "raise ValueError(\"empty\")",
+    "file": "/fixture/main.py",
+    "line": 32,
+    "fileId": 1,
+    "text": "raise ValueError(\"empty\")",
+    "targets": [],
+    "reads": [
+     "ValueError"
+    ],
+    "firstStep": 31,
+    "hits": 1,
+    "rows": [
+     {
+      "kind": "raised",
+      "name": "ValueError",
+      "text": "empty",
+      "step": 31
+     }
+    ]
+   },
+   {
+    "id": "n25",
+    "kind": "statement",
+    "parent": "n0",
+    "label": "handled = True",
+    "file": "/fixture/main.py",
+    "line": 51,
+    "fileId": 1,
+    "text": "handled = True",
+    "targets": [
+     "handled"
+    ],
+    "reads": [],
+    "firstStep": 32,
+    "hits": 1,
+    "rows": [
+     {
+      "kind": "out",
+      "name": "handled",
+      "text": "True",
+      "step": 32
+     }
+    ]
+   }
+  ],
+  "edges": [
+   {
+    "id": "e0",
+    "from": "n3",
+    "to": "n2",
+    "kind": "call",
+    "count": 1,
+    "firstStep": 2,
+    "steps": [
+     2
+    ],
+    "momentIds": [
+     "m2"
+    ]
+   },
+   {
+    "id": "e1",
+    "from": "n1",
+    "to": "n3",
+    "kind": "data",
+    "label": "text",
+    "firstStep": 2
+   },
+   {
+    "id": "e2",
+    "from": "n2",
+    "to": "n4",
+    "kind": "data",
+    "label": "text",
+    "firstStep": 4
+   },
+   {
+    "id": "e3",
+    "from": "n4",
+    "to": "n5",
+    "kind": "data",
+    "label": "people",
+    "firstStep": 5
+   },
+   {
+    "id": "e4",
+    "from": "n7",
+    "to": "n6",
+    "kind": "call",
+    "count": 1,
+    "firstStep": 6,
+    "steps": [
+     6
+    ],
+    "momentIds": [
+     "m5"
+    ]
+   },
+   {
+    "id": "e5",
+    "from": "n2",
+    "to": "n7",
+    "kind": "data",
+    "label": "year",
+    "firstStep": 6
+   },
+   {
+    "id": "e6",
+    "from": "n4",
+    "to": "n7",
+    "kind": "data",
+    "label": "date",
+    "firstStep": 6
+   },
+   {
+    "id": "e7",
+    "from": "n4",
+    "to": "n7",
+    "kind": "data",
+    "label": "name",
+    "firstStep": 6
+   },
+   {
+    "id": "e8",
+    "from": "n5",
+    "to": "n7",
+    "kind": "data",
+    "label": "participants",
+    "firstStep": 6
+   },
+   {
+    "id": "e9",
+    "from": "n6",
+    "to": "n8",
+    "kind": "data",
+    "label": "name",
+    "firstStep": 8
+   },
+   {
+    "id": "e10",
+    "from": "n6",
+    "to": "n9",
+    "kind": "data",
+    "label": "date",
+    "firstStep": 9
+   },
+   {
+    "id": "e11",
+    "from": "n6",
+    "to": "n10",
+    "kind": "data",
+    "label": "participants",
+    "firstStep": 10
+   },
+   {
+    "id": "e12",
+    "from": "n7",
+    "to": "n11",
+    "kind": "data",
+    "label": "event",
+    "firstStep": 11
+   },
+   {
+    "id": "e13",
+    "from": "n3",
+    "to": "n13",
+    "kind": "data",
+    "label": "event",
+    "firstStep": 13
+   },
+   {
+    "id": "e14",
+    "from": "n12",
+    "to": "n14",
+    "kind": "data",
+    "label": "count",
+    "firstStep": 15
+   },
+   {
+    "id": "e15",
+    "from": "n13",
+    "to": "n15",
+    "kind": "data",
+    "label": "person",
+    "firstStep": 16
+   },
+   {
+    "id": "e16",
+    "from": "n17",
+    "to": "n16",
+    "kind": "call",
+    "count": 1,
+    "firstStep": 20,
+    "steps": [
+     20
+    ],
+    "momentIds": [
+     "m17"
+    ]
+   },
+   {
+    "id": "e17",
+    "from": "n3",
+    "to": "n17",
+    "kind": "data",
+    "label": "event",
+    "firstStep": 20
+   },
+   {
+    "id": "e18",
+    "from": "n6",
+    "to": "n16",
+    "kind": "data",
+    "label": "word",
+    "firstStep": 21
+   },
+   {
+    "id": "e19",
+    "from": "n16",
+    "to": "n18",
+    "kind": "data",
+    "label": "word",
+    "firstStep": 22
+   },
+   {
+    "id": "e20",
+    "from": "n16",
+    "to": "n19",
+    "kind": "data",
+    "label": "word",
+    "firstStep": 23
+   },
+   {
+    "id": "e21",
+    "from": "n14",
+    "to": "n20",
+    "kind": "data",
+    "label": "count",
+    "firstStep": 24
+   },
+   {
+    "id": "e22",
+    "from": "n3",
+    "to": "n21",
+    "kind": "data",
+    "label": "event",
+    "firstStep": 25
+   },
+   {
+    "id": "e23",
+    "from": "n14",
+    "to": "n21",
+    "kind": "data",
+    "label": "count",
+    "firstStep": 25
+   },
+   {
+    "id": "e24",
+    "from": "n17",
+    "to": "n21",
+    "kind": "data",
+    "label": "label",
+    "firstStep": 25
+   },
+   {
+    "id": "e25",
+    "from": "n21",
+    "to": "n22",
+    "kind": "data",
+    "label": "summary",
+    "firstStep": 26
+   },
+   {
+    "id": "e26",
+    "from": "n23",
+    "to": "n16",
+    "kind": "call",
+    "count": 1,
+    "firstStep": 28,
+    "steps": [
+     28
+    ],
+    "momentIds": [
+     "m23"
+    ]
+   }
+  ],
+  "moments": [
+   {
+    "id": "m0",
+    "kind": "start",
+    "step": 0,
+    "nodeId": "n0"
+   },
+   {
+    "id": "m1",
+    "kind": "value",
+    "step": 1,
+    "nodeId": "n1"
+   },
+   {
+    "id": "m2",
+    "kind": "call",
+    "step": 2,
+    "nodeId": "n2",
+    "edgeId": "e0"
+   },
+   {
+    "id": "m3",
+    "kind": "value",
+    "step": 4,
+    "nodeId": "n4"
+   },
+   {
+    "id": "m4",
+    "kind": "value",
+    "step": 5,
+    "nodeId": "n5"
+   },
+   {
+    "id": "m5",
+    "kind": "call",
+    "step": 6,
+    "nodeId": "n6",
+    "edgeId": "e4"
+   },
+   {
+    "id": "m6",
+    "kind": "value",
+    "step": 8,
+    "nodeId": "n8"
+   },
+   {
+    "id": "m7",
+    "kind": "value",
+    "step": 9,
+    "nodeId": "n9"
+   },
+   {
+    "id": "m8",
+    "kind": "value",
+    "step": 10,
+    "nodeId": "n10"
+   },
+   {
+    "id": "m9",
+    "kind": "value",
+    "step": 10,
+    "nodeId": "n7"
+   },
+   {
+    "id": "m10",
+    "kind": "value",
+    "step": 11,
+    "nodeId": "n3"
+   },
+   {
+    "id": "m11",
+    "kind": "value",
+    "step": 12,
+    "nodeId": "n12"
+   },
+   {
+    "id": "m12",
+    "kind": "decision",
+    "step": 13,
+    "nodeId": "n13"
+   },
+   {
+    "id": "m13",
+    "kind": "value",
+    "step": 15,
+    "nodeId": "n14"
+   },
+   {
+    "id": "m14",
+    "kind": "print",
+    "step": 16,
+    "nodeId": "n15"
+   },
+   {
+    "id": "m15",
+    "kind": "value",
+    "step": 18,
+    "nodeId": "n14"
+   },
+   {
+    "id": "m16",
+    "kind": "print",
+    "step": 19,
+    "nodeId": "n15"
+   },
+   {
+    "id": "m17",
+    "kind": "call",
+    "step": 20,
+    "nodeId": "n16",
+    "edgeId": "e16"
+   },
+   {
+    "id": "m18",
+    "kind": "decision",
+    "step": 22,
+    "nodeId": "n18"
+   },
+   {
+    "id": "m19",
+    "kind": "value",
+    "step": 23,
+    "nodeId": "n17"
+   },
+   {
+    "id": "m20",
+    "kind": "decision",
+    "step": 24,
+    "nodeId": "n20"
+   },
+   {
+    "id": "m21",
+    "kind": "value",
+    "step": 25,
+    "nodeId": "n21"
+   },
+   {
+    "id": "m22",
+    "kind": "print",
+    "step": 26,
+    "nodeId": "n22"
+   },
+   {
+    "id": "m23",
+    "kind": "call",
+    "step": 28,
+    "nodeId": "n16",
+    "edgeId": "e26"
+   },
+   {
+    "id": "m24",
+    "kind": "decision",
+    "step": 30,
+    "nodeId": "n18"
+   },
+   {
+    "id": "m25",
+    "kind": "error",
+    "step": 31,
+    "nodeId": "n24"
+   },
+   {
+    "id": "m26",
+    "kind": "value",
+    "step": 32,
+    "nodeId": "n25"
+   },
+   {
+    "id": "m27",
+    "kind": "end",
+    "step": 32,
+    "nodeId": "n0"
+   }
+  ],
+  "scopes": {
+   "0": "n0",
+   "1": "n2",
+   "2": "n6",
+   "3": "n16",
+   "4": "n16"
+  },
+  "capped": false,
+  "truncated": false
+ },
+ "functions": {
+  "count": 33,
+  "nodes": [
+   {
+    "id": "n0",
+    "kind": "module",
+    "label": "<module>",
+    "file": "/fixture/main.py",
+    "line": 1,
+    "fileId": 1,
+    "function": "<module>",
+    "calls": 1,
+    "firstStep": 0,
+    "spans": [
+     [
+      0,
+      32
+     ]
+    ],
+    "rows": []
+   },
+   {
+    "id": "n1",
+    "kind": "function",
+    "label": "parse_event",
+    "file": "/fixture/main.py",
+    "line": 18,
+    "fileId": 1,
+    "function": "parse_event",
+    "calls": 1,
+    "firstStep": 2,
+    "spans": [
+     [
+      3,
+      11
+     ]
+    ],
+    "rows": [
+     {
+      "kind": "in",
+      "name": "text",
+      "text": "'fair|Sep 16|alice,bob'",
+      "step": 3
+     },
+     {
+      "kind": "in",
+      "name": "year",
+      "text": "2026",
+      "step": 3
+     },
+     {
+      "kind": "out",
+      "name": "return",
+      "text": "<__main__.Event object at 0x0>",
+      "step": 11
+     }
+    ]
+   },
+   {
+    "id": "n2",
+    "kind": "function",
+    "label": "Event.__init__",
+    "file": "/fixture/main.py",
+    "line": 12,
+    "fileId": 1,
+    "function": "Event.__init__",
+    "calls": 1,
+    "firstStep": 6,
+    "spans": [
+     [
+      7,
+      10
+     ]
+    ],
+    "rows": [
+     {
+      "kind": "in",
+      "name": "name",
+      "text": "'fair'",
+      "step": 7
+     },
+     {
+      "kind": "in",
+      "name": "date",
+      "text": "'Sep 16 2026'",
+      "step": 7
+     },
+     {
+      "kind": "in",
+      "name": "participants",
+      "text": "['alice', 'bob']",
+      "step": 7
+     }
+    ]
+   },
+   {
+    "id": "n3",
+    "kind": "decision",
+    "parent": "n0",
+    "label": "for person in event.participants",
+    "file": "/fixture/main.py",
+    "line": 39,
+    "fileId": 1,
+    "text": "for person in event.participants ran 2 times",
+    "firstStep": 13,
+    "hits": 2,
+    "notRun": [],
+    "rows": []
+   },
+   {
+    "id": "n4",
+    "kind": "function",
+    "label": "shout",
+    "file": "/fixture/main.py",
+    "line": 30,
+    "fileId": 1,
+    "function": "shout",
+    "calls": 2,
+    "firstStep": 20,
+    "spans": [
+     [
+      21,
+      23
+     ],
+     [
+      29,
+      31
+     ]
+    ],
+    "rows": [
+     {
+      "kind": "in",
+      "name": "word",
+      "text": "'fair'",
+      "step": 21
+     },
+     {
+      "kind": "out",
+      "name": "return",
+      "text": "'FAIR'",
+      "step": 23
+     },
+     {
+      "kind": "raised",
+      "name": "ValueError",
+      "text": "empty",
+      "step": 31
+     }
+    ]
+   },
+   {
+    "id": "n5",
+    "kind": "decision",
+    "parent": "n4",
+    "label": "if not word",
+    "file": "/fixture/main.py",
+    "line": 31,
+    "fileId": 1,
+    "text": "if not word took False",
+    "taken": "False",
+    "firstStep": 22,
+    "hits": 2,
+    "notRun": [],
+    "rows": []
+   },
+   {
+    "id": "n6",
+    "kind": "decision",
+    "parent": "n0",
+    "label": "if count > 1",
+    "file": "/fixture/main.py",
+    "line": 43,
+    "fileId": 1,
+    "text": "if count > 1 took True",
+    "taken": "True",
+    "firstStep": 24,
+    "hits": 1,
+    "notRun": [
+     46
+    ],
+    "rows": []
+   }
+  ],
+  "edges": [
+   {
+    "id": "e0",
+    "from": "n0",
+    "to": "n1",
+    "kind": "call",
+    "count": 1,
+    "firstStep": 2,
+    "steps": [
+     2
+    ],
+    "momentIds": [
+     "m2"
+    ]
+   },
+   {
+    "id": "e1",
+    "from": "n1",
+    "to": "n2",
+    "kind": "call",
+    "count": 1,
+    "firstStep": 6,
+    "steps": [
+     6
+    ],
+    "momentIds": [
+     "m5"
+    ]
+   },
+   {
+    "id": "e2",
+    "from": "n0",
+    "to": "n4",
+    "kind": "call",
+    "count": 2,
+    "firstStep": 20,
+    "steps": [
+     20,
+     28
+    ],
+    "momentIds": [
+     "m17",
+     "m23"
+    ]
+   },
+   {
+    "id": "e3",
+    "from": "n2",
+    "to": "n4",
+    "kind": "data",
+    "label": "word",
+    "firstStep": 21
+   }
+  ],
+  "moments": [
+   {
+    "id": "m0",
+    "kind": "start",
+    "step": 0,
+    "nodeId": "n0"
+   },
+   {
+    "id": "m1",
+    "kind": "value",
+    "step": 1,
+    "nodeId": "n0"
+   },
+   {
+    "id": "m2",
+    "kind": "call",
+    "step": 2,
+    "nodeId": "n1",
+    "edgeId": "e0"
+   },
+   {
+    "id": "m3",
+    "kind": "value",
+    "step": 4,
+    "nodeId": "n1"
+   },
+   {
+    "id": "m4",
+    "kind": "value",
+    "step": 5,
+    "nodeId": "n1"
+   },
+   {
+    "id": "m5",
+    "kind": "call",
+    "step": 6,
+    "nodeId": "n2",
+    "edgeId": "e1"
+   },
+   {
+    "id": "m6",
+    "kind": "value",
+    "step": 8,
+    "nodeId": "n2"
+   },
+   {
+    "id": "m7",
+    "kind": "value",
+    "step": 9,
+    "nodeId": "n2"
+   },
+   {
+    "id": "m8",
+    "kind": "value",
+    "step": 10,
+    "nodeId": "n2"
+   },
+   {
+    "id": "m9",
+    "kind": "value",
+    "step": 10,
+    "nodeId": "n1"
+   },
+   {
+    "id": "m10",
+    "kind": "value",
+    "step": 11,
+    "nodeId": "n0"
+   },
+   {
+    "id": "m11",
+    "kind": "value",
+    "step": 12,
+    "nodeId": "n0"
+   },
+   {
+    "id": "m12",
+    "kind": "decision",
+    "step": 13,
+    "nodeId": "n3"
+   },
+   {
+    "id": "m13",
+    "kind": "value",
+    "step": 15,
+    "nodeId": "n0"
+   },
+   {
+    "id": "m14",
+    "kind": "print",
+    "step": 16,
+    "nodeId": "n0"
+   },
+   {
+    "id": "m15",
+    "kind": "value",
+    "step": 18,
+    "nodeId": "n0"
+   },
+   {
+    "id": "m16",
+    "kind": "print",
+    "step": 19,
+    "nodeId": "n0"
+   },
+   {
+    "id": "m17",
+    "kind": "call",
+    "step": 20,
+    "nodeId": "n4",
+    "edgeId": "e2"
+   },
+   {
+    "id": "m18",
+    "kind": "decision",
+    "step": 22,
+    "nodeId": "n5"
+   },
+   {
+    "id": "m19",
+    "kind": "value",
+    "step": 23,
+    "nodeId": "n0"
+   },
+   {
+    "id": "m20",
+    "kind": "decision",
+    "step": 24,
+    "nodeId": "n6"
+   },
+   {
+    "id": "m21",
+    "kind": "value",
+    "step": 25,
+    "nodeId": "n0"
+   },
+   {
+    "id": "m22",
+    "kind": "print",
+    "step": 26,
+    "nodeId": "n0"
+   },
+   {
+    "id": "m23",
+    "kind": "call",
+    "step": 28,
+    "nodeId": "n4",
+    "edgeId": "e2"
+   },
+   {
+    "id": "m24",
+    "kind": "decision",
+    "step": 30,
+    "nodeId": "n5"
+   },
+   {
+    "id": "m25",
+    "kind": "error",
+    "step": 31,
+    "nodeId": "n4"
+   },
+   {
+    "id": "m26",
+    "kind": "value",
+    "step": 32,
+    "nodeId": "n0"
+   },
+   {
+    "id": "m27",
+    "kind": "end",
+    "step": 32,
+    "nodeId": "n0"
+   }
+  ],
+  "scopes": {
+   "0": "n0",
+   "1": "n1",
+   "2": "n2",
+   "3": "n4",
+   "4": "n4"
+  },
+  "capped": false,
+  "truncated": false
+ }
+}

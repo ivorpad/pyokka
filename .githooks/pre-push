@@ -1,0 +1,14 @@
+#!/bin/sh
+# Not a gate. The version moves when a build runs (.claude/hooks/bump-version.sh) or when
+# scripts/release.sh cuts a tag. This only says, on the way out, that the commits being
+# pushed are not covered by any release yet, and what cutting one would call it.
+ROOT=$(git rev-parse --show-toplevel)
+LAST=$(git tag --list 'v*' --sort=-v:refname | head -1)
+[ -n "$LAST" ] || exit 0
+
+COUNT=$(git rev-list --count "$LAST"..HEAD 2>/dev/null) || exit 0
+[ "$COUNT" -gt 0 ] || exit 0
+
+NEXT=$(python3 "$ROOT/scripts/version.py" --next 2>/dev/null) || exit 0
+echo "pre-push: $COUNT commit(s) since $LAST are in no release. scripts/release.sh would cut v$NEXT." >&2
+exit 0

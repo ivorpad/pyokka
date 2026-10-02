@@ -1,0 +1,2393 @@
+{
+ "bindings": {
+  "main.py": [
+   {
+    "line": 1,
+    "col": 0,
+    "assigns": [
+     "os"
+    ],
+    "reads": []
+   },
+   {
+    "line": 2,
+    "col": 0,
+    "assigns": [
+     "helper"
+    ],
+    "reads": []
+   },
+   {
+    "line": 3,
+    "col": 0,
+    "assigns": [
+     "dataclass"
+    ],
+    "reads": []
+   },
+   {
+    "line": 9,
+    "col": 4,
+    "assigns": [
+     "balance"
+    ],
+    "reads": []
+   },
+   {
+    "line": 11,
+    "col": 4,
+    "assigns": [
+     "self",
+     "amount"
+    ],
+    "reads": []
+   },
+   {
+    "line": 12,
+    "col": 8,
+    "assigns": [
+     "self.balance"
+    ],
+    "reads": [
+     "self",
+     "amount"
+    ]
+   },
+   {
+    "line": 13,
+    "col": 8,
+    "assigns": [],
+    "reads": [
+     "self"
+    ]
+   },
+   {
+    "line": 16,
+    "col": 0,
+    "assigns": [
+     "value",
+     "factor"
+    ],
+    "reads": []
+   },
+   {
+    "line": 17,
+    "col": 4,
+    "assigns": [
+     "scaled"
+    ],
+    "reads": [
+     "value",
+     "factor"
+    ]
+   },
+   {
+    "line": 18,
+    "col": 4,
+    "assigns": [],
+    "reads": [
+     "scaled"
+    ]
+   },
+   {
+    "line": 21,
+    "col": 0,
+    "assigns": [
+     "base"
+    ],
+    "reads": []
+   },
+   {
+    "line": 22,
+    "col": 0,
+    "assigns": [
+     "width"
+    ],
+    "reads": [
+     "base"
+    ]
+   },
+   {
+    "line": 23,
+    "col": 0,
+    "assigns": [
+     "area"
+    ],
+    "reads": [
+     "scale",
+     "width",
+     "base"
+    ],
+    "calls": [
+     "scale(width, base)"
+    ]
+   },
+   {
+    "line": 24,
+    "col": 0,
+    "assigns": [
+     "acct"
+    ],
+    "reads": [
+     "Account"
+    ],
+    "calls": [
+     "Account(\"ivor\")"
+    ]
+   },
+   {
+    "line": 25,
+    "col": 0,
+    "assigns": [
+     "amount"
+    ],
+    "reads": [],
+    "loop": 26
+   },
+   {
+    "line": 26,
+    "col": 4,
+    "assigns": [],
+    "reads": [
+     "acct",
+     "amount"
+    ],
+    "calls": [
+     "acct.deposit(amount)"
+    ]
+   },
+   {
+    "line": 27,
+    "col": 0,
+    "assigns": [],
+    "reads": [
+     "acct"
+    ]
+   },
+   {
+    "line": 28,
+    "col": 0,
+    "assigns": [
+     "total"
+    ],
+    "reads": [
+     "acct",
+     "Account"
+    ],
+    "calls": [
+     "sum(a.balance for a in [acct, Account(\"guest\", 5)])",
+     "Account(\"guest\", 5)"
+    ]
+   },
+   {
+    "line": 29,
+    "col": 0,
+    "assigns": [
+     "label"
+    ],
+    "reads": [
+     "helper",
+     "total",
+     "os"
+    ],
+    "calls": [
+     "helper.describe(total, os.sep)"
+    ]
+   },
+   {
+    "line": 30,
+    "col": 0,
+    "assigns": [
+     "count"
+    ],
+    "reads": [
+     "label"
+    ],
+    "calls": [
+     "len(label)"
+    ]
+   },
+   {
+    "line": 31,
+    "col": 0,
+    "assigns": [
+     "result"
+    ],
+    "reads": [
+     "helper",
+     "area",
+     "count"
+    ],
+    "calls": [
+     "helper.combine(area, count)"
+    ]
+   },
+   {
+    "line": 32,
+    "col": 0,
+    "assigns": [],
+    "reads": [
+     "result"
+    ],
+    "calls": [
+     "print(result)"
+    ]
+   },
+   {
+    "line": 33,
+    "col": 0,
+    "assigns": [
+     "flag"
+    ],
+    "reads": [
+     "count"
+    ]
+   },
+   {
+    "line": 34,
+    "col": 0,
+    "assigns": [
+     "preferred"
+    ],
+    "reads": [
+     "label",
+     "flag"
+    ]
+   },
+   {
+    "line": 35,
+    "col": 0,
+    "assigns": [
+     "copy_of_label"
+    ],
+    "reads": [
+     "label"
+    ]
+   },
+   {
+    "line": 36,
+    "col": 0,
+    "assigns": [
+     "settings"
+    ],
+    "reads": []
+   },
+   {
+    "line": 37,
+    "col": 0,
+    "assigns": [
+     "missing"
+    ],
+    "reads": [
+     "settings"
+    ],
+    "calls": [
+     "settings.get(\"colour\")"
+    ]
+   },
+   {
+    "line": 38,
+    "col": 0,
+    "assigns": [
+     "absent"
+    ],
+    "reads": [
+     "label",
+     "count"
+    ]
+   }
+  ],
+  "helper.py": [
+   {
+    "line": 1,
+    "col": 0,
+    "assigns": [
+     "value",
+     "sep"
+    ],
+    "reads": []
+   },
+   {
+    "line": 2,
+    "col": 4,
+    "assigns": [
+     "text"
+    ],
+    "reads": [
+     "sep",
+     "value"
+    ],
+    "calls": [
+     "str(value)"
+    ]
+   },
+   {
+    "line": 3,
+    "col": 4,
+    "assigns": [],
+    "reads": [
+     "text"
+    ]
+   },
+   {
+    "line": 6,
+    "col": 0,
+    "assigns": [
+     "a",
+     "b"
+    ],
+    "reads": []
+   },
+   {
+    "line": 7,
+    "col": 4,
+    "assigns": [
+     "both"
+    ],
+    "reads": [
+     "a",
+     "b"
+    ]
+   },
+   {
+    "line": 8,
+    "col": 4,
+    "assigns": [],
+    "reads": [
+     "both"
+    ]
+   }
+  ]
+ },
+ "cases": [
+  {
+   "file": "main.py",
+   "line": 23,
+   "occurrence": "first",
+   "name": "area",
+   "depth": 5,
+   "step": 6,
+   "result": {
+    "name": "area",
+    "step": 6,
+    "depth": 5,
+    "nodes": 5,
+    "truncated": false,
+    "recordedLocals": true,
+    "root": {
+     "name": "area",
+     "text": "12",
+     "source": "locals",
+     "logId": "l-6",
+     "step": 6,
+     "file": "/fixture/main.py",
+     "fileId": 1,
+     "line": 23,
+     "function": "<module>",
+     "scopeId": 0,
+     "statement": "area = scale(width, base)  # ?",
+     "reads": [
+      {
+       "name": "scale"
+      },
+      {
+       "name": "width",
+       "text": "4",
+       "source": "locals",
+       "logId": "l-3",
+       "step": 5,
+       "file": "/fixture/main.py",
+       "fileId": 1,
+       "line": 22,
+       "function": "<module>",
+       "scopeId": 0,
+       "statement": "width = base + 1",
+       "reads": [
+        {
+         "name": "base",
+         "text": "3",
+         "source": "locals",
+         "logId": "l-2",
+         "step": 4,
+         "file": "/fixture/main.py",
+         "fileId": 1,
+         "line": 21,
+         "function": "<module>",
+         "scopeId": 0,
+         "statement": "base = 3",
+         "reads": [],
+         "calls": [],
+         "opaque": []
+        }
+       ],
+       "calls": [],
+       "opaque": []
+      },
+      {
+       "name": "base",
+       "text": "3",
+       "source": "locals",
+       "logId": "l-2",
+       "step": 4,
+       "file": "/fixture/main.py",
+       "fileId": 1,
+       "line": 21,
+       "function": "<module>",
+       "scopeId": 0,
+       "statement": "base = 3",
+       "reads": [],
+       "calls": [],
+       "opaque": []
+      }
+     ],
+     "calls": [
+      {
+       "name": "scale",
+       "scopeId": 2,
+       "entryStep": 7,
+       "returnStep": 9,
+       "file": "/fixture/main.py",
+       "fileId": 1,
+       "line": 16,
+       "inputs": [
+        {
+         "name": "value",
+         "text": "4"
+        },
+        {
+         "name": "factor",
+         "text": "3"
+        }
+       ],
+       "result": "12"
+      }
+     ],
+     "opaque": []
+    },
+    "conclusion": "area is 12 at #6 (main.py:23). scale(width, base) returned 12."
+   }
+  },
+  {
+   "file": "main.py",
+   "line": 28,
+   "occurrence": "first",
+   "name": "total",
+   "depth": 5,
+   "step": 23,
+   "result": {
+    "name": "total",
+    "step": 23,
+    "depth": 5,
+    "nodes": 5,
+    "truncated": false,
+    "recordedLocals": true,
+    "root": {
+     "name": "total",
+     "text": "35.0",
+     "source": "locals",
+     "logId": "l-15",
+     "step": 23,
+     "file": "/fixture/main.py",
+     "fileId": 1,
+     "line": 28,
+     "function": "<module>",
+     "scopeId": 0,
+     "statement": "total = sum(a.balance for a in [acct, Account(\"guest\", 5)])",
+     "reads": [
+      {
+       "name": "acct",
+       "text": "Account(owner='ivor', balance=30.0)",
+       "source": "value",
+       "logId": "l-14",
+       "step": 22,
+       "file": "/fixture/main.py",
+       "fileId": 1,
+       "line": 27,
+       "function": "<module>",
+       "scopeId": 0,
+       "statement": "acct  # ?+",
+       "reads": [
+        {
+         "name": "acct",
+         "text": "Account(owner='ivor', balance=0.0)",
+         "source": "locals",
+         "logId": "l-7",
+         "step": 10,
+         "file": "/fixture/main.py",
+         "fileId": 1,
+         "line": 24,
+         "function": "<module>",
+         "scopeId": 0,
+         "statement": "acct = Account(\"ivor\")",
+         "reads": [
+          {
+           "name": "Account"
+          }
+         ],
+         "calls": [],
+         "opaque": [
+          "Account(\"ivor\")"
+         ]
+        }
+       ],
+       "calls": [],
+       "opaque": []
+      },
+      {
+       "name": "Account"
+      }
+     ],
+     "calls": [],
+     "opaque": [
+      "sum(a.balance for a in [acct, Account(\"guest\", 5)])",
+      "Account(\"guest\", 5)"
+     ]
+    },
+    "conclusion": "total is 35.0 at #23 (main.py:28). It reads acct = Account(owner='ivor', balance=30.0)."
+   }
+  },
+  {
+   "file": "main.py",
+   "line": 29,
+   "occurrence": "first",
+   "name": "label",
+   "depth": 5,
+   "step": 24,
+   "result": {
+    "name": "label",
+    "step": 24,
+    "depth": 5,
+    "nodes": 8,
+    "truncated": false,
+    "recordedLocals": true,
+    "root": {
+     "name": "label",
+     "text": "'total/35.0'",
+     "source": "locals",
+     "logId": "l-16",
+     "step": 24,
+     "file": "/fixture/main.py",
+     "fileId": 1,
+     "line": 29,
+     "function": "<module>",
+     "scopeId": 0,
+     "statement": "label = helper.describe(total, os.sep)",
+     "reads": [
+      {
+       "name": "helper"
+      },
+      {
+       "name": "total",
+       "text": "35.0",
+       "source": "locals",
+       "logId": "l-15",
+       "step": 23,
+       "file": "/fixture/main.py",
+       "fileId": 1,
+       "line": 28,
+       "function": "<module>",
+       "scopeId": 0,
+       "statement": "total = sum(a.balance for a in [acct, Account(\"guest\", 5)])",
+       "reads": [
+        {
+         "name": "acct",
+         "text": "Account(owner='ivor', balance=30.0)",
+         "source": "value",
+         "logId": "l-14",
+         "step": 22,
+         "file": "/fixture/main.py",
+         "fileId": 1,
+         "line": 27,
+         "function": "<module>",
+         "scopeId": 0,
+         "statement": "acct  # ?+",
+         "reads": [
+          {
+           "name": "acct",
+           "text": "Account(owner='ivor', balance=0.0)",
+           "source": "locals",
+           "logId": "l-7",
+           "step": 10,
+           "file": "/fixture/main.py",
+           "fileId": 1,
+           "line": 24,
+           "function": "<module>",
+           "scopeId": 0,
+           "statement": "acct = Account(\"ivor\")",
+           "reads": [
+            {
+             "name": "Account"
+            }
+           ],
+           "calls": [],
+           "opaque": [
+            "Account(\"ivor\")"
+           ]
+          }
+         ],
+         "calls": [],
+         "opaque": []
+        },
+        {
+         "name": "Account"
+        }
+       ],
+       "calls": [],
+       "opaque": [
+        "sum(a.balance for a in [acct, Account(\"guest\", 5)])",
+        "Account(\"guest\", 5)"
+       ]
+      },
+      {
+       "name": "os"
+      }
+     ],
+     "calls": [
+      {
+       "name": "describe",
+       "scopeId": 5,
+       "entryStep": 25,
+       "returnStep": 27,
+       "file": "/fixture/helper.py",
+       "fileId": 2,
+       "line": 1,
+       "inputs": [
+        {
+         "name": "value",
+         "text": "35.0"
+        },
+        {
+         "name": "sep",
+         "text": "'/'"
+        }
+       ],
+       "result": "'total/35.0'"
+      }
+     ],
+     "opaque": []
+    },
+    "conclusion": "label is 'total/35.0' at #24 (main.py:29). helper.describe(total, os.sep) returned 'total/35.0'."
+   }
+  },
+  {
+   "file": "main.py",
+   "line": 31,
+   "occurrence": "first",
+   "name": "result",
+   "depth": 5,
+   "step": 29,
+   "result": {
+    "name": "result",
+    "step": 29,
+    "depth": 5,
+    "nodes": 15,
+    "truncated": false,
+    "recordedLocals": true,
+    "root": {
+     "name": "result",
+     "text": "22",
+     "source": "locals",
+     "logId": "l-18",
+     "step": 29,
+     "file": "/fixture/main.py",
+     "fileId": 1,
+     "line": 31,
+     "function": "<module>",
+     "scopeId": 0,
+     "statement": "result = helper.combine(area, count)",
+     "reads": [
+      {
+       "name": "helper"
+      },
+      {
+       "name": "area",
+       "text": "12",
+       "source": "locals",
+       "logId": "l-6",
+       "step": 6,
+       "file": "/fixture/main.py",
+       "fileId": 1,
+       "line": 23,
+       "function": "<module>",
+       "scopeId": 0,
+       "statement": "area = scale(width, base)  # ?",
+       "reads": [
+        {
+         "name": "scale"
+        },
+        {
+         "name": "width",
+         "text": "4",
+         "source": "locals",
+         "logId": "l-3",
+         "step": 5,
+         "file": "/fixture/main.py",
+         "fileId": 1,
+         "line": 22,
+         "function": "<module>",
+         "scopeId": 0,
+         "statement": "width = base + 1",
+         "reads": [
+          {
+           "name": "base",
+           "text": "3",
+           "source": "locals",
+           "logId": "l-2",
+           "step": 4,
+           "file": "/fixture/main.py",
+           "fileId": 1,
+           "line": 21,
+           "function": "<module>",
+           "scopeId": 0,
+           "statement": "base = 3",
+           "reads": [],
+           "calls": [],
+           "opaque": []
+          }
+         ],
+         "calls": [],
+         "opaque": []
+        },
+        {
+         "name": "base",
+         "text": "3",
+         "source": "locals",
+         "logId": "l-2",
+         "step": 4,
+         "file": "/fixture/main.py",
+         "fileId": 1,
+         "line": 21,
+         "function": "<module>",
+         "scopeId": 0,
+         "statement": "base = 3",
+         "reads": [],
+         "calls": [],
+         "opaque": []
+        }
+       ],
+       "calls": [
+        {
+         "name": "scale",
+         "scopeId": 2,
+         "entryStep": 7,
+         "returnStep": 9,
+         "file": "/fixture/main.py",
+         "fileId": 1,
+         "line": 16,
+         "inputs": [
+          {
+           "name": "value",
+           "text": "4"
+          },
+          {
+           "name": "factor",
+           "text": "3"
+          }
+         ],
+         "result": "12"
+        }
+       ],
+       "opaque": []
+      },
+      {
+       "name": "count",
+       "text": "10",
+       "source": "locals",
+       "logId": "l-17",
+       "step": 28,
+       "file": "/fixture/main.py",
+       "fileId": 1,
+       "line": 30,
+       "function": "<module>",
+       "scopeId": 0,
+       "statement": "count = len(label)",
+       "reads": [
+        {
+         "name": "label",
+         "text": "'total/35.0'",
+         "source": "locals",
+         "logId": "l-16",
+         "step": 24,
+         "file": "/fixture/main.py",
+         "fileId": 1,
+         "line": 29,
+         "function": "<module>",
+         "scopeId": 0,
+         "statement": "label = helper.describe(total, os.sep)",
+         "reads": [
+          {
+           "name": "helper"
+          },
+          {
+           "name": "total",
+           "text": "35.0",
+           "source": "locals",
+           "logId": "l-15",
+           "step": 23,
+           "file": "/fixture/main.py",
+           "fileId": 1,
+           "line": 28,
+           "function": "<module>",
+           "scopeId": 0,
+           "statement": "total = sum(a.balance for a in [acct, Account(\"guest\", 5)])",
+           "reads": [
+            {
+             "name": "acct",
+             "text": "Account(owner='ivor', balance=30.0)",
+             "source": "value",
+             "logId": "l-14",
+             "step": 22,
+             "file": "/fixture/main.py",
+             "fileId": 1,
+             "line": 27,
+             "function": "<module>",
+             "scopeId": 0,
+             "statement": "acct  # ?+",
+             "reads": [
+              {
+               "name": "acct",
+               "text": "Account(owner='ivor', balance=0.0)",
+               "source": "locals",
+               "logId": "l-7",
+               "step": 10,
+               "file": "/fixture/main.py",
+               "fileId": 1,
+               "line": 24,
+               "function": "<module>",
+               "scopeId": 0,
+               "statement": "acct = Account(\"ivor\")",
+               "cut": true
+              }
+             ],
+             "calls": [],
+             "opaque": []
+            },
+            {
+             "name": "Account"
+            }
+           ],
+           "calls": [],
+           "opaque": [
+            "sum(a.balance for a in [acct, Account(\"guest\", 5)])",
+            "Account(\"guest\", 5)"
+           ]
+          },
+          {
+           "name": "os"
+          }
+         ],
+         "calls": [
+          {
+           "name": "describe",
+           "scopeId": 5,
+           "entryStep": 25,
+           "returnStep": 27,
+           "file": "/fixture/helper.py",
+           "fileId": 2,
+           "line": 1,
+           "inputs": [
+            {
+             "name": "value",
+             "text": "35.0"
+            },
+            {
+             "name": "sep",
+             "text": "'/'"
+            }
+           ],
+           "result": "'total/35.0'"
+          }
+         ],
+         "opaque": []
+        }
+       ],
+       "calls": [],
+       "opaque": [
+        "len(label)"
+       ]
+      }
+     ],
+     "calls": [
+      {
+       "name": "combine",
+       "scopeId": 6,
+       "entryStep": 30,
+       "returnStep": 32,
+       "file": "/fixture/helper.py",
+       "fileId": 2,
+       "line": 6,
+       "inputs": [
+        {
+         "name": "a",
+         "text": "12"
+        },
+        {
+         "name": "b",
+         "text": "10"
+        }
+       ],
+       "result": "22"
+      }
+     ],
+     "opaque": []
+    },
+    "conclusion": "result is 22 at #29 (main.py:31). helper.combine(area, count) returned 22."
+   }
+  },
+  {
+   "file": "main.py",
+   "line": 12,
+   "occurrence": "last",
+   "name": "self.balance",
+   "depth": 5,
+   "step": 20,
+   "result": {
+    "name": "self.balance",
+    "step": 20,
+    "depth": 5,
+    "nodes": 3,
+    "truncated": false,
+    "recordedLocals": true,
+    "root": {
+     "name": "self.balance",
+     "text": "30.0",
+     "source": "value",
+     "logId": "l-11",
+     "step": 20,
+     "file": "/fixture/main.py",
+     "fileId": 1,
+     "line": 12,
+     "function": "deposit",
+     "scopeId": 4,
+     "statement": "self.balance += amount",
+     "reads": [
+      {
+       "name": "self",
+       "text": "Account(owner='ivor', balance=10.0)",
+       "source": "locals",
+       "step": 19,
+       "file": "/fixture/main.py",
+       "fileId": 1,
+       "line": 11,
+       "function": "deposit",
+       "scopeId": 4,
+       "statement": "def deposit(self, amount):",
+       "reads": [],
+       "calls": [],
+       "opaque": []
+      },
+      {
+       "name": "amount",
+       "text": "20",
+       "source": "locals",
+       "step": 19,
+       "file": "/fixture/main.py",
+       "fileId": 1,
+       "line": 11,
+       "function": "deposit",
+       "scopeId": 4,
+       "statement": "def deposit(self, amount):",
+       "reads": [],
+       "calls": [],
+       "opaque": []
+      }
+     ],
+     "calls": [],
+     "opaque": []
+    },
+    "conclusion": "self.balance is 30.0 at #20 (main.py:12). It reads self = Account(owner='ivor', balance=10.0), amount = 20."
+   }
+  },
+  {
+   "file": "main.py",
+   "line": 25,
+   "occurrence": "last",
+   "name": "amount",
+   "depth": 5,
+   "step": 17,
+   "result": {
+    "name": "amount",
+    "step": 17,
+    "depth": 5,
+    "nodes": 1,
+    "truncated": false,
+    "recordedLocals": true,
+    "root": {
+     "name": "amount",
+     "text": "20",
+     "source": "locals",
+     "step": 17,
+     "file": "/fixture/main.py",
+     "fileId": 1,
+     "line": 25,
+     "function": "<module>",
+     "scopeId": 0,
+     "statement": "for amount in (10, 20):",
+     "reads": [],
+     "calls": [],
+     "opaque": []
+    },
+    "conclusion": "amount is 20 at #17 (main.py:25)."
+   }
+  },
+  {
+   "file": "main.py",
+   "line": 27,
+   "occurrence": "first",
+   "name": "acct",
+   "depth": 5,
+   "step": 22,
+   "result": {
+    "name": "acct",
+    "step": 22,
+    "depth": 5,
+    "nodes": 3,
+    "truncated": false,
+    "recordedLocals": true,
+    "root": {
+     "name": "acct",
+     "text": "Account(owner='ivor', balance=30.0)",
+     "source": "value",
+     "logId": "l-14",
+     "step": 22,
+     "file": "/fixture/main.py",
+     "fileId": 1,
+     "line": 27,
+     "function": "<module>",
+     "scopeId": 0,
+     "statement": "acct  # ?+",
+     "reads": [
+      {
+       "name": "acct",
+       "text": "Account(owner='ivor', balance=0.0)",
+       "source": "locals",
+       "logId": "l-7",
+       "step": 10,
+       "file": "/fixture/main.py",
+       "fileId": 1,
+       "line": 24,
+       "function": "<module>",
+       "scopeId": 0,
+       "statement": "acct = Account(\"ivor\")",
+       "reads": [
+        {
+         "name": "Account"
+        }
+       ],
+       "calls": [],
+       "opaque": [
+        "Account(\"ivor\")"
+       ]
+      }
+     ],
+     "calls": [],
+     "opaque": []
+    },
+    "conclusion": "acct is Account(owner='ivor', balance=30.0) at #22 (main.py:27). It reads acct = Account(owner='ivor', balance=0.0)."
+   }
+  },
+  {
+   "file": "main.py",
+   "line": 32,
+   "occurrence": "first",
+   "name": "",
+   "depth": 5,
+   "step": 33,
+   "result": {
+    "name": "",
+    "step": 33,
+    "depth": 5,
+    "nodes": 15,
+    "truncated": false,
+    "recordedLocals": true,
+    "root": {
+     "name": "",
+     "step": 33,
+     "file": "/fixture/main.py",
+     "fileId": 1,
+     "line": 32,
+     "function": "<module>",
+     "scopeId": 0,
+     "statement": "print(result)",
+     "reads": [
+      {
+       "name": "result",
+       "text": "22",
+       "source": "locals",
+       "logId": "l-18",
+       "step": 29,
+       "file": "/fixture/main.py",
+       "fileId": 1,
+       "line": 31,
+       "function": "<module>",
+       "scopeId": 0,
+       "statement": "result = helper.combine(area, count)",
+       "reads": [
+        {
+         "name": "helper"
+        },
+        {
+         "name": "area",
+         "text": "12",
+         "source": "locals",
+         "logId": "l-6",
+         "step": 6,
+         "file": "/fixture/main.py",
+         "fileId": 1,
+         "line": 23,
+         "function": "<module>",
+         "scopeId": 0,
+         "statement": "area = scale(width, base)  # ?",
+         "reads": [
+          {
+           "name": "scale"
+          },
+          {
+           "name": "width",
+           "text": "4",
+           "source": "locals",
+           "logId": "l-3",
+           "step": 5,
+           "file": "/fixture/main.py",
+           "fileId": 1,
+           "line": 22,
+           "function": "<module>",
+           "scopeId": 0,
+           "statement": "width = base + 1",
+           "reads": [
+            {
+             "name": "base",
+             "text": "3",
+             "source": "locals",
+             "logId": "l-2",
+             "step": 4,
+             "file": "/fixture/main.py",
+             "fileId": 1,
+             "line": 21,
+             "function": "<module>",
+             "scopeId": 0,
+             "statement": "base = 3",
+             "reads": [],
+             "calls": [],
+             "opaque": []
+            }
+           ],
+           "calls": [],
+           "opaque": []
+          },
+          {
+           "name": "base",
+           "text": "3",
+           "source": "locals",
+           "logId": "l-2",
+           "step": 4,
+           "file": "/fixture/main.py",
+           "fileId": 1,
+           "line": 21,
+           "function": "<module>",
+           "scopeId": 0,
+           "statement": "base = 3",
+           "reads": [],
+           "calls": [],
+           "opaque": []
+          }
+         ],
+         "calls": [
+          {
+           "name": "scale",
+           "scopeId": 2,
+           "entryStep": 7,
+           "returnStep": 9,
+           "file": "/fixture/main.py",
+           "fileId": 1,
+           "line": 16,
+           "inputs": [
+            {
+             "name": "value",
+             "text": "4"
+            },
+            {
+             "name": "factor",
+             "text": "3"
+            }
+           ],
+           "result": "12"
+          }
+         ],
+         "opaque": []
+        },
+        {
+         "name": "count",
+         "text": "10",
+         "source": "locals",
+         "logId": "l-17",
+         "step": 28,
+         "file": "/fixture/main.py",
+         "fileId": 1,
+         "line": 30,
+         "function": "<module>",
+         "scopeId": 0,
+         "statement": "count = len(label)",
+         "reads": [
+          {
+           "name": "label",
+           "text": "'total/35.0'",
+           "source": "locals",
+           "logId": "l-16",
+           "step": 24,
+           "file": "/fixture/main.py",
+           "fileId": 1,
+           "line": 29,
+           "function": "<module>",
+           "scopeId": 0,
+           "statement": "label = helper.describe(total, os.sep)",
+           "reads": [
+            {
+             "name": "helper"
+            },
+            {
+             "name": "total",
+             "text": "35.0",
+             "source": "locals",
+             "logId": "l-15",
+             "step": 23,
+             "file": "/fixture/main.py",
+             "fileId": 1,
+             "line": 28,
+             "function": "<module>",
+             "scopeId": 0,
+             "statement": "total = sum(a.balance for a in [acct, Account(\"guest\", 5)])",
+             "reads": [
+              {
+               "name": "acct",
+               "text": "Account(owner='ivor', balance=30.0)",
+               "source": "value",
+               "logId": "l-14",
+               "step": 22,
+               "file": "/fixture/main.py",
+               "fileId": 1,
+               "line": 27,
+               "function": "<module>",
+               "scopeId": 0,
+               "statement": "acct  # ?+",
+               "cut": true
+              },
+              {
+               "name": "Account"
+              }
+             ],
+             "calls": [],
+             "opaque": [
+              "sum(a.balance for a in [acct, Account(\"guest\", 5)])",
+              "Account(\"guest\", 5)"
+             ]
+            },
+            {
+             "name": "os"
+            }
+           ],
+           "calls": [
+            {
+             "name": "describe",
+             "scopeId": 5,
+             "entryStep": 25,
+             "returnStep": 27,
+             "file": "/fixture/helper.py",
+             "fileId": 2,
+             "line": 1,
+             "inputs": [
+              {
+               "name": "value",
+               "text": "35.0"
+              },
+              {
+               "name": "sep",
+               "text": "'/'"
+              }
+             ],
+             "result": "'total/35.0'"
+            }
+           ],
+           "opaque": []
+          }
+         ],
+         "calls": [],
+         "opaque": [
+          "len(label)"
+         ]
+        }
+       ],
+       "calls": [
+        {
+         "name": "combine",
+         "scopeId": 6,
+         "entryStep": 30,
+         "returnStep": 32,
+         "file": "/fixture/helper.py",
+         "fileId": 2,
+         "line": 6,
+         "inputs": [
+          {
+           "name": "a",
+           "text": "12"
+          },
+          {
+           "name": "b",
+           "text": "10"
+          }
+         ],
+         "result": "22"
+        }
+       ],
+       "opaque": []
+      }
+     ],
+     "calls": [],
+     "opaque": [
+      "print(result)"
+     ]
+    },
+    "conclusion": ""
+   }
+  },
+  {
+   "file": "main.py",
+   "line": 29,
+   "occurrence": "first",
+   "name": "label",
+   "depth": 1,
+   "step": 24,
+   "result": {
+    "name": "label",
+    "step": 24,
+    "depth": 1,
+    "nodes": 4,
+    "truncated": false,
+    "recordedLocals": true,
+    "root": {
+     "name": "label",
+     "text": "'total/35.0'",
+     "source": "locals",
+     "logId": "l-16",
+     "step": 24,
+     "file": "/fixture/main.py",
+     "fileId": 1,
+     "line": 29,
+     "function": "<module>",
+     "scopeId": 0,
+     "statement": "label = helper.describe(total, os.sep)",
+     "reads": [
+      {
+       "name": "helper"
+      },
+      {
+       "name": "total",
+       "text": "35.0",
+       "source": "locals",
+       "logId": "l-15",
+       "step": 23,
+       "file": "/fixture/main.py",
+       "fileId": 1,
+       "line": 28,
+       "function": "<module>",
+       "scopeId": 0,
+       "statement": "total = sum(a.balance for a in [acct, Account(\"guest\", 5)])",
+       "cut": true
+      },
+      {
+       "name": "os"
+      }
+     ],
+     "calls": [
+      {
+       "name": "describe",
+       "scopeId": 5,
+       "entryStep": 25,
+       "returnStep": 27,
+       "file": "/fixture/helper.py",
+       "fileId": 2,
+       "line": 1,
+       "inputs": [
+        {
+         "name": "value",
+         "text": "35.0"
+        },
+        {
+         "name": "sep",
+         "text": "'/'"
+        }
+       ],
+       "result": "'total/35.0'"
+      }
+     ],
+     "opaque": []
+    },
+    "conclusion": "label is 'total/35.0' at #24 (main.py:29). helper.describe(total, os.sep) returned 'total/35.0'."
+   }
+  },
+  {
+   "file": "main.py",
+   "line": 30,
+   "occurrence": "first",
+   "name": "count",
+   "depth": 5,
+   "step": 28,
+   "result": {
+    "name": "count",
+    "step": 28,
+    "depth": 5,
+    "nodes": 9,
+    "truncated": false,
+    "recordedLocals": true,
+    "root": {
+     "name": "count",
+     "text": "10",
+     "source": "locals",
+     "logId": "l-17",
+     "step": 28,
+     "file": "/fixture/main.py",
+     "fileId": 1,
+     "line": 30,
+     "function": "<module>",
+     "scopeId": 0,
+     "statement": "count = len(label)",
+     "reads": [
+      {
+       "name": "label",
+       "text": "'total/35.0'",
+       "source": "locals",
+       "logId": "l-16",
+       "step": 24,
+       "file": "/fixture/main.py",
+       "fileId": 1,
+       "line": 29,
+       "function": "<module>",
+       "scopeId": 0,
+       "statement": "label = helper.describe(total, os.sep)",
+       "reads": [
+        {
+         "name": "helper"
+        },
+        {
+         "name": "total",
+         "text": "35.0",
+         "source": "locals",
+         "logId": "l-15",
+         "step": 23,
+         "file": "/fixture/main.py",
+         "fileId": 1,
+         "line": 28,
+         "function": "<module>",
+         "scopeId": 0,
+         "statement": "total = sum(a.balance for a in [acct, Account(\"guest\", 5)])",
+         "reads": [
+          {
+           "name": "acct",
+           "text": "Account(owner='ivor', balance=30.0)",
+           "source": "value",
+           "logId": "l-14",
+           "step": 22,
+           "file": "/fixture/main.py",
+           "fileId": 1,
+           "line": 27,
+           "function": "<module>",
+           "scopeId": 0,
+           "statement": "acct  # ?+",
+           "reads": [
+            {
+             "name": "acct",
+             "text": "Account(owner='ivor', balance=0.0)",
+             "source": "locals",
+             "logId": "l-7",
+             "step": 10,
+             "file": "/fixture/main.py",
+             "fileId": 1,
+             "line": 24,
+             "function": "<module>",
+             "scopeId": 0,
+             "statement": "acct = Account(\"ivor\")",
+             "reads": [
+              {
+               "name": "Account"
+              }
+             ],
+             "calls": [],
+             "opaque": [
+              "Account(\"ivor\")"
+             ]
+            }
+           ],
+           "calls": [],
+           "opaque": []
+          },
+          {
+           "name": "Account"
+          }
+         ],
+         "calls": [],
+         "opaque": [
+          "sum(a.balance for a in [acct, Account(\"guest\", 5)])",
+          "Account(\"guest\", 5)"
+         ]
+        },
+        {
+         "name": "os"
+        }
+       ],
+       "calls": [
+        {
+         "name": "describe",
+         "scopeId": 5,
+         "entryStep": 25,
+         "returnStep": 27,
+         "file": "/fixture/helper.py",
+         "fileId": 2,
+         "line": 1,
+         "inputs": [
+          {
+           "name": "value",
+           "text": "35.0"
+          },
+          {
+           "name": "sep",
+           "text": "'/'"
+          }
+         ],
+         "result": "'total/35.0'"
+        }
+       ],
+       "opaque": []
+      }
+     ],
+     "calls": [],
+     "opaque": [
+      "len(label)"
+     ]
+    },
+    "conclusion": "count is 10 at #28 (main.py:30). It reads label = 'total/35.0'."
+   }
+  },
+  {
+   "file": "main.py",
+   "line": 24,
+   "occurrence": "first",
+   "name": "base",
+   "depth": 5,
+   "step": 10,
+   "result": {
+    "name": "base",
+    "step": 10,
+    "depth": 5,
+    "nodes": 1,
+    "truncated": false,
+    "recordedLocals": true,
+    "root": {
+     "name": "base",
+     "text": "3",
+     "source": "locals",
+     "logId": "l-2",
+     "step": 4,
+     "file": "/fixture/main.py",
+     "fileId": 1,
+     "line": 21,
+     "function": "<module>",
+     "scopeId": 0,
+     "statement": "base = 3",
+     "reads": [],
+     "calls": [],
+     "opaque": []
+    },
+    "conclusion": "base is 3 at #4 (main.py:21)."
+   }
+  },
+  {
+   "file": "main.py",
+   "line": 23,
+   "occurrence": "first",
+   "name": "nothing_here",
+   "depth": 5,
+   "step": 6,
+   "result": {
+    "name": "nothing_here",
+    "step": 6,
+    "depth": 5,
+    "nodes": 1,
+    "truncated": false,
+    "recordedLocals": true,
+    "root": {
+     "name": "nothing_here"
+    },
+    "conclusion": ""
+   }
+  },
+  {
+   "file": "helper.py",
+   "line": 7,
+   "occurrence": "first",
+   "name": "both",
+   "depth": 5,
+   "step": 31,
+   "result": {
+    "name": "both",
+    "step": 31,
+    "depth": 5,
+    "nodes": 3,
+    "truncated": false,
+    "recordedLocals": true,
+    "root": {
+     "name": "both",
+     "text": "22",
+     "source": "locals",
+     "step": 31,
+     "file": "/fixture/helper.py",
+     "fileId": 2,
+     "line": 7,
+     "function": "combine",
+     "scopeId": 6,
+     "statement": "both = a + b",
+     "reads": [
+      {
+       "name": "a",
+       "text": "12",
+       "source": "locals",
+       "step": 30,
+       "file": "/fixture/helper.py",
+       "fileId": 2,
+       "line": 6,
+       "function": "combine",
+       "scopeId": 6,
+       "statement": "def combine(a, b):",
+       "reads": [],
+       "calls": [],
+       "opaque": []
+      },
+      {
+       "name": "b",
+       "text": "10",
+       "source": "locals",
+       "step": 30,
+       "file": "/fixture/helper.py",
+       "fileId": 2,
+       "line": 6,
+       "function": "combine",
+       "scopeId": 6,
+       "statement": "def combine(a, b):",
+       "reads": [],
+       "calls": [],
+       "opaque": []
+      }
+     ],
+     "calls": [],
+     "opaque": []
+    },
+    "conclusion": "both is 22 at #31 (helper.py:7). It reads a = 12, b = 10."
+   }
+  },
+  {
+   "file": "main.py",
+   "line": 34,
+   "occurrence": "first",
+   "name": "preferred",
+   "depth": 5,
+   "step": 35,
+   "result": {
+    "name": "preferred",
+    "step": 35,
+    "depth": 5,
+    "nodes": 17,
+    "truncated": false,
+    "recordedLocals": true,
+    "root": {
+     "name": "preferred",
+     "text": "'total/35.0'",
+     "source": "locals",
+     "logId": "l-21",
+     "step": 35,
+     "file": "/fixture/main.py",
+     "fileId": 1,
+     "line": 34,
+     "function": "<module>",
+     "scopeId": 0,
+     "statement": "preferred = label if flag else None",
+     "reads": [
+      {
+       "name": "label",
+       "text": "'total/35.0'",
+       "source": "locals",
+       "logId": "l-16",
+       "step": 24,
+       "file": "/fixture/main.py",
+       "fileId": 1,
+       "line": 29,
+       "function": "<module>",
+       "scopeId": 0,
+       "statement": "label = helper.describe(total, os.sep)",
+       "reads": [
+        {
+         "name": "helper"
+        },
+        {
+         "name": "total",
+         "text": "35.0",
+         "source": "locals",
+         "logId": "l-15",
+         "step": 23,
+         "file": "/fixture/main.py",
+         "fileId": 1,
+         "line": 28,
+         "function": "<module>",
+         "scopeId": 0,
+         "statement": "total = sum(a.balance for a in [acct, Account(\"guest\", 5)])",
+         "reads": [
+          {
+           "name": "acct",
+           "text": "Account(owner='ivor', balance=30.0)",
+           "source": "value",
+           "logId": "l-14",
+           "step": 22,
+           "file": "/fixture/main.py",
+           "fileId": 1,
+           "line": 27,
+           "function": "<module>",
+           "scopeId": 0,
+           "statement": "acct  # ?+",
+           "reads": [
+            {
+             "name": "acct",
+             "text": "Account(owner='ivor', balance=0.0)",
+             "source": "locals",
+             "logId": "l-7",
+             "step": 10,
+             "file": "/fixture/main.py",
+             "fileId": 1,
+             "line": 24,
+             "function": "<module>",
+             "scopeId": 0,
+             "statement": "acct = Account(\"ivor\")",
+             "reads": [
+              {
+               "name": "Account"
+              }
+             ],
+             "calls": [],
+             "opaque": [
+              "Account(\"ivor\")"
+             ]
+            }
+           ],
+           "calls": [],
+           "opaque": []
+          },
+          {
+           "name": "Account"
+          }
+         ],
+         "calls": [],
+         "opaque": [
+          "sum(a.balance for a in [acct, Account(\"guest\", 5)])",
+          "Account(\"guest\", 5)"
+         ]
+        },
+        {
+         "name": "os"
+        }
+       ],
+       "calls": [
+        {
+         "name": "describe",
+         "scopeId": 5,
+         "entryStep": 25,
+         "returnStep": 27,
+         "file": "/fixture/helper.py",
+         "fileId": 2,
+         "line": 1,
+         "inputs": [
+          {
+           "name": "value",
+           "text": "35.0"
+          },
+          {
+           "name": "sep",
+           "text": "'/'"
+          }
+         ],
+         "result": "'total/35.0'"
+        }
+       ],
+       "opaque": []
+      },
+      {
+       "name": "flag",
+       "text": "True",
+       "source": "locals",
+       "logId": "l-20",
+       "step": 34,
+       "file": "/fixture/main.py",
+       "fileId": 1,
+       "line": 33,
+       "function": "<module>",
+       "scopeId": 0,
+       "statement": "flag = count > 5",
+       "reads": [
+        {
+         "name": "count",
+         "text": "10",
+         "source": "locals",
+         "logId": "l-17",
+         "step": 28,
+         "file": "/fixture/main.py",
+         "fileId": 1,
+         "line": 30,
+         "function": "<module>",
+         "scopeId": 0,
+         "statement": "count = len(label)",
+         "reads": [
+          {
+           "name": "label",
+           "text": "'total/35.0'",
+           "source": "locals",
+           "logId": "l-16",
+           "step": 24,
+           "file": "/fixture/main.py",
+           "fileId": 1,
+           "line": 29,
+           "function": "<module>",
+           "scopeId": 0,
+           "statement": "label = helper.describe(total, os.sep)",
+           "reads": [
+            {
+             "name": "helper"
+            },
+            {
+             "name": "total",
+             "text": "35.0",
+             "source": "locals",
+             "logId": "l-15",
+             "step": 23,
+             "file": "/fixture/main.py",
+             "fileId": 1,
+             "line": 28,
+             "function": "<module>",
+             "scopeId": 0,
+             "statement": "total = sum(a.balance for a in [acct, Account(\"guest\", 5)])",
+             "reads": [
+              {
+               "name": "acct",
+               "text": "Account(owner='ivor', balance=30.0)",
+               "source": "value",
+               "logId": "l-14",
+               "step": 22,
+               "file": "/fixture/main.py",
+               "fileId": 1,
+               "line": 27,
+               "function": "<module>",
+               "scopeId": 0,
+               "statement": "acct  # ?+",
+               "cut": true
+              },
+              {
+               "name": "Account"
+              }
+             ],
+             "calls": [],
+             "opaque": [
+              "sum(a.balance for a in [acct, Account(\"guest\", 5)])",
+              "Account(\"guest\", 5)"
+             ]
+            },
+            {
+             "name": "os"
+            }
+           ],
+           "calls": [
+            {
+             "name": "describe",
+             "scopeId": 5,
+             "entryStep": 25,
+             "returnStep": 27,
+             "file": "/fixture/helper.py",
+             "fileId": 2,
+             "line": 1,
+             "inputs": [
+              {
+               "name": "value",
+               "text": "35.0"
+              },
+              {
+               "name": "sep",
+               "text": "'/'"
+              }
+             ],
+             "result": "'total/35.0'"
+            }
+           ],
+           "opaque": []
+          }
+         ],
+         "calls": [],
+         "opaque": [
+          "len(label)"
+         ]
+        }
+       ],
+       "calls": [],
+       "opaque": []
+      }
+     ],
+     "calls": [],
+     "opaque": []
+    },
+    "conclusion": "preferred is 'total/35.0' at #35 (main.py:34). The if arm ran: flag is True."
+   }
+  },
+  {
+   "file": "main.py",
+   "line": 35,
+   "occurrence": "first",
+   "name": "copy_of_label",
+   "depth": 5,
+   "step": 36,
+   "result": {
+    "name": "copy_of_label",
+    "step": 36,
+    "depth": 5,
+    "nodes": 9,
+    "truncated": false,
+    "recordedLocals": true,
+    "root": {
+     "name": "copy_of_label",
+     "text": "'total/35.0'",
+     "source": "locals",
+     "logId": "l-22",
+     "step": 36,
+     "file": "/fixture/main.py",
+     "fileId": 1,
+     "line": 35,
+     "function": "<module>",
+     "scopeId": 0,
+     "statement": "copy_of_label = label",
+     "reads": [
+      {
+       "name": "label",
+       "text": "'total/35.0'",
+       "source": "locals",
+       "logId": "l-16",
+       "step": 24,
+       "file": "/fixture/main.py",
+       "fileId": 1,
+       "line": 29,
+       "function": "<module>",
+       "scopeId": 0,
+       "statement": "label = helper.describe(total, os.sep)",
+       "reads": [
+        {
+         "name": "helper"
+        },
+        {
+         "name": "total",
+         "text": "35.0",
+         "source": "locals",
+         "logId": "l-15",
+         "step": 23,
+         "file": "/fixture/main.py",
+         "fileId": 1,
+         "line": 28,
+         "function": "<module>",
+         "scopeId": 0,
+         "statement": "total = sum(a.balance for a in [acct, Account(\"guest\", 5)])",
+         "reads": [
+          {
+           "name": "acct",
+           "text": "Account(owner='ivor', balance=30.0)",
+           "source": "value",
+           "logId": "l-14",
+           "step": 22,
+           "file": "/fixture/main.py",
+           "fileId": 1,
+           "line": 27,
+           "function": "<module>",
+           "scopeId": 0,
+           "statement": "acct  # ?+",
+           "reads": [
+            {
+             "name": "acct",
+             "text": "Account(owner='ivor', balance=0.0)",
+             "source": "locals",
+             "logId": "l-7",
+             "step": 10,
+             "file": "/fixture/main.py",
+             "fileId": 1,
+             "line": 24,
+             "function": "<module>",
+             "scopeId": 0,
+             "statement": "acct = Account(\"ivor\")",
+             "reads": [
+              {
+               "name": "Account"
+              }
+             ],
+             "calls": [],
+             "opaque": [
+              "Account(\"ivor\")"
+             ]
+            }
+           ],
+           "calls": [],
+           "opaque": []
+          },
+          {
+           "name": "Account"
+          }
+         ],
+         "calls": [],
+         "opaque": [
+          "sum(a.balance for a in [acct, Account(\"guest\", 5)])",
+          "Account(\"guest\", 5)"
+         ]
+        },
+        {
+         "name": "os"
+        }
+       ],
+       "calls": [
+        {
+         "name": "describe",
+         "scopeId": 5,
+         "entryStep": 25,
+         "returnStep": 27,
+         "file": "/fixture/helper.py",
+         "fileId": 2,
+         "line": 1,
+         "inputs": [
+          {
+           "name": "value",
+           "text": "35.0"
+          },
+          {
+           "name": "sep",
+           "text": "'/'"
+          }
+         ],
+         "result": "'total/35.0'"
+        }
+       ],
+       "opaque": []
+      }
+     ],
+     "calls": [],
+     "opaque": []
+    },
+    "conclusion": "copy_of_label is 'total/35.0' at #36 (main.py:35). It copies label, which has been 'total/35.0' since #24 (main.py:29)."
+   }
+  },
+  {
+   "file": "main.py",
+   "line": 37,
+   "occurrence": "first",
+   "name": "missing",
+   "depth": 5,
+   "step": 38,
+   "result": {
+    "name": "missing",
+    "step": 38,
+    "depth": 5,
+    "nodes": 2,
+    "truncated": false,
+    "recordedLocals": true,
+    "root": {
+     "name": "missing",
+     "text": "None",
+     "source": "locals",
+     "logId": "l-24",
+     "step": 38,
+     "file": "/fixture/main.py",
+     "fileId": 1,
+     "line": 37,
+     "function": "<module>",
+     "scopeId": 0,
+     "statement": "missing = settings.get(\"colour\")",
+     "reads": [
+      {
+       "name": "settings",
+       "text": "{'size': 3, 'theme': 'dark'}",
+       "source": "locals",
+       "logId": "l-23",
+       "step": 37,
+       "file": "/fixture/main.py",
+       "fileId": 1,
+       "line": 36,
+       "function": "<module>",
+       "scopeId": 0,
+       "statement": "settings = {\"theme\": \"dark\", \"size\": 3}",
+       "reads": [],
+       "calls": [],
+       "opaque": []
+      }
+     ],
+     "calls": [],
+     "opaque": [
+      "settings.get(\"colour\")"
+     ]
+    },
+    "conclusion": "missing is None at #38 (main.py:37). settings.get(\"colour\") is None: the key is not in settings (2 keys)."
+   }
+  },
+  {
+   "file": "main.py",
+   "line": 38,
+   "occurrence": "first",
+   "name": "absent",
+   "depth": 5,
+   "step": 39,
+   "result": {
+    "name": "absent",
+    "step": 39,
+    "depth": 5,
+    "nodes": 17,
+    "truncated": false,
+    "recordedLocals": true,
+    "root": {
+     "name": "absent",
+     "text": "None",
+     "source": "value",
+     "logId": "l-25",
+     "step": 39,
+     "file": "/fixture/main.py",
+     "fileId": 1,
+     "line": 38,
+     "function": "<module>",
+     "scopeId": 0,
+     "statement": "absent = label if count > 50 else None",
+     "reads": [
+      {
+       "name": "label",
+       "text": "'total/35.0'",
+       "source": "locals",
+       "logId": "l-16",
+       "step": 24,
+       "file": "/fixture/main.py",
+       "fileId": 1,
+       "line": 29,
+       "function": "<module>",
+       "scopeId": 0,
+       "statement": "label = helper.describe(total, os.sep)",
+       "reads": [
+        {
+         "name": "helper"
+        },
+        {
+         "name": "total",
+         "text": "35.0",
+         "source": "locals",
+         "logId": "l-15",
+         "step": 23,
+         "file": "/fixture/main.py",
+         "fileId": 1,
+         "line": 28,
+         "function": "<module>",
+         "scopeId": 0,
+         "statement": "total = sum(a.balance for a in [acct, Account(\"guest\", 5)])",
+         "reads": [
+          {
+           "name": "acct",
+           "text": "Account(owner='ivor', balance=30.0)",
+           "source": "value",
+           "logId": "l-14",
+           "step": 22,
+           "file": "/fixture/main.py",
+           "fileId": 1,
+           "line": 27,
+           "function": "<module>",
+           "scopeId": 0,
+           "statement": "acct  # ?+",
+           "reads": [
+            {
+             "name": "acct",
+             "text": "Account(owner='ivor', balance=0.0)",
+             "source": "locals",
+             "logId": "l-7",
+             "step": 10,
+             "file": "/fixture/main.py",
+             "fileId": 1,
+             "line": 24,
+             "function": "<module>",
+             "scopeId": 0,
+             "statement": "acct = Account(\"ivor\")",
+             "reads": [
+              {
+               "name": "Account"
+              }
+             ],
+             "calls": [],
+             "opaque": [
+              "Account(\"ivor\")"
+             ]
+            }
+           ],
+           "calls": [],
+           "opaque": []
+          },
+          {
+           "name": "Account"
+          }
+         ],
+         "calls": [],
+         "opaque": [
+          "sum(a.balance for a in [acct, Account(\"guest\", 5)])",
+          "Account(\"guest\", 5)"
+         ]
+        },
+        {
+         "name": "os"
+        }
+       ],
+       "calls": [
+        {
+         "name": "describe",
+         "scopeId": 5,
+         "entryStep": 25,
+         "returnStep": 27,
+         "file": "/fixture/helper.py",
+         "fileId": 2,
+         "line": 1,
+         "inputs": [
+          {
+           "name": "value",
+           "text": "35.0"
+          },
+          {
+           "name": "sep",
+           "text": "'/'"
+          }
+         ],
+         "result": "'total/35.0'"
+        }
+       ],
+       "opaque": []
+      },
+      {
+       "name": "count",
+       "text": "10",
+       "source": "locals",
+       "logId": "l-17",
+       "step": 28,
+       "file": "/fixture/main.py",
+       "fileId": 1,
+       "line": 30,
+       "function": "<module>",
+       "scopeId": 0,
+       "statement": "count = len(label)",
+       "reads": [
+        {
+         "name": "label",
+         "text": "'total/35.0'",
+         "source": "locals",
+         "logId": "l-16",
+         "step": 24,
+         "file": "/fixture/main.py",
+         "fileId": 1,
+         "line": 29,
+         "function": "<module>",
+         "scopeId": 0,
+         "statement": "label = helper.describe(total, os.sep)",
+         "reads": [
+          {
+           "name": "helper"
+          },
+          {
+           "name": "total",
+           "text": "35.0",
+           "source": "locals",
+           "logId": "l-15",
+           "step": 23,
+           "file": "/fixture/main.py",
+           "fileId": 1,
+           "line": 28,
+           "function": "<module>",
+           "scopeId": 0,
+           "statement": "total = sum(a.balance for a in [acct, Account(\"guest\", 5)])",
+           "reads": [
+            {
+             "name": "acct",
+             "text": "Account(owner='ivor', balance=30.0)",
+             "source": "value",
+             "logId": "l-14",
+             "step": 22,
+             "file": "/fixture/main.py",
+             "fileId": 1,
+             "line": 27,
+             "function": "<module>",
+             "scopeId": 0,
+             "statement": "acct  # ?+",
+             "reads": [
+              {
+               "name": "acct",
+               "text": "Account(owner='ivor', balance=0.0)",
+               "source": "locals",
+               "logId": "l-7",
+               "step": 10,
+               "file": "/fixture/main.py",
+               "fileId": 1,
+               "line": 24,
+               "function": "<module>",
+               "scopeId": 0,
+               "statement": "acct = Account(\"ivor\")",
+               "cut": true
+              }
+             ],
+             "calls": [],
+             "opaque": []
+            },
+            {
+             "name": "Account"
+            }
+           ],
+           "calls": [],
+           "opaque": [
+            "sum(a.balance for a in [acct, Account(\"guest\", 5)])",
+            "Account(\"guest\", 5)"
+           ]
+          },
+          {
+           "name": "os"
+          }
+         ],
+         "calls": [
+          {
+           "name": "describe",
+           "scopeId": 5,
+           "entryStep": 25,
+           "returnStep": 27,
+           "file": "/fixture/helper.py",
+           "fileId": 2,
+           "line": 1,
+           "inputs": [
+            {
+             "name": "value",
+             "text": "35.0"
+            },
+            {
+             "name": "sep",
+             "text": "'/'"
+            }
+           ],
+           "result": "'total/35.0'"
+          }
+         ],
+         "opaque": []
+        }
+       ],
+       "calls": [],
+       "opaque": [
+        "len(label)"
+       ]
+      }
+     ],
+     "calls": [],
+     "opaque": []
+    },
+    "conclusion": "absent is None at #39 (main.py:38). The else arm ran: count > 50 was false, since count is 10."
+   }
+  }
+ ]
+}

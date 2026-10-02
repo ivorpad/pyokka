@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Pyokka debugger: preview (paused at the frontier)</title>
+<style>
+  :root {
+    --bg: #1f1f1f; --panel: #181818; --border: #2b2b2b; --fg: #cccccc; --dim: #9d9d9d; --link: #4daafc;
+    --sel: #04395e; --hover: #2a2d2e; --name: #c586c0; --str: #ce9178; --bool: #4e94ce; --num: #b5cea8; --type: #4a90e2;
+    --err: #f88070; --back: #e5a44a; --forward: #5db0f0; --stop: #f28b82; --green: #4ec9b0; --yellow: #dcdcaa; --kw: #569cd6; --fn: #dcdcaa;
+    --frontier: #ffcc00; --mono: "SF Mono", Menlo, Monaco, "Courier New", monospace; --sans: -apple-system, "Segoe UI", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #111; color: var(--fg); font: 13px/1.45 var(--sans); }
+  .frame { width: 1600px; margin: 0 auto; background: var(--bg); }
+  .titlebar { height: 34px; background: #181818; border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 12px; gap: 14px; font-size: 12px; color: var(--dim); }
+  .titlebar b { color: var(--fg); font-weight: 600; }
+  .pill { border: 1px solid #3a3a3a; border-radius: 10px; padding: 1px 8px; color: var(--fg); background: #232323; }
+  .pill.paused { border-color: var(--frontier); color: var(--frontier); }
+  .main { display: grid; grid-template-columns: 840px 760px; height: 880px; }
+  /* editor */
+  .editor { border-right: 1px solid var(--border); position: relative; overflow: hidden; }
+  .tabs { height: 35px; background: #181818; border-bottom: 1px solid var(--border); display: flex; font-size: 12px; }
+  .tab { padding: 0 14px; display: flex; align-items: center; color: var(--dim); border-right: 1px solid var(--border); }
+  .tab.active { color: var(--fg); background: var(--bg); border-top: 1px solid #0078d4; }
+  .breadcrumb { height: 22px; font-size: 11px; color: var(--dim); padding: 3px 14px; }
+  .code { font: 12.5px/22px var(--mono); }
+  .line { display: grid; grid-template-columns: 22px 44px 12px 1fr; align-items: center; height: 22px; white-space: pre; }
+  .line.current { background: #2a2a12; box-shadow: inset 0 0 0 1px #4a4a1a; }
+  .gut { text-align: center; font-size: 10px; }
+  .bp { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #e51400; box-shadow: 0 0 0 2px #e5140033; }
+  .arrow { color: var(--frontier); font-size: 12px; }
+  .ln { color: #6e7681; text-align: right; padding-right: 6px; }
+  .cov { width: 6px; height: 14px; border-radius: 1px; justify-self: center; }
+  .cov.g { background: #2ea043; } .cov.n { background: #444; } .cov.y { background: #d29922; }
+  .src { padding-left: 8px; }
+  .kw { color: var(--kw); } .fn { color: var(--fn); } .st { color: var(--str); } .cm { color: #6a9955; } .nu { color: var(--num); } .bu { color: var(--bool); } .id { color: #9cdcfe; }
+  .inline { color: #8a8a8a; margin-left: 22px; font-size: 11.5px; }
+  .inline.live { color: #c8c8c8; }
+  .inline .x { color: var(--forward); font-size: 10px; margin-left: 4px; }
+  .inline .dimval { color: #6b6b6b; }
+  .hover { position: absolute; left: 330px; top: 372px; width: 470px; background: #252526; border: 1px solid #454545; box-shadow: 0 6px 18px #0009; border-radius: 4px; padding: 8px 10px; font-size: 12px; }
+  .hover .h { color: var(--dim); font-size: 11px; margin-bottom: 4px; }
+  .hover code { font: 12px var(--mono); color: var(--fg); }
+  .hover .foot { color: var(--dim); font-size: 11px; margin-top: 6px; border-top: 1px solid #3a3a3a; padding-top: 5px; }
+  .hover a { color: var(--link); text-decoration: none; margin-right: 12px; }
+  /* panel */
+  .panel { background: var(--panel); display: flex; flex-direction: column; overflow: hidden; position: relative; }
+  .ptitle { height: 35px; border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 12px; gap: 10px; font-size: 11px; letter-spacing: .04em; text-transform: uppercase; color: var(--dim); }
+  .ptitle b { color: var(--fg); }
+  .toolbar { display: flex; gap: 4px; margin-left: auto; }
+  .btn { width: 24px; height: 22px; border: 1px solid transparent; border-radius: 3px; display: grid; place-items: center; font-size: 12px; color: var(--fg); background: transparent; }
+  .btn.back { color: var(--back); } .btn.fwd { color: var(--forward); } .btn.stop { color: var(--stop); } .btn.go { color: #89d185; }
+  .btn.dis { color: #555; }
+  .status { padding: 8px 12px 6px; font-size: 12px; border-bottom: 1px solid var(--border); }
+  .status b { color: var(--frontier); }
+  .strip { position: relative; height: 34px; margin: 6px 12px 0; background: #202020; border: 1px solid var(--border); border-radius: 3px; overflow: hidden; }
+  .strip .rec { position: absolute; left: 0; top: 0; bottom: 0; width: 71%; background: repeating-linear-gradient(90deg, #2d3b4a 0 1px, transparent 1px 3px); }
+  .strip .err { position: absolute; top: 6px; bottom: 6px; width: 2px; background: var(--err); }
+  .strip .front { position: absolute; left: calc(71% - 1px); top: 0; bottom: 0; width: 2px; background: var(--frontier); box-shadow: 0 0 6px var(--frontier); }
+  .strip .ahead { position: absolute; left: 71%; right: 0; top: 0; bottom: 0; background: repeating-linear-gradient(90deg, transparent 0 6px, #2a2a2a 6px 8px); }
+  .strip .lbl { position: absolute; font: 10px var(--mono); color: var(--dim); top: 10px; }
+  .strip .lbl.f { color: var(--frontier); left: calc(71% + 6px); }
+  .strip .lbl.a { right: 8px; color: #666; }
+  .stripcap { display: flex; justify-content: space-between; padding: 3px 12px 6px; font: 10.5px var(--mono); color: var(--dim); }
+  .sec { border-top: 1px solid var(--border); }
+  .sech { font-size: 10.5px; letter-spacing: .05em; text-transform: uppercase; color: var(--dim); padding: 7px 12px 4px; display: flex; align-items: center; gap: 8px; }
+  .sech .r { margin-left: auto; text-transform: none; letter-spacing: 0; font-size: 11px; color: var(--link); }
+  .rows { font: 12px/20px var(--mono); padding: 0 12px 6px; }
+  .row { display: flex; gap: 8px; white-space: pre; align-items: baseline; }
+  .row.cur { background: #ffffff10; margin: 0 -6px; padding: 0 6px; border-radius: 3px; }
+  .n { color: var(--name); } .v { color: var(--fg); } .t { color: var(--type); font-size: 11px; } .d { color: var(--dim); } .why { color: var(--link); font-size: 11px; margin-left: 6px; }
+  table.tbl { border-collapse: collapse; font: 11.5px/18px var(--mono); margin: 2px 0 4px 18px; }
+  .tbl th { text-align: left; color: var(--dim); font-weight: normal; border-bottom: 1px solid var(--border); padding: 0 12px 2px 0; }
+  .tbl td { padding: 0 12px 0 0; white-space: nowrap; }
+  .tbl tr.cur td { background: #ffffff12; }
+  .tbl tr.cur td:first-child { color: var(--frontier); }
+  .bar { display: inline-block; height: 8px; background: #2f6fa5; vertical-align: middle; margin-right: 6px; border-radius: 1px; }
+  .none { color: var(--bool); }
+  .more { color: var(--dim); font-size: 11px; padding-left: 18px; }
+  .watch { display: grid; grid-template-columns: 26px 1fr auto; gap: 8px; font: 12px/21px var(--mono); padding: 0 12px; }
+  .watch .id { color: var(--dim); }
+  .watch .fire { color: var(--frontier); font-size: 11px; }
+  .tree { font: 11.5px/19px var(--mono); padding: 2px 12px 10px; white-space: pre; }
+  .tree .loc { color: var(--dim); }
+  .tree .cause { color: var(--fg); }
+  .tree .k { color: var(--frontier); }
+  .concl { margin: 0 12px 10px; padding: 8px 10px; background: #23231a; border-left: 3px solid var(--frontier); font-size: 12px; line-height: 1.45; }
+  /* terminal */
+  .term { height: 340px; background: #0f0f0f; border-top: 1px solid var(--border); font: 12px/18px var(--mono); padding: 10px 14px; position: relative; white-space: pre; overflow: hidden; }
+  .term .p { color: #89d185; } .term .c { color: #e8e8e8; } .term .o { color: #bdbdbd; } .term .hl { color: var(--frontier); } .term .dm { color: #777; }
+  .term .cap { position: absolute; right: 16px; top: 10px; font: 11px var(--sans); color: var(--dim); text-align: right; white-space: normal; width: 300px; }
+  /* callouts */
+  .co { position: absolute; width: 20px; height: 20px; border-radius: 50%; background: var(--frontier); color: #111; font: 700 12px/20px var(--sans); text-align: center; box-shadow: 0 0 0 3px #1f1f1f; }
+  .legend { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; padding: 12px 16px 16px; background: #141414; border-top: 1px solid var(--border); font-size: 11.5px; line-height: 1.4; color: #bdbdbd; }
+  .legend .co { position: static; display: inline-block; margin-right: 6px; box-shadow: none; vertical-align: -3px; }
+</style>
+</head>
+<body>
+<div class="frame">
+  <div class="titlebar"><b>Pyokka</b> <span class="pill paused">Debug · paused</span> <span>agent/rank.py:656</span> <span class="pill">HTTP Replay</span> <span class="pill">Record Variable Changes</span> <span style="margin-left:auto">build 2026-09-14 · watch w1 turned true</span></div>
+
+  <div class="main">
+    <div class="editor">
+      <div class="tabs"><div class="tab">agent.py</div><div class="tab active">rank.py</div><div class="tab">parents.py</div></div>
+      <div class="breadcrumb">wave_ux_designagent › agent › rank.py › rank_parents</div>
+      <div class="code">
+        <div class="line"><span class="gut"></span><span class="ln">648</span><span class="cov g"></span><span class="src"><span class="kw">def</span> <span class="fn">rank_parents</span>(parent_items, catalog, query):</span></div>
+        <div class="line"><span class="gut"></span><span class="ln">649</span><span class="cov g"></span><span class="src">    <span class="st">"""Score each (candidate, entry) pair; keep the patron's preferred layout."""</span></span></div>
+        <div class="line"><span class="gut"></span><span class="ln">650</span><span class="cov g"></span><span class="src">    ranked = []<span class="inline dimval">ranked = []</span></span></div>
+        <div class="line"><span class="gut"></span><span class="ln">651</span><span class="cov g"></span><span class="src">    <span class="kw">for</span> candidate, entry <span class="kw">in</span> parent_items:<span class="inline live">candidate = {'path': 'components/form_input_search.yaml', …} · entry = {}<span class="x">×4</span></span></span></div>
+        <div class="line"><span class="gut"></span><span class="ln">652</span><span class="cov g"></span><span class="src">        score = blend(candidate[<span class="st">"score"</span>], candidate[<span class="st">"retrieval_score"</span>])<span class="inline live">score = 0.5833<span class="x">×4</span></span></span></div>
+        <div class="line"><span class="gut"></span><span class="ln">653</span><span class="cov y"></span><span class="src">        item = entry <span class="kw">if</span> entry <span class="kw">else</span> candidate<span class="inline live">item = candidate  <span class="dimval">(entry is {} → falsy)</span><span class="x">×4</span></span></span></div>
+        <div class="line"><span class="gut"></span><span class="ln">654</span><span class="cov g"></span><span class="src">        is_preferred = item.get(<span class="st">"patron"</span>) == query.patron<span class="inline live">is_preferred = False  <span class="dimval">None == 'LIBRE'</span><span class="x">×4</span></span></span></div>
+        <div class="line"><span class="gut"></span><span class="ln">655</span><span class="cov y"></span><span class="src">        normalized_preferred = normalize(item) <span class="kw">if</span> is_preferred <span class="kw">else</span> <span class="bu">None</span><span class="inline live">normalized_preferred = None  <span class="dimval">1–3: {'layout': …}</span><span class="x">×4</span></span></span></div>
+        <div class="line current"><span class="gut"><span class="bp"></span> <span class="arrow">▶</span></span><span class="ln">656</span><span class="cov g"></span><span class="src">        ranked.append((score, item, normalized_preferred))<span class="inline dimval">paused before this statement · step 3 412</span></span></div>
+        <div class="line"><span class="gut"></span><span class="ln">657</span><span class="cov g"></span><span class="src">    <span class="kw">return</span> <span class="fn">sorted</span>(ranked, key=<span class="kw">lambda</span> r: r[0], reverse=<span class="bu">True</span>)<span class="inline dimval">not run yet</span></span></div>
+        <div class="line"><span class="gut"></span><span class="ln">658</span><span class="cov n"></span><span class="src"></span></div>
+        <div class="line"><span class="gut"></span><span class="ln">659</span><span class="cov n"></span><span class="src"><span class="kw">def</span> <span class="fn">normalize</span>(item):<span class="inline dimval">3 calls · last returned {'layout': 'list_contact_long', …}</span></span></div>
+        <div class="line"><span class="gut"></span><span class="ln">660</span><span class="cov n"></span><span class="src">    layout = item[<span class="st">"path"</span>].split(<span class="st">"/"</span>)[-1].removesuffix(<span class="st">".yaml"</span>)</span></div>
+        <div class="line"><span class="gut"></span><span class="ln">661</span><span class="cov n"></span><span class="src">    <span class="kw">return</span> {<span class="st">"layout"</span>: layout, <span class="st">"patron"</span>: item[<span class="st">"patron"</span>], <span class="st">"score"</span>: item[<span class="st">"score"</span>]}</span></div>
+        <div class="line"><span class="gut"></span><span class="ln">662</span><span class="cov n"></span><span class="src"></span></div>
+        <div class="line"><span class="gut"></span><span class="ln">663</span><span class="cov n"></span><span class="src"><span class="cm"># agents write this loop in one shot; nobody reads 38 dicts to find the None</span></span></div>
+      </div>
+      <div class="hover">
+        <div class="h">item · live at the frontier (step 3 412) · in rank_parents</div>
+        <code>{'path': 'components/form_input_search.yaml', 'score': 0.583333,<br>&nbsp;'retrieval_score': 0.583333, 'patron': None, 'kind': 'component'}</code>
+        <div class="foot"><a href="#">Why this value</a><a href="#">Add watch</a><a href="#">Show in table</a> <span style="float:right">same object as <b>candidate</b></span></div>
+      </div>
+            <span class="co" style="left:800px; top:330px">2</span>
+    </div>
+
+    <div class="panel">
+      <div class="ptitle"><b>Debugger</b> <span>rank.py</span>
+        <div class="toolbar"><span class="btn back">⏮</span><span class="btn back">↶</span><span class="btn go">▶</span><span class="btn fwd">↷</span><span class="btn fwd">↓</span><span class="btn fwd">↑</span><span class="btn dis">⏸</span><span class="btn stop">■</span></div>
+      </div>
+      <div class="status">Paused at <b>rank.py:656</b> · watch <b>w1</b> <span class="d">normalized_preferred is None</span> turned true · step 3 412 · pass 4 of the loop · behind the frontier the recording replays, ahead nothing has run</div>
+      <div class="strip"><div class="rec"></div><div class="err" style="left:12%"></div><div class="err" style="left:39%"></div><div class="front"></div><div class="ahead"></div><span class="lbl" style="left:6px">0</span><span class="lbl" style="left:34%">rank_parents · 3 240</span><span class="lbl f">3 412 frontier</span><span class="lbl a">not run yet</span></div>
+      <div class="stripcap"><span>agent.py › main › load_parents (1 203) › rank_parents</span><span>◂ back replays · ▸ forward executes</span></div>
+
+      <div class="sec">
+        <div class="sech">Step variables <span class="d">· live frame · rank_parents</span><span class="r">record all ▾</span></div>
+        <div class="rows">
+          <div class="row"><span class="n">parent_items</span><span class="t">list · 38 × (dict, dict)</span><span class="d">homogeneous → table</span><span class="why">expand</span></div>
+        </div>
+        <table class="tbl">
+          <tr><th>#</th><th>[0].path</th><th>[0].score</th><th>[0].retrieval_score</th><th>[0].patron</th><th style="white-space:nowrap">entry [1]</th></tr>
+          <tr><td>0</td><td>components/form_input_contact.yaml</td><td><span class="bar" style="width:60px"></span>1.0</td><td>1.0</td><td class="st">'LIBRE'</td><td>{4 keys}</td></tr>
+          <tr><td>1</td><td>components/expandable_accordion.yaml</td><td><span class="bar" style="width:60px"></span>1.0</td><td>1.0</td><td class="st">'LIBRE'</td><td>{4 keys}</td></tr>
+          <tr><td>2</td><td>components/panel_photo.yaml</td><td><span class="bar" style="width:36px"></span>0.6</td><td>0.6</td><td class="st">'LIBRE'</td><td>{4 keys}</td></tr>
+          <tr class="cur"><td>3 ▶</td><td>components/form_input_search.yaml</td><td><span class="bar" style="width:35px"></span>0.583333</td><td>0.583333</td><td class="none">None</td><td class="none">{}</td></tr>
+          <tr><td>4</td><td>components/type_link_icon.yaml</td><td><span class="bar" style="width:60px"></span>1.0</td><td>1.0</td><td class="none">None</td><td class="none">{}</td></tr>
+          <tr><td>5</td><td>components/type_link_default.yaml</td><td><span class="bar" style="width:35px"></span>0.583333</td><td>0.583333</td><td class="none">None</td><td class="none">{}</td></tr>
+        </table>
+        <div class="more">… 32 more rows · 31 of 38 have an empty entry and no patron · sort by any column · every cell expands</div>
+        <div class="rows" style="padding-top:4px">
+          <div class="row"><span class="n">candidate</span><span class="t">dict · 5</span><span class="v">{'path': 'components/form_input_search.yaml', 'score': 0.583333, 'patron': None, …}</span></div>
+          <div class="row"><span class="n">entry</span><span class="t">dict · 0</span><span class="v">{}</span><span class="d">← catalog.get(path, {}) at parents.py:74</span></div>
+          <div class="row"><span class="n">item</span><span class="t">dict</span><span class="d">= candidate  (same object)</span></div>
+          <div class="row"><span class="n">is_preferred</span><span class="t">bool</span><span class="bu">False</span></div>
+          <div class="row cur"><span class="n">normalized_preferred</span><span class="t">NoneType</span><span class="none">None</span><span class="why">why?</span></div>
+          <div class="row"><span class="n">ranked</span><span class="t">list · 3</span><span class="v">[(1.0, {…}, {…}), (1.0, {…}, {…}), (0.6, {…}, {…})]</span></div>
+        </div>
+      </div>
+
+      <div class="sec">
+        <div class="sech">Watches <span class="d">· evaluated in the live frame, no re-run</span><span class="r">+ add</span></div>
+        <div class="watch"><span class="id">w1</span><span><span class="v">normalized_preferred is None</span> <span class="d">→</span> <span class="bu">True</span></span><span class="fire">break when true · fired here</span></div>
+        <div class="watch"><span class="id">w2</span><span><span class="v">item.get("patron")</span> <span class="d">→</span> <span class="none">None</span></span><span class="d"></span></div>
+        <div class="watch"><span class="id">w3</span><span><span class="v">query.patron</span> <span class="d">→</span> <span class="st">'LIBRE'</span></span><span class="d"></span></div>
+        <div class="watch"><span class="id">w4</span><span><span class="v">sum(1 for _, e in parent_items if not e)</span> <span class="d">→</span> <span class="nu">31</span></span><span class="d">of 38</span></div>
+      </div>
+
+      <div class="sec">
+        <div class="sech">Why is <span style="color:var(--name);text-transform:none;letter-spacing:0">normalized_preferred</span> None? <span class="d">· at step 3 411 · from the recording</span><span class="r">open in Code Story</span></div>
+        <div class="tree"><span class="cause">normalized_preferred = None</span>                     <span class="loc">rank.py:655 · #3411 · else arm: is_preferred is False</span>
+<span class="k">└─</span> <span class="cause">is_preferred = item.get("patron") == query.patron</span> <span class="loc">rank.py:654 · #3410 · None == 'LIBRE'</span>
+   <span class="k">├─</span> <span class="cause">item = candidate</span>                                <span class="loc">rank.py:653 · #3409 · entry was {} → falsy</span>
+   <span class="k">│</span>  <span class="k">└─</span> <span class="cause">entry = parent_items[3][1] = {}</span>            <span class="loc">rank.py:651 · #3408</span>
+   <span class="k">│</span>     <span class="k">└─</span> <span class="cause">entry = catalog.get(candidate["path"], {})</span> <span class="loc">parents.py:74 · #1203 · key missing</span>
+   <span class="k">│</span>        <span class="k">└─</span> <span class="cause">catalog = load_catalog(root)</span>          <span class="loc">agent.py:31 · #9 · 38 layouts, 0 components</span>
+   <span class="k">└─</span> <span class="cause">query.patron = 'LIBRE'</span>                          <span class="loc">agent.py:41 · #12</span></div>
+        <div class="concl">None because <b>components/form_input_search.yaml</b> has no entry in the catalog, so <code>item</code> fell back to the candidate, which carries no <code>patron</code>. The catalog loaded 38 layouts and no components: 31 of the 38 pairs are in this state, and this is the first one to reach ranking.</div>
+      </div>
+      <span class="co" style="left:528px; top:118px">1</span>
+      <span class="co" style="right:110px; top:150px">3</span>
+      <span class="co" style="right:150px; top:600px">4</span>
+    </div>
+  </div>
+
+  <div class="term"><span class="p">$</span> <span class="c">pyokka watches --live --add "normalized_preferred is None" --break-when true</span>
+<span class="o">w1  normalized_preferred is None   break when true</span>
+<span class="p">$</span> <span class="c">pyokka continue --live</span>
+<span class="hl">paused at agent/rank.py:656 (watch w1: True) · step 3412 · rank_parents ‹ load_parents ‹ main</span>
+<span class="o">  653 │ item = entry if entry else candidate                    #3409  item = {'path': 'components/form_input_search.yaml', …}
+  654 │ is_preferred = item.get("patron") == query.patron       #3410  is_preferred = False
+  655 │ normalized_preferred = normalize(item) if is_preferred else None   #3411  normalized_preferred = None
+<span class="hl">&gt; 656 │ ranked.append((score, item, normalized_preferred))</span>
+locals: candidate {5 keys} · entry {} · score 0.5833 · item = candidate · is_preferred False · normalized_preferred None · ranked [3]
+moves: into 3413 · over 3413 · out 3451 · back 3411</span>
+<span class="p">$</span> <span class="c">pyokka why --live normalized_preferred</span>
+<span class="o">normalized_preferred is None at #3411 (rank.py:655): the else arm, is_preferred is False
+  is_preferred = item.get("patron") == query.patron → None == 'LIBRE'      rank.py:654 #3410
+  item = candidate: entry was {}                                            rank.py:653 #3409
+  entry = catalog.get('components/form_input_search.yaml', {}) → missing   parents.py:74 #1203
+  catalog = load_catalog(root) → 38 layouts, 0 components                   agent.py:31 #9</span>
+<span class="dm">every stop moved the editor and the panel above; the human watched the agent get there</span>
+    <div class="cap">The agent works the same debugger through the CLI. One-shot commands, JSON with --json, MCP later.</div>
+    <span class="co" style="right:330px; top:12px">5</span>
+  </div>
+
+  <div class="legend">
+    <div><span class="co">1</span><b>The frontier.</b> The run is paused before line 656. Behind it every step is recorded and the Time Machine replays; ahead nothing has run. Back moves replay, forward moves execute.</div>
+    <div><span class="co">2</span><b>Values follow the step.</b> This pass in full, earlier passes dimmed with ×n. Hovering evaluates in the live frame with no re-run, and says when two names are the same object.</div>
+    <div><span class="co">3</span><b>A list of 38 dicts is a table.</b> Homogeneous collections render as columns with the current row marked and counts that matter, instead of 38 truncated reprs ending in "View".</div>
+    <div><span class="co">4</span><b>Why, as a tree.</b> From the None back to the entry point: one line per cause, each a link to its step, and a one-paragraph reason at the end. Not prose from a model.</div>
+    <div><span class="co">5</span><b>Agents drive it.</b> Break-when watches stop the run where a value goes wrong; continue, step, locals and why over the same recording. Every stop is mirrored in the editor.</div>
+  </div>
+</div>
+</body>
+</html>

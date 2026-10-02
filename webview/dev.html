@@ -1,0 +1,360 @@
+<!doctype html>
+<!--
+  Pyokka panel dev harness. Serve the repo root over http (module workers need a real origin), e.g.
+    python3 -m http.server 8765
+  then open http://localhost:8765/webview/dev.html[#debugger|#debugger,paused|#light|#diagram|#settings|#variable|#http|#tree|#hc]
+  Build first: node esbuild.mjs (the webview part is enough).
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Pyokka panel (dev)</title>
+<style>
+  /* Dark Modern approximation of the variables VS Code injects into webviews */
+  :root {
+    --vscode-font-family: -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", system-ui, "Ubuntu", "Droid Sans", sans-serif;
+    --vscode-font-size: 13px;
+    --vscode-editor-font-family: "SF Mono", Menlo, Monaco, "Courier New", monospace;
+    --vscode-editor-font-size: 12px;
+    --vscode-foreground: #cccccc;
+    --vscode-descriptionForeground: #9d9d9d;
+    --vscode-errorForeground: #f88070;
+    --vscode-focusBorder: #0078d4;
+    --vscode-icon-foreground: #cccccc;
+    --vscode-panel-background: #181818;
+    --vscode-panel-border: #2b2b2b;
+    --vscode-panelTitle-activeForeground: #cccccc;
+    --vscode-editor-background: #1f1f1f;
+    --vscode-editor-foreground: #cccccc;
+    --vscode-textLink-foreground: #4daafc;
+    --vscode-list-hoverBackground: #2a2d2e;
+    --vscode-list-activeSelectionBackground: #04395e;
+    --vscode-list-activeSelectionForeground: #ffffff;
+    --vscode-list-inactiveSelectionBackground: #37373d;
+    --vscode-toolbar-hoverBackground: rgba(90, 93, 94, 0.31);
+    --vscode-toolbar-activeBackground: rgba(99, 102, 103, 0.31);
+    --vscode-menu-background: #1f1f1f;
+    --vscode-menu-foreground: #cccccc;
+    --vscode-menu-border: #454545;
+    --vscode-menu-selectionBackground: #0078d4;
+    --vscode-menu-selectionForeground: #ffffff;
+    --vscode-widget-shadow: rgba(0, 0, 0, 0.36);
+    --vscode-widget-border: #313131;
+    --vscode-checkbox-background: #313131;
+    --vscode-checkbox-border: #3c3c3c;
+    --vscode-dropdown-background: #313131;
+    --vscode-dropdown-border: #3c3c3c;
+    --vscode-dropdown-foreground: #cccccc;
+    --vscode-sash-hoverBorder: #0078d4;
+    --vscode-editorWidget-background: #202020;
+    --vscode-editorWidget-border: #454545;
+    --vscode-editorHoverWidget-background: #202020;
+    --vscode-editorHoverWidget-border: #454545;
+    --vscode-editorLineNumber-foreground: #6e7681;
+    --vscode-editorLineNumber-activeForeground: #cccccc;
+    --vscode-debugTokenExpression-name: #c586c0;
+    --vscode-debugTokenExpression-value: rgba(204, 204, 204, 0.6);
+    --vscode-debugTokenExpression-string: #ce9178;
+    --vscode-debugTokenExpression-boolean: #4e94ce;
+    --vscode-debugTokenExpression-number: #b5cea8;
+    --vscode-debugTokenExpression-type: #4a90e2;
+    --vscode-debugTokenExpression-error: #f48771;
+  }
+  body.light {
+    --vscode-foreground: #3b3b3b;
+    --vscode-descriptionForeground: #717171;
+    --vscode-errorForeground: #f85149;
+    --vscode-icon-foreground: #3b3b3b;
+    --vscode-panel-background: #f8f8f8;
+    --vscode-panel-border: #e5e5e5;
+    --vscode-panelTitle-activeForeground: #3b3b3b;
+    --vscode-editor-background: #ffffff;
+    --vscode-editor-foreground: #3b3b3b;
+    --vscode-textLink-foreground: #005fb8;
+    --vscode-list-hoverBackground: #f2f2f2;
+    --vscode-list-activeSelectionBackground: #e8e8e8;
+    --vscode-list-activeSelectionForeground: #000000;
+    --vscode-list-inactiveSelectionBackground: #e4e6f1;
+    --vscode-menu-background: #ffffff;
+    --vscode-menu-foreground: #3b3b3b;
+    --vscode-menu-border: #cecece;
+    --vscode-menu-selectionBackground: #005fb8;
+    --vscode-checkbox-background: #f8f8f8;
+    --vscode-checkbox-border: #cecece;
+    --vscode-dropdown-background: #ffffff;
+    --vscode-dropdown-border: #cecece;
+    --vscode-dropdown-foreground: #3b3b3b;
+    --vscode-editorWidget-background: #f8f8f8;
+    --vscode-editorWidget-border: #c8c8c8;
+    --vscode-editorHoverWidget-background: #f8f8f8;
+    --vscode-editorHoverWidget-border: #c8c8c8;
+    --vscode-debugTokenExpression-name: #9b46b0;
+    --vscode-debugTokenExpression-string: #a31515;
+    --vscode-debugTokenExpression-boolean: #0000ff;
+    --vscode-debugTokenExpression-number: #098658;
+    --vscode-debugTokenExpression-type: #4a90e2;
+  }
+  html, body { height: 100%; margin: 0; }
+  #root { height: 100%; }
+</style>
+<link rel="stylesheet" href="../dist/webview/panel.css" />
+</head>
+<body>
+<div id="root"></div>
+<script>
+  // ---- fake VS Code API -------------------------------------------------
+  const hash = new Set(location.hash.replace('#', '').split(',').filter(Boolean));
+  if (hash.has('light')) document.body.classList.add('light');
+  window.__pyokka = {
+    workerUri: new URL('../dist/webview/editor.worker.js', location.href).href,
+    codiconsUri: new URL('../node_modules/@vscode/codicons/dist/codicon.css', location.href).href,
+  };
+  const sent = [];
+  let uiState = undefined;
+  window.__sent = sent;
+  window.acquireVsCodeApi = () => ({
+    postMessage: (m) => { sent.push(m); console.log('[webview -> host]', JSON.stringify(m).slice(0, 200)); handle(m); },
+    getState: () => uiState,
+    setState: (s) => { uiState = s; },
+  });
+  const send = (m) => window.postMessage(m, '*');
+  window.__host = { send };
+
+  // ---- fixture -----------------------------------------------------------
+  const FILE = 'demo.py';
+  const rt = 'r1';
+  let vid = 0;
+  const registry = new Map();
+  const node = (type, value, extra = {}) => { const n = { id: `v${++vid}`, queryPath: extra.queryPath ?? [String(vid)], type, value, ...extra }; registry.set(n.id, n); return n; };
+  const prop = (name, n, keyRepr) => ({ ...n, name, ...(keyRepr ? { keyRepr } : {}) });
+  const dict = (entries, extra = {}) => node('dict', undefined, { length: entries.length, props: entries.map(([k, v]) => prop(k, v, `'${k}'`)), ...extra });
+  const list = (items, extra = {}) => node('list', undefined, { length: items.length, props: items.map((v, i) => prop(String(i), v)), ...extra });
+  const inst = (cls, entries, extra = {}) => node(cls, undefined, { props: entries.map(([k, v]) => prop(k, v)), ...extra });
+  const str = (s, extra = {}) => node('str', s, { length: s.length, ...extra });
+  const num = (n) => node('number', String(n));
+  const bool = (b) => node('bool', b ? 'True' : 'False');
+  const none = () => node('None', 'None');
+
+  const point = (x, y) => inst('Point', [['x', num(x)], ['y', num(y)]]);
+  const rect = (w, h, px, py) => inst('Rectangle', [['width', num(w)], ['height', num(h)], ['position', point(px, py)]]);
+  const bigList = list(Array.from({ length: 12 }, (_, i) => num(i * i)), { cappedElements: true, length: 40 });
+  const owner = dict([['name', str('Marty McFly')], ['license', str('CA-2015-MCF')], ['isActive', bool(true)], ['balance', str('$1231450.00')], ['age', num(17)], ['phone', str('+1 (555) 555-1985')]]);
+  const car = inst('Car', [['vin', str('1DEMC12A1985')], ['owner', owner], ['engine', dict([['volume', num(10)], ['spec', dict([['make', str('DeLorean')], ['model', str('DMC-12')], ['type', str('V6')], ['displacement', str('2.85L')]])]])], ['mileage', num(0)], ['transmission', node('dict', '{…}', { expandable: true, length: 2 })], ['history', bigList], ['speed', num(0)]]);
+  const memory = dict([['rss', num(77955072)], ['heapTotal', num(27983872)], ['heapUsed', num(21560616)], ['external', num(6562737)], ['arrayBuffers', num(156494)]]);
+
+  const entries = [
+    { logId: 'l1', kind: 'log', fileId: 1, file: FILE, line: 10, col: 1, rid: 3, hit: 1, step: 4, context: 'pyokka', text: "{'is_awesome': True, 'python_version': '3.12.4'}", runtimeKey: 'k10', valueBag: { runtimeKey: 'k10', data: dict([['is_awesome', bool(true)], ['python_version', str('3.12.4')]]) } },
+    { logId: 'l2', kind: 'value', fileId: 1, file: FILE, line: 13, col: 1, rid: 5, hit: 1, step: 6, context: 'pyokka', text: "{'is_awesome': True, 'python_version': '3.12.4'}", runtimeKey: 'k13', valueBag: { runtimeKey: 'k13', data: dict([['is_awesome', bool(true)], ['python_version', str('3.12.4')]]) } },
+    { logId: 'l3', kind: 'value', fileId: 1, file: FILE, line: 17, col: 1, rid: 7, hit: 1, step: 8, context: 'working_dir', text: "'/path/to/project'", runtimeKey: 'k17', valueBag: { runtimeKey: 'k17', data: str('/path/to/project') } },
+    { logId: 'l4', kind: 'value', fileId: 1, file: FILE, line: 19, col: 1, rid: 9, hit: 1, step: 10, context: 'memory_usage()', text: "{'rss': 77955072, 'heapTotal': 27983872, 'heapUsed': 21560616, 'external': 6562737, ...}", runtimeKey: 'k19', valueBag: { runtimeKey: 'k19', data: memory } },
+    { logId: 'l5', kind: 'log', fileId: 1, file: FILE, line: 27, col: 1, rid: 12, hit: 1, step: 14, text: "['partial_coverage', False]", runtimeKey: 'k27', valueBag: { runtimeKey: 'k27', data: list([str('partial_coverage'), bool(false)]) } },
+    { logId: 'l6', kind: 'log', fileId: 1, file: FILE, line: 110, col: 1, rid: 40, hit: 2, step: 120, text: "{'msg': 'Do rectangles overlap? True', 'rect1': Rectangle(width=50, height=20, position=Point(...)), 'rect2': Rectangle(...)}", runtimeKey: 'k110', valueBag: { runtimeKey: 'k110', data: dict([['msg', str('Do rectangles overlap? True')], ['rect1', rect(50, 20, 10, 10)], ['rect2', rect(30, 30, 40, 15)]]) } },
+    { logId: 'l7', kind: 'log', fileId: 1, file: FILE, line: 111, col: 1, rid: 41, hit: 1, step: 130, text: "{'msg': 'Is point_a inside rect1? False', 'rect1': Rectangle(width=50, height=20, position=Point(...)), 'point': Point(x=5, y=10)}", runtimeKey: 'k111', valueBag: { runtimeKey: 'k111', data: dict([['msg', str('Is point_a inside rect1? False')], ['rect1', rect(50, 20, 10, 10)], ['point', point(5, 10)]]) } },
+    { logId: 'l8', kind: 'log', fileId: 1, file: FILE, line: 142, col: 1, rid: 50, hit: 2, step: 140, context: 'delorean', text: "Car(vin='1DEMC12A1985', owner={'name': 'Marty McFly', ...}, engine={'volume': 10, 'spec': {...}}, mileage=0, ...)", runtimeKey: 'k142', valueBag: { runtimeKey: 'k142', data: car } },
+    { logId: 'l9', kind: 'time', fileId: 1, file: FILE, line: 150, col: 1, rid: 55, hit: 3, step: 146, context: 'slow()', text: 'Σ 12.345ms, μ 4.115ms, ⋀ 3.9ms, ⋁ 4.4ms, n=3', runtimeKey: 'k150', time: { n: 3, total: 12.345, min: 3.9, max: 4.4 } },
+  ];
+  const errors = [
+    { type: 'error', runId: rt, seq: 99, fileId: 1, rid: 60, step: 141, message: 'Kaboom! This is just a test error.', errorType: 'RuntimeError', handled: false, file: FILE, line: 119, col: 5,
+      stack: [{ fileId: 1, line: 119, col: 5, function: 'explode' }, { fileId: 1, line: 152, col: 1, function: '<module>' }] },
+  ];
+
+  // ~150 steps over 6 scopes
+  const scopesDef = [
+    { scopeId: 0, name: '<module>', depth: 0 },
+    { scopeId: 1, name: 'Point.__init__', depth: 1 },
+    { scopeId: 2, name: 'Rectangle.__init__', depth: 1 },
+    { scopeId: 3, name: 'rectangles_overlap', depth: 1 },
+    { scopeId: 4, name: 'Rectangle.contains', depth: 1 },
+    { scopeId: 5, name: 'distance', depth: 2 },
+  ];
+  const plan = [
+    [0, 8, 12], [1, 47, 3], [0, 104, 1], [1, 47, 3], [0, 105, 1], [2, 60, 4], [1, 47, 3], [0, 107, 1], [2, 60, 4], [1, 47, 3], [0, 108, 1],
+    [3, 96, 6], [0, 110, 1], [4, 81, 4], [0, 111, 1], [5, 52, 6], [0, 112, 1], [0, 114, 20], [3, 96, 6], [0, 130, 8], [2, 60, 4], [1, 47, 3], [0, 140, 10], [5, 52, 6], [4, 81, 4], [0, 116, 12], [1, 47, 3], [0, 118, 3], [5, 52, 6], [0, 152, 2],
+  ];
+  const scopeIds = [], flags = [], lines = [], cols = [], fileIds = [], depths = [];
+  const scopes = scopesDef.map((s) => ({ ...s, rid: s.scopeId * 10, parent: s.depth === 0 ? -1 : 0, first: -1, last: -1 }));
+  for (const [sid, startLine, count] of plan) {
+    for (let i = 0; i < count; i++) {
+      const idx = scopeIds.length;
+      scopeIds.push(sid); lines.push(startLine + i); cols.push(i === 0 ? 1 : 5); fileIds.push(1); depths.push(scopesDef[sid].depth);
+      flags.push(i === 0 && sid !== 0 ? 4 : 0);
+      if (scopes[sid].first < 0) scopes[sid].first = idx;
+      scopes[sid].last = idx;
+    }
+  }
+  const logSteps = new Set([4, 6, 8, 10, 14, 120, 130, 140, 146]);
+  for (const s of logSteps) if (s < flags.length) flags[s] |= 1;
+  flags[flags.length - 1] |= 2; // error on the last step
+  if (flags.length > 40) { flags[40] |= 8; flags[41] |= 8; } // no code mapping
+  const stepCount = scopeIds.length;
+  const timeline = { stepCount, scopeIds, flags, lines, cols, fileIds, scopes, functionColors: { 0: 3, 1: 0, 2: 1, 3: 2, 4: 4, 5: 5 }, truncated: false, lockedBefore: 12 };
+  window.__timeline = timeline;
+
+  let current = 62;
+  const echoFor = (step) => { const out = []; for (let i = 0; i < stepCount; i++) if (i !== step && lines[i] === lines[step] && scopeIds[i] === scopeIds[step]) out.push(i); return out; };
+  const stackFor = (step) => {
+    const frames = [];
+    const sid = scopeIds[step];
+    frames.push({ fileId: 1, line: lines[step], col: cols[step], function: scopesDef[sid].name, step, scopeId: sid });
+    if (sid !== 0) {
+      // find the module step that called us
+      let j = step; while (j > 0 && scopeIds[j] !== 0) j--;
+      if (scopesDef[sid].depth === 2) frames.push({ fileId: 1, line: 82, col: 5, function: 'Rectangle.contains', step: j, scopeId: 4 });
+      frames.push({ fileId: 1, line: lines[j], col: cols[j], function: '<module>', step: j, scopeId: 0 });
+    }
+    return { frames, selected: 0 };
+  };
+  let flagsUi = { showCallStack: false, codePreview: true, echo: true };
+  // #paused: a debug run paused at the frontier (the current step), with the paused frame's locals
+  const dictRow = (i, path, score, patron) => ({ name: String(i), type: 'dict', id: 'pi' + i, queryPath: [String(i)], length: 3, props: [
+    { name: 'path', type: 'str', value: "'" + path + "'", id: 'pi' + i + 'p', queryPath: [String(i), 'path'] },
+    { name: 'score', type: 'number', value: String(score), id: 'pi' + i + 's', queryPath: [String(i), 'score'] },
+    { name: 'patron', type: patron === null ? 'None' : 'str', value: patron === null ? 'None' : "'" + patron + "'", id: 'pi' + i + 't', queryPath: [String(i), 'patron'] },
+  ] });
+  const pausedMock = () => ({
+    active: true, paused: true, frontier: current, reason: 'watch', location: 'demo.py:48',
+    watch: { id: 'w1', exp: 'normalized is None', text: 'True', breakWhen: 'true' },
+    stack: [{ name: 'Point.__init__', scopeId: 3, depth: 1 }, { name: '<module>', scopeId: 0, depth: 0 }],
+    locals: [
+      { name: 'self', text: 'Point(x=515, y=10)', valueBag: { runtimeKey: 'l1', data: point(515, 10) } },
+      { name: 'x', text: '515', valueBag: { runtimeKey: 'l2', data: { type: 'number', value: '515', id: 'l2', queryPath: [] } } },
+      { name: 'other', text: 'Point(x=515, y=10)', valueBag: { runtimeKey: 'l3', data: point(515, 10) } },
+      { name: 'normalized', text: 'None', valueBag: { runtimeKey: 'l4', data: { type: 'None', value: 'None', id: 'l4', queryPath: [] } } },
+      { name: 'items', text: "[{'path': 'a.yaml', 'score': 1.0, 'patron': 'LIBRE'}, {…}, {…}, {…}]", valueBag: { runtimeKey: 'l5', data: { type: 'list', id: 'l5', queryPath: [], length: 4, props: [dictRow(0, 'a.yaml', 1.0, 'LIBRE'), dictRow(1, 'b.yaml', 0.6, 'LIBRE'), dictRow(2, 'c.yaml', 0.583333, null), dictRow(3, 'd.yaml', 1.0, null)] } } },
+    ],
+  });
+  const dbgState = () => ({
+    active: true, autoPlaying: false, currentStep: current,
+    canStep: { into: current < stepCount - 1, back: current > 12, over: current < stepCount - 1, backOver: current > 12, out: depths[current] > 0, backOut: depths[current] > 0 },
+    echoSteps: echoFor(current), callStack: stackFor(current), ...flagsUi,
+    watches: [
+      { id: 'w1', exp: 'point_a', step: current, valueBag: { runtimeKey: 'w1', data: point(515, 10) } },
+      { id: 'w2', exp: 'rect1', step: current, valueBag: { runtimeKey: 'w2', data: rect(50, 20, 10, 10) } },
+      { id: 'w3', exp: 'missing_name', step: current, error: "NameError: name 'missing_name' is not defined" },
+    ],
+    locals: [{ name: 'x', text: '515' }, { name: 'y', text: '10' }, { name: 'self', text: 'Point(x=515, y=10)' }],
+    ...(hash.has('paused') ? { debug: pausedMock() } : {}),
+  });
+  const source = Array.from({ length: 160 }, (_, i) => {
+    const n = i + 1;
+    if (n === 46) return 'class Point:';
+    if (n === 47) return '    def __init__(self, x, y):';
+    if (n === 48) return '        self.x = x';
+    if (n === 49) return '        self.y = y';
+    if (n === 104) return 'point_a = Point(5, 10)';
+    if (n === 105) return 'point_b = generate_random_point(100, 100)';
+    if (n === 107) return 'rect1 = Rectangle(50, 20, Point(10, 10))';
+    if (n === 108) return 'rect2 = Rectangle(30, 30, Point(40, 15))';
+    if (n === 110) return 'print({"msg": f"Do rectangles overlap? {rectangles_overlap(rect1, rect2)}", "rect1": rect1, "rect2": rect2})';
+    return `    value_${n} = compute(${n})  # step on line ${n}`;
+  });
+  const settings = { autoLog: false, valuePeek: true, showValueOnSelection: false, showSingleInlineValue: false, runMode: 'auto', libraryCode: false, maskSecrets: true, runTimeoutMs: 30000, recordLocals: false };
+  // #variable: the Variable pane with a canned history for whatever name is typed
+  const variableHistory = (name) => ({
+    name,
+    total: 3,
+    truncated: false,
+    recordedLocals: true,
+    changes: [
+      { step: 14, file: FILE, fileId: 1, line: 104, function: '<module>', scopeId: 0, name, text: 'Point(x=5, y=10)', source: 'locals', reads: [{ name: 'Point', text: "<class '__main__.Point'>", step: 3 }] },
+      { step: 22, file: FILE, fileId: 1, line: 48, function: 'Point.__init__', scopeId: 3, name: 'self.x', text: '5', source: 'value', reads: [{ name: 'self', text: 'Point(x=0, y=0)', step: 21 }, { name: 'x', text: '5', step: 21 }] },
+      { step: 31, file: FILE, fileId: 1, line: 110, function: '<module>', scopeId: 0, name: name + '.move(1, 2)', source: 'assign', reads: [{ name }] },
+    ],
+  });
+  // #http: the HTTP view with a recorded run (three requests, one of them failed)
+  const httpRow = (n, over) => ({ n, client: 'httpx', method: 'POST', url: 'https://api.openai.com/v1/responses?key&v=1', name: 'responses', status: 200, reason: 'OK', bytes: 6812, ms: 1834, recordedMs: null, source: 'recorded', step: 14, location: { file: FILE, line: 104, col: 0, fileId: 1 }, ...over });
+  const httpPanel = {
+    runId: rt, running: false, count: 3, truncated: false,
+    totals: { requests: 3, bytes: 68123, ms: 2264, misses: 0, missAttempts: 0 },
+    finished: { mode: 'record', requests: 3, recorded: 3, served: 0, misses: 0, file: '/w/.pyokka/replay/3f2a9c1e5b7d0f42.jsonl', exists: true, recordedAt: '2026-09-11T10:12:03Z', entries: 3 },
+    requests: [httpRow(1, {}), httpRow(2, { method: 'GET', url: 'https://api.openai.com/v1/models', name: 'models', bytes: 61311, ms: 400, step: 22, location: { file: FILE, line: 48, col: 8, fileId: 1 } }), httpRow(3, { client: 'requests', url: 'https://example.com/missing', name: 'missing', status: 404, reason: 'Not Found', bytes: 0, ms: 30, step: 31, location: { file: FILE, line: 110, col: 0, fileId: 1 } })],
+  };
+  // #timeout: the last run was killed by the run timeout
+  const timedOutMs = hash.has('timeout') ? 30000 : undefined;
+  let sessionSettings = { ...settings, autoLog: true };
+
+  function stepAction(action) {
+    const d = depths[current];
+    const findFwd = (pred) => { for (let j = current + 1; j < stepCount; j++) if (pred(j)) return j; return null; };
+    const findBack = (pred) => { for (let j = current - 1; j >= 12; j--) if (pred(j)) return j; return null; };
+    let next = null;
+    switch (action) {
+      case 'stepInto': next = current + 1 < stepCount ? current + 1 : null; break;
+      case 'stepBackInto': next = current - 1 >= 12 ? current - 1 : null; break;
+      case 'stepOver': next = findFwd((j) => depths[j] <= d); break;
+      case 'stepBackOver': next = findBack((j) => depths[j] <= d); break;
+      case 'stepOut': next = findFwd((j) => depths[j] < d); break;
+      case 'stepBackOut': next = findBack((j) => depths[j] < d); break;
+      case 'runToLine': next = findFwd((j) => lines[j] === lines[current] && scopeIds[j] === scopeIds[current]); break;
+      case 'runBackToLine': next = findBack((j) => lines[j] === lines[current] && scopeIds[j] === scopeIds[current]); break;
+      case 'stop': send({ type: 'debugger', state: { ...dbgState(), active: false } }); return;
+      case 'toggleCallStack': flagsUi.showCallStack = !flagsUi.showCallStack; break;
+      case 'toggleEcho': flagsUi.echo = !flagsUi.echo; break;
+      case 'toggleCodePreview': flagsUi.codePreview = !flagsUi.codePreview; break;
+    }
+    if (next !== null) current = next;
+    send({ type: 'debugger', state: dbgState() });
+  }
+
+  function handle(m) {
+    switch (m.type) {
+      case 'ready':
+        send({ type: 'init', theme: hash.has('light') ? 'light' : hash.has('hc') ? 'hc' : 'dark', settings, sessionName: 'demo.py' });
+        send({ type: 'session', name: 'demo.py', running: false, durationMs: timedOutMs ?? 123, runMode: 'auto', settings: sessionSettings, timedOutMs });
+        send({ type: 'entries.reset' });
+        send({ type: 'entries.append', entries: entries.slice(0, 5) });
+        send({ type: 'timeline', model: timeline });
+        setTimeout(() => {
+          send({ type: 'entries.append', entries: entries.slice(5) });
+          send({ type: 'errors', errors });
+          if (hash.has('debugger')) send({ type: 'debugger', state: dbgState() });
+          if (hash.has('settings')) send({ type: 'showView', view: 'settings' });
+          if (hash.has('diagram')) send({ type: 'showView', view: 'diagram', logId: 'l8' });
+          if (hash.has('variable')) { send({ type: 'showView', view: 'variable' }); send({ type: 'variable', view: { name: 'point_a', history: variableHistory('point_a') } }); }
+          if (hash.has('http')) { send({ type: 'showView', view: 'http' }); send({ type: 'http', panel: httpPanel }); }
+          if (hash.has('tree')) { /* handled by prefs */ }
+        }, 50);
+        break;
+      case 'expand': {
+        // answer with the "full" version of the node that was asked for
+        const orig = registry.get(m.valueId);
+        let full = null;
+        if (orig) {
+          if (orig.type === 'list') full = { ...list(Array.from({ length: orig.length ?? 40 }, (_, i) => num(i * i))), id: m.valueId, queryPath: m.queryPath };
+          else if (orig.type === 'dict') full = { ...dict([['type', str('manual')], ['gears', num(5)]]), id: m.valueId, queryPath: m.queryPath };
+          else if (orig.type === 'str') full = { ...str((orig.value ?? '') + ' …and the rest of a long string that was capped by the runtime'), id: m.valueId, queryPath: m.queryPath };
+          else full = { ...orig, expandable: false, props: orig.props ?? [] };
+        }
+        setTimeout(() => send({ type: 'value', requestId: m.requestId, node: full ?? undefined, error: full ? undefined : 'no such value' }), 60);
+        break;
+      }
+      case 'debugger.goto': current = Math.max(12, Math.min(stepCount - 1, m.step)); send({ type: 'debugger', state: dbgState() }); break;
+      case 'debugger.action': stepAction(m.action); break;
+      case 'debugger.previewRequest': {
+        const line = lines[m.step];
+        const start = Math.max(1, line - 3);
+        const [frame, callSite] = stackFor(m.step).frames;
+        const caller = callSite ? { step: callSite.step, function: callSite.function, file: FILE, line: callSite.line } : undefined;
+        send({ type: 'codePreview', step: m.step, file: FILE, startLine: start, lines: source.slice(start - 1, start + 6), highlightLine: line, function: frame.function, caller });
+        break;
+      }
+      case 'debugger.selectFrame': break;
+      case 'variable.query':
+        send({ type: 'variable', view: { name: m.name, history: null } });
+        setTimeout(() => send({ type: 'variable', view: { name: m.name, history: m.name ? variableHistory(m.name) : null } }), 150);
+        break;
+      case 'settings.update':
+        if (m.scope === 'global') { Object.assign(settings, m.patch); send({ type: 'settings', settings: { ...settings } }); }
+        else { sessionSettings = { ...sessionSettings, ...m.patch }; send({ type: 'session', name: 'demo.py', running: false, durationMs: timedOutMs ?? 123, runMode: sessionSettings.runMode, settings: sessionSettings, timedOutMs }); }
+        break;
+      case 'command':
+        if (m.command === 'pyokka.debug') send({ type: 'debugger', state: dbgState() });
+        if (m.command === 'pyokka.stopTraceNavigation') send({ type: 'debugger', state: { ...dbgState(), active: false } });
+        break;
+    }
+  }
+  if (hash.has('tree')) uiState = { entriesMode: 'tree' };
+</script>
+<script type="module" src="../dist/webview/panel.js"></script>
+</body>
+</html>

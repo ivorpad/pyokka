@@ -1,0 +1,63 @@
+{
+ "skill_name": "pyokka",
+ "evals": [
+  {
+   "id": 0,
+   "name": "show-me-rrf-demo",
+   "prompt": "show me how the RRF demo works. the file is examples/rrf/demo.py",
+   "expected_output": "A rendered code-history page plus a short chat answer grounded in the run.",
+   "files": [],
+   "assertions": [
+    "Recorded the program instead of only reading its source (a run.json exists, or the answer cites step numbers)",
+    "Produced a rendered HTML code-history page",
+    "Every checkpoint on the page carries a pyokka command that reproduces it",
+    "Re-running each checkpoint's verify command reproduces its values exactly",
+    "The answer states the actual result, that C finishes first, with its score",
+    "The answer cites file:line and step numbers the user can jump to",
+    "The answer is written for a person, not pasted CLI output"
+   ]
+  },
+  {
+   "id": 1,
+   "name": "why-contribution-value",
+   "prompt": "in examples/rrf/demo.py, contribution comes out as 0.015873 on some passes and 0.016393 on others. why? show me where that difference comes from.",
+   "expected_output": "A rendered code-history page plus a short chat answer grounded in the run.",
+   "files": [],
+   "assertions": [
+    "Answered from the recording (used why, var or values) rather than doing the arithmetic from the source",
+    "Gives the correct cause: the two numbers are 1/(60+3) and 1/(60+1), so the rank differs",
+    "Names specific steps where each of the two values occurred",
+    "Produced a rendered HTML code-history page",
+    "Re-running each checkpoint's verify command reproduces its values exactly"
+   ]
+  },
+  {
+   "id": 2,
+   "name": "cold-explain-ranking-module",
+   "prompt": "explain how examples/rrf/api/ranking.py actually works when the service uses it. i have not run anything yet.",
+   "expected_output": "A rendered code-history page plus a short chat answer grounded in the run.",
+   "files": [],
+   "assertions": [
+    "Made a recording of the module actually running instead of only reading the source",
+    "Exercised ranking.py the way the service uses it, not in isolation from the request path",
+    "Separates what the run shows from what was not observed, rather than asserting unobserved behaviour",
+    "Produced a rendered HTML code-history page",
+    "Did not read or print the project's .env"
+   ]
+  },
+  {
+   "id": 3,
+   "name": "live-debug-handler",
+   "prompt": "the /rank endpoint in examples/rrf/api/main.py is returning documents in the wrong order. pause it in the handler on a real request and show me what it actually received.",
+   "expected_output": "A rendered code-history page plus a short chat answer grounded in the run.",
+   "files": [],
+   "assertions": [
+    "Chose the live debugger rather than trying to answer from a recording",
+    "Actually paused in the handler and reported the payload the request carried",
+    "Labelled the evidence as a live pause, not as a recorded step",
+    "Did not claim a provenance chain for a pause that recorded nothing behind it",
+    "Stopped the debug session when finished, leaving no paused program holding the port"
+   ]
+  }
+ ]
+}
