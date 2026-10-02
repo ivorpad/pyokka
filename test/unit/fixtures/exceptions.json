@@ -1,0 +1,192 @@
+{
+ "count": 83,
+ "file": "/fixture/main.py",
+ "exitCode": 1,
+ "stale": false,
+ "staleFiles": [],
+ "total": 8,
+ "raises": 11,
+ "uncaught": 1,
+ "caught": 7,
+ "broad": 2,
+ "rows": [
+  {
+   "id": "x0",
+   "kind": "uncaught",
+   "errorType": "ZeroDivisionError",
+   "message": "division by zero",
+   "count": 1,
+   "step": 82,
+   "lastStep": 82,
+   "raisedAt": {
+    "file": "/fixture/main.py",
+    "line": 94,
+    "function": "<module>",
+    "fileId": 1,
+    "rid": 57
+   },
+   "handledAt": null
+  },
+  {
+   "id": "x1",
+   "kind": "caught",
+   "errorType": "KeyError",
+   "message": "'b'",
+   "count": 3,
+   "step": 17,
+   "lastStep": 29,
+   "raisedAt": {
+    "file": "/fixture/main.py",
+    "line": 22,
+    "function": "lookup",
+    "fileId": 1,
+    "rid": 7
+   },
+   "handledAt": {
+    "file": "/fixture/main.py",
+    "line": 77,
+    "function": "<module>",
+    "fileId": 1,
+    "rid": 40,
+    "broad": true
+   }
+  },
+  {
+   "id": "x2",
+   "kind": "caught",
+   "errorType": "ValueError",
+   "message": "invalid literal for int() with base 10: '12x'",
+   "count": 1,
+   "step": 34,
+   "lastStep": 34,
+   "raisedAt": {
+    "file": "/fixture/main.py",
+    "line": 27,
+    "function": "parse_amount",
+    "fileId": 1,
+    "rid": 10
+   },
+   "handledAt": {
+    "file": "/fixture/main.py",
+    "line": 28,
+    "function": "parse_amount",
+    "fileId": 1,
+    "rid": 9,
+    "broad": false
+   }
+  },
+  {
+   "id": "x3",
+   "kind": "caught",
+   "errorType": "OSError",
+   "message": "no such file: settings.toml",
+   "count": 1,
+   "step": 44,
+   "lastStep": 44,
+   "raisedAt": {
+    "file": "/fixture/main.py",
+    "line": 45,
+    "function": "load",
+    "fileId": 1,
+    "rid": 22
+   },
+   "handledAt": {
+    "file": "/fixture/main.py",
+    "line": 50,
+    "function": "load",
+    "fileId": 1,
+    "rid": 19,
+    "broad": true
+   }
+  },
+  {
+   "id": "x4",
+   "kind": "caught",
+   "errorType": "RuntimeError",
+   "message": "inner",
+   "count": 1,
+   "step": 53,
+   "lastStep": 53,
+   "raisedAt": {
+    "file": "/fixture/main.py",
+    "line": 56,
+    "function": "rethrow",
+    "fileId": 1,
+    "rid": 28
+   },
+   "handledAt": {
+    "file": "/fixture/main.py",
+    "line": 83,
+    "function": "<module>",
+    "fileId": 1,
+    "rid": 45,
+    "broad": false
+   }
+  },
+  {
+   "id": "x5",
+   "kind": "caught",
+   "errorType": "IndexError",
+   "message": "list index out of range",
+   "count": 1,
+   "step": 59,
+   "lastStep": 59,
+   "raisedAt": {
+    "file": "/fixture/main.py",
+    "line": 63,
+    "function": "third",
+    "fileId": 1,
+    "rid": 32
+   },
+   "handledAt": {
+    "file": "/fixture/main.py",
+    "line": 62,
+    "function": "third",
+    "fileId": 1,
+    "rid": 31,
+    "broad": false
+   }
+  },
+  {
+   "id": "x6",
+   "kind": "caught",
+   "errorType": "TypeError",
+   "message": "nothing to unwrap",
+   "count": 1,
+   "step": 65,
+   "lastStep": 65,
+   "raisedAt": {
+    "file": "/fixture/venv/site-packages/libx/__init__.py",
+    "line": 6,
+    "function": "unwrap",
+    "fileId": 2,
+    "rid": 61
+   },
+   "handledAt": {
+    "file": "/fixture/main.py",
+    "line": 88,
+    "function": "<module>",
+    "fileId": 1,
+    "rid": 49,
+    "broad": false
+   }
+  },
+  {
+   "id": "x7",
+   "kind": "caught",
+   "errorType": "AttributeError",
+   "message": "x",
+   "count": 2,
+   "step": 78,
+   "lastStep": 80,
+   "raisedAt": {
+    "file": "/fixture/main.py",
+    "line": 69,
+    "function": "__getattr__",
+    "fileId": 1,
+    "rid": 36
+   },
+   "handledAt": null
+  }
+ ]
+}

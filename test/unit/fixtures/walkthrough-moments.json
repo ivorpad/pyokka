@@ -1,0 +1,916 @@
+[
+ {
+  "kind": "start",
+  "step": 0,
+  "location": {
+   "file": "/fixture/main.py",
+   "line": 1,
+   "function": "<module>",
+   "fileId": 1
+  },
+  "text": "module main.py starts",
+  "values": [],
+  "id": "m0",
+  "durationMs": null,
+  "gloss": null
+ },
+ {
+  "kind": "value",
+  "step": 1,
+  "location": {
+   "file": "/fixture/main.py",
+   "line": 2,
+   "function": "<module>",
+   "fileId": 1
+  },
+  "text": "sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'venv', 'site-packages')) = None",
+  "values": [
+   {
+    "role": "value",
+    "name": "sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'venv', 'site-packages'))",
+    "text": "None"
+   }
+  ],
+  "id": "m1",
+  "durationMs": null,
+  "gloss": null
+ },
+ {
+  "kind": "call",
+  "step": 2,
+  "location": {
+   "file": "/fixture/main.py",
+   "line": 3,
+   "function": "<module>",
+   "fileId": 1
+  },
+  "text": "module helper.py runs",
+  "values": [],
+  "scopeId": 1,
+  "entryStep": 3,
+  "endStep": 3,
+  "callee": {
+   "file": "/fixture/helper.py",
+   "line": 1,
+   "function": "<module>",
+   "fileId": 2
+  },
+  "id": "m2",
+  "durationMs": null,
+  "gloss": null
+ },
+ {
+  "kind": "value",
+  "step": 5,
+  "location": {
+   "file": "/fixture/main.py",
+   "line": 22,
+   "function": "<module>",
+   "fileId": 1
+  },
+  "text": "total = 0",
+  "values": [
+   {
+    "role": "value",
+    "name": "total",
+    "text": "0"
+   }
+  ],
+  "id": "m3",
+  "durationMs": null,
+  "gloss": null
+ },
+ {
+  "kind": "decision",
+  "step": 6,
+  "location": {
+   "file": "/fixture/main.py",
+   "line": 23,
+   "function": "<module>",
+   "fileId": 1
+  },
+  "text": "for i in range(3) ran 3 times",
+  "values": [],
+  "count": 3,
+  "id": "m4",
+  "durationMs": null,
+  "gloss": null
+ },
+ {
+  "kind": "call",
+  "step": 8,
+  "location": {
+   "file": "/fixture/main.py",
+   "line": 24,
+   "function": "<module>",
+   "fileId": 1
+  },
+  "text": "call 1 of 3 to double from <module>",
+  "values": [
+   {
+    "role": "in",
+    "name": "x",
+    "text": "0"
+   },
+   {
+    "role": "out",
+    "name": "return",
+    "text": "0"
+   }
+  ],
+  "scopeId": 2,
+  "entryStep": 9,
+  "endStep": 11,
+  "callee": {
+   "file": "/fixture/helper.py",
+   "line": 1,
+   "function": "double",
+   "fileId": 2
+  },
+  "id": "m5",
+  "durationMs": null,
+  "gloss": null
+ },
+ {
+  "kind": "value",
+  "step": 11,
+  "location": {
+   "file": "/fixture/main.py",
+   "line": 24,
+   "function": "<module>",
+   "fileId": 1
+  },
+  "text": "total = 0",
+  "values": [
+   {
+    "role": "value",
+    "name": "total",
+    "text": "0"
+   }
+  ],
+  "id": "m6",
+  "durationMs": null,
+  "gloss": null
+ },
+ {
+  "kind": "call",
+  "step": 13,
+  "location": {
+   "file": "/fixture/main.py",
+   "line": 24,
+   "function": "<module>",
+   "fileId": 1
+  },
+  "text": "call 2 of 3 to double from <module>",
+  "values": [
+   {
+    "role": "in",
+    "name": "x",
+    "text": "1"
+   },
+   {
+    "role": "out",
+    "name": "return",
+    "text": "2"
+   }
+  ],
+  "scopeId": 3,
+  "entryStep": 14,
+  "endStep": 16,
+  "callee": {
+   "file": "/fixture/helper.py",
+   "line": 1,
+   "function": "double",
+   "fileId": 2
+  },
+  "id": "m7",
+  "durationMs": null,
+  "gloss": null
+ },
+ {
+  "kind": "value",
+  "step": 16,
+  "location": {
+   "file": "/fixture/main.py",
+   "line": 24,
+   "function": "<module>",
+   "fileId": 1
+  },
+  "text": "total = 2",
+  "values": [
+   {
+    "role": "value",
+    "name": "total",
+    "text": "2"
+   }
+  ],
+  "id": "m8",
+  "durationMs": null,
+  "gloss": null
+ },
+ {
+  "kind": "call",
+  "step": 18,
+  "location": {
+   "file": "/fixture/main.py",
+   "line": 24,
+   "function": "<module>",
+   "fileId": 1
+  },
+  "text": "call 3 of 3 to double from <module>",
+  "values": [
+   {
+    "role": "in",
+    "name": "x",
+    "text": "2"
+   },
+   {
+    "role": "out",
+    "name": "return",
+    "text": "4"
+   }
+  ],
+  "scopeId": 4,
+  "entryStep": 19,
+  "endStep": 21,
+  "callee": {
+   "file": "/fixture/helper.py",
+   "line": 1,
+   "function": "double",
+   "fileId": 2
+  },
+  "id": "m9",
+  "durationMs": null,
+  "gloss": null
+ },
+ {
+  "kind": "value",
+  "step": 21,
+  "location": {
+   "file": "/fixture/main.py",
+   "line": 24,
+   "function": "<module>",
+   "fileId": 1
+  },
+  "text": "total = 6",
+  "values": [
+   {
+    "role": "value",
+    "name": "total",
+    "text": "6"
+   }
+  ],
+  "id": "m10",
+  "durationMs": null,
+  "gloss": null
+ },
+ {
+  "kind": "decision",
+  "step": 22,
+  "location": {
+   "file": "/fixture/main.py",
+   "line": 25,
+   "function": "<module>",
+   "fileId": 1
+  },
+  "text": "for j in [] ran 0 times",
+  "values": [],
+  "count": 0,
+  "id": "m11",
+  "durationMs": null,
+  "gloss": null
+ },
+ {
+  "kind": "value",
+  "step": 23,
+  "location": {
+   "file": "/fixture/main.py",
+   "line": 27,
+   "function": "<module>",
+   "fileId": 1
+  },
+  "text": "k = 0",
+  "values": [
+   {
+    "role": "value",
+    "name": "k",
+    "text": "0"
+   }
+  ],
+  "id": "m12",
+  "durationMs": null,
+  "gloss": null
+ },
+ {
+  "kind": "decision",
+  "step": 24,
+  "location": {
+   "file": "/fixture/main.py",
+   "line": 28,
+   "function": "<module>",
+   "fileId": 1
+  },
+  "text": "while k < 2 ran 2 times",
+  "values": [],
+  "count": 2,
+  "id": "m13",
+  "durationMs": null,
+  "gloss": null
+ },
+ {
+  "kind": "value",
+  "step": 26,
+  "location": {
+   "file": "/fixture/main.py",
+   "line": 29,
+   "function": "<module>",
+   "fileId": 1
+  },
+  "text": "k = 1",
+  "values": [
+   {
+    "role": "value",
+    "name": "k",
+    "text": "1"
+   }
+  ],
+  "id": "m14",
+  "durationMs": null,
+  "gloss": null
+ },
+ {
+  "kind": "value",
+  "step": 28,
+  "location": {
+   "file": "/fixture/main.py",
+   "line": 29,
+   "function": "<module>",
+   "fileId": 1
+  },
+  "text": "k = 2",
+  "values": [
+   {
+    "role": "value",
+    "name": "k",
+    "text": "2"
+   }
+  ],
+  "id": "m15",
+  "durationMs": null,
+  "gloss": null
+ },
+ {
+  "kind": "decision",
+  "step": 29,
+  "location": {
+   "file": "/fixture/main.py",
+   "line": 30,
+   "function": "<module>",
+   "fileId": 1
+  },
+  "text": "if total > 100 and k > 0 took False",
+  "values": [],
+  "id": "m16",
+  "durationMs": null,
+  "gloss": null
+ },
+ {
+  "kind": "decision",
+  "step": 30,
+  "location": {
+   "file": "/fixture/main.py",
+   "line": 33,
+   "function": "<module>",
+   "fileId": 1
+  },
+  "text": "elif total > 5 took True",
+  "values": [],
+  "id": "m17",
+  "durationMs": null,
+  "gloss": null
+ },
+ {
+  "kind": "value",
+  "step": 31,
+  "location": {
+   "file": "/fixture/main.py",
+   "line": 34,
+   "function": "<module>",
+   "fileId": 1
+  },
+  "text": "mid = True",
+  "values": [
+   {
+    "role": "value",
+    "name": "mid",
+    "text": "True"
+   }
+  ],
+  "id": "m18",
+  "durationMs": null,
+  "gloss": null
+ },
+ {
+  "kind": "decision",
+  "step": 32,
+  "location": {
+   "file": "/fixture/main.py",
+   "line": 37,
+   "function": "<module>",
+   "fileId": 1
+  },
+  "text": "match total took case _",
+  "values": [],
+  "id": "m19",
+  "durationMs": null,
+  "gloss": null
+ },
+ {
+  "kind": "value",
+  "step": 33,
+  "location": {
+   "file": "/fixture/main.py",
+   "line": 41,
+   "function": "<module>",
+   "fileId": 1
+  },
+  "text": "z = 1",
+  "values": [
+   {
+    "role": "value",
+    "name": "z",
+    "text": "1"
+   }
+  ],
+  "id": "m20",
+  "durationMs": null,
+  "gloss": null
+ },
+ {
+  "kind": "call",
+  "step": 34,
+  "location": {
+   "file": "/fixture/main.py",
+   "line": 42,
+   "function": "<module>",
+   "fileId": 1
+  },
+  "text": "call to Counter.__init__ from <module>",
+  "values": [
+   {
+    "role": "in",
+    "name": "start",
+    "text": "10"
+   }
+  ],
+  "scopeId": 5,
+  "entryStep": 35,
+  "endStep": 36,
+  "callee": {
+   "file": "/fixture/main.py",
+   "line": 14,
+   "function": "Counter.__init__",
+   "fileId": 1
+  },
+  "id": "m21",
+  "durationMs": null,
+  "gloss": null
+ },
+ {
+  "kind": "value",
+  "step": 36,
+  "location": {
+   "file": "/fixture/main.py",
+   "line": 15,
+   "function": "Counter.__init__",
+   "fileId": 1
+  },
+  "text": "self.value = 10",
+  "values": [
+   {
+    "role": "value",
+    "name": "self.value",
+    "text": "10"
+   }
+  ],
+  "id": "m22",
+  "durationMs": null,
+  "gloss": null
+ },
+ {
+  "kind": "value",
+  "step": 36,
+  "location": {
+   "file": "/fixture/main.py",
+   "line": 42,
+   "function": "<module>",
+   "fileId": 1
+  },
+  "text": "c = <__main__.Counter object at 0x0>",
+  "values": [
+   {
+    "role": "value",
+    "name": "c",
+    "text": "<__main__.Counter object at 0x0>"
+   }
+  ],
+  "id": "m23",
+  "durationMs": null,
+  "gloss": null
+ },
+ {
+  "kind": "call",
+  "step": 37,
+  "location": {
+   "file": "/fixture/main.py",
+   "line": 43,
+   "function": "<module>",
+   "fileId": 1
+  },
+  "text": "call to Counter.bump from <module>",
+  "values": [
+   {
+    "role": "in",
+    "name": "by",
+    "text": "5"
+   },
+   {
+    "role": "out",
+    "name": "return",
+    "text": "15"
+   }
+  ],
+  "scopeId": 6,
+  "entryStep": 38,
+  "endStep": 40,
+  "callee": {
+   "file": "/fixture/main.py",
+   "line": 17,
+   "function": "Counter.bump",
+   "fileId": 1
+  },
+  "id": "m24",
+  "durationMs": null,
+  "gloss": null
+ },
+ {
+  "kind": "value",
+  "step": 39,
+  "location": {
+   "file": "/fixture/main.py",
+   "line": 18,
+   "function": "Counter.bump",
+   "fileId": 1
+  },
+  "text": "self.value = 15",
+  "values": [
+   {
+    "role": "value",
+    "name": "self.value",
+    "text": "15"
+   }
+  ],
+  "id": "m25",
+  "durationMs": null,
+  "gloss": null
+ },
+ {
+  "kind": "value",
+  "step": 40,
+  "location": {
+   "file": "/fixture/main.py",
+   "line": 43,
+   "function": "<module>",
+   "fileId": 1
+  },
+  "text": "c.bump(5) = 15",
+  "values": [
+   {
+    "role": "value",
+    "name": "c.bump(5)",
+    "text": "15"
+   }
+  ],
+  "id": "m26",
+  "durationMs": null,
+  "gloss": null
+ },
+ {
+  "kind": "call",
+  "step": 41,
+  "location": {
+   "file": "/fixture/main.py",
+   "line": 44,
+   "function": "<module>",
+   "fileId": 1
+  },
+  "text": "call to run (libq) from <module>, 1 nested call",
+  "values": [
+   {
+    "role": "in",
+    "name": "cb",
+    "text": "<function <lambda> at 0x0>"
+   },
+   {
+    "role": "out",
+    "name": "return",
+    "text": "8"
+   }
+  ],
+  "scopeId": 7,
+  "entryStep": 42,
+  "endStep": 49,
+  "callee": {
+   "file": "/fixture/venv/site-packages/libq/__init__.py",
+   "line": 9,
+   "function": "run",
+   "fileId": 3
+  },
+  "id": "m27",
+  "durationMs": null,
+  "gloss": null
+ },
+ {
+  "kind": "tool",
+  "step": 48,
+  "location": {
+   "file": "/fixture/main.py",
+   "line": 44,
+   "function": "<lambda>",
+   "fileId": 1
+  },
+  "text": "libq calls back into <lambda> (run)",
+  "values": [],
+  "scopeId": 9,
+  "entryStep": 48,
+  "endStep": 48,
+  "callee": {
+   "file": "/fixture/main.py",
+   "line": 44,
+   "function": "<lambda>",
+   "fileId": 1
+  },
+  "callerScopeId": 7,
+  "id": "m28",
+  "durationMs": null,
+  "gloss": null
+ },
+ {
+  "kind": "value",
+  "step": 49,
+  "location": {
+   "file": "/fixture/main.py",
+   "line": 44,
+   "function": "<module>",
+   "fileId": 1
+  },
+  "text": "seen = 8",
+  "values": [
+   {
+    "role": "value",
+    "name": "seen",
+    "text": "8"
+   }
+  ],
+  "id": "m29",
+  "durationMs": null,
+  "gloss": null
+ },
+ {
+  "kind": "call",
+  "step": 50,
+  "location": {
+   "file": "/fixture/main.py",
+   "line": 45,
+   "function": "<module>",
+   "fileId": 1
+  },
+  "text": "call to greet from <module>",
+  "values": [
+   {
+    "role": "in",
+    "name": "name",
+    "text": "'bob'"
+   },
+   {
+    "role": "out",
+    "name": "return",
+    "text": "'hello bob'"
+   }
+  ],
+  "scopeId": 10,
+  "entryStep": 51,
+  "endStep": 53,
+  "callee": {
+   "file": "/fixture/main.py",
+   "line": 7,
+   "function": "greet",
+   "fileId": 1
+  },
+  "id": "m30",
+  "durationMs": null,
+  "gloss": null
+ },
+ {
+  "kind": "value",
+  "step": 52,
+  "location": {
+   "file": "/fixture/main.py",
+   "line": 9,
+   "function": "greet",
+   "fileId": 1
+  },
+  "text": "msg = 'hello bob'",
+  "values": [
+   {
+    "role": "value",
+    "name": "msg",
+    "text": "'hello bob'"
+   }
+  ],
+  "id": "m31",
+  "durationMs": null,
+  "gloss": null
+ },
+ {
+  "kind": "print",
+  "step": 53,
+  "location": {
+   "file": "/fixture/main.py",
+   "line": 45,
+   "function": "<module>",
+   "fileId": 1
+  },
+  "text": "prints hello bob 6",
+  "values": [],
+  "id": "m32",
+  "durationMs": null,
+  "gloss": null
+ },
+ {
+  "kind": "call",
+  "step": 55,
+  "location": {
+   "file": "/fixture/main.py",
+   "line": 47,
+   "function": "<module>",
+   "fileId": 1
+  },
+  "text": "call to fail from <module>",
+  "values": [
+   {
+    "role": "in",
+    "name": "n",
+    "text": "6"
+   },
+   {
+    "role": "out",
+    "name": "raised",
+    "text": "ValueError: too small: 6"
+   }
+  ],
+  "scopeId": 11,
+  "entryStep": 56,
+  "endStep": 58,
+  "callee": {
+   "file": "/fixture/helper.py",
+   "line": 6,
+   "function": "fail",
+   "fileId": 2
+  },
+  "id": "m33",
+  "durationMs": null,
+  "gloss": null
+ },
+ {
+  "kind": "decision",
+  "step": 57,
+  "location": {
+   "file": "/fixture/helper.py",
+   "line": 7,
+   "function": "fail",
+   "fileId": 2
+  },
+  "text": "if n > 100 took False",
+  "values": [],
+  "id": "m34",
+  "durationMs": null,
+  "gloss": null
+ },
+ {
+  "kind": "error",
+  "step": 58,
+  "location": {
+   "file": "/fixture/helper.py",
+   "line": 9,
+   "function": "fail",
+   "fileId": 2
+  },
+  "text": "raised ValueError: too small: 6, handled at main.py:49",
+  "values": [],
+  "id": "m35",
+  "durationMs": null,
+  "gloss": null
+ },
+ {
+  "kind": "value",
+  "step": 59,
+  "location": {
+   "file": "/fixture/main.py",
+   "line": 49,
+   "function": "<module>",
+   "fileId": 1
+  },
+  "text": "handled = True",
+  "values": [
+   {
+    "role": "value",
+    "name": "handled",
+    "text": "True"
+   }
+  ],
+  "id": "m36",
+  "durationMs": null,
+  "gloss": null
+ },
+ {
+  "kind": "call",
+  "step": 60,
+  "location": {
+   "file": "/fixture/main.py",
+   "line": 50,
+   "function": "<module>",
+   "fileId": 1
+  },
+  "text": "call to fail from <module>",
+  "values": [
+   {
+    "role": "in",
+    "name": "n",
+    "text": "6"
+   },
+   {
+    "role": "out",
+    "name": "raised",
+    "text": "ValueError: too small: 6"
+   }
+  ],
+  "scopeId": 12,
+  "entryStep": 61,
+  "endStep": 63,
+  "callee": {
+   "file": "/fixture/helper.py",
+   "line": 6,
+   "function": "fail",
+   "fileId": 2
+  },
+  "id": "m37",
+  "durationMs": null,
+  "gloss": null
+ },
+ {
+  "kind": "decision",
+  "step": 62,
+  "location": {
+   "file": "/fixture/helper.py",
+   "line": 7,
+   "function": "fail",
+   "fileId": 2
+  },
+  "text": "if n > 100 took False",
+  "values": [],
+  "id": "m38",
+  "durationMs": null,
+  "gloss": null
+ },
+ {
+  "kind": "error",
+  "step": 63,
+  "location": {
+   "file": "/fixture/helper.py",
+   "line": 9,
+   "function": "fail",
+   "fileId": 2
+  },
+  "text": "raised ValueError: too small: 6 uncaught",
+  "values": [],
+  "id": "m39",
+  "durationMs": null,
+  "gloss": null
+ },
+ {
+  "kind": "end",
+  "step": 63,
+  "location": {
+   "file": "/fixture/helper.py",
+   "line": 9,
+   "function": "fail",
+   "fileId": 2
+  },
+  "text": "run ends with exit code 1 after 12 ms",
+  "values": [],
+  "id": "m40",
+  "durationMs": null,
+  "gloss": null
+ }
+]

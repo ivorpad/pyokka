@@ -1,0 +1,15 @@
+#!/bin/sh
+# A `Bump:` trailer decides the level of the next release. A typo in it would fall back
+# to patch without saying so, and the wrong number would ship, so reject a value that is
+# not a level. Anything without a trailer is a patch and passes untouched.
+TRAILER=$(grep -i -E '^[[:space:]]*Bump:' "$1" | tail -1)
+[ -n "$TRAILER" ] || exit 0
+
+VALUE=$(printf '%s' "$TRAILER" | sed -E 's/^[[:space:]]*[Bb][Uu][Mm][Pp]:[[:space:]]*//' | tr -d '[:space:]' | tr 'A-Z' 'a-z')
+case "$VALUE" in
+  major|breaking|minor|feature|feat|patch|fix) exit 0 ;;
+esac
+
+echo "commit-msg: \"Bump: $VALUE\" is not a level." >&2
+echo "            Use major (breaking), minor (feature) or patch (fix), or drop the line for a patch." >&2
+exit 1

@@ -1,0 +1,117 @@
+/* ---------- http ---------- */
+.pk-http-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+.pk-http-list {
+  flex: 1;
+}
+.pk-http-row {
+  gap: 8px;
+}
+.pk-http-row.static {
+  cursor: default;
+}
+/* the column labels stay put while the list scrolls */
+.pk-http-head,
+.pk-http-head:hover {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--pk-bg);
+  color: var(--pk-dim);
+  font-family: var(--pk-font);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: default;
+}
+.pk-http-n {
+  flex: none;
+  min-width: 4ch;
+  text-align: right;
+  color: var(--pk-dim);
+}
+.pk-http-name {
+  flex: 1;
+  min-width: 6ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pk-http-method {
+  flex: none;
+  width: 6ch;
+  font-weight: 600;
+}
+.pk-http-status {
+  flex: none;
+  width: 6ch;
+  text-align: right;
+}
+.pk-http-initiator {
+  flex: none;
+  min-width: 10ch;
+}
+.pk-http-size,
+.pk-http-time {
+  flex: none;
+  width: 7ch;
+  text-align: right;
+  color: var(--pk-dim);
+}
+.pk-http-source {
+  flex: none;
+  width: 8ch;
+  font-size: 11px;
+  color: var(--pk-dim);
+}
+.pk-http-source.src-recorded {
+  color: var(--pk-stop);
+}
+.pk-http-source.src-replayed {
+  color: var(--pk-link);
+}
+.pk-http-source.src-miss {
+  color: var(--pk-error);
+}
+.pk-http-hint {
+  margin: 4px 8px;
+  font-family: var(--pk-font);
+}
+.pk-http-footer {
+  flex: none;
+  padding: 4px 8px 6px;
+  border-top: 1px solid var(--pk-border);
+  color: var(--pk-dim);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.pk-http .pk-dropdown {
+  height: 22px;
+  padding: 0 6px;
+  gap: 4px;
+  font-size: 11px;
+}
+.pk-http .pk-dropdown .codicon {
+  font-size: 12px;
+}
+/* the rail's HTTP button carries a dot while the mode is on: the stop red while recording, the link colour while replaying */
+.pk-rail-badge {
+  position: relative;
+}
+.pk-rail-badge::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--pk-stop);
+  box-shadow: 0 0 0 1.5px var(--pk-bg);
+}
+.pk-rail-badge.mode-replay::after {
+  background: var(--pk-link);
+}

@@ -1,0 +1,13 @@
+{
+  "scopeName": "source.pyokka-snap",
+  "fileTypes": [],
+  "injectionSelector": "L:source.python",
+  "patterns": [{ "include": "#snap-output" }],
+  "repository": {
+    "snap-output": {
+      "patterns": [
+        { "match": "^\\s*#»\\s?(.*)$", "captures": { "1": { "name": "string.quoted.other.pyokka-snap-output" } }, "name": "comment.line.pyokka-snap-output" }
+      ]
+    }
+  }
+}

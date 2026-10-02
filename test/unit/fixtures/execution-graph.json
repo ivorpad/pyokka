@@ -1,0 +1,4334 @@
+{
+ "default": {
+  "count": 64,
+  "nodes": [
+   {
+    "id": "n0",
+    "kind": "module",
+    "label": "<module>",
+    "file": "/fixture/main.py",
+    "line": 1,
+    "fileId": 1,
+    "function": "<module>",
+    "calls": 1,
+    "firstStep": 0,
+    "spans": [
+     [
+      0,
+      63
+     ]
+    ],
+    "rows": []
+   },
+   {
+    "id": "n1",
+    "kind": "statement",
+    "parent": "n0",
+    "label": "sys.path.insert(0, os.path.join(os.path.dirname(os.path.abs…",
+    "file": "/fixture/main.py",
+    "line": 2,
+    "fileId": 1,
+    "text": "sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'venv', 'site-packages'))",
+    "targets": [],
+    "reads": [
+     "sys",
+     "os",
+     "__file__"
+    ],
+    "firstStep": 1,
+    "hits": 1,
+    "rows": [
+     {
+      "kind": "out",
+      "name": "sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'venv', 'site-packages'))",
+      "text": "None",
+      "step": 1
+     }
+    ]
+   },
+   {
+    "id": "n2",
+    "kind": "module",
+    "label": "helper.py",
+    "file": "/fixture/helper.py",
+    "line": 1,
+    "fileId": 2,
+    "function": "<module>",
+    "calls": 1,
+    "firstStep": 2,
+    "spans": [
+     [
+      3,
+      3
+     ]
+    ],
+    "rows": []
+   },
+   {
+    "id": "n3",
+    "kind": "statement",
+    "parent": "n0",
+    "label": "total = 0",
+    "file": "/fixture/main.py",
+    "line": 22,
+    "fileId": 1,
+    "text": "total = 0",
+    "targets": [
+     "total"
+    ],
+    "reads": [],
+    "firstStep": 5,
+    "hits": 1,
+    "rows": [
+     {
+      "kind": "out",
+      "name": "total",
+      "text": "0",
+      "step": 5
+     }
+    ]
+   },
+   {
+    "id": "n4",
+    "kind": "decision",
+    "parent": "n0",
+    "label": "for i in range(3)",
+    "file": "/fixture/main.py",
+    "line": 23,
+    "fileId": 1,
+    "text": "for i in range(3) ran 3 times",
+    "firstStep": 6,
+    "hits": 3,
+    "notRun": [],
+    "rows": []
+   },
+   {
+    "id": "n5",
+    "kind": "function",
+    "label": "double",
+    "file": "/fixture/helper.py",
+    "line": 1,
+    "fileId": 2,
+    "function": "double",
+    "calls": 3,
+    "firstStep": 8,
+    "spans": [
+     [
+      9,
+      11
+     ],
+     [
+      14,
+      16
+     ],
+     [
+      19,
+      21
+     ]
+    ],
+    "rows": [
+     {
+      "kind": "in",
+      "name": "x",
+      "text": "0",
+      "step": 9
+     },
+     {
+      "kind": "out",
+      "name": "return",
+      "text": "0",
+      "step": 11
+     }
+    ]
+   },
+   {
+    "id": "n6",
+    "kind": "statement",
+    "parent": "n0",
+    "label": "total += helper.double(i)",
+    "file": "/fixture/main.py",
+    "line": 24,
+    "fileId": 1,
+    "text": "total += helper.double(i)",
+    "targets": [
+     "total"
+    ],
+    "reads": [
+     "total",
+     "helper",
+     "i"
+    ],
+    "firstStep": 8,
+    "hits": 3,
+    "rows": [
+     {
+      "kind": "out",
+      "name": "total",
+      "text": "0",
+      "step": 11
+     }
+    ]
+   },
+   {
+    "id": "n7",
+    "kind": "statement",
+    "parent": "n5",
+    "label": "y = x * 2",
+    "file": "/fixture/helper.py",
+    "line": 2,
+    "fileId": 2,
+    "text": "y = x * 2",
+    "targets": [
+     "y"
+    ],
+    "reads": [
+     "x"
+    ],
+    "firstStep": 10,
+    "hits": 3,
+    "rows": []
+   },
+   {
+    "id": "n8",
+    "kind": "statement",
+    "parent": "n5",
+    "label": "return y",
+    "file": "/fixture/helper.py",
+    "line": 3,
+    "fileId": 2,
+    "text": "return y",
+    "targets": [],
+    "reads": [
+     "y"
+    ],
+    "firstStep": 11,
+    "hits": 3,
+    "rows": []
+   },
+   {
+    "id": "n9",
+    "kind": "decision",
+    "parent": "n0",
+    "label": "for j in []",
+    "file": "/fixture/main.py",
+    "line": 25,
+    "fileId": 1,
+    "text": "for j in [] ran 0 times",
+    "firstStep": 22,
+    "hits": 0,
+    "notRun": [],
+    "rows": []
+   },
+   {
+    "id": "n10",
+    "kind": "statement",
+    "parent": "n0",
+    "label": "k = 0",
+    "file": "/fixture/main.py",
+    "line": 27,
+    "fileId": 1,
+    "text": "k = 0",
+    "targets": [
+     "k"
+    ],
+    "reads": [],
+    "firstStep": 23,
+    "hits": 1,
+    "rows": [
+     {
+      "kind": "out",
+      "name": "k",
+      "text": "0",
+      "step": 23
+     }
+    ]
+   },
+   {
+    "id": "n11",
+    "kind": "decision",
+    "parent": "n0",
+    "label": "while k < 2",
+    "file": "/fixture/main.py",
+    "line": 28,
+    "fileId": 1,
+    "text": "while k < 2 ran 2 times",
+    "firstStep": 24,
+    "hits": 2,
+    "notRun": [],
+    "rows": []
+   },
+   {
+    "id": "n12",
+    "kind": "statement",
+    "parent": "n0",
+    "label": "k += 1",
+    "file": "/fixture/main.py",
+    "line": 29,
+    "fileId": 1,
+    "text": "k += 1",
+    "targets": [
+     "k"
+    ],
+    "reads": [
+     "k"
+    ],
+    "firstStep": 26,
+    "hits": 2,
+    "rows": [
+     {
+      "kind": "out",
+      "name": "k",
+      "text": "1",
+      "step": 26
+     }
+    ]
+   },
+   {
+    "id": "n13",
+    "kind": "decision",
+    "parent": "n0",
+    "label": "if total > 100 and k > 0",
+    "file": "/fixture/main.py",
+    "line": 30,
+    "fileId": 1,
+    "text": "if total > 100 and k > 0 took False",
+    "taken": "False",
+    "firstStep": 29,
+    "hits": 1,
+    "notRun": [
+     32
+    ],
+    "rows": []
+   },
+   {
+    "id": "n14",
+    "kind": "decision",
+    "parent": "n0",
+    "label": "elif total > 5",
+    "file": "/fixture/main.py",
+    "line": 33,
+    "fileId": 1,
+    "text": "elif total > 5 took True",
+    "taken": "True",
+    "firstStep": 30,
+    "hits": 1,
+    "notRun": [
+     36
+    ],
+    "rows": []
+   },
+   {
+    "id": "n15",
+    "kind": "statement",
+    "parent": "n0",
+    "label": "mid = True",
+    "file": "/fixture/main.py",
+    "line": 34,
+    "fileId": 1,
+    "text": "mid = True",
+    "targets": [
+     "mid"
+    ],
+    "reads": [],
+    "firstStep": 31,
+    "hits": 1,
+    "rows": [
+     {
+      "kind": "out",
+      "name": "mid",
+      "text": "True",
+      "step": 31
+     }
+    ]
+   },
+   {
+    "id": "n16",
+    "kind": "decision",
+    "parent": "n0",
+    "label": "match total",
+    "file": "/fixture/main.py",
+    "line": 37,
+    "fileId": 1,
+    "text": "match total took case _",
+    "taken": "case _",
+    "firstStep": 32,
+    "hits": 1,
+    "notRun": [
+     39
+    ],
+    "rows": []
+   },
+   {
+    "id": "n17",
+    "kind": "statement",
+    "parent": "n0",
+    "label": "z = 1",
+    "file": "/fixture/main.py",
+    "line": 41,
+    "fileId": 1,
+    "text": "z = 1",
+    "targets": [
+     "z"
+    ],
+    "reads": [],
+    "firstStep": 33,
+    "hits": 1,
+    "rows": [
+     {
+      "kind": "out",
+      "name": "z",
+      "text": "1",
+      "step": 33
+     }
+    ]
+   },
+   {
+    "id": "n18",
+    "kind": "function",
+    "label": "Counter.__init__",
+    "file": "/fixture/main.py",
+    "line": 14,
+    "fileId": 1,
+    "function": "Counter.__init__",
+    "calls": 1,
+    "firstStep": 34,
+    "spans": [
+     [
+      35,
+      36
+     ]
+    ],
+    "rows": [
+     {
+      "kind": "in",
+      "name": "start",
+      "text": "10",
+      "step": 35
+     }
+    ]
+   },
+   {
+    "id": "n19",
+    "kind": "statement",
+    "parent": "n0",
+    "label": "c = Counter(10)",
+    "file": "/fixture/main.py",
+    "line": 42,
+    "fileId": 1,
+    "text": "c = Counter(10)",
+    "targets": [
+     "c"
+    ],
+    "reads": [
+     "Counter"
+    ],
+    "firstStep": 34,
+    "hits": 1,
+    "rows": [
+     {
+      "kind": "out",
+      "name": "c",
+      "text": "<__main__.Counter object at 0x0>",
+      "step": 36
+     }
+    ]
+   },
+   {
+    "id": "n20",
+    "kind": "statement",
+    "parent": "n18",
+    "label": "self.value = start",
+    "file": "/fixture/main.py",
+    "line": 15,
+    "fileId": 1,
+    "text": "self.value = start",
+    "targets": [],
+    "reads": [
+     "self",
+     "start"
+    ],
+    "firstStep": 36,
+    "hits": 1,
+    "rows": [
+     {
+      "kind": "out",
+      "name": "self.value",
+      "text": "10",
+      "step": 36
+     }
+    ]
+   },
+   {
+    "id": "n21",
+    "kind": "function",
+    "label": "Counter.bump",
+    "file": "/fixture/main.py",
+    "line": 17,
+    "fileId": 1,
+    "function": "Counter.bump",
+    "calls": 1,
+    "firstStep": 37,
+    "spans": [
+     [
+      38,
+      40
+     ]
+    ],
+    "rows": [
+     {
+      "kind": "in",
+      "name": "by",
+      "text": "5",
+      "step": 38
+     },
+     {
+      "kind": "out",
+      "name": "return",
+      "text": "15",
+      "step": 40
+     }
+    ]
+   },
+   {
+    "id": "n22",
+    "kind": "statement",
+    "parent": "n0",
+    "label": "c.bump(5)",
+    "file": "/fixture/main.py",
+    "line": 43,
+    "fileId": 1,
+    "text": "c.bump(5)",
+    "targets": [],
+    "reads": [
+     "c"
+    ],
+    "firstStep": 37,
+    "hits": 1,
+    "rows": [
+     {
+      "kind": "out",
+      "name": "c.bump(5)",
+      "text": "15",
+      "step": 40
+     }
+    ]
+   },
+   {
+    "id": "n23",
+    "kind": "statement",
+    "parent": "n21",
+    "label": "self.value += by",
+    "file": "/fixture/main.py",
+    "line": 18,
+    "fileId": 1,
+    "text": "self.value += by",
+    "targets": [],
+    "reads": [
+     "self",
+     "by"
+    ],
+    "firstStep": 39,
+    "hits": 1,
+    "rows": [
+     {
+      "kind": "out",
+      "name": "self.value",
+      "text": "15",
+      "step": 39
+     }
+    ]
+   },
+   {
+    "id": "n24",
+    "kind": "statement",
+    "parent": "n21",
+    "label": "return self.value",
+    "file": "/fixture/main.py",
+    "line": 19,
+    "fileId": 1,
+    "text": "return self.value",
+    "targets": [],
+    "reads": [
+     "self"
+    ],
+    "firstStep": 40,
+    "hits": 1,
+    "rows": []
+   },
+   {
+    "id": "n25",
+    "kind": "package",
+    "label": "libq",
+    "package": "libq",
+    "calls": 1,
+    "firstStep": 41,
+    "spans": [
+     [
+      42,
+      49
+     ]
+    ],
+    "rows": [
+     {
+      "kind": "in",
+      "name": "cb",
+      "text": "<function <lambda> at 0x0>",
+      "step": 42
+     },
+     {
+      "kind": "out",
+      "name": "return",
+      "text": "8",
+      "step": 49
+     }
+    ],
+    "nested": 2
+   },
+   {
+    "id": "n26",
+    "kind": "statement",
+    "parent": "n0",
+    "label": "seen = libq.run(lambda n: n * 2)",
+    "file": "/fixture/main.py",
+    "line": 44,
+    "fileId": 1,
+    "text": "seen = libq.run(lambda n: n * 2)",
+    "targets": [
+     "seen"
+    ],
+    "reads": [
+     "libq",
+     "n"
+    ],
+    "firstStep": 41,
+    "hits": 1,
+    "rows": [
+     {
+      "kind": "out",
+      "name": "seen",
+      "text": "8",
+      "step": 49
+     }
+    ]
+   },
+   {
+    "id": "n27",
+    "kind": "function",
+    "label": "<lambda>",
+    "file": "/fixture/main.py",
+    "line": 44,
+    "fileId": 1,
+    "function": "<lambda>",
+    "calls": 1,
+    "firstStep": 48,
+    "spans": [
+     [
+      48,
+      48
+     ]
+    ],
+    "rows": []
+   },
+   {
+    "id": "n28",
+    "kind": "function",
+    "label": "greet",
+    "file": "/fixture/main.py",
+    "line": 7,
+    "fileId": 1,
+    "function": "greet",
+    "calls": 1,
+    "firstStep": 50,
+    "spans": [
+     [
+      51,
+      53
+     ]
+    ],
+    "rows": [
+     {
+      "kind": "in",
+      "name": "name",
+      "text": "'bob'",
+      "step": 51
+     },
+     {
+      "kind": "out",
+      "name": "return",
+      "text": "'hello bob'",
+      "step": 53
+     }
+    ]
+   },
+   {
+    "id": "n29",
+    "kind": "statement",
+    "parent": "n0",
+    "label": "print(greet(\"bob\"), total)",
+    "file": "/fixture/main.py",
+    "line": 45,
+    "fileId": 1,
+    "text": "print(greet(\"bob\"), total)",
+    "targets": [],
+    "reads": [
+     "print",
+     "greet",
+     "total"
+    ],
+    "firstStep": 50,
+    "hits": 1,
+    "rows": [
+     {
+      "kind": "print",
+      "name": "stdout",
+      "text": "hello bob 6",
+      "step": 53
+     }
+    ]
+   },
+   {
+    "id": "n30",
+    "kind": "statement",
+    "parent": "n28",
+    "label": "msg = \"hello \" + name",
+    "file": "/fixture/main.py",
+    "line": 9,
+    "fileId": 1,
+    "text": "msg = \"hello \" + name",
+    "targets": [
+     "msg"
+    ],
+    "reads": [
+     "name"
+    ],
+    "firstStep": 52,
+    "hits": 1,
+    "rows": [
+     {
+      "kind": "out",
+      "name": "msg",
+      "text": "'hello bob'",
+      "step": 52
+     }
+    ]
+   },
+   {
+    "id": "n31",
+    "kind": "statement",
+    "parent": "n28",
+    "label": "return msg",
+    "file": "/fixture/main.py",
+    "line": 10,
+    "fileId": 1,
+    "text": "return msg",
+    "targets": [],
+    "reads": [
+     "msg"
+    ],
+    "firstStep": 53,
+    "hits": 1,
+    "rows": []
+   },
+   {
+    "id": "n32",
+    "kind": "function",
+    "label": "fail",
+    "file": "/fixture/helper.py",
+    "line": 6,
+    "fileId": 2,
+    "function": "fail",
+    "calls": 2,
+    "firstStep": 55,
+    "spans": [
+     [
+      56,
+      58
+     ],
+     [
+      61,
+      63
+     ]
+    ],
+    "rows": [
+     {
+      "kind": "in",
+      "name": "n",
+      "text": "6",
+      "step": 56
+     },
+     {
+      "kind": "raised",
+      "name": "ValueError",
+      "text": "too small: 6",
+      "step": 58
+     }
+    ]
+   },
+   {
+    "id": "n33",
+    "kind": "statement",
+    "parent": "n0",
+    "label": "helper.fail(total)",
+    "file": "/fixture/main.py",
+    "line": 47,
+    "fileId": 1,
+    "text": "helper.fail(total)",
+    "targets": [],
+    "reads": [
+     "helper",
+     "total"
+    ],
+    "firstStep": 55,
+    "hits": 1,
+    "rows": []
+   },
+   {
+    "id": "n34",
+    "kind": "decision",
+    "parent": "n32",
+    "label": "if n > 100",
+    "file": "/fixture/helper.py",
+    "line": 7,
+    "fileId": 2,
+    "text": "if n > 100 took False",
+    "taken": "False",
+    "firstStep": 57,
+    "hits": 2,
+    "notRun": [
+     8
+    ],
+    "rows": []
+   },
+   {
+    "id": "n35",
+    "kind": "statement",
+    "parent": "n32",
+    "label": "raise ValueError(\"too small: %d\" % n)",
+    "file": "/fixture/helper.py",
+    "line": 9,
+    "fileId": 2,
+    "text": "raise ValueError(\"too small: %d\" % n)",
+    "targets": [],
+    "reads": [
+     "ValueError",
+     "n"
+    ],
+    "firstStep": 58,
+    "hits": 2,
+    "rows": [
+     {
+      "kind": "raised",
+      "name": "ValueError",
+      "text": "too small: 6",
+      "step": 58
+     }
+    ]
+   },
+   {
+    "id": "n36",
+    "kind": "statement",
+    "parent": "n0",
+    "label": "handled = True",
+    "file": "/fixture/main.py",
+    "line": 49,
+    "fileId": 1,
+    "text": "handled = True",
+    "targets": [
+     "handled"
+    ],
+    "reads": [],
+    "firstStep": 59,
+    "hits": 1,
+    "rows": [
+     {
+      "kind": "out",
+      "name": "handled",
+      "text": "True",
+      "step": 59
+     }
+    ]
+   },
+   {
+    "id": "n37",
+    "kind": "statement",
+    "parent": "n0",
+    "label": "result = helper.fail(total)",
+    "file": "/fixture/main.py",
+    "line": 50,
+    "fileId": 1,
+    "text": "result = helper.fail(total)",
+    "targets": [
+     "result"
+    ],
+    "reads": [
+     "helper",
+     "total"
+    ],
+    "firstStep": 60,
+    "hits": 1,
+    "rows": []
+   }
+  ],
+  "edges": [
+   {
+    "id": "e0",
+    "from": "n0",
+    "to": "n2",
+    "kind": "call",
+    "count": 1,
+    "firstStep": 2,
+    "steps": [
+     2
+    ],
+    "momentIds": [
+     "m2"
+    ]
+   },
+   {
+    "id": "e1",
+    "from": "n6",
+    "to": "n5",
+    "kind": "call",
+    "count": 3,
+    "firstStep": 8,
+    "steps": [
+     8,
+     13,
+     18
+    ],
+    "momentIds": [
+     "m5",
+     "m7",
+     "m9"
+    ]
+   },
+   {
+    "id": "e2",
+    "from": "n3",
+    "to": "n6",
+    "kind": "data",
+    "label": "total",
+    "firstStep": 8
+   },
+   {
+    "id": "e3",
+    "from": "n4",
+    "to": "n6",
+    "kind": "data",
+    "label": "i",
+    "firstStep": 8
+   },
+   {
+    "id": "e4",
+    "from": "n5",
+    "to": "n7",
+    "kind": "data",
+    "label": "x",
+    "firstStep": 10
+   },
+   {
+    "id": "e5",
+    "from": "n7",
+    "to": "n8",
+    "kind": "data",
+    "label": "y",
+    "firstStep": 11
+   },
+   {
+    "id": "e6",
+    "from": "n5",
+    "to": "n5",
+    "kind": "data",
+    "label": "x",
+    "firstStep": 19
+   },
+   {
+    "id": "e7",
+    "from": "n10",
+    "to": "n11",
+    "kind": "data",
+    "label": "k",
+    "firstStep": 24
+   },
+   {
+    "id": "e8",
+    "from": "n10",
+    "to": "n12",
+    "kind": "data",
+    "label": "k",
+    "firstStep": 26
+   },
+   {
+    "id": "e9",
+    "from": "n6",
+    "to": "n13",
+    "kind": "data",
+    "label": "total",
+    "firstStep": 29
+   },
+   {
+    "id": "e10",
+    "from": "n12",
+    "to": "n13",
+    "kind": "data",
+    "label": "k",
+    "firstStep": 29
+   },
+   {
+    "id": "e11",
+    "from": "n6",
+    "to": "n14",
+    "kind": "data",
+    "label": "total",
+    "firstStep": 30
+   },
+   {
+    "id": "e12",
+    "from": "n6",
+    "to": "n16",
+    "kind": "data",
+    "label": "total",
+    "firstStep": 32
+   },
+   {
+    "id": "e13",
+    "from": "n19",
+    "to": "n18",
+    "kind": "call",
+    "count": 1,
+    "firstStep": 34,
+    "steps": [
+     34
+    ],
+    "momentIds": [
+     "m21"
+    ]
+   },
+   {
+    "id": "e14",
+    "from": "n18",
+    "to": "n20",
+    "kind": "data",
+    "label": "start",
+    "firstStep": 36
+   },
+   {
+    "id": "e15",
+    "from": "n22",
+    "to": "n21",
+    "kind": "call",
+    "count": 1,
+    "firstStep": 37,
+    "steps": [
+     37
+    ],
+    "momentIds": [
+     "m24"
+    ]
+   },
+   {
+    "id": "e16",
+    "from": "n19",
+    "to": "n22",
+    "kind": "data",
+    "label": "c",
+    "firstStep": 37
+   },
+   {
+    "id": "e17",
+    "from": "n21",
+    "to": "n23",
+    "kind": "data",
+    "label": "by",
+    "firstStep": 39
+   },
+   {
+    "id": "e18",
+    "from": "n26",
+    "to": "n25",
+    "kind": "call",
+    "count": 1,
+    "firstStep": 41,
+    "steps": [
+     41
+    ],
+    "momentIds": [
+     "m27"
+    ]
+   },
+   {
+    "id": "e19",
+    "from": "n25",
+    "to": "n27",
+    "kind": "tool",
+    "count": 1,
+    "firstStep": 48,
+    "steps": [
+     48
+    ],
+    "momentIds": [
+     "m28"
+    ]
+   },
+   {
+    "id": "e20",
+    "from": "n29",
+    "to": "n28",
+    "kind": "call",
+    "count": 1,
+    "firstStep": 50,
+    "steps": [
+     50
+    ],
+    "momentIds": [
+     "m30"
+    ]
+   },
+   {
+    "id": "e21",
+    "from": "n6",
+    "to": "n29",
+    "kind": "data",
+    "label": "total",
+    "firstStep": 50
+   },
+   {
+    "id": "e22",
+    "from": "n28",
+    "to": "n30",
+    "kind": "data",
+    "label": "name",
+    "firstStep": 52
+   },
+   {
+    "id": "e23",
+    "from": "n30",
+    "to": "n31",
+    "kind": "data",
+    "label": "msg",
+    "firstStep": 53
+   },
+   {
+    "id": "e24",
+    "from": "n33",
+    "to": "n32",
+    "kind": "call",
+    "count": 1,
+    "firstStep": 55,
+    "steps": [
+     55
+    ],
+    "momentIds": [
+     "m33"
+    ]
+   },
+   {
+    "id": "e25",
+    "from": "n6",
+    "to": "n33",
+    "kind": "data",
+    "label": "total",
+    "firstStep": 55
+   },
+   {
+    "id": "e26",
+    "from": "n32",
+    "to": "n34",
+    "kind": "data",
+    "label": "n",
+    "firstStep": 57
+   },
+   {
+    "id": "e27",
+    "from": "n32",
+    "to": "n35",
+    "kind": "data",
+    "label": "n",
+    "firstStep": 58
+   },
+   {
+    "id": "e28",
+    "from": "n37",
+    "to": "n32",
+    "kind": "call",
+    "count": 1,
+    "firstStep": 60,
+    "steps": [
+     60
+    ],
+    "momentIds": [
+     "m37"
+    ]
+   },
+   {
+    "id": "e29",
+    "from": "n6",
+    "to": "n37",
+    "kind": "data",
+    "label": "total",
+    "firstStep": 60
+   }
+  ],
+  "moments": [
+   {
+    "id": "m0",
+    "kind": "start",
+    "step": 0,
+    "nodeId": "n0"
+   },
+   {
+    "id": "m1",
+    "kind": "value",
+    "step": 1,
+    "nodeId": "n1"
+   },
+   {
+    "id": "m2",
+    "kind": "call",
+    "step": 2,
+    "nodeId": "n2",
+    "edgeId": "e0"
+   },
+   {
+    "id": "m3",
+    "kind": "value",
+    "step": 5,
+    "nodeId": "n3"
+   },
+   {
+    "id": "m4",
+    "kind": "decision",
+    "step": 6,
+    "nodeId": "n4"
+   },
+   {
+    "id": "m5",
+    "kind": "call",
+    "step": 8,
+    "nodeId": "n5",
+    "edgeId": "e1"
+   },
+   {
+    "id": "m6",
+    "kind": "value",
+    "step": 11,
+    "nodeId": "n6"
+   },
+   {
+    "id": "m7",
+    "kind": "call",
+    "step": 13,
+    "nodeId": "n5",
+    "edgeId": "e1"
+   },
+   {
+    "id": "m8",
+    "kind": "value",
+    "step": 16,
+    "nodeId": "n6"
+   },
+   {
+    "id": "m9",
+    "kind": "call",
+    "step": 18,
+    "nodeId": "n5",
+    "edgeId": "e1"
+   },
+   {
+    "id": "m10",
+    "kind": "value",
+    "step": 21,
+    "nodeId": "n6"
+   },
+   {
+    "id": "m11",
+    "kind": "decision",
+    "step": 22,
+    "nodeId": "n9"
+   },
+   {
+    "id": "m12",
+    "kind": "value",
+    "step": 23,
+    "nodeId": "n10"
+   },
+   {
+    "id": "m13",
+    "kind": "decision",
+    "step": 24,
+    "nodeId": "n11"
+   },
+   {
+    "id": "m14",
+    "kind": "value",
+    "step": 26,
+    "nodeId": "n12"
+   },
+   {
+    "id": "m15",
+    "kind": "value",
+    "step": 28,
+    "nodeId": "n12"
+   },
+   {
+    "id": "m16",
+    "kind": "decision",
+    "step": 29,
+    "nodeId": "n13"
+   },
+   {
+    "id": "m17",
+    "kind": "decision",
+    "step": 30,
+    "nodeId": "n14"
+   },
+   {
+    "id": "m18",
+    "kind": "value",
+    "step": 31,
+    "nodeId": "n15"
+   },
+   {
+    "id": "m19",
+    "kind": "decision",
+    "step": 32,
+    "nodeId": "n16"
+   },
+   {
+    "id": "m20",
+    "kind": "value",
+    "step": 33,
+    "nodeId": "n17"
+   },
+   {
+    "id": "m21",
+    "kind": "call",
+    "step": 34,
+    "nodeId": "n18",
+    "edgeId": "e13"
+   },
+   {
+    "id": "m22",
+    "kind": "value",
+    "step": 36,
+    "nodeId": "n20"
+   },
+   {
+    "id": "m23",
+    "kind": "value",
+    "step": 36,
+    "nodeId": "n19"
+   },
+   {
+    "id": "m24",
+    "kind": "call",
+    "step": 37,
+    "nodeId": "n21",
+    "edgeId": "e15"
+   },
+   {
+    "id": "m25",
+    "kind": "value",
+    "step": 39,
+    "nodeId": "n23"
+   },
+   {
+    "id": "m26",
+    "kind": "value",
+    "step": 40,
+    "nodeId": "n22"
+   },
+   {
+    "id": "m27",
+    "kind": "call",
+    "step": 41,
+    "nodeId": "n25",
+    "edgeId": "e18"
+   },
+   {
+    "id": "m28",
+    "kind": "tool",
+    "step": 48,
+    "nodeId": "n27",
+    "edgeId": "e19"
+   },
+   {
+    "id": "m29",
+    "kind": "value",
+    "step": 49,
+    "nodeId": "n26"
+   },
+   {
+    "id": "m30",
+    "kind": "call",
+    "step": 50,
+    "nodeId": "n28",
+    "edgeId": "e20"
+   },
+   {
+    "id": "m31",
+    "kind": "value",
+    "step": 52,
+    "nodeId": "n30"
+   },
+   {
+    "id": "m32",
+    "kind": "print",
+    "step": 53,
+    "nodeId": "n29"
+   },
+   {
+    "id": "m33",
+    "kind": "call",
+    "step": 55,
+    "nodeId": "n32",
+    "edgeId": "e24"
+   },
+   {
+    "id": "m34",
+    "kind": "decision",
+    "step": 57,
+    "nodeId": "n34"
+   },
+   {
+    "id": "m35",
+    "kind": "error",
+    "step": 58,
+    "nodeId": "n35"
+   },
+   {
+    "id": "m36",
+    "kind": "value",
+    "step": 59,
+    "nodeId": "n36"
+   },
+   {
+    "id": "m37",
+    "kind": "call",
+    "step": 60,
+    "nodeId": "n32",
+    "edgeId": "e28"
+   },
+   {
+    "id": "m38",
+    "kind": "decision",
+    "step": 62,
+    "nodeId": "n34"
+   },
+   {
+    "id": "m39",
+    "kind": "error",
+    "step": 63,
+    "nodeId": "n35"
+   },
+   {
+    "id": "m40",
+    "kind": "end",
+    "step": 63,
+    "nodeId": "n0"
+   }
+  ],
+  "scopes": {
+   "0": "n0",
+   "1": "n2",
+   "2": "n5",
+   "3": "n5",
+   "4": "n5",
+   "5": "n18",
+   "6": "n21",
+   "7": "n25",
+   "8": "n25",
+   "9": "n27",
+   "10": "n28",
+   "11": "n32",
+   "12": "n32"
+  },
+  "capped": false,
+  "truncated": false
+ },
+ "all": {
+  "count": 64,
+  "nodes": [
+   {
+    "id": "n0",
+    "kind": "module",
+    "label": "<module>",
+    "file": "/fixture/main.py",
+    "line": 1,
+    "fileId": 1,
+    "function": "<module>",
+    "calls": 1,
+    "firstStep": 0,
+    "spans": [
+     [
+      0,
+      63
+     ]
+    ],
+    "rows": []
+   },
+   {
+    "id": "n1",
+    "kind": "statement",
+    "parent": "n0",
+    "label": "sys.path.insert(0, os.path.join(os.path.dirname(os.path.abs…",
+    "file": "/fixture/main.py",
+    "line": 2,
+    "fileId": 1,
+    "text": "sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'venv', 'site-packages'))",
+    "targets": [],
+    "reads": [
+     "sys",
+     "os",
+     "__file__"
+    ],
+    "firstStep": 1,
+    "hits": 1,
+    "rows": [
+     {
+      "kind": "out",
+      "name": "sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'venv', 'site-packages'))",
+      "text": "None",
+      "step": 1
+     }
+    ]
+   },
+   {
+    "id": "n2",
+    "kind": "module",
+    "label": "helper.py",
+    "file": "/fixture/helper.py",
+    "line": 1,
+    "fileId": 2,
+    "function": "<module>",
+    "calls": 1,
+    "firstStep": 2,
+    "spans": [
+     [
+      3,
+      3
+     ]
+    ],
+    "rows": []
+   },
+   {
+    "id": "n3",
+    "kind": "statement",
+    "parent": "n0",
+    "label": "total = 0",
+    "file": "/fixture/main.py",
+    "line": 22,
+    "fileId": 1,
+    "text": "total = 0",
+    "targets": [
+     "total"
+    ],
+    "reads": [],
+    "firstStep": 5,
+    "hits": 1,
+    "rows": [
+     {
+      "kind": "out",
+      "name": "total",
+      "text": "0",
+      "step": 5
+     }
+    ]
+   },
+   {
+    "id": "n4",
+    "kind": "decision",
+    "parent": "n0",
+    "label": "for i in range(3)",
+    "file": "/fixture/main.py",
+    "line": 23,
+    "fileId": 1,
+    "text": "for i in range(3) ran 3 times",
+    "firstStep": 6,
+    "hits": 3,
+    "notRun": [],
+    "rows": []
+   },
+   {
+    "id": "n5",
+    "kind": "function",
+    "label": "double",
+    "file": "/fixture/helper.py",
+    "line": 1,
+    "fileId": 2,
+    "function": "double",
+    "calls": 3,
+    "firstStep": 8,
+    "spans": [
+     [
+      9,
+      11
+     ],
+     [
+      14,
+      16
+     ],
+     [
+      19,
+      21
+     ]
+    ],
+    "rows": [
+     {
+      "kind": "in",
+      "name": "x",
+      "text": "0",
+      "step": 9
+     },
+     {
+      "kind": "out",
+      "name": "return",
+      "text": "0",
+      "step": 11
+     }
+    ]
+   },
+   {
+    "id": "n6",
+    "kind": "statement",
+    "parent": "n0",
+    "label": "total += helper.double(i)",
+    "file": "/fixture/main.py",
+    "line": 24,
+    "fileId": 1,
+    "text": "total += helper.double(i)",
+    "targets": [
+     "total"
+    ],
+    "reads": [
+     "total",
+     "helper",
+     "i"
+    ],
+    "firstStep": 8,
+    "hits": 3,
+    "rows": [
+     {
+      "kind": "out",
+      "name": "total",
+      "text": "0",
+      "step": 11
+     }
+    ]
+   },
+   {
+    "id": "n7",
+    "kind": "statement",
+    "parent": "n5",
+    "label": "y = x * 2",
+    "file": "/fixture/helper.py",
+    "line": 2,
+    "fileId": 2,
+    "text": "y = x * 2",
+    "targets": [
+     "y"
+    ],
+    "reads": [
+     "x"
+    ],
+    "firstStep": 10,
+    "hits": 3,
+    "rows": []
+   },
+   {
+    "id": "n8",
+    "kind": "statement",
+    "parent": "n5",
+    "label": "return y",
+    "file": "/fixture/helper.py",
+    "line": 3,
+    "fileId": 2,
+    "text": "return y",
+    "targets": [],
+    "reads": [
+     "y"
+    ],
+    "firstStep": 11,
+    "hits": 3,
+    "rows": []
+   },
+   {
+    "id": "n9",
+    "kind": "decision",
+    "parent": "n0",
+    "label": "for j in []",
+    "file": "/fixture/main.py",
+    "line": 25,
+    "fileId": 1,
+    "text": "for j in [] ran 0 times",
+    "firstStep": 22,
+    "hits": 0,
+    "notRun": [],
+    "rows": []
+   },
+   {
+    "id": "n10",
+    "kind": "statement",
+    "parent": "n0",
+    "label": "k = 0",
+    "file": "/fixture/main.py",
+    "line": 27,
+    "fileId": 1,
+    "text": "k = 0",
+    "targets": [
+     "k"
+    ],
+    "reads": [],
+    "firstStep": 23,
+    "hits": 1,
+    "rows": [
+     {
+      "kind": "out",
+      "name": "k",
+      "text": "0",
+      "step": 23
+     }
+    ]
+   },
+   {
+    "id": "n11",
+    "kind": "decision",
+    "parent": "n0",
+    "label": "while k < 2",
+    "file": "/fixture/main.py",
+    "line": 28,
+    "fileId": 1,
+    "text": "while k < 2 ran 2 times",
+    "firstStep": 24,
+    "hits": 2,
+    "notRun": [],
+    "rows": []
+   },
+   {
+    "id": "n12",
+    "kind": "statement",
+    "parent": "n0",
+    "label": "k += 1",
+    "file": "/fixture/main.py",
+    "line": 29,
+    "fileId": 1,
+    "text": "k += 1",
+    "targets": [
+     "k"
+    ],
+    "reads": [
+     "k"
+    ],
+    "firstStep": 26,
+    "hits": 2,
+    "rows": [
+     {
+      "kind": "out",
+      "name": "k",
+      "text": "1",
+      "step": 26
+     }
+    ]
+   },
+   {
+    "id": "n13",
+    "kind": "decision",
+    "parent": "n0",
+    "label": "if total > 100 and k > 0",
+    "file": "/fixture/main.py",
+    "line": 30,
+    "fileId": 1,
+    "text": "if total > 100 and k > 0 took False",
+    "taken": "False",
+    "firstStep": 29,
+    "hits": 1,
+    "notRun": [
+     32
+    ],
+    "rows": []
+   },
+   {
+    "id": "n14",
+    "kind": "decision",
+    "parent": "n0",
+    "label": "elif total > 5",
+    "file": "/fixture/main.py",
+    "line": 33,
+    "fileId": 1,
+    "text": "elif total > 5 took True",
+    "taken": "True",
+    "firstStep": 30,
+    "hits": 1,
+    "notRun": [
+     36
+    ],
+    "rows": []
+   },
+   {
+    "id": "n15",
+    "kind": "statement",
+    "parent": "n0",
+    "label": "mid = True",
+    "file": "/fixture/main.py",
+    "line": 34,
+    "fileId": 1,
+    "text": "mid = True",
+    "targets": [
+     "mid"
+    ],
+    "reads": [],
+    "firstStep": 31,
+    "hits": 1,
+    "rows": [
+     {
+      "kind": "out",
+      "name": "mid",
+      "text": "True",
+      "step": 31
+     }
+    ]
+   },
+   {
+    "id": "n16",
+    "kind": "decision",
+    "parent": "n0",
+    "label": "match total",
+    "file": "/fixture/main.py",
+    "line": 37,
+    "fileId": 1,
+    "text": "match total took case _",
+    "taken": "case _",
+    "firstStep": 32,
+    "hits": 1,
+    "notRun": [
+     39
+    ],
+    "rows": []
+   },
+   {
+    "id": "n17",
+    "kind": "statement",
+    "parent": "n0",
+    "label": "z = 1",
+    "file": "/fixture/main.py",
+    "line": 41,
+    "fileId": 1,
+    "text": "z = 1",
+    "targets": [
+     "z"
+    ],
+    "reads": [],
+    "firstStep": 33,
+    "hits": 1,
+    "rows": [
+     {
+      "kind": "out",
+      "name": "z",
+      "text": "1",
+      "step": 33
+     }
+    ]
+   },
+   {
+    "id": "n18",
+    "kind": "function",
+    "label": "Counter.__init__",
+    "file": "/fixture/main.py",
+    "line": 14,
+    "fileId": 1,
+    "function": "Counter.__init__",
+    "calls": 1,
+    "firstStep": 34,
+    "spans": [
+     [
+      35,
+      36
+     ]
+    ],
+    "rows": [
+     {
+      "kind": "in",
+      "name": "start",
+      "text": "10",
+      "step": 35
+     }
+    ]
+   },
+   {
+    "id": "n19",
+    "kind": "statement",
+    "parent": "n0",
+    "label": "c = Counter(10)",
+    "file": "/fixture/main.py",
+    "line": 42,
+    "fileId": 1,
+    "text": "c = Counter(10)",
+    "targets": [
+     "c"
+    ],
+    "reads": [
+     "Counter"
+    ],
+    "firstStep": 34,
+    "hits": 1,
+    "rows": [
+     {
+      "kind": "out",
+      "name": "c",
+      "text": "<__main__.Counter object at 0x0>",
+      "step": 36
+     }
+    ]
+   },
+   {
+    "id": "n20",
+    "kind": "statement",
+    "parent": "n18",
+    "label": "self.value = start",
+    "file": "/fixture/main.py",
+    "line": 15,
+    "fileId": 1,
+    "text": "self.value = start",
+    "targets": [],
+    "reads": [
+     "self",
+     "start"
+    ],
+    "firstStep": 36,
+    "hits": 1,
+    "rows": [
+     {
+      "kind": "out",
+      "name": "self.value",
+      "text": "10",
+      "step": 36
+     }
+    ]
+   },
+   {
+    "id": "n21",
+    "kind": "function",
+    "label": "Counter.bump",
+    "file": "/fixture/main.py",
+    "line": 17,
+    "fileId": 1,
+    "function": "Counter.bump",
+    "calls": 1,
+    "firstStep": 37,
+    "spans": [
+     [
+      38,
+      40
+     ]
+    ],
+    "rows": [
+     {
+      "kind": "in",
+      "name": "by",
+      "text": "5",
+      "step": 38
+     },
+     {
+      "kind": "out",
+      "name": "return",
+      "text": "15",
+      "step": 40
+     }
+    ]
+   },
+   {
+    "id": "n22",
+    "kind": "statement",
+    "parent": "n0",
+    "label": "c.bump(5)",
+    "file": "/fixture/main.py",
+    "line": 43,
+    "fileId": 1,
+    "text": "c.bump(5)",
+    "targets": [],
+    "reads": [
+     "c"
+    ],
+    "firstStep": 37,
+    "hits": 1,
+    "rows": [
+     {
+      "kind": "out",
+      "name": "c.bump(5)",
+      "text": "15",
+      "step": 40
+     }
+    ]
+   },
+   {
+    "id": "n23",
+    "kind": "statement",
+    "parent": "n21",
+    "label": "self.value += by",
+    "file": "/fixture/main.py",
+    "line": 18,
+    "fileId": 1,
+    "text": "self.value += by",
+    "targets": [],
+    "reads": [
+     "self",
+     "by"
+    ],
+    "firstStep": 39,
+    "hits": 1,
+    "rows": [
+     {
+      "kind": "out",
+      "name": "self.value",
+      "text": "15",
+      "step": 39
+     }
+    ]
+   },
+   {
+    "id": "n24",
+    "kind": "statement",
+    "parent": "n21",
+    "label": "return self.value",
+    "file": "/fixture/main.py",
+    "line": 19,
+    "fileId": 1,
+    "text": "return self.value",
+    "targets": [],
+    "reads": [
+     "self"
+    ],
+    "firstStep": 40,
+    "hits": 1,
+    "rows": []
+   },
+   {
+    "id": "n25",
+    "kind": "function",
+    "label": "run",
+    "file": "/fixture/venv/site-packages/libq/__init__.py",
+    "line": 9,
+    "fileId": 3,
+    "function": "run",
+    "package": "libq",
+    "calls": 1,
+    "firstStep": 41,
+    "spans": [
+     [
+      42,
+      49
+     ]
+    ],
+    "rows": [
+     {
+      "kind": "in",
+      "name": "cb",
+      "text": "<function <lambda> at 0x0>",
+      "step": 42
+     },
+     {
+      "kind": "out",
+      "name": "return",
+      "text": "8",
+      "step": 49
+     }
+    ]
+   },
+   {
+    "id": "n26",
+    "kind": "statement",
+    "parent": "n0",
+    "label": "seen = libq.run(lambda n: n * 2)",
+    "file": "/fixture/main.py",
+    "line": 44,
+    "fileId": 1,
+    "text": "seen = libq.run(lambda n: n * 2)",
+    "targets": [
+     "seen"
+    ],
+    "reads": [
+     "libq",
+     "n"
+    ],
+    "firstStep": 41,
+    "hits": 1,
+    "rows": [
+     {
+      "kind": "out",
+      "name": "seen",
+      "text": "8",
+      "step": 49
+     }
+    ]
+   },
+   {
+    "id": "n27",
+    "kind": "function",
+    "label": "helper",
+    "file": "/fixture/venv/site-packages/libq/__init__.py",
+    "line": 4,
+    "fileId": 3,
+    "function": "helper",
+    "package": "libq",
+    "calls": 1,
+    "firstStep": 43,
+    "spans": [
+     [
+      44,
+      46
+     ]
+    ],
+    "rows": [
+     {
+      "kind": "in",
+      "name": "x",
+      "text": "1",
+      "step": 44
+     },
+     {
+      "kind": "out",
+      "name": "return",
+      "text": "2",
+      "step": 46
+     }
+    ]
+   },
+   {
+    "id": "n28",
+    "kind": "function",
+    "label": "<lambda>",
+    "file": "/fixture/main.py",
+    "line": 44,
+    "fileId": 1,
+    "function": "<lambda>",
+    "calls": 1,
+    "firstStep": 48,
+    "spans": [
+     [
+      48,
+      48
+     ]
+    ],
+    "rows": []
+   },
+   {
+    "id": "n29",
+    "kind": "function",
+    "label": "greet",
+    "file": "/fixture/main.py",
+    "line": 7,
+    "fileId": 1,
+    "function": "greet",
+    "calls": 1,
+    "firstStep": 50,
+    "spans": [
+     [
+      51,
+      53
+     ]
+    ],
+    "rows": [
+     {
+      "kind": "in",
+      "name": "name",
+      "text": "'bob'",
+      "step": 51
+     },
+     {
+      "kind": "out",
+      "name": "return",
+      "text": "'hello bob'",
+      "step": 53
+     }
+    ]
+   },
+   {
+    "id": "n30",
+    "kind": "statement",
+    "parent": "n0",
+    "label": "print(greet(\"bob\"), total)",
+    "file": "/fixture/main.py",
+    "line": 45,
+    "fileId": 1,
+    "text": "print(greet(\"bob\"), total)",
+    "targets": [],
+    "reads": [
+     "print",
+     "greet",
+     "total"
+    ],
+    "firstStep": 50,
+    "hits": 1,
+    "rows": [
+     {
+      "kind": "print",
+      "name": "stdout",
+      "text": "hello bob 6",
+      "step": 53
+     }
+    ]
+   },
+   {
+    "id": "n31",
+    "kind": "statement",
+    "parent": "n29",
+    "label": "msg = \"hello \" + name",
+    "file": "/fixture/main.py",
+    "line": 9,
+    "fileId": 1,
+    "text": "msg = \"hello \" + name",
+    "targets": [
+     "msg"
+    ],
+    "reads": [
+     "name"
+    ],
+    "firstStep": 52,
+    "hits": 1,
+    "rows": [
+     {
+      "kind": "out",
+      "name": "msg",
+      "text": "'hello bob'",
+      "step": 52
+     }
+    ]
+   },
+   {
+    "id": "n32",
+    "kind": "statement",
+    "parent": "n29",
+    "label": "return msg",
+    "file": "/fixture/main.py",
+    "line": 10,
+    "fileId": 1,
+    "text": "return msg",
+    "targets": [],
+    "reads": [
+     "msg"
+    ],
+    "firstStep": 53,
+    "hits": 1,
+    "rows": []
+   },
+   {
+    "id": "n33",
+    "kind": "function",
+    "label": "fail",
+    "file": "/fixture/helper.py",
+    "line": 6,
+    "fileId": 2,
+    "function": "fail",
+    "calls": 2,
+    "firstStep": 55,
+    "spans": [
+     [
+      56,
+      58
+     ],
+     [
+      61,
+      63
+     ]
+    ],
+    "rows": [
+     {
+      "kind": "in",
+      "name": "n",
+      "text": "6",
+      "step": 56
+     },
+     {
+      "kind": "raised",
+      "name": "ValueError",
+      "text": "too small: 6",
+      "step": 58
+     }
+    ]
+   },
+   {
+    "id": "n34",
+    "kind": "statement",
+    "parent": "n0",
+    "label": "helper.fail(total)",
+    "file": "/fixture/main.py",
+    "line": 47,
+    "fileId": 1,
+    "text": "helper.fail(total)",
+    "targets": [],
+    "reads": [
+     "helper",
+     "total"
+    ],
+    "firstStep": 55,
+    "hits": 1,
+    "rows": []
+   },
+   {
+    "id": "n35",
+    "kind": "decision",
+    "parent": "n33",
+    "label": "if n > 100",
+    "file": "/fixture/helper.py",
+    "line": 7,
+    "fileId": 2,
+    "text": "if n > 100 took False",
+    "taken": "False",
+    "firstStep": 57,
+    "hits": 2,
+    "notRun": [
+     8
+    ],
+    "rows": []
+   },
+   {
+    "id": "n36",
+    "kind": "statement",
+    "parent": "n33",
+    "label": "raise ValueError(\"too small: %d\" % n)",
+    "file": "/fixture/helper.py",
+    "line": 9,
+    "fileId": 2,
+    "text": "raise ValueError(\"too small: %d\" % n)",
+    "targets": [],
+    "reads": [
+     "ValueError",
+     "n"
+    ],
+    "firstStep": 58,
+    "hits": 2,
+    "rows": [
+     {
+      "kind": "raised",
+      "name": "ValueError",
+      "text": "too small: 6",
+      "step": 58
+     }
+    ]
+   },
+   {
+    "id": "n37",
+    "kind": "statement",
+    "parent": "n0",
+    "label": "handled = True",
+    "file": "/fixture/main.py",
+    "line": 49,
+    "fileId": 1,
+    "text": "handled = True",
+    "targets": [
+     "handled"
+    ],
+    "reads": [],
+    "firstStep": 59,
+    "hits": 1,
+    "rows": [
+     {
+      "kind": "out",
+      "name": "handled",
+      "text": "True",
+      "step": 59
+     }
+    ]
+   },
+   {
+    "id": "n38",
+    "kind": "statement",
+    "parent": "n0",
+    "label": "result = helper.fail(total)",
+    "file": "/fixture/main.py",
+    "line": 50,
+    "fileId": 1,
+    "text": "result = helper.fail(total)",
+    "targets": [
+     "result"
+    ],
+    "reads": [
+     "helper",
+     "total"
+    ],
+    "firstStep": 60,
+    "hits": 1,
+    "rows": []
+   }
+  ],
+  "edges": [
+   {
+    "id": "e0",
+    "from": "n0",
+    "to": "n2",
+    "kind": "call",
+    "count": 1,
+    "firstStep": 2,
+    "steps": [
+     2
+    ],
+    "momentIds": [
+     "m2"
+    ]
+   },
+   {
+    "id": "e1",
+    "from": "n6",
+    "to": "n5",
+    "kind": "call",
+    "count": 3,
+    "firstStep": 8,
+    "steps": [
+     8,
+     13,
+     18
+    ],
+    "momentIds": [
+     "m5",
+     "m7",
+     "m9"
+    ]
+   },
+   {
+    "id": "e2",
+    "from": "n3",
+    "to": "n6",
+    "kind": "data",
+    "label": "total",
+    "firstStep": 8
+   },
+   {
+    "id": "e3",
+    "from": "n4",
+    "to": "n6",
+    "kind": "data",
+    "label": "i",
+    "firstStep": 8
+   },
+   {
+    "id": "e4",
+    "from": "n5",
+    "to": "n7",
+    "kind": "data",
+    "label": "x",
+    "firstStep": 10
+   },
+   {
+    "id": "e5",
+    "from": "n7",
+    "to": "n8",
+    "kind": "data",
+    "label": "y",
+    "firstStep": 11
+   },
+   {
+    "id": "e6",
+    "from": "n5",
+    "to": "n5",
+    "kind": "data",
+    "label": "x",
+    "firstStep": 19
+   },
+   {
+    "id": "e7",
+    "from": "n10",
+    "to": "n11",
+    "kind": "data",
+    "label": "k",
+    "firstStep": 24
+   },
+   {
+    "id": "e8",
+    "from": "n10",
+    "to": "n12",
+    "kind": "data",
+    "label": "k",
+    "firstStep": 26
+   },
+   {
+    "id": "e9",
+    "from": "n6",
+    "to": "n13",
+    "kind": "data",
+    "label": "total",
+    "firstStep": 29
+   },
+   {
+    "id": "e10",
+    "from": "n12",
+    "to": "n13",
+    "kind": "data",
+    "label": "k",
+    "firstStep": 29
+   },
+   {
+    "id": "e11",
+    "from": "n6",
+    "to": "n14",
+    "kind": "data",
+    "label": "total",
+    "firstStep": 30
+   },
+   {
+    "id": "e12",
+    "from": "n6",
+    "to": "n16",
+    "kind": "data",
+    "label": "total",
+    "firstStep": 32
+   },
+   {
+    "id": "e13",
+    "from": "n19",
+    "to": "n18",
+    "kind": "call",
+    "count": 1,
+    "firstStep": 34,
+    "steps": [
+     34
+    ],
+    "momentIds": [
+     "m21"
+    ]
+   },
+   {
+    "id": "e14",
+    "from": "n18",
+    "to": "n20",
+    "kind": "data",
+    "label": "start",
+    "firstStep": 36
+   },
+   {
+    "id": "e15",
+    "from": "n22",
+    "to": "n21",
+    "kind": "call",
+    "count": 1,
+    "firstStep": 37,
+    "steps": [
+     37
+    ],
+    "momentIds": [
+     "m24"
+    ]
+   },
+   {
+    "id": "e16",
+    "from": "n19",
+    "to": "n22",
+    "kind": "data",
+    "label": "c",
+    "firstStep": 37
+   },
+   {
+    "id": "e17",
+    "from": "n21",
+    "to": "n23",
+    "kind": "data",
+    "label": "by",
+    "firstStep": 39
+   },
+   {
+    "id": "e18",
+    "from": "n26",
+    "to": "n25",
+    "kind": "call",
+    "count": 1,
+    "firstStep": 41,
+    "steps": [
+     41
+    ],
+    "momentIds": [
+     "m27"
+    ]
+   },
+   {
+    "id": "e19",
+    "from": "n25",
+    "to": "n27",
+    "kind": "call",
+    "count": 1,
+    "firstStep": 43,
+    "steps": [
+     43
+    ],
+    "momentIds": [
+     "m28"
+    ]
+   },
+   {
+    "id": "e20",
+    "from": "n25",
+    "to": "n28",
+    "kind": "tool",
+    "count": 1,
+    "firstStep": 48,
+    "steps": [
+     48
+    ],
+    "momentIds": [
+     "m29"
+    ]
+   },
+   {
+    "id": "e21",
+    "from": "n30",
+    "to": "n29",
+    "kind": "call",
+    "count": 1,
+    "firstStep": 50,
+    "steps": [
+     50
+    ],
+    "momentIds": [
+     "m31"
+    ]
+   },
+   {
+    "id": "e22",
+    "from": "n6",
+    "to": "n30",
+    "kind": "data",
+    "label": "total",
+    "firstStep": 50
+   },
+   {
+    "id": "e23",
+    "from": "n29",
+    "to": "n31",
+    "kind": "data",
+    "label": "name",
+    "firstStep": 52
+   },
+   {
+    "id": "e24",
+    "from": "n31",
+    "to": "n32",
+    "kind": "data",
+    "label": "msg",
+    "firstStep": 53
+   },
+   {
+    "id": "e25",
+    "from": "n34",
+    "to": "n33",
+    "kind": "call",
+    "count": 1,
+    "firstStep": 55,
+    "steps": [
+     55
+    ],
+    "momentIds": [
+     "m34"
+    ]
+   },
+   {
+    "id": "e26",
+    "from": "n6",
+    "to": "n34",
+    "kind": "data",
+    "label": "total",
+    "firstStep": 55
+   },
+   {
+    "id": "e27",
+    "from": "n33",
+    "to": "n35",
+    "kind": "data",
+    "label": "n",
+    "firstStep": 57
+   },
+   {
+    "id": "e28",
+    "from": "n33",
+    "to": "n36",
+    "kind": "data",
+    "label": "n",
+    "firstStep": 58
+   },
+   {
+    "id": "e29",
+    "from": "n38",
+    "to": "n33",
+    "kind": "call",
+    "count": 1,
+    "firstStep": 60,
+    "steps": [
+     60
+    ],
+    "momentIds": [
+     "m38"
+    ]
+   },
+   {
+    "id": "e30",
+    "from": "n6",
+    "to": "n38",
+    "kind": "data",
+    "label": "total",
+    "firstStep": 60
+   }
+  ],
+  "moments": [
+   {
+    "id": "m0",
+    "kind": "start",
+    "step": 0,
+    "nodeId": "n0"
+   },
+   {
+    "id": "m1",
+    "kind": "value",
+    "step": 1,
+    "nodeId": "n1"
+   },
+   {
+    "id": "m2",
+    "kind": "call",
+    "step": 2,
+    "nodeId": "n2",
+    "edgeId": "e0"
+   },
+   {
+    "id": "m3",
+    "kind": "value",
+    "step": 5,
+    "nodeId": "n3"
+   },
+   {
+    "id": "m4",
+    "kind": "decision",
+    "step": 6,
+    "nodeId": "n4"
+   },
+   {
+    "id": "m5",
+    "kind": "call",
+    "step": 8,
+    "nodeId": "n5",
+    "edgeId": "e1"
+   },
+   {
+    "id": "m6",
+    "kind": "value",
+    "step": 11,
+    "nodeId": "n6"
+   },
+   {
+    "id": "m7",
+    "kind": "call",
+    "step": 13,
+    "nodeId": "n5",
+    "edgeId": "e1"
+   },
+   {
+    "id": "m8",
+    "kind": "value",
+    "step": 16,
+    "nodeId": "n6"
+   },
+   {
+    "id": "m9",
+    "kind": "call",
+    "step": 18,
+    "nodeId": "n5",
+    "edgeId": "e1"
+   },
+   {
+    "id": "m10",
+    "kind": "value",
+    "step": 21,
+    "nodeId": "n6"
+   },
+   {
+    "id": "m11",
+    "kind": "decision",
+    "step": 22,
+    "nodeId": "n9"
+   },
+   {
+    "id": "m12",
+    "kind": "value",
+    "step": 23,
+    "nodeId": "n10"
+   },
+   {
+    "id": "m13",
+    "kind": "decision",
+    "step": 24,
+    "nodeId": "n11"
+   },
+   {
+    "id": "m14",
+    "kind": "value",
+    "step": 26,
+    "nodeId": "n12"
+   },
+   {
+    "id": "m15",
+    "kind": "value",
+    "step": 28,
+    "nodeId": "n12"
+   },
+   {
+    "id": "m16",
+    "kind": "decision",
+    "step": 29,
+    "nodeId": "n13"
+   },
+   {
+    "id": "m17",
+    "kind": "decision",
+    "step": 30,
+    "nodeId": "n14"
+   },
+   {
+    "id": "m18",
+    "kind": "value",
+    "step": 31,
+    "nodeId": "n15"
+   },
+   {
+    "id": "m19",
+    "kind": "decision",
+    "step": 32,
+    "nodeId": "n16"
+   },
+   {
+    "id": "m20",
+    "kind": "value",
+    "step": 33,
+    "nodeId": "n17"
+   },
+   {
+    "id": "m21",
+    "kind": "call",
+    "step": 34,
+    "nodeId": "n18",
+    "edgeId": "e13"
+   },
+   {
+    "id": "m22",
+    "kind": "value",
+    "step": 36,
+    "nodeId": "n20"
+   },
+   {
+    "id": "m23",
+    "kind": "value",
+    "step": 36,
+    "nodeId": "n19"
+   },
+   {
+    "id": "m24",
+    "kind": "call",
+    "step": 37,
+    "nodeId": "n21",
+    "edgeId": "e15"
+   },
+   {
+    "id": "m25",
+    "kind": "value",
+    "step": 39,
+    "nodeId": "n23"
+   },
+   {
+    "id": "m26",
+    "kind": "value",
+    "step": 40,
+    "nodeId": "n22"
+   },
+   {
+    "id": "m27",
+    "kind": "call",
+    "step": 41,
+    "nodeId": "n25",
+    "edgeId": "e18"
+   },
+   {
+    "id": "m28",
+    "kind": "call",
+    "step": 43,
+    "nodeId": "n27",
+    "edgeId": "e19"
+   },
+   {
+    "id": "m29",
+    "kind": "tool",
+    "step": 48,
+    "nodeId": "n28",
+    "edgeId": "e20"
+   },
+   {
+    "id": "m30",
+    "kind": "value",
+    "step": 49,
+    "nodeId": "n26"
+   },
+   {
+    "id": "m31",
+    "kind": "call",
+    "step": 50,
+    "nodeId": "n29",
+    "edgeId": "e21"
+   },
+   {
+    "id": "m32",
+    "kind": "value",
+    "step": 52,
+    "nodeId": "n31"
+   },
+   {
+    "id": "m33",
+    "kind": "print",
+    "step": 53,
+    "nodeId": "n30"
+   },
+   {
+    "id": "m34",
+    "kind": "call",
+    "step": 55,
+    "nodeId": "n33",
+    "edgeId": "e25"
+   },
+   {
+    "id": "m35",
+    "kind": "decision",
+    "step": 57,
+    "nodeId": "n35"
+   },
+   {
+    "id": "m36",
+    "kind": "error",
+    "step": 58,
+    "nodeId": "n36"
+   },
+   {
+    "id": "m37",
+    "kind": "value",
+    "step": 59,
+    "nodeId": "n37"
+   },
+   {
+    "id": "m38",
+    "kind": "call",
+    "step": 60,
+    "nodeId": "n33",
+    "edgeId": "e29"
+   },
+   {
+    "id": "m39",
+    "kind": "decision",
+    "step": 62,
+    "nodeId": "n35"
+   },
+   {
+    "id": "m40",
+    "kind": "error",
+    "step": 63,
+    "nodeId": "n36"
+   },
+   {
+    "id": "m41",
+    "kind": "end",
+    "step": 63,
+    "nodeId": "n0"
+   }
+  ],
+  "scopes": {
+   "0": "n0",
+   "1": "n2",
+   "2": "n5",
+   "3": "n5",
+   "4": "n5",
+   "5": "n18",
+   "6": "n21",
+   "7": "n25",
+   "8": "n27",
+   "9": "n28",
+   "10": "n29",
+   "11": "n33",
+   "12": "n33"
+  },
+  "capped": false,
+  "truncated": false
+ },
+ "scope": {
+  "count": 64,
+  "nodes": [
+   {
+    "id": "n0",
+    "kind": "module",
+    "label": "<module>",
+    "file": "/fixture/main.py",
+    "line": 1,
+    "fileId": 1,
+    "function": "<module>",
+    "calls": 1,
+    "firstStep": 0,
+    "spans": [
+     [
+      0,
+      63
+     ]
+    ],
+    "rows": []
+   },
+   {
+    "id": "n1",
+    "kind": "function",
+    "label": "fail",
+    "file": "/fixture/helper.py",
+    "line": 6,
+    "fileId": 2,
+    "function": "fail",
+    "calls": 2,
+    "firstStep": 55,
+    "spans": [
+     [
+      56,
+      58
+     ],
+     [
+      61,
+      63
+     ]
+    ],
+    "rows": [
+     {
+      "kind": "in",
+      "name": "n",
+      "text": "6",
+      "step": 56
+     },
+     {
+      "kind": "raised",
+      "name": "ValueError",
+      "text": "too small: 6",
+      "step": 58
+     }
+    ]
+   },
+   {
+    "id": "n2",
+    "kind": "decision",
+    "parent": "n1",
+    "label": "if n > 100",
+    "file": "/fixture/helper.py",
+    "line": 7,
+    "fileId": 2,
+    "text": "if n > 100 took False",
+    "taken": "False",
+    "firstStep": 57,
+    "hits": 2,
+    "notRun": [
+     8
+    ],
+    "rows": []
+   },
+   {
+    "id": "n3",
+    "kind": "statement",
+    "parent": "n1",
+    "label": "raise ValueError(\"too small: %d\" % n)",
+    "file": "/fixture/helper.py",
+    "line": 9,
+    "fileId": 2,
+    "text": "raise ValueError(\"too small: %d\" % n)",
+    "targets": [],
+    "reads": [
+     "ValueError",
+     "n"
+    ],
+    "firstStep": 58,
+    "hits": 2,
+    "rows": [
+     {
+      "kind": "raised",
+      "name": "ValueError",
+      "text": "too small: 6",
+      "step": 58
+     }
+    ]
+   }
+  ],
+  "edges": [
+   {
+    "id": "e0",
+    "from": "n0",
+    "to": "n1",
+    "kind": "call",
+    "count": 2,
+    "firstStep": 55,
+    "steps": [
+     55,
+     60
+    ],
+    "momentIds": [
+     "m33",
+     "m37"
+    ]
+   },
+   {
+    "id": "e1",
+    "from": "n1",
+    "to": "n2",
+    "kind": "data",
+    "label": "n",
+    "firstStep": 57
+   },
+   {
+    "id": "e2",
+    "from": "n1",
+    "to": "n3",
+    "kind": "data",
+    "label": "n",
+    "firstStep": 58
+   }
+  ],
+  "moments": [
+   {
+    "id": "m33",
+    "kind": "call",
+    "step": 55,
+    "nodeId": "n1",
+    "edgeId": "e0"
+   },
+   {
+    "id": "m34",
+    "kind": "decision",
+    "step": 57,
+    "nodeId": "n2"
+   },
+   {
+    "id": "m35",
+    "kind": "error",
+    "step": 58,
+    "nodeId": "n3"
+   },
+   {
+    "id": "m37",
+    "kind": "call",
+    "step": 60,
+    "nodeId": "n1",
+    "edgeId": "e0"
+   },
+   {
+    "id": "m38",
+    "kind": "decision",
+    "step": 62,
+    "nodeId": "n2"
+   },
+   {
+    "id": "m39",
+    "kind": "error",
+    "step": 63,
+    "nodeId": "n3"
+   },
+   {
+    "id": "m40",
+    "kind": "end",
+    "step": 63,
+    "nodeId": "n0"
+   }
+  ],
+  "scopes": {
+   "0": "n0",
+   "11": "n1",
+   "12": "n1"
+  },
+  "capped": false,
+  "truncated": false
+ },
+ "cap": {
+  "count": 64,
+  "nodes": [
+   {
+    "id": "n0",
+    "kind": "module",
+    "label": "<module>",
+    "file": "/fixture/main.py",
+    "line": 1,
+    "fileId": 1,
+    "function": "<module>",
+    "calls": 1,
+    "firstStep": 0,
+    "spans": [
+     [
+      0,
+      63
+     ]
+    ],
+    "rows": []
+   },
+   {
+    "id": "n1",
+    "kind": "statement",
+    "parent": "n0",
+    "label": "sys.path.insert(0, os.path.join(os.path.dirname(os.path.abs…",
+    "file": "/fixture/main.py",
+    "line": 2,
+    "fileId": 1,
+    "text": "sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'venv', 'site-packages'))",
+    "targets": [],
+    "reads": [
+     "sys",
+     "os",
+     "__file__"
+    ],
+    "firstStep": 1,
+    "hits": 1,
+    "rows": [
+     {
+      "kind": "out",
+      "name": "sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'venv', 'site-packages'))",
+      "text": "None",
+      "step": 1
+     }
+    ]
+   },
+   {
+    "id": "n2",
+    "kind": "module",
+    "label": "helper.py",
+    "file": "/fixture/helper.py",
+    "line": 1,
+    "fileId": 2,
+    "function": "<module>",
+    "calls": 1,
+    "firstStep": 2,
+    "spans": [
+     [
+      3,
+      3
+     ]
+    ],
+    "rows": []
+   },
+   {
+    "id": "n3",
+    "kind": "statement",
+    "parent": "n0",
+    "label": "total = 0",
+    "file": "/fixture/main.py",
+    "line": 22,
+    "fileId": 1,
+    "text": "total = 0",
+    "targets": [
+     "total"
+    ],
+    "reads": [],
+    "firstStep": 5,
+    "hits": 1,
+    "rows": [
+     {
+      "kind": "out",
+      "name": "total",
+      "text": "0",
+      "step": 5
+     }
+    ]
+   },
+   {
+    "id": "n4",
+    "kind": "decision",
+    "parent": "n0",
+    "label": "for i in range(3)",
+    "file": "/fixture/main.py",
+    "line": 23,
+    "fileId": 1,
+    "text": "for i in range(3) ran 3 times",
+    "firstStep": 6,
+    "hits": 3,
+    "notRun": [],
+    "rows": []
+   },
+   {
+    "id": "n5",
+    "kind": "function",
+    "label": "double",
+    "file": "/fixture/helper.py",
+    "line": 1,
+    "fileId": 2,
+    "function": "double",
+    "calls": 3,
+    "firstStep": 8,
+    "spans": [
+     [
+      9,
+      11
+     ],
+     [
+      14,
+      16
+     ],
+     [
+      19,
+      21
+     ]
+    ],
+    "rows": [
+     {
+      "kind": "in",
+      "name": "x",
+      "text": "0",
+      "step": 9
+     },
+     {
+      "kind": "out",
+      "name": "return",
+      "text": "0",
+      "step": 11
+     }
+    ]
+   },
+   {
+    "id": "n6",
+    "kind": "statement",
+    "parent": "n0",
+    "label": "total += helper.double(i)",
+    "file": "/fixture/main.py",
+    "line": 24,
+    "fileId": 1,
+    "text": "total += helper.double(i)",
+    "targets": [
+     "total"
+    ],
+    "reads": [
+     "total",
+     "helper",
+     "i"
+    ],
+    "firstStep": 8,
+    "hits": 3,
+    "rows": [
+     {
+      "kind": "out",
+      "name": "total",
+      "text": "0",
+      "step": 11
+     }
+    ]
+   },
+   {
+    "id": "n7",
+    "kind": "statement",
+    "parent": "n5",
+    "label": "y = x * 2",
+    "file": "/fixture/helper.py",
+    "line": 2,
+    "fileId": 2,
+    "text": "y = x * 2",
+    "targets": [
+     "y"
+    ],
+    "reads": [
+     "x"
+    ],
+    "firstStep": 10,
+    "hits": 3,
+    "rows": []
+   },
+   {
+    "id": "n8",
+    "kind": "statement",
+    "parent": "n5",
+    "label": "return y",
+    "file": "/fixture/helper.py",
+    "line": 3,
+    "fileId": 2,
+    "text": "return y",
+    "targets": [],
+    "reads": [
+     "y"
+    ],
+    "firstStep": 11,
+    "hits": 3,
+    "rows": []
+   },
+   {
+    "id": "n9",
+    "kind": "decision",
+    "parent": "n0",
+    "label": "for j in []",
+    "file": "/fixture/main.py",
+    "line": 25,
+    "fileId": 1,
+    "text": "for j in [] ran 0 times",
+    "firstStep": 22,
+    "hits": 0,
+    "notRun": [],
+    "rows": []
+   },
+   {
+    "id": "n10",
+    "kind": "statement",
+    "parent": "n0",
+    "label": "k = 0",
+    "file": "/fixture/main.py",
+    "line": 27,
+    "fileId": 1,
+    "text": "k = 0",
+    "targets": [
+     "k"
+    ],
+    "reads": [],
+    "firstStep": 23,
+    "hits": 1,
+    "rows": [
+     {
+      "kind": "out",
+      "name": "k",
+      "text": "0",
+      "step": 23
+     }
+    ]
+   },
+   {
+    "id": "n11",
+    "kind": "decision",
+    "parent": "n0",
+    "label": "while k < 2",
+    "file": "/fixture/main.py",
+    "line": 28,
+    "fileId": 1,
+    "text": "while k < 2 ran 2 times",
+    "firstStep": 24,
+    "hits": 2,
+    "notRun": [],
+    "rows": []
+   },
+   {
+    "id": "n12",
+    "kind": "statement",
+    "parent": "n0",
+    "label": "k += 1",
+    "file": "/fixture/main.py",
+    "line": 29,
+    "fileId": 1,
+    "text": "k += 1",
+    "targets": [
+     "k"
+    ],
+    "reads": [
+     "k"
+    ],
+    "firstStep": 26,
+    "hits": 2,
+    "rows": [
+     {
+      "kind": "out",
+      "name": "k",
+      "text": "1",
+      "step": 26
+     }
+    ]
+   },
+   {
+    "id": "n13",
+    "kind": "decision",
+    "parent": "n0",
+    "label": "if total > 100 and k > 0",
+    "file": "/fixture/main.py",
+    "line": 30,
+    "fileId": 1,
+    "text": "if total > 100 and k > 0 took False",
+    "taken": "False",
+    "firstStep": 29,
+    "hits": 1,
+    "notRun": [
+     32
+    ],
+    "rows": []
+   },
+   {
+    "id": "n14",
+    "kind": "decision",
+    "parent": "n0",
+    "label": "elif total > 5",
+    "file": "/fixture/main.py",
+    "line": 33,
+    "fileId": 1,
+    "text": "elif total > 5 took True",
+    "taken": "True",
+    "firstStep": 30,
+    "hits": 1,
+    "notRun": [
+     36
+    ],
+    "rows": []
+   },
+   {
+    "id": "n15",
+    "kind": "statement",
+    "parent": "n0",
+    "label": "mid = True",
+    "file": "/fixture/main.py",
+    "line": 34,
+    "fileId": 1,
+    "text": "mid = True",
+    "targets": [
+     "mid"
+    ],
+    "reads": [],
+    "firstStep": 31,
+    "hits": 1,
+    "rows": [
+     {
+      "kind": "out",
+      "name": "mid",
+      "text": "True",
+      "step": 31
+     }
+    ]
+   },
+   {
+    "id": "n16",
+    "kind": "decision",
+    "parent": "n0",
+    "label": "match total",
+    "file": "/fixture/main.py",
+    "line": 37,
+    "fileId": 1,
+    "text": "match total took case _",
+    "taken": "case _",
+    "firstStep": 32,
+    "hits": 1,
+    "notRun": [
+     39
+    ],
+    "rows": []
+   },
+   {
+    "id": "n17",
+    "kind": "statement",
+    "parent": "n0",
+    "label": "z = 1",
+    "file": "/fixture/main.py",
+    "line": 41,
+    "fileId": 1,
+    "text": "z = 1",
+    "targets": [
+     "z"
+    ],
+    "reads": [],
+    "firstStep": 33,
+    "hits": 1,
+    "rows": [
+     {
+      "kind": "out",
+      "name": "z",
+      "text": "1",
+      "step": 33
+     }
+    ]
+   },
+   {
+    "id": "n18",
+    "kind": "function",
+    "label": "Counter.__init__",
+    "file": "/fixture/main.py",
+    "line": 14,
+    "fileId": 1,
+    "function": "Counter.__init__",
+    "calls": 1,
+    "firstStep": 34,
+    "spans": [
+     [
+      35,
+      36
+     ]
+    ],
+    "rows": [
+     {
+      "kind": "in",
+      "name": "start",
+      "text": "10",
+      "step": 35
+     }
+    ]
+   },
+   {
+    "id": "n19",
+    "kind": "statement",
+    "parent": "n0",
+    "label": "c = Counter(10)",
+    "file": "/fixture/main.py",
+    "line": 42,
+    "fileId": 1,
+    "text": "c = Counter(10)",
+    "targets": [
+     "c"
+    ],
+    "reads": [
+     "Counter"
+    ],
+    "firstStep": 34,
+    "hits": 1,
+    "rows": [
+     {
+      "kind": "out",
+      "name": "c",
+      "text": "<__main__.Counter object at 0x0>",
+      "step": 36
+     }
+    ]
+   },
+   {
+    "id": "n20",
+    "kind": "statement",
+    "parent": "n18",
+    "label": "self.value = start",
+    "file": "/fixture/main.py",
+    "line": 15,
+    "fileId": 1,
+    "text": "self.value = start",
+    "targets": [],
+    "reads": [
+     "self",
+     "start"
+    ],
+    "firstStep": 36,
+    "hits": 1,
+    "rows": [
+     {
+      "kind": "out",
+      "name": "self.value",
+      "text": "10",
+      "step": 36
+     }
+    ]
+   },
+   {
+    "id": "n21",
+    "kind": "package",
+    "label": "3 more functions",
+    "file": "/fixture/main.py",
+    "fileId": 1,
+    "calls": 3,
+    "firstStep": 37,
+    "spans": [],
+    "rows": [],
+    "more": 3
+   },
+   {
+    "id": "n22",
+    "kind": "statement",
+    "parent": "n0",
+    "label": "c.bump(5)",
+    "file": "/fixture/main.py",
+    "line": 43,
+    "fileId": 1,
+    "text": "c.bump(5)",
+    "targets": [],
+    "reads": [
+     "c"
+    ],
+    "firstStep": 37,
+    "hits": 1,
+    "rows": [
+     {
+      "kind": "out",
+      "name": "c.bump(5)",
+      "text": "15",
+      "step": 40
+     }
+    ]
+   },
+   {
+    "id": "n23",
+    "kind": "package",
+    "label": "libq",
+    "package": "libq",
+    "calls": 1,
+    "firstStep": 41,
+    "spans": [
+     [
+      42,
+      49
+     ]
+    ],
+    "rows": [
+     {
+      "kind": "in",
+      "name": "cb",
+      "text": "<function <lambda> at 0x0>",
+      "step": 42
+     },
+     {
+      "kind": "out",
+      "name": "return",
+      "text": "8",
+      "step": 49
+     }
+    ],
+    "nested": 2
+   },
+   {
+    "id": "n24",
+    "kind": "statement",
+    "parent": "n0",
+    "label": "seen = libq.run(lambda n: n * 2)",
+    "file": "/fixture/main.py",
+    "line": 44,
+    "fileId": 1,
+    "text": "seen = libq.run(lambda n: n * 2)",
+    "targets": [
+     "seen"
+    ],
+    "reads": [
+     "libq",
+     "n"
+    ],
+    "firstStep": 41,
+    "hits": 1,
+    "rows": [
+     {
+      "kind": "out",
+      "name": "seen",
+      "text": "8",
+      "step": 49
+     }
+    ]
+   },
+   {
+    "id": "n25",
+    "kind": "statement",
+    "parent": "n0",
+    "label": "print(greet(\"bob\"), total)",
+    "file": "/fixture/main.py",
+    "line": 45,
+    "fileId": 1,
+    "text": "print(greet(\"bob\"), total)",
+    "targets": [],
+    "reads": [
+     "print",
+     "greet",
+     "total"
+    ],
+    "firstStep": 50,
+    "hits": 1,
+    "rows": [
+     {
+      "kind": "print",
+      "name": "stdout",
+      "text": "hello bob 6",
+      "step": 53
+     }
+    ]
+   },
+   {
+    "id": "n26",
+    "kind": "function",
+    "label": "fail",
+    "file": "/fixture/helper.py",
+    "line": 6,
+    "fileId": 2,
+    "function": "fail",
+    "calls": 2,
+    "firstStep": 55,
+    "spans": [
+     [
+      56,
+      58
+     ],
+     [
+      61,
+      63
+     ]
+    ],
+    "rows": [
+     {
+      "kind": "in",
+      "name": "n",
+      "text": "6",
+      "step": 56
+     },
+     {
+      "kind": "raised",
+      "name": "ValueError",
+      "text": "too small: 6",
+      "step": 58
+     }
+    ]
+   },
+   {
+    "id": "n27",
+    "kind": "statement",
+    "parent": "n0",
+    "label": "helper.fail(total)",
+    "file": "/fixture/main.py",
+    "line": 47,
+    "fileId": 1,
+    "text": "helper.fail(total)",
+    "targets": [],
+    "reads": [
+     "helper",
+     "total"
+    ],
+    "firstStep": 55,
+    "hits": 1,
+    "rows": []
+   },
+   {
+    "id": "n28",
+    "kind": "decision",
+    "parent": "n26",
+    "label": "if n > 100",
+    "file": "/fixture/helper.py",
+    "line": 7,
+    "fileId": 2,
+    "text": "if n > 100 took False",
+    "taken": "False",
+    "firstStep": 57,
+    "hits": 2,
+    "notRun": [
+     8
+    ],
+    "rows": []
+   },
+   {
+    "id": "n29",
+    "kind": "statement",
+    "parent": "n26",
+    "label": "raise ValueError(\"too small: %d\" % n)",
+    "file": "/fixture/helper.py",
+    "line": 9,
+    "fileId": 2,
+    "text": "raise ValueError(\"too small: %d\" % n)",
+    "targets": [],
+    "reads": [
+     "ValueError",
+     "n"
+    ],
+    "firstStep": 58,
+    "hits": 2,
+    "rows": [
+     {
+      "kind": "raised",
+      "name": "ValueError",
+      "text": "too small: 6",
+      "step": 58
+     }
+    ]
+   },
+   {
+    "id": "n30",
+    "kind": "statement",
+    "parent": "n0",
+    "label": "handled = True",
+    "file": "/fixture/main.py",
+    "line": 49,
+    "fileId": 1,
+    "text": "handled = True",
+    "targets": [
+     "handled"
+    ],
+    "reads": [],
+    "firstStep": 59,
+    "hits": 1,
+    "rows": [
+     {
+      "kind": "out",
+      "name": "handled",
+      "text": "True",
+      "step": 59
+     }
+    ]
+   },
+   {
+    "id": "n31",
+    "kind": "statement",
+    "parent": "n0",
+    "label": "result = helper.fail(total)",
+    "file": "/fixture/main.py",
+    "line": 50,
+    "fileId": 1,
+    "text": "result = helper.fail(total)",
+    "targets": [
+     "result"
+    ],
+    "reads": [
+     "helper",
+     "total"
+    ],
+    "firstStep": 60,
+    "hits": 1,
+    "rows": []
+   }
+  ],
+  "edges": [
+   {
+    "id": "e0",
+    "from": "n0",
+    "to": "n2",
+    "kind": "call",
+    "count": 1,
+    "firstStep": 2,
+    "steps": [
+     2
+    ],
+    "momentIds": [
+     "m2"
+    ]
+   },
+   {
+    "id": "e1",
+    "from": "n6",
+    "to": "n5",
+    "kind": "call",
+    "count": 3,
+    "firstStep": 8,
+    "steps": [
+     8,
+     13,
+     18
+    ],
+    "momentIds": [
+     "m5",
+     "m7",
+     "m9"
+    ]
+   },
+   {
+    "id": "e2",
+    "from": "n3",
+    "to": "n6",
+    "kind": "data",
+    "label": "total",
+    "firstStep": 8
+   },
+   {
+    "id": "e3",
+    "from": "n4",
+    "to": "n6",
+    "kind": "data",
+    "label": "i",
+    "firstStep": 8
+   },
+   {
+    "id": "e4",
+    "from": "n5",
+    "to": "n7",
+    "kind": "data",
+    "label": "x",
+    "firstStep": 10
+   },
+   {
+    "id": "e5",
+    "from": "n7",
+    "to": "n8",
+    "kind": "data",
+    "label": "y",
+    "firstStep": 11
+   },
+   {
+    "id": "e6",
+    "from": "n5",
+    "to": "n5",
+    "kind": "data",
+    "label": "x",
+    "firstStep": 19
+   },
+   {
+    "id": "e7",
+    "from": "n10",
+    "to": "n11",
+    "kind": "data",
+    "label": "k",
+    "firstStep": 24
+   },
+   {
+    "id": "e8",
+    "from": "n10",
+    "to": "n12",
+    "kind": "data",
+    "label": "k",
+    "firstStep": 26
+   },
+   {
+    "id": "e9",
+    "from": "n6",
+    "to": "n13",
+    "kind": "data",
+    "label": "total",
+    "firstStep": 29
+   },
+   {
+    "id": "e10",
+    "from": "n12",
+    "to": "n13",
+    "kind": "data",
+    "label": "k",
+    "firstStep": 29
+   },
+   {
+    "id": "e11",
+    "from": "n6",
+    "to": "n14",
+    "kind": "data",
+    "label": "total",
+    "firstStep": 30
+   },
+   {
+    "id": "e12",
+    "from": "n6",
+    "to": "n16",
+    "kind": "data",
+    "label": "total",
+    "firstStep": 32
+   },
+   {
+    "id": "e13",
+    "from": "n19",
+    "to": "n18",
+    "kind": "call",
+    "count": 1,
+    "firstStep": 34,
+    "steps": [
+     34
+    ],
+    "momentIds": [
+     "m21"
+    ]
+   },
+   {
+    "id": "e14",
+    "from": "n18",
+    "to": "n20",
+    "kind": "data",
+    "label": "start",
+    "firstStep": 36
+   },
+   {
+    "id": "e15",
+    "from": "n19",
+    "to": "n22",
+    "kind": "data",
+    "label": "c",
+    "firstStep": 37
+   },
+   {
+    "id": "e16",
+    "from": "n24",
+    "to": "n23",
+    "kind": "call",
+    "count": 1,
+    "firstStep": 41,
+    "steps": [
+     41
+    ],
+    "momentIds": [
+     "m27"
+    ]
+   },
+   {
+    "id": "e17",
+    "from": "n6",
+    "to": "n25",
+    "kind": "data",
+    "label": "total",
+    "firstStep": 50
+   },
+   {
+    "id": "e18",
+    "from": "n27",
+    "to": "n26",
+    "kind": "call",
+    "count": 1,
+    "firstStep": 55,
+    "steps": [
+     55
+    ],
+    "momentIds": [
+     "m33"
+    ]
+   },
+   {
+    "id": "e19",
+    "from": "n6",
+    "to": "n27",
+    "kind": "data",
+    "label": "total",
+    "firstStep": 55
+   },
+   {
+    "id": "e20",
+    "from": "n26",
+    "to": "n28",
+    "kind": "data",
+    "label": "n",
+    "firstStep": 57
+   },
+   {
+    "id": "e21",
+    "from": "n26",
+    "to": "n29",
+    "kind": "data",
+    "label": "n",
+    "firstStep": 58
+   },
+   {
+    "id": "e22",
+    "from": "n31",
+    "to": "n26",
+    "kind": "call",
+    "count": 1,
+    "firstStep": 60,
+    "steps": [
+     60
+    ],
+    "momentIds": [
+     "m37"
+    ]
+   },
+   {
+    "id": "e23",
+    "from": "n6",
+    "to": "n31",
+    "kind": "data",
+    "label": "total",
+    "firstStep": 60
+   }
+  ],
+  "moments": [
+   {
+    "id": "m0",
+    "kind": "start",
+    "step": 0,
+    "nodeId": "n0"
+   },
+   {
+    "id": "m1",
+    "kind": "value",
+    "step": 1,
+    "nodeId": "n1"
+   },
+   {
+    "id": "m2",
+    "kind": "call",
+    "step": 2,
+    "nodeId": "n2",
+    "edgeId": "e0"
+   },
+   {
+    "id": "m3",
+    "kind": "value",
+    "step": 5,
+    "nodeId": "n3"
+   },
+   {
+    "id": "m4",
+    "kind": "decision",
+    "step": 6,
+    "nodeId": "n4"
+   },
+   {
+    "id": "m5",
+    "kind": "call",
+    "step": 8,
+    "nodeId": "n5",
+    "edgeId": "e1"
+   },
+   {
+    "id": "m6",
+    "kind": "value",
+    "step": 11,
+    "nodeId": "n6"
+   },
+   {
+    "id": "m7",
+    "kind": "call",
+    "step": 13,
+    "nodeId": "n5",
+    "edgeId": "e1"
+   },
+   {
+    "id": "m8",
+    "kind": "value",
+    "step": 16,
+    "nodeId": "n6"
+   },
+   {
+    "id": "m9",
+    "kind": "call",
+    "step": 18,
+    "nodeId": "n5",
+    "edgeId": "e1"
+   },
+   {
+    "id": "m10",
+    "kind": "value",
+    "step": 21,
+    "nodeId": "n6"
+   },
+   {
+    "id": "m11",
+    "kind": "decision",
+    "step": 22,
+    "nodeId": "n9"
+   },
+   {
+    "id": "m12",
+    "kind": "value",
+    "step": 23,
+    "nodeId": "n10"
+   },
+   {
+    "id": "m13",
+    "kind": "decision",
+    "step": 24,
+    "nodeId": "n11"
+   },
+   {
+    "id": "m14",
+    "kind": "value",
+    "step": 26,
+    "nodeId": "n12"
+   },
+   {
+    "id": "m15",
+    "kind": "value",
+    "step": 28,
+    "nodeId": "n12"
+   },
+   {
+    "id": "m16",
+    "kind": "decision",
+    "step": 29,
+    "nodeId": "n13"
+   },
+   {
+    "id": "m17",
+    "kind": "decision",
+    "step": 30,
+    "nodeId": "n14"
+   },
+   {
+    "id": "m18",
+    "kind": "value",
+    "step": 31,
+    "nodeId": "n15"
+   },
+   {
+    "id": "m19",
+    "kind": "decision",
+    "step": 32,
+    "nodeId": "n16"
+   },
+   {
+    "id": "m20",
+    "kind": "value",
+    "step": 33,
+    "nodeId": "n17"
+   },
+   {
+    "id": "m21",
+    "kind": "call",
+    "step": 34,
+    "nodeId": "n18",
+    "edgeId": "e13"
+   },
+   {
+    "id": "m22",
+    "kind": "value",
+    "step": 36,
+    "nodeId": "n20"
+   },
+   {
+    "id": "m23",
+    "kind": "value",
+    "step": 36,
+    "nodeId": "n19"
+   },
+   {
+    "id": "m26",
+    "kind": "value",
+    "step": 40,
+    "nodeId": "n22"
+   },
+   {
+    "id": "m27",
+    "kind": "call",
+    "step": 41,
+    "nodeId": "n23",
+    "edgeId": "e16"
+   },
+   {
+    "id": "m29",
+    "kind": "value",
+    "step": 49,
+    "nodeId": "n24"
+   },
+   {
+    "id": "m32",
+    "kind": "print",
+    "step": 53,
+    "nodeId": "n25"
+   },
+   {
+    "id": "m33",
+    "kind": "call",
+    "step": 55,
+    "nodeId": "n26",
+    "edgeId": "e18"
+   },
+   {
+    "id": "m34",
+    "kind": "decision",
+    "step": 57,
+    "nodeId": "n28"
+   },
+   {
+    "id": "m35",
+    "kind": "error",
+    "step": 58,
+    "nodeId": "n29"
+   },
+   {
+    "id": "m36",
+    "kind": "value",
+    "step": 59,
+    "nodeId": "n30"
+   },
+   {
+    "id": "m37",
+    "kind": "call",
+    "step": 60,
+    "nodeId": "n26",
+    "edgeId": "e22"
+   },
+   {
+    "id": "m38",
+    "kind": "decision",
+    "step": 62,
+    "nodeId": "n28"
+   },
+   {
+    "id": "m39",
+    "kind": "error",
+    "step": 63,
+    "nodeId": "n29"
+   },
+   {
+    "id": "m40",
+    "kind": "end",
+    "step": 63,
+    "nodeId": "n0"
+   }
+  ],
+  "scopes": {
+   "0": "n0",
+   "1": "n2",
+   "2": "n5",
+   "3": "n5",
+   "4": "n5",
+   "5": "n18",
+   "6": "n21",
+   "7": "n23",
+   "8": "n23",
+   "9": "n21",
+   "10": "n21",
+   "11": "n26",
+   "12": "n26"
+  },
+  "capped": true,
+  "truncated": false
+ }
+}

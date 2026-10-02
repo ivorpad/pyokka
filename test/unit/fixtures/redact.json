@@ -1,0 +1,97 @@
+{
+  "note": "input -> expected after redaction; implemented identically in src/util/redact.ts and pyokka_runtime/redact.py; the token is «redacted»",
+  "cases": [
+    [
+      "sk-abcdefghijklmnopqrstuvwxyz012345",
+      "«redacted»"
+    ],
+    [
+      "OpenAI(api_key='sk-proj-AbCdEfGhIjKlMnOpQrStUvWx')",
+      "OpenAI(api_key='«redacted»')"
+    ],
+    [
+      "AKIAIOSFODNN7EXAMPLE",
+      "«redacted»"
+    ],
+    [
+      "ghp_abcdefghijklmnopqrstuvwxyz0123456789",
+      "«redacted»"
+    ],
+    [
+      "<xox>b-123456789012-abcdefghijklmnop",
+      "«redacted»"
+    ],
+    [
+      "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
+      "Authorization: Bearer «redacted»"
+    ],
+    [
+      "{'OPENROUTER_API_KEY': 'or-v1-8f2e1c9a7b6d5e4f3a2b1c0d9e8f7a6b', 'HOME': '/Users/x'}",
+      "{'OPENROUTER_API_KEY': '«redacted»', 'HOME': '/Users/x'}"
+    ],
+    [
+      "password=hunter2 user=bob",
+      "password=«redacted» user=bob"
+    ],
+    [
+      "token: \"abc123def456ghi789\"",
+      "token: \"«redacted»\""
+    ],
+    [
+      "api_key=None",
+      "api_key=None"
+    ],
+    [
+      "x = 42; name = 'Alice'; key = 'north'",
+      "x = 42; name = 'Alice'; key = 'north'"
+    ],
+    [
+      "sk-short",
+      "sk-short"
+    ],
+    [
+      "The secret garden is a book",
+      "The secret garden is a book"
+    ],
+    [
+      "api_key = getenv(\"OPENROUTER_API_KEY\")",
+      "api_key = getenv(\"OPENROUTER_API_KEY\")"
+    ],
+    [
+      "token = cfg[\"t\"]",
+      "token = cfg[\"t\"]"
+    ],
+    [
+      "self.api_key = api_key or \"\"",
+      "self.api_key = «redacted» or \"\""
+    ],
+    [
+      "https://api.example.com/v1/items?api_key=sk-abcdefghijklmnopqrstuvwxyz012345&v=1",
+      "https://api.example.com/v1/items?api_key=«redacted»&v=1"
+    ],
+    [
+      "xxxapi_key=supersecretvalue",
+      "xxxapi_key=«redacted»"
+    ],
+    [
+      "a.b.api_key=supersecretvalue",
+      "a.b.api_key=«redacted»"
+    ],
+    [
+      "{\"api_key\": \"supersecretvalue\"}",
+      "{\"api_key\": \"«redacted»\"}"
+    ],
+    [
+      "call(x,\"api_key\":\"supersecretvalue\")",
+      "call(x,\"api_key\":\"«redacted»\")"
+    ],
+    [
+      "?api_key=supersecretvalue&v=1",
+      "?api_key=«redacted»&v=1"
+    ],
+    [
+      "MY_SERVICE_TOKEN=supersecretvalue",
+      "MY_SERVICE_TOKEN=«redacted»"
+    ]
+  ]
+}

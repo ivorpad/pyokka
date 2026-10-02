@@ -1,0 +1,1909 @@
+{
+ "nested": {
+  "quads": [
+   5,
+   0,
+   0,
+   0,
+   2,
+   1,
+   1,
+   4,
+   4,
+   2,
+   2,
+   4,
+   6,
+   0,
+   0,
+   0
+  ],
+  "scopes": [
+   {
+    "scopeId": 0,
+    "rid": 0,
+    "name": "<module>",
+    "parent": -1,
+    "depth": 0,
+    "first": 0,
+    "last": 3
+   },
+   {
+    "scopeId": 1,
+    "rid": 1,
+    "name": "f",
+    "parent": 0,
+    "depth": 1,
+    "first": 1,
+    "last": 1
+   },
+   {
+    "scopeId": 2,
+    "rid": 3,
+    "name": "g",
+    "parent": 1,
+    "depth": 2,
+    "first": 2,
+    "last": 2
+   }
+  ],
+  "count": 4,
+  "moves": [
+   {
+    "step": 0,
+    "into": 1,
+    "back": -1,
+    "over": 3,
+    "backOver": -1,
+    "out": -1,
+    "backOut": -1,
+    "canStep": {
+     "into": true,
+     "back": false,
+     "over": true,
+     "backOver": false,
+     "out": false,
+     "backOut": false
+    },
+    "echo": [],
+    "stack": [
+     {
+      "step": 0,
+      "scopeId": 0
+     }
+    ]
+   },
+   {
+    "step": 1,
+    "into": 2,
+    "back": 0,
+    "over": 3,
+    "backOver": 0,
+    "out": 3,
+    "backOut": 0,
+    "canStep": {
+     "into": true,
+     "back": true,
+     "over": true,
+     "backOver": true,
+     "out": true,
+     "backOut": true
+    },
+    "echo": [],
+    "stack": [
+     {
+      "step": 1,
+      "scopeId": 1
+     },
+     {
+      "step": 0,
+      "scopeId": 0
+     }
+    ]
+   },
+   {
+    "step": 2,
+    "into": 3,
+    "back": 1,
+    "over": 3,
+    "backOver": 1,
+    "out": 3,
+    "backOut": 1,
+    "canStep": {
+     "into": true,
+     "back": true,
+     "over": true,
+     "backOver": true,
+     "out": true,
+     "backOut": true
+    },
+    "echo": [],
+    "stack": [
+     {
+      "step": 2,
+      "scopeId": 2
+     },
+     {
+      "step": 1,
+      "scopeId": 1
+     },
+     {
+      "step": 0,
+      "scopeId": 0
+     }
+    ]
+   },
+   {
+    "step": 3,
+    "into": -1,
+    "back": 2,
+    "over": -1,
+    "backOver": 0,
+    "out": -1,
+    "backOut": -1,
+    "canStep": {
+     "into": false,
+     "back": true,
+     "over": false,
+     "backOver": true,
+     "out": false,
+     "backOut": false
+    },
+    "echo": [],
+    "stack": [
+     {
+      "step": 3,
+      "scopeId": 0
+     }
+    ]
+   }
+  ],
+  "startStep": [
+   {
+    "fileId": 1,
+    "line": 1,
+    "step": 1
+   },
+   {
+    "fileId": 1,
+    "line": 2,
+    "step": 1
+   },
+   {
+    "fileId": 1,
+    "line": 4,
+    "step": 2
+   },
+   {
+    "fileId": 1,
+    "line": 5,
+    "step": 0
+   },
+   {
+    "fileId": 1,
+    "line": 6,
+    "step": 3
+   },
+   {
+    "fileId": 1,
+    "line": 9,
+    "step": 0
+   }
+  ]
+ },
+ "recursion": {
+  "quads": [
+   4,
+   0,
+   0,
+   0,
+   2,
+   1,
+   1,
+   4,
+   3,
+   1,
+   1,
+   0,
+   2,
+   2,
+   2,
+   4,
+   3,
+   2,
+   2,
+   0,
+   2,
+   3,
+   3,
+   4,
+   5,
+   0,
+   0,
+   0
+  ],
+  "scopes": [
+   {
+    "scopeId": 0,
+    "rid": 0,
+    "name": "<module>",
+    "parent": -1,
+    "depth": 0,
+    "first": 0,
+    "last": 6
+   },
+   {
+    "scopeId": 1,
+    "rid": 1,
+    "name": "fact",
+    "parent": 0,
+    "depth": 1,
+    "first": 1,
+    "last": 2
+   },
+   {
+    "scopeId": 2,
+    "rid": 1,
+    "name": "fact",
+    "parent": 1,
+    "depth": 2,
+    "first": 3,
+    "last": 4
+   },
+   {
+    "scopeId": 3,
+    "rid": 1,
+    "name": "fact",
+    "parent": 2,
+    "depth": 3,
+    "first": 5,
+    "last": 5
+   }
+  ],
+  "count": 7,
+  "moves": [
+   {
+    "step": 0,
+    "into": 1,
+    "back": -1,
+    "over": 6,
+    "backOver": -1,
+    "out": -1,
+    "backOut": -1,
+    "canStep": {
+     "into": true,
+     "back": false,
+     "over": true,
+     "backOver": false,
+     "out": false,
+     "backOut": false
+    },
+    "echo": [],
+    "stack": [
+     {
+      "step": 0,
+      "scopeId": 0
+     }
+    ]
+   },
+   {
+    "step": 1,
+    "into": 2,
+    "back": 0,
+    "over": 2,
+    "backOver": 0,
+    "out": 6,
+    "backOut": 0,
+    "canStep": {
+     "into": true,
+     "back": true,
+     "over": true,
+     "backOver": true,
+     "out": true,
+     "backOut": true
+    },
+    "echo": [
+     3,
+     5
+    ],
+    "stack": [
+     {
+      "step": 1,
+      "scopeId": 1
+     },
+     {
+      "step": 0,
+      "scopeId": 0
+     }
+    ]
+   },
+   {
+    "step": 2,
+    "into": 3,
+    "back": 1,
+    "over": 6,
+    "backOver": 1,
+    "out": 6,
+    "backOut": 0,
+    "canStep": {
+     "into": true,
+     "back": true,
+     "over": true,
+     "backOver": true,
+     "out": true,
+     "backOut": true
+    },
+    "echo": [
+     4
+    ],
+    "stack": [
+     {
+      "step": 2,
+      "scopeId": 1
+     },
+     {
+      "step": 0,
+      "scopeId": 0
+     }
+    ]
+   },
+   {
+    "step": 3,
+    "into": 4,
+    "back": 2,
+    "over": 4,
+    "backOver": 2,
+    "out": 6,
+    "backOut": 2,
+    "canStep": {
+     "into": true,
+     "back": true,
+     "over": true,
+     "backOver": true,
+     "out": true,
+     "backOut": true
+    },
+    "echo": [
+     1,
+     5
+    ],
+    "stack": [
+     {
+      "step": 3,
+      "scopeId": 2
+     },
+     {
+      "step": 2,
+      "scopeId": 1
+     },
+     {
+      "step": 0,
+      "scopeId": 0
+     }
+    ]
+   },
+   {
+    "step": 4,
+    "into": 5,
+    "back": 3,
+    "over": 6,
+    "backOver": 3,
+    "out": 6,
+    "backOut": 2,
+    "canStep": {
+     "into": true,
+     "back": true,
+     "over": true,
+     "backOver": true,
+     "out": true,
+     "backOut": true
+    },
+    "echo": [
+     2
+    ],
+    "stack": [
+     {
+      "step": 4,
+      "scopeId": 2
+     },
+     {
+      "step": 2,
+      "scopeId": 1
+     },
+     {
+      "step": 0,
+      "scopeId": 0
+     }
+    ]
+   },
+   {
+    "step": 5,
+    "into": 6,
+    "back": 4,
+    "over": 6,
+    "backOver": 4,
+    "out": 6,
+    "backOut": 4,
+    "canStep": {
+     "into": true,
+     "back": true,
+     "over": true,
+     "backOver": true,
+     "out": true,
+     "backOut": true
+    },
+    "echo": [
+     1,
+     3
+    ],
+    "stack": [
+     {
+      "step": 5,
+      "scopeId": 3
+     },
+     {
+      "step": 4,
+      "scopeId": 2
+     },
+     {
+      "step": 2,
+      "scopeId": 1
+     },
+     {
+      "step": 0,
+      "scopeId": 0
+     }
+    ]
+   },
+   {
+    "step": 6,
+    "into": -1,
+    "back": 5,
+    "over": -1,
+    "backOver": 0,
+    "out": -1,
+    "backOut": -1,
+    "canStep": {
+     "into": false,
+     "back": true,
+     "over": false,
+     "backOver": true,
+     "out": false,
+     "backOut": false
+    },
+    "echo": [],
+    "stack": [
+     {
+      "step": 6,
+      "scopeId": 0
+     }
+    ]
+   }
+  ],
+  "startStep": [
+   {
+    "fileId": 1,
+    "line": 2,
+    "step": 1
+   },
+   {
+    "fileId": 1,
+    "line": 3,
+    "step": 2
+   },
+   {
+    "fileId": 1,
+    "line": 4,
+    "step": 0
+   },
+   {
+    "fileId": 1,
+    "line": 5,
+    "step": 6
+   },
+   {
+    "fileId": 1,
+    "line": 7,
+    "step": 0
+   }
+  ]
+ },
+ "loop": {
+  "quads": [
+   1,
+   0,
+   0,
+   0,
+   2,
+   0,
+   0,
+   1,
+   2,
+   0,
+   0,
+   1,
+   2,
+   0,
+   0,
+   1,
+   3,
+   0,
+   0,
+   0
+  ],
+  "scopes": [
+   {
+    "scopeId": 0,
+    "rid": 0,
+    "name": "<module>",
+    "parent": -1,
+    "depth": 0,
+    "first": 0,
+    "last": 4
+   }
+  ],
+  "count": 5,
+  "moves": [
+   {
+    "step": 0,
+    "into": 1,
+    "back": -1,
+    "over": 1,
+    "backOver": -1,
+    "out": -1,
+    "backOut": -1,
+    "canStep": {
+     "into": true,
+     "back": false,
+     "over": true,
+     "backOver": false,
+     "out": false,
+     "backOut": false
+    },
+    "echo": [],
+    "stack": [
+     {
+      "step": 0,
+      "scopeId": 0
+     }
+    ]
+   },
+   {
+    "step": 1,
+    "into": 2,
+    "back": 0,
+    "over": 2,
+    "backOver": 0,
+    "out": -1,
+    "backOut": -1,
+    "canStep": {
+     "into": true,
+     "back": true,
+     "over": true,
+     "backOver": true,
+     "out": false,
+     "backOut": false
+    },
+    "echo": [
+     2,
+     3
+    ],
+    "stack": [
+     {
+      "step": 1,
+      "scopeId": 0
+     }
+    ]
+   },
+   {
+    "step": 2,
+    "into": 3,
+    "back": 1,
+    "over": 3,
+    "backOver": 1,
+    "out": -1,
+    "backOut": -1,
+    "canStep": {
+     "into": true,
+     "back": true,
+     "over": true,
+     "backOver": true,
+     "out": false,
+     "backOut": false
+    },
+    "echo": [
+     1,
+     3
+    ],
+    "stack": [
+     {
+      "step": 2,
+      "scopeId": 0
+     }
+    ]
+   },
+   {
+    "step": 3,
+    "into": 4,
+    "back": 2,
+    "over": 4,
+    "backOver": 2,
+    "out": -1,
+    "backOut": -1,
+    "canStep": {
+     "into": true,
+     "back": true,
+     "over": true,
+     "backOver": true,
+     "out": false,
+     "backOut": false
+    },
+    "echo": [
+     1,
+     2
+    ],
+    "stack": [
+     {
+      "step": 3,
+      "scopeId": 0
+     }
+    ]
+   },
+   {
+    "step": 4,
+    "into": -1,
+    "back": 3,
+    "over": -1,
+    "backOver": 3,
+    "out": -1,
+    "backOut": -1,
+    "canStep": {
+     "into": false,
+     "back": true,
+     "over": false,
+     "backOver": true,
+     "out": false,
+     "backOut": false
+    },
+    "echo": [],
+    "stack": [
+     {
+      "step": 4,
+      "scopeId": 0
+     }
+    ]
+   }
+  ],
+  "startStep": [
+   {
+    "fileId": 1,
+    "line": 1,
+    "step": 0
+   },
+   {
+    "fileId": 1,
+    "line": 2,
+    "step": 1
+   },
+   {
+    "fileId": 1,
+    "line": 3,
+    "step": 4
+   },
+   {
+    "fileId": 1,
+    "line": 4,
+    "step": 0
+   }
+  ]
+ },
+ "siblings": {
+  "quads": [
+   5,
+   0,
+   0,
+   0,
+   1,
+   1,
+   1,
+   4,
+   2,
+   1,
+   1,
+   0,
+   3,
+   2,
+   1,
+   4,
+   4,
+   2,
+   1,
+   0,
+   6,
+   0,
+   0,
+   0
+  ],
+  "scopes": [
+   {
+    "scopeId": 0,
+    "rid": 0,
+    "name": "<module>",
+    "parent": -1,
+    "depth": 0,
+    "first": 0,
+    "last": 5
+   },
+   {
+    "scopeId": 1,
+    "rid": 1,
+    "name": "f",
+    "parent": 0,
+    "depth": 1,
+    "first": 1,
+    "last": 2
+   },
+   {
+    "scopeId": 2,
+    "rid": 3,
+    "name": "g",
+    "parent": 0,
+    "depth": 1,
+    "first": 3,
+    "last": 4
+   }
+  ],
+  "count": 6,
+  "moves": [
+   {
+    "step": 0,
+    "into": 1,
+    "back": -1,
+    "over": 5,
+    "backOver": -1,
+    "out": -1,
+    "backOut": -1,
+    "canStep": {
+     "into": true,
+     "back": false,
+     "over": true,
+     "backOver": false,
+     "out": false,
+     "backOut": false
+    },
+    "echo": [],
+    "stack": [
+     {
+      "step": 0,
+      "scopeId": 0
+     }
+    ]
+   },
+   {
+    "step": 1,
+    "into": 2,
+    "back": 0,
+    "over": 2,
+    "backOver": 0,
+    "out": 5,
+    "backOut": 0,
+    "canStep": {
+     "into": true,
+     "back": true,
+     "over": true,
+     "backOver": true,
+     "out": true,
+     "backOut": true
+    },
+    "echo": [],
+    "stack": [
+     {
+      "step": 1,
+      "scopeId": 1
+     },
+     {
+      "step": 0,
+      "scopeId": 0
+     }
+    ]
+   },
+   {
+    "step": 2,
+    "into": 3,
+    "back": 1,
+    "over": 5,
+    "backOver": 1,
+    "out": 5,
+    "backOut": 0,
+    "canStep": {
+     "into": true,
+     "back": true,
+     "over": true,
+     "backOver": true,
+     "out": true,
+     "backOut": true
+    },
+    "echo": [],
+    "stack": [
+     {
+      "step": 2,
+      "scopeId": 1
+     },
+     {
+      "step": 0,
+      "scopeId": 0
+     }
+    ]
+   },
+   {
+    "step": 3,
+    "into": 4,
+    "back": 2,
+    "over": 4,
+    "backOver": 0,
+    "out": 5,
+    "backOut": 0,
+    "canStep": {
+     "into": true,
+     "back": true,
+     "over": true,
+     "backOver": true,
+     "out": true,
+     "backOut": true
+    },
+    "echo": [],
+    "stack": [
+     {
+      "step": 3,
+      "scopeId": 2
+     },
+     {
+      "step": 0,
+      "scopeId": 0
+     }
+    ]
+   },
+   {
+    "step": 4,
+    "into": 5,
+    "back": 3,
+    "over": 5,
+    "backOver": 3,
+    "out": 5,
+    "backOut": 0,
+    "canStep": {
+     "into": true,
+     "back": true,
+     "over": true,
+     "backOver": true,
+     "out": true,
+     "backOut": true
+    },
+    "echo": [],
+    "stack": [
+     {
+      "step": 4,
+      "scopeId": 2
+     },
+     {
+      "step": 0,
+      "scopeId": 0
+     }
+    ]
+   },
+   {
+    "step": 5,
+    "into": -1,
+    "back": 4,
+    "over": -1,
+    "backOver": 0,
+    "out": -1,
+    "backOut": -1,
+    "canStep": {
+     "into": false,
+     "back": true,
+     "over": false,
+     "backOver": true,
+     "out": false,
+     "backOut": false
+    },
+    "echo": [],
+    "stack": [
+     {
+      "step": 5,
+      "scopeId": 0
+     }
+    ]
+   }
+  ],
+  "startStep": [
+   {
+    "fileId": 1,
+    "line": 2,
+    "step": 2
+   },
+   {
+    "fileId": 1,
+    "line": 4,
+    "step": 4
+   },
+   {
+    "fileId": 1,
+    "line": 5,
+    "step": 0
+   },
+   {
+    "fileId": 1,
+    "line": 6,
+    "step": 5
+   }
+  ]
+ },
+ "gather": {
+  "quads": [
+   11,
+   0,
+   0,
+   0,
+   7,
+   1,
+   1,
+   4,
+   8,
+   1,
+   1,
+   0,
+   4,
+   2,
+   2,
+   4,
+   5,
+   2,
+   2,
+   0,
+   1,
+   3,
+   3,
+   4,
+   2,
+   3,
+   3,
+   0,
+   3,
+   3,
+   3,
+   0,
+   6,
+   2,
+   2,
+   0,
+   9,
+   1,
+   1,
+   0,
+   4,
+   4,
+   1,
+   4,
+   5,
+   4,
+   1,
+   0,
+   1,
+   5,
+   2,
+   4,
+   2,
+   5,
+   2,
+   0,
+   4,
+   6,
+   1,
+   4,
+   5,
+   6,
+   1,
+   0,
+   1,
+   7,
+   2,
+   4,
+   2,
+   7,
+   2,
+   0,
+   3,
+   5,
+   2,
+   0,
+   6,
+   4,
+   1,
+   0,
+   3,
+   7,
+   2,
+   0,
+   6,
+   6,
+   1,
+   0,
+   10,
+   1,
+   1,
+   0
+  ],
+  "scopes": [
+   {
+    "scopeId": 0,
+    "rid": 0,
+    "name": "<module>",
+    "parent": -1,
+    "depth": 0,
+    "first": 0,
+    "last": 0
+   },
+   {
+    "scopeId": 1,
+    "rid": 7,
+    "name": "main",
+    "parent": 0,
+    "depth": 1,
+    "first": 1,
+    "last": 22
+   },
+   {
+    "scopeId": 2,
+    "rid": 4,
+    "name": "turn",
+    "parent": 1,
+    "depth": 2,
+    "first": 3,
+    "last": 8
+   },
+   {
+    "scopeId": 3,
+    "rid": 1,
+    "name": "fetch",
+    "parent": 2,
+    "depth": 3,
+    "first": 5,
+    "last": 7
+   },
+   {
+    "scopeId": 4,
+    "rid": 4,
+    "name": "turn",
+    "parent": 0,
+    "depth": 1,
+    "first": 10,
+    "last": 19
+   },
+   {
+    "scopeId": 5,
+    "rid": 1,
+    "name": "fetch",
+    "parent": 4,
+    "depth": 2,
+    "first": 12,
+    "last": 18
+   },
+   {
+    "scopeId": 6,
+    "rid": 4,
+    "name": "turn",
+    "parent": 0,
+    "depth": 1,
+    "first": 14,
+    "last": 21
+   },
+   {
+    "scopeId": 7,
+    "rid": 1,
+    "name": "fetch",
+    "parent": 6,
+    "depth": 2,
+    "first": 16,
+    "last": 20
+   }
+  ],
+  "count": 23,
+  "moves": [
+   {
+    "step": 0,
+    "into": 1,
+    "back": -1,
+    "over": -1,
+    "backOver": -1,
+    "out": -1,
+    "backOut": -1,
+    "canStep": {
+     "into": true,
+     "back": false,
+     "over": false,
+     "backOver": false,
+     "out": false,
+     "backOut": false
+    },
+    "echo": [],
+    "stack": [
+     {
+      "step": 0,
+      "scopeId": 0
+     }
+    ]
+   },
+   {
+    "step": 1,
+    "into": 2,
+    "back": 0,
+    "over": 2,
+    "backOver": 0,
+    "out": -1,
+    "backOut": 0,
+    "canStep": {
+     "into": true,
+     "back": true,
+     "over": true,
+     "backOver": true,
+     "out": false,
+     "backOut": true
+    },
+    "echo": [],
+    "stack": [
+     {
+      "step": 1,
+      "scopeId": 1
+     },
+     {
+      "step": 0,
+      "scopeId": 0
+     }
+    ]
+   },
+   {
+    "step": 2,
+    "into": 3,
+    "back": 1,
+    "over": 9,
+    "backOver": 1,
+    "out": -1,
+    "backOut": 0,
+    "canStep": {
+     "into": true,
+     "back": true,
+     "over": true,
+     "backOver": true,
+     "out": false,
+     "backOut": true
+    },
+    "echo": [],
+    "stack": [
+     {
+      "step": 2,
+      "scopeId": 1
+     },
+     {
+      "step": 0,
+      "scopeId": 0
+     }
+    ]
+   },
+   {
+    "step": 3,
+    "into": 4,
+    "back": 2,
+    "over": 4,
+    "backOver": 2,
+    "out": 9,
+    "backOut": 2,
+    "canStep": {
+     "into": true,
+     "back": true,
+     "over": true,
+     "backOver": true,
+     "out": true,
+     "backOut": true
+    },
+    "echo": [
+     10,
+     14
+    ],
+    "stack": [
+     {
+      "step": 3,
+      "scopeId": 2
+     },
+     {
+      "step": 2,
+      "scopeId": 1
+     },
+     {
+      "step": 0,
+      "scopeId": 0
+     }
+    ]
+   },
+   {
+    "step": 4,
+    "into": 5,
+    "back": 3,
+    "over": 8,
+    "backOver": 3,
+    "out": 9,
+    "backOut": 2,
+    "canStep": {
+     "into": true,
+     "back": true,
+     "over": true,
+     "backOver": true,
+     "out": true,
+     "backOut": true
+    },
+    "echo": [
+     11,
+     15
+    ],
+    "stack": [
+     {
+      "step": 4,
+      "scopeId": 2
+     },
+     {
+      "step": 2,
+      "scopeId": 1
+     },
+     {
+      "step": 0,
+      "scopeId": 0
+     }
+    ]
+   },
+   {
+    "step": 5,
+    "into": 6,
+    "back": 4,
+    "over": 6,
+    "backOver": 4,
+    "out": 8,
+    "backOut": 4,
+    "canStep": {
+     "into": true,
+     "back": true,
+     "over": true,
+     "backOver": true,
+     "out": true,
+     "backOut": true
+    },
+    "echo": [
+     12,
+     16
+    ],
+    "stack": [
+     {
+      "step": 5,
+      "scopeId": 3
+     },
+     {
+      "step": 4,
+      "scopeId": 2
+     },
+     {
+      "step": 2,
+      "scopeId": 1
+     },
+     {
+      "step": 0,
+      "scopeId": 0
+     }
+    ]
+   },
+   {
+    "step": 6,
+    "into": 7,
+    "back": 5,
+    "over": 7,
+    "backOver": 5,
+    "out": 8,
+    "backOut": 4,
+    "canStep": {
+     "into": true,
+     "back": true,
+     "over": true,
+     "backOver": true,
+     "out": true,
+     "backOut": true
+    },
+    "echo": [
+     13,
+     17
+    ],
+    "stack": [
+     {
+      "step": 6,
+      "scopeId": 3
+     },
+     {
+      "step": 4,
+      "scopeId": 2
+     },
+     {
+      "step": 2,
+      "scopeId": 1
+     },
+     {
+      "step": 0,
+      "scopeId": 0
+     }
+    ]
+   },
+   {
+    "step": 7,
+    "into": 8,
+    "back": 6,
+    "over": 8,
+    "backOver": 6,
+    "out": 8,
+    "backOut": 4,
+    "canStep": {
+     "into": true,
+     "back": true,
+     "over": true,
+     "backOver": true,
+     "out": true,
+     "backOut": true
+    },
+    "echo": [
+     18,
+     20
+    ],
+    "stack": [
+     {
+      "step": 7,
+      "scopeId": 3
+     },
+     {
+      "step": 4,
+      "scopeId": 2
+     },
+     {
+      "step": 2,
+      "scopeId": 1
+     },
+     {
+      "step": 0,
+      "scopeId": 0
+     }
+    ]
+   },
+   {
+    "step": 8,
+    "into": 9,
+    "back": 7,
+    "over": 9,
+    "backOver": 4,
+    "out": 9,
+    "backOut": 2,
+    "canStep": {
+     "into": true,
+     "back": true,
+     "over": true,
+     "backOver": true,
+     "out": true,
+     "backOut": true
+    },
+    "echo": [
+     19,
+     21
+    ],
+    "stack": [
+     {
+      "step": 8,
+      "scopeId": 2
+     },
+     {
+      "step": 2,
+      "scopeId": 1
+     },
+     {
+      "step": 0,
+      "scopeId": 0
+     }
+    ]
+   },
+   {
+    "step": 9,
+    "into": 10,
+    "back": 8,
+    "over": 22,
+    "backOver": 2,
+    "out": -1,
+    "backOut": 0,
+    "canStep": {
+     "into": true,
+     "back": true,
+     "over": true,
+     "backOver": true,
+     "out": false,
+     "backOut": true
+    },
+    "echo": [],
+    "stack": [
+     {
+      "step": 9,
+      "scopeId": 1
+     },
+     {
+      "step": 0,
+      "scopeId": 0
+     }
+    ]
+   },
+   {
+    "step": 10,
+    "into": 11,
+    "back": 9,
+    "over": 11,
+    "backOver": 0,
+    "out": -1,
+    "backOut": 0,
+    "canStep": {
+     "into": true,
+     "back": true,
+     "over": true,
+     "backOver": true,
+     "out": false,
+     "backOut": true
+    },
+    "echo": [
+     3,
+     14
+    ],
+    "stack": [
+     {
+      "step": 10,
+      "scopeId": 4
+     },
+     {
+      "step": 0,
+      "scopeId": 0
+     }
+    ]
+   },
+   {
+    "step": 11,
+    "into": 12,
+    "back": 10,
+    "over": 19,
+    "backOver": 10,
+    "out": -1,
+    "backOut": 0,
+    "canStep": {
+     "into": true,
+     "back": true,
+     "over": true,
+     "backOver": true,
+     "out": false,
+     "backOut": true
+    },
+    "echo": [
+     4,
+     15
+    ],
+    "stack": [
+     {
+      "step": 11,
+      "scopeId": 4
+     },
+     {
+      "step": 0,
+      "scopeId": 0
+     }
+    ]
+   },
+   {
+    "step": 12,
+    "into": 13,
+    "back": 11,
+    "over": 13,
+    "backOver": 11,
+    "out": 19,
+    "backOut": 11,
+    "canStep": {
+     "into": true,
+     "back": true,
+     "over": true,
+     "backOver": true,
+     "out": true,
+     "backOut": true
+    },
+    "echo": [
+     5,
+     16
+    ],
+    "stack": [
+     {
+      "step": 12,
+      "scopeId": 5
+     },
+     {
+      "step": 11,
+      "scopeId": 4
+     },
+     {
+      "step": 0,
+      "scopeId": 0
+     }
+    ]
+   },
+   {
+    "step": 13,
+    "into": 14,
+    "back": 12,
+    "over": 18,
+    "backOver": 12,
+    "out": 19,
+    "backOut": 11,
+    "canStep": {
+     "into": true,
+     "back": true,
+     "over": true,
+     "backOver": true,
+     "out": true,
+     "backOut": true
+    },
+    "echo": [
+     6,
+     17
+    ],
+    "stack": [
+     {
+      "step": 13,
+      "scopeId": 5
+     },
+     {
+      "step": 11,
+      "scopeId": 4
+     },
+     {
+      "step": 0,
+      "scopeId": 0
+     }
+    ]
+   },
+   {
+    "step": 14,
+    "into": 15,
+    "back": 13,
+    "over": 15,
+    "backOver": 0,
+    "out": -1,
+    "backOut": 0,
+    "canStep": {
+     "into": true,
+     "back": true,
+     "over": true,
+     "backOver": true,
+     "out": false,
+     "backOut": true
+    },
+    "echo": [
+     3,
+     10
+    ],
+    "stack": [
+     {
+      "step": 14,
+      "scopeId": 6
+     },
+     {
+      "step": 0,
+      "scopeId": 0
+     }
+    ]
+   },
+   {
+    "step": 15,
+    "into": 16,
+    "back": 14,
+    "over": 21,
+    "backOver": 14,
+    "out": -1,
+    "backOut": 0,
+    "canStep": {
+     "into": true,
+     "back": true,
+     "over": true,
+     "backOver": true,
+     "out": false,
+     "backOut": true
+    },
+    "echo": [
+     4,
+     11
+    ],
+    "stack": [
+     {
+      "step": 15,
+      "scopeId": 6
+     },
+     {
+      "step": 0,
+      "scopeId": 0
+     }
+    ]
+   },
+   {
+    "step": 16,
+    "into": 17,
+    "back": 15,
+    "over": 17,
+    "backOver": 15,
+    "out": 21,
+    "backOut": 15,
+    "canStep": {
+     "into": true,
+     "back": true,
+     "over": true,
+     "backOver": true,
+     "out": true,
+     "backOut": true
+    },
+    "echo": [
+     5,
+     12
+    ],
+    "stack": [
+     {
+      "step": 16,
+      "scopeId": 7
+     },
+     {
+      "step": 15,
+      "scopeId": 6
+     },
+     {
+      "step": 0,
+      "scopeId": 0
+     }
+    ]
+   },
+   {
+    "step": 17,
+    "into": 18,
+    "back": 16,
+    "over": 20,
+    "backOver": 16,
+    "out": 21,
+    "backOut": 15,
+    "canStep": {
+     "into": true,
+     "back": true,
+     "over": true,
+     "backOver": true,
+     "out": true,
+     "backOut": true
+    },
+    "echo": [
+     6,
+     13
+    ],
+    "stack": [
+     {
+      "step": 17,
+      "scopeId": 7
+     },
+     {
+      "step": 15,
+      "scopeId": 6
+     },
+     {
+      "step": 0,
+      "scopeId": 0
+     }
+    ]
+   },
+   {
+    "step": 18,
+    "into": 19,
+    "back": 17,
+    "over": 19,
+    "backOver": 13,
+    "out": 19,
+    "backOut": 11,
+    "canStep": {
+     "into": true,
+     "back": true,
+     "over": true,
+     "backOver": true,
+     "out": true,
+     "backOut": true
+    },
+    "echo": [
+     7,
+     20
+    ],
+    "stack": [
+     {
+      "step": 18,
+      "scopeId": 5
+     },
+     {
+      "step": 11,
+      "scopeId": 4
+     },
+     {
+      "step": 0,
+      "scopeId": 0
+     }
+    ]
+   },
+   {
+    "step": 19,
+    "into": 20,
+    "back": 18,
+    "over": -1,
+    "backOver": 11,
+    "out": -1,
+    "backOut": 0,
+    "canStep": {
+     "into": true,
+     "back": true,
+     "over": false,
+     "backOver": true,
+     "out": false,
+     "backOut": true
+    },
+    "echo": [
+     8,
+     21
+    ],
+    "stack": [
+     {
+      "step": 19,
+      "scopeId": 4
+     },
+     {
+      "step": 0,
+      "scopeId": 0
+     }
+    ]
+   },
+   {
+    "step": 20,
+    "into": 21,
+    "back": 19,
+    "over": 21,
+    "backOver": 17,
+    "out": 21,
+    "backOut": 15,
+    "canStep": {
+     "into": true,
+     "back": true,
+     "over": true,
+     "backOver": true,
+     "out": true,
+     "backOut": true
+    },
+    "echo": [
+     7,
+     18
+    ],
+    "stack": [
+     {
+      "step": 20,
+      "scopeId": 7
+     },
+     {
+      "step": 15,
+      "scopeId": 6
+     },
+     {
+      "step": 0,
+      "scopeId": 0
+     }
+    ]
+   },
+   {
+    "step": 21,
+    "into": 22,
+    "back": 20,
+    "over": -1,
+    "backOver": 15,
+    "out": -1,
+    "backOut": 0,
+    "canStep": {
+     "into": true,
+     "back": true,
+     "over": false,
+     "backOver": true,
+     "out": false,
+     "backOut": true
+    },
+    "echo": [
+     8,
+     19
+    ],
+    "stack": [
+     {
+      "step": 21,
+      "scopeId": 6
+     },
+     {
+      "step": 0,
+      "scopeId": 0
+     }
+    ]
+   },
+   {
+    "step": 22,
+    "into": -1,
+    "back": 21,
+    "over": -1,
+    "backOver": 9,
+    "out": -1,
+    "backOut": 0,
+    "canStep": {
+     "into": false,
+     "back": true,
+     "over": false,
+     "backOver": true,
+     "out": false,
+     "backOut": true
+    },
+    "echo": [],
+    "stack": [
+     {
+      "step": 22,
+      "scopeId": 1
+     },
+     {
+      "step": 0,
+      "scopeId": 0
+     }
+    ]
+   }
+  ],
+  "startStep": [
+   {
+    "fileId": 1,
+    "line": 2,
+    "step": 6
+   },
+   {
+    "fileId": 1,
+    "line": 5,
+    "step": 4
+   },
+   {
+    "fileId": 1,
+    "line": 9,
+    "step": 9
+   },
+   {
+    "fileId": 1,
+    "line": 10,
+    "step": 22
+   },
+   {
+    "fileId": 1,
+    "line": 11,
+    "step": 0
+   }
+  ]
+ },
+ "empty": {
+  "quads": [],
+  "scopes": [],
+  "count": 0,
+  "moves": [],
+  "startStep": [
+   {
+    "fileId": 1,
+    "line": 1,
+    "step": -1
+   }
+  ]
+ }
+}

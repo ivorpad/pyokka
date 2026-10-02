@@ -1,0 +1,11 @@
+{
+  "name": "pyokka-band",
+  "version": "0.1.0",
+  "description": "Shows where the Pyokka Time Machine is (file:line #step, function, stack, values) above the prompt while an agent drives pyokka --live",
+  "author": {
+    "name": "Ivor Padilla"
+  },
+  "homepage": "https://github.com/ivorpad/pyokka",
+  "license": "MIT",
+  "types": "./types/index.d.ts"
+}

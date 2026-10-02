@@ -1,0 +1,192 @@
+/* Execution Diagram: the left pane's tabs and story tree, the chevron on a scope card, the inspector's hit list. */
+
+.pk-exec-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 3px 6px 0;
+  border-bottom: 1px solid var(--pk-border);
+  flex: 0 0 auto;
+}
+.pk-exec-tab-btn {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--pk-dim);
+  font-family: var(--pk-font);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+.pk-exec-tab-btn:hover {
+  color: var(--pk-fg);
+}
+.pk-exec-tab-btn.active {
+  color: var(--pk-fg);
+  border-bottom-color: var(--vscode-focusBorder, #007fd4);
+}
+
+/* the story tree */
+.pk-story {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 4px 0;
+}
+.pk-story-empty {
+  padding: 12px;
+  color: var(--pk-dim);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+}
+.pk-story-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 8px 1px 0;
+  cursor: pointer;
+  white-space: nowrap;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--pk-fg);
+  opacity: 0.55;
+}
+.pk-story-row.active,
+.pk-story-row.now,
+.pk-story-row.selected,
+.pk-story-row:hover {
+  opacity: 1;
+}
+.pk-story-row:hover {
+  background: var(--pk-hover);
+}
+.pk-story-row.selected {
+  background: var(--pk-inactive-selected);
+}
+.pk-story-row.now {
+  background: var(--pk-selected);
+  color: var(--pk-selected-fg);
+}
+.pk-story-twistie {
+  flex: 0 0 16px;
+  width: 16px;
+  display: inline-flex;
+  justify-content: center;
+  color: var(--pk-icon);
+}
+.pk-story-icon {
+  flex: 0 0 auto;
+  font-size: 13px;
+  color: var(--pk-icon);
+}
+.pk-story-row.kind-decision .pk-story-icon {
+  color: var(--vscode-charts-yellow, #d7ba7d);
+}
+.pk-story-row.kind-scope .pk-story-label {
+  font-weight: 600;
+}
+.pk-story-row.kind-phase .pk-story-label {
+  font-style: italic;
+}
+.pk-story-row.kind-ref .pk-story-label {
+  color: var(--pk-dim);
+}
+.pk-story-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pk-story-code {
+  font-family: var(--pk-mono);
+  font-size: var(--pk-mono-size);
+}
+.pk-story-meta {
+  color: var(--pk-dim);
+  font-size: 11px;
+  flex: 0 0 auto;
+}
+.pk-story-step {
+  margin-left: auto;
+  padding-left: 6px;
+  color: var(--pk-dim);
+  font-family: var(--pk-mono);
+  font-size: 10px;
+  flex: 0 0 auto;
+}
+.pk-story-row.now .pk-story-meta,
+.pk-story-row.now .pk-story-step,
+.pk-story-row.now .pk-story-icon,
+.pk-story-row.now .pk-story-twistie {
+  color: inherit;
+}
+
+/* the chevron on a scope card: opens or folds its statements on the canvas */
+.pk-ex-chevron {
+  cursor: pointer;
+}
+.pk-ex-chevron-hit {
+  fill: transparent;
+}
+.pk-ex-chevron:hover .pk-ex-chevron-hit {
+  fill: var(--pk-toolbar-hover);
+}
+.pk-ex-chevron-glyph {
+  fill: var(--pk-dim);
+  font-family: var(--pk-font);
+  font-size: 11px;
+}
+.pk-ex-chevron:hover .pk-ex-chevron-glyph {
+  fill: var(--pk-fg);
+}
+
+/* the inspector's hit list */
+.pk-exec-hits {
+  margin-top: 6px;
+}
+.pk-exec-hits-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--pk-dim);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+}
+.pk-exec-hits-head .pk-toolbar {
+  margin-left: auto;
+}
+.pk-exec-hit-list {
+  max-height: 220px;
+  overflow: auto;
+  margin-top: 2px;
+}
+.pk-exec-hit {
+  display: flex;
+  gap: 8px;
+  padding: 1px 4px;
+  border-radius: 2px;
+  cursor: pointer;
+  font-family: var(--pk-mono);
+  font-size: var(--pk-mono-size);
+}
+.pk-exec-hit:hover {
+  background: var(--pk-hover);
+}
+.pk-exec-hit.current {
+  background: var(--pk-selected);
+  color: var(--pk-selected-fg);
+}
+.pk-exec-hit-step {
+  flex: 0 0 auto;
+  color: var(--pk-dim);
+}
+.pk-exec-hit.current .pk-exec-hit-step {
+  color: inherit;
+}
+.pk-exec-hit-value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pk-exec-hit-more {
+  padding: 2px 4px;
+  font-size: 11px;
+}

@@ -1,0 +1,746 @@
+/* The debugger in the Time Machine view (docs/HANDOFF-debugger.md): the paused header, the frontier on the strips, the frontier locals. */
+:root {
+  --pk-frontier: #ffcc00;
+  --pk-go: #89d185;
+}
+.pk-debug-status {
+  flex: none;
+  padding: 5px 10px 4px;
+  font-size: 12px;
+  border-bottom: 1px solid var(--pk-border);
+  color: var(--pk-fg);
+}
+.pk-debug-status b {
+  color: var(--pk-frontier);
+  font-weight: 600;
+}
+.pk-debug-status.running {
+  color: var(--pk-dim);
+}
+.pk-timeline-row {
+  display: flex;
+  align-items: stretch;
+}
+.pk-timeline-row .pk-timeline {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.pk-tl-frontier {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--pk-frontier);
+  box-shadow: 0 0 6px var(--pk-frontier);
+  pointer-events: none;
+}
+.pk-tl-frontier-label {
+  position: absolute;
+  right: 5px;
+  top: 1px;
+  padding: 0 3px;
+  background: color-mix(in srgb, var(--pk-bg) 85%, transparent);
+  border-radius: 2px;
+  font-family: var(--pk-mono);
+  font-size: 9px;
+  color: var(--pk-frontier);
+  white-space: nowrap;
+}
+.pk-tl-ahead,
+.pk-step-ahead {
+  flex: 0 0 14%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--pk-mono);
+  font-size: 9px;
+  color: var(--pk-dim);
+  white-space: nowrap;
+  border: 1px dashed color-mix(in srgb, var(--pk-fg) 30%, transparent);
+  border-left: none;
+  background: repeating-linear-gradient(90deg, transparent 0 6px, color-mix(in srgb, var(--pk-fg) 10%, transparent) 6px 8px);
+}
+.pk-step-ahead {
+  flex: none;
+  height: 100%;
+  border: 1px dashed color-mix(in srgb, var(--pk-fg) 30%, transparent);
+  overflow: hidden;
+}
+.pk-icon-btn.pk-go .codicon {
+  color: var(--pk-go);
+}
+.pk-frontier-locals .pk-subheader .pk-dim {
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  margin-left: 6px;
+}
+.pk-local-type {
+  color: var(--pk-tk-type);
+  font-size: 11px;
+  white-space: nowrap;
+  width: 1%;
+}
+.pk-local-alias {
+  color: var(--pk-dim);
+}
+.pk-why-link {
+  margin-left: 8px;
+  font-size: 11px;
+  color: var(--pk-link);
+  cursor: pointer;
+  text-decoration: none;
+}
+.pk-why-link:hover {
+  text-decoration: underline;
+}
+.pk-local-table {
+  padding: 2px 8px 6px 20px;
+}
+
+/*
+ * The Debugger view (docs/design/debugger-product.md, 5.1): one live `record: false` session.
+ *
+ * Built to read like VS Code's Run and Debug sections and like this panel's Time Machine view, so
+ * the two look like one product: 22px rows with a hover background and one right-hand actions
+ * column, section headers as pane headers, the interface font for labels and the editor font only
+ * for code, paths, expressions and values. `scripts/preview-debugger-view.mjs` renders it headless.
+ */
+.pk-debug-view {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  /* long output lines wrap inside the pane rather than widening the view they sit in */
+  min-width: 0;
+  overflow: auto;
+  font-family: var(--pk-font);
+  font-size: var(--pk-font-size);
+  container-type: inline-size;
+  container-name: pk-debug;
+}
+
+/*
+ * The sections are a single column of 22px rows because that is the shape of VS Code's Run and
+ * Debug sidebar, which is narrow. This view is contributed to `panel` only, so on a wide monitor it
+ * is the full width of the editor and short: every row used about a quarter of it and the rest was
+ * void, while LOCALS truncated a long repr with 1500px of empty space beside it.
+ *
+ * Wide, so: two columns. Output takes the right half, because it is the section that wants width and
+ * height and the one that changes while the program runs; the pause context stacks on the left. The
+ * rows themselves are untouched, and a panel dragged narrow keeps the single column it always had.
+ */
+/* narrow: the columns stack and the view is the single column it has always been */
+.pk-debug-cols {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+}
+/* while the program runs, output leads: the other sections have nothing in them yet */
+.pk-debug-cols.running > .pk-debug-outcol {
+  order: -1;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+@container pk-debug (min-width: 900px) {
+  .pk-debug-cols {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: stretch;
+  }
+  .pk-debug-cols > .pk-debug-col {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    overflow: auto;
+  }
+  /*
+   * Explicit row and column, both. `order: -1` on the output column is the narrow-case rule, and it
+   * still reaches grid auto-placement: it placed output first at row 1 column 2, which left the
+   * cursor past column 1 and pushed the context column down into row 2.
+   */
+  .pk-debug-cols > .pk-debug-context {
+    grid-row: 1;
+    grid-column: 1;
+  }
+  .pk-debug-cols > .pk-debug-outcol {
+    grid-row: 1;
+    grid-column: 2;
+    border-left: 1px solid var(--pk-border);
+  }
+  /* in two columns the pane owns its column's height, running or paused */
+  .pk-debug-outcol .pk-debug-output {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    border-bottom: 0;
+  }
+  .pk-debug-outcol .pk-debug-output .pk-output-pane {
+    max-height: none;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+}
+
+/* the add form's mode, sized like the pause-on dropdown so the two read as one control family */
+.pk-watch-mode {
+  flex: none;
+  height: 20px;
+  padding: 0 4px;
+  border: 1px solid var(--vscode-dropdown-border, var(--pk-border));
+  border-radius: 2px;
+  background: var(--vscode-dropdown-background, var(--pk-checkbox-bg));
+  color: var(--vscode-dropdown-foreground, var(--pk-fg));
+  font-family: var(--pk-font);
+  font-size: 11px;
+}
+
+/* ---------- the status header ---------- */
+
+.pk-dbg-status {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+  padding: 3px 8px;
+  font-family: var(--pk-font);
+  font-size: var(--pk-font-size);
+}
+.pk-dbg-status > .codicon {
+  flex: none;
+  color: var(--vscode-debugIcon-breakpointForeground, #e51400);
+}
+.pk-dbg-status.running > .codicon {
+  color: var(--pk-dim);
+}
+.pk-dbg-lead {
+  flex: none;
+  color: var(--pk-fg);
+}
+.pk-dbg-loc {
+  flex: none;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--pk-link);
+  font-family: var(--pk-mono);
+  font-size: var(--pk-mono-size);
+  cursor: pointer;
+}
+.pk-dbg-loc:hover {
+  text-decoration: underline;
+}
+.pk-dbg-hint {
+  color: var(--pk-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pk-dbg-chip {
+  flex: none;
+  padding: 0 6px;
+  border-radius: 9px;
+  background: var(--vscode-badge-background, #616161);
+  color: var(--vscode-badge-foreground, #f8f8f8);
+  font-size: 11px;
+  line-height: 16px;
+}
+.pk-dbg-thread {
+  margin-left: auto;
+  background: none;
+  color: var(--pk-dim);
+  padding-right: 0;
+}
+.pk-debug-launch {
+  flex: none;
+  padding: 0 8px 4px;
+  color: var(--pk-dim);
+  font-family: var(--pk-mono);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* a console write, and an exception: the same row shape in the warning and the error colours */
+.pk-dbg-warn,
+.pk-dbg-error {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 8px 4px;
+  padding: 2px 6px;
+  border-left: 2px solid;
+  font-size: 12px;
+}
+.pk-dbg-warn {
+  background: var(--vscode-inputValidation-warningBackground, #352a05);
+  border-color: var(--vscode-editorWarning-foreground, #cca700);
+  color: var(--pk-fg);
+}
+.pk-dbg-warn .codicon {
+  color: var(--vscode-editorWarning-foreground, #cca700);
+}
+.pk-dbg-error {
+  background: var(--vscode-inputValidation-errorBackground, #5a1d1d);
+  border-color: var(--vscode-editorError-foreground, #f85149);
+  color: var(--pk-fg);
+}
+.pk-dbg-error .codicon {
+  color: var(--vscode-editorError-foreground, #f85149);
+}
+
+/* ---------- sections and their headers ---------- */
+
+.pk-dbg-section {
+  flex: none;
+  margin-bottom: 6px;
+}
+.pk-dbg-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 22px;
+  padding: 0 8px;
+  color: var(--vscode-sideBarSectionHeader-foreground, var(--pk-fg));
+}
+.pk-dbg-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.pk-dbg-note {
+  color: var(--pk-dim);
+  font-family: var(--pk-mono);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pk-dbg-count {
+  flex: none;
+  min-width: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: var(--vscode-badge-background, #616161);
+  color: var(--vscode-badge-foreground, #f8f8f8);
+  font-size: 10px;
+  line-height: 15px;
+  text-align: center;
+}
+/* header actions: out of the way until the pointer or the keyboard is in the section */
+.pk-dbg-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+}
+.pk-dbg-head-actions .pk-icon-btn {
+  opacity: 0;
+}
+.pk-dbg-section:hover .pk-dbg-head-actions .pk-icon-btn,
+.pk-dbg-head-actions .pk-icon-btn:focus-visible {
+  opacity: 1;
+}
+.pk-dbg-head-actions .pk-icon-btn {
+  padding: 1px 2px;
+}
+/* the pause-on dropdown, sized like VS Code's own and kept inside the 22px header row */
+.pk-dbg-select {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--pk-dim);
+  font-size: 11px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.pk-dbg-select select {
+  height: 18px;
+  padding: 0 4px;
+  border: 1px solid var(--vscode-dropdown-border, var(--pk-border));
+  border-radius: 2px;
+  background: var(--vscode-dropdown-background, var(--pk-checkbox-bg));
+  color: var(--vscode-dropdown-foreground, var(--pk-fg));
+  font-family: var(--pk-font);
+  font-size: 11px;
+}
+
+/* ---------- rows ---------- */
+
+.pk-dbg-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.pk-dbg-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 22px;
+  padding: 0 8px;
+  font-family: var(--pk-mono);
+  font-size: var(--pk-mono-size);
+  white-space: nowrap;
+}
+.pk-dbg-row:hover {
+  background: var(--pk-hover);
+}
+.pk-dbg-row.cur {
+  background: var(--pk-inactive-selected);
+}
+/* the whole row is the click target for a frame or a breakpoint */
+.pk-dbg-rowbtn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  background: none;
+  border: none;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.pk-dbg-rowbtn:disabled {
+  cursor: default;
+}
+/* the 16px gutter every row opens with: a chevron, a breakpoint dot, the current-frame arrow */
+.pk-dbg-twist {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--pk-icon);
+  cursor: pointer;
+}
+span.pk-dbg-twist {
+  cursor: default;
+}
+.pk-dbg-twist .codicon {
+  font-size: 14px;
+}
+.pk-dbg-bp-on {
+  color: var(--vscode-debugIcon-breakpointForeground, #e51400);
+}
+.pk-dbg-bp-off {
+  color: var(--vscode-debugIcon-breakpointUnverifiedForeground, #848484);
+}
+.pk-dbg-name {
+  flex: none;
+  color: var(--pk-fg);
+}
+.pk-dbg-type {
+  flex: none;
+  color: var(--vscode-debugTokenExpression-type, var(--pk-dim));
+  font-size: 11px;
+}
+.pk-dbg-exp {
+  flex: none;
+  color: var(--pk-fg);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* the value: whatever is left of the row, cut with an ellipsis, full text in the title */
+.pk-dbg-value {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* the location: right after the name it belongs to, shrinking before it pushes the line away */
+.pk-dbg-where {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--pk-dim);
+  font-size: 11px;
+}
+.pk-dbg-line {
+  flex: none;
+  color: var(--pk-fg);
+}
+.pk-dbg-cond {
+  flex: none;
+  font-size: 11px;
+}
+.pk-dbg-dim {
+  color: var(--pk-dim);
+}
+/* a watch's value sits at the right end of its row, dim, away from the expression */
+.pk-watch-list .pk-dbg-value {
+  text-align: right;
+  color: var(--pk-dim);
+}
+.pk-dbg-badge {
+  flex: none;
+  padding: 0 5px;
+  border-radius: 8px;
+  background: var(--vscode-badge-background, #616161);
+  color: var(--vscode-badge-foreground, #f8f8f8);
+  font-family: var(--pk-font);
+  font-size: 10px;
+  line-height: 15px;
+}
+/* one actions column for every row of the view, shown when the row is hovered or focused */
+.pk-dbg-row-actions {
+  flex: none;
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  opacity: 0;
+}
+.pk-dbg-row:hover .pk-dbg-row-actions,
+.pk-dbg-row-actions:focus-within {
+  opacity: 1;
+}
+.pk-dbg-row-actions .pk-icon-btn {
+  padding: 1px 2px;
+}
+.pk-dbg-empty {
+  padding: 2px 8px 4px;
+  color: var(--pk-dim);
+  font-size: 12px;
+  font-style: italic;
+}
+
+/* ---------- the call stack ---------- */
+
+.pk-dbg-row.library .pk-dbg-name,
+.pk-dbg-fold-label {
+  color: var(--pk-dim);
+  font-style: italic;
+}
+.pk-dbg-row.cur .pk-dbg-twist .codicon {
+  color: var(--vscode-editorLineNumber-activeForeground, var(--pk-fg));
+}
+
+/* ---------- locals ---------- */
+
+.pk-dbg-member .pk-dbg-name {
+  color: var(--vscode-debugTokenExpression-name, var(--pk-fg));
+}
+
+/* ---------- watches ---------- */
+
+.pk-watch-add {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  padding: 2px 8px 4px;
+}
+/* the Time Machine's watch input, without a permanent focus ring */
+.pk-debug-view .pk-watch-add .pk-watch-input {
+  margin: 0;
+  border-color: var(--vscode-input-border, var(--pk-border));
+  background: var(--vscode-input-background, var(--pk-checkbox-bg));
+  color: var(--vscode-input-foreground, var(--pk-fg));
+}
+.pk-debug-view .pk-watch-add .pk-watch-input:focus-visible {
+  border-color: var(--vscode-focusBorder, #0078d4);
+}
+
+/* ---------- the breakpoint list ---------- */
+
+.pk-bp-list .unresolved .pk-dbg-where,
+.pk-bp-list .unresolved .pk-dbg-line,
+.pk-bp-list .unresolved .pk-dbg-name {
+  color: var(--pk-dim);
+}
+.pk-bp-group {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---------- the output pane ---------- */
+
+/* ---------- the output pane ---------- */
+
+/* while the program runs the pane takes the free space: it is the only section with anything in it */
+.pk-dbg-section.pk-dbg-grow {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.pk-output-wrap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+.pk-debug-output .pk-output-pane {
+  margin: 0;
+  padding: 2px 0 4px;
+  overflow: auto;
+  color: var(--pk-fg);
+  font-family: var(--pk-mono);
+  font-size: var(--pk-mono-size);
+  line-height: 1.45;
+}
+/* parked under the other sections it keeps its old cap; grown it fills what is left */
+.pk-dbg-section:not(.pk-dbg-grow) .pk-output-pane {
+  max-height: 320px;
+}
+.pk-dbg-grow .pk-output-pane {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.pk-output-row {
+  display: flex;
+  gap: 6px;
+  padding-right: 8px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.pk-output-pane.nowrap .pk-output-row {
+  white-space: pre;
+  overflow-wrap: normal;
+}
+/* when the program prints for minutes, the clock is how a line is placed in the run */
+.pk-output-at {
+  flex: none;
+  width: 42px;
+  text-align: right;
+  color: var(--pk-dim);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  user-select: none;
+}
+.pk-output-text {
+  flex: 1;
+  min-width: 0;
+  padding-left: 7px;
+  border-left: 1px solid transparent;
+}
+/* the runtime always said which stream a write came from; the pane finally shows it */
+.pk-output-row.stderr .pk-output-text {
+  border-left-color: var(--vscode-terminal-ansiRed, #cd3131);
+  background: color-mix(in srgb, var(--vscode-terminal-ansiRed, #cd3131) 8%, transparent);
+  color: var(--vscode-terminal-ansiRed, #cd3131);
+}
+/* a line the program has not ended: `print(delta, end="")` mid-token */
+.pk-output-caret {
+  display: inline-block;
+  width: 6px;
+  height: 1em;
+  margin-left: 1px;
+  vertical-align: text-bottom;
+  background: var(--pk-frontier);
+  animation: pk-caret 1.1s step-end infinite;
+}
+@keyframes pk-caret {
+  0%, 60% { opacity: 1; }
+  61%, 100% { opacity: 0; }
+}
+.pk-output-gap,
+.pk-output-cut {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px 2px 49px;
+  font-family: var(--pk-mono);
+  font-size: 10px;
+  color: var(--pk-dim);
+}
+.pk-output-gap::after,
+.pk-output-cut::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--pk-border);
+}
+.pk-output-cut {
+  padding-left: 8px;
+}
+/* the pane follows its tail; this appears only once the reader has scrolled away from it */
+.pk-output-tail {
+  position: absolute;
+  left: 50%;
+  bottom: 8px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  border: 1px solid var(--pk-border);
+  border-radius: 11px;
+  background: var(--vscode-editorWidget-background, var(--pk-bg));
+  color: var(--pk-fg);
+  font-family: var(--pk-font);
+  font-size: 11px;
+  cursor: pointer;
+}
+.pk-output-tail:hover {
+  background: var(--pk-hover);
+}
+
+/* ---------- the activity row ---------- */
+
+/* every figure here is measured: elapsed, bytes, when the last byte came. Nothing is a guess about
+   where the program is, which would need the runtime to be asked something while it runs. */
+.pk-dbg-activity {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 22px;
+  padding: 2px 8px;
+  font-family: var(--pk-mono);
+  font-size: 11px;
+  color: var(--pk-dim);
+  border-bottom: 1px solid var(--pk-border);
+}
+.pk-dbg-elapsed {
+  color: var(--pk-fg);
+  font-variant-numeric: tabular-nums;
+}
+.pk-dbg-printed {
+  margin-left: auto;
+}
+.pk-dbg-idle {
+  font-variant-numeric: tabular-nums;
+}
+.pk-dbg-idle.stale {
+  color: var(--pk-frontier);
+}
+.pk-dbg-spark {
+  flex: none;
+  display: block;
+  color: var(--pk-frontier);
+}
+.pk-dbg-spark-area {
+  fill: color-mix(in srgb, var(--pk-frontier) 18%, transparent);
+  stroke: none;
+}
+.pk-dbg-spark-line {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1;
+  stroke-linejoin: round;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pk-output-caret { animation: none; }
+}

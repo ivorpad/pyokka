@@ -1,0 +1,1297 @@
+{
+ "tour": 1,
+ "run": {
+  "file": "rrf.py",
+  "steps": 243,
+  "exitCode": 0,
+  "durationMs": 93.37579202838242,
+  "http": 0,
+  "llm": 0,
+  "io": {
+   "http": "recorded",
+   "fileWrites": "from the statements' source; the recording has no file event",
+   "subprocess": "from the statements' source; the recording has no process event"
+  }
+ },
+ "goal": {
+  "kind": "output",
+  "step": 242,
+  "text": "  TOTAL     : 0.016129"
+ },
+ "small": false,
+ "budget": {
+  "tokens": 40000,
+  "estimate": 4595,
+  "found": 35,
+  "kept": 35,
+  "dropped": 0
+ },
+ "chapters": [
+  {
+   "id": "c1",
+   "title": "print_ranking",
+   "opens": [
+    "print_ranking"
+   ],
+   "kind": "call",
+   "steps": [
+    0,
+    26
+   ],
+   "share": 0.1111,
+   "http": 0,
+   "llm": 0,
+   "candidates": 4,
+   "prose": {
+    "title": "Two rankings",
+    "text": "The input: a BM25 list and a vector list over the same documents."
+   }
+  },
+  {
+   "id": "c2",
+   "title": "print_ranking",
+   "opens": [
+    "print_ranking"
+   ],
+   "kind": "call",
+   "steps": [
+    27,
+    42
+   ],
+   "share": 0.0658,
+   "http": 0,
+   "llm": 0,
+   "candidates": 1
+  },
+  {
+   "id": "c3",
+   "title": "rrf",
+   "opens": [
+    "rrf"
+   ],
+   "kind": "phase",
+   "steps": [
+    43,
+    52
+   ],
+   "share": 0.0412,
+   "http": 0,
+   "llm": 0,
+   "candidates": 2
+  },
+  {
+   "id": "c4",
+   "title": "reciprocal_rank",
+   "opens": [
+    "reciprocal_rank"
+   ],
+   "kind": "phase",
+   "steps": [
+    53,
+    103
+   ],
+   "share": 0.2099,
+   "http": 0,
+   "llm": 0,
+   "candidates": 11,
+   "prose": {
+    "title": "Scoring each rank",
+    "text": "`reciprocal_rank` turns each rank into a small fraction that is added to that document's score."
+   }
+  },
+  {
+   "id": "c5",
+   "title": "main",
+   "opens": [
+    "main"
+   ],
+   "kind": "statements",
+   "steps": [
+    104,
+    152
+   ],
+   "share": 0.2016,
+   "http": 0,
+   "llm": 0,
+   "candidates": 9,
+   "prose": {
+    "title": "The fused order",
+    "text": "Sorting by score puts 'C' first, ahead of the BM25 leader."
+   }
+  },
+  {
+   "id": "c6",
+   "title": "reciprocal_rank x8",
+   "opens": [
+    "reciprocal_rank x8"
+   ],
+   "kind": "call",
+   "steps": [
+    153,
+    242
+   ],
+   "share": 0.3704,
+   "http": 0,
+   "llm": 0,
+   "candidates": 8,
+   "prose": {
+    "title": "One document explained",
+    "text": "The breakdown for a document missing from one list."
+   }
+  }
+ ],
+ "candidates": [
+  {
+   "id": "s0-8fc4cf",
+   "key": "8fc4cf",
+   "step": 0,
+   "chapter": "c1",
+   "file": "rrf.py",
+   "line": 10,
+   "function": "<module>",
+   "scopeId": 0,
+   "signals": [
+    {
+     "signal": "chapter:start",
+     "reason": "chapter opened by print_ranking"
+    }
+   ],
+   "statement": "from dataclasses import dataclass",
+   "score": 4.0,
+   "values": []
+  },
+  {
+   "id": "s2-372701",
+   "key": "372701",
+   "step": 2,
+   "chapter": "c1",
+   "file": "rrf.py",
+   "line": 20,
+   "function": "<module>",
+   "scopeId": 0,
+   "signals": [
+    {
+     "signal": "spine:why",
+     "reason": "DOCUMENTS = {'A': Document(id='A', text='Button component with primary …"
+    }
+   ],
+   "statement": "DOCUMENTS = {\n    \"A\": Document(\"A\", \"Button component with primary and secondary variants\"),\n    \"B\": Document(\"B\", \"Form input component with validation\"),\n    \"C\": Document(\"C\", \"Primary button used for important actions\"),\n    \"D\": Doc…",
+   "score": 3.0,
+   "values": [
+    {
+     "id": "s2-372701.v1",
+     "role": "set",
+     "name": "DOCUMENTS",
+     "length": 125,
+     "text": "{'A': Document(id='A', text='Button component with primary and secondary variants'), 'B': Document(id='B', text='Form i…(cut)"
+    }
+   ]
+  },
+  {
+   "id": "s3-1cc568",
+   "key": "1cc568",
+   "step": 3,
+   "chapter": "c1",
+   "file": "rrf.py",
+   "line": 34,
+   "function": "<module>",
+   "scopeId": 0,
+   "signals": [
+    {
+     "signal": "spine:why",
+     "reason": "bm25_ranking = ['A', 'C', 'B', 'D']"
+    }
+   ],
+   "statement": "bm25_ranking = [\n    \"A\",  # rank 1\n    \"C\",  # rank 2\n    \"B\",  # rank 3\n    \"D\",  # rank 4\n]",
+   "score": 3.0,
+   "values": [
+    {
+     "id": "s3-1cc568.v1",
+     "role": "set",
+     "name": "bm25_ranking",
+     "length": 20,
+     "text": "['A', 'C', 'B', 'D']"
+    }
+   ],
+   "prose": {
+    "title": "BM25 puts A first",
+    "text": "The keyword ranking is the first input; 'A' leads it and 'C' is second.",
+    "order": 1
+   }
+  },
+  {
+   "id": "s4-18dea1",
+   "key": "18dea1",
+   "step": 4,
+   "chapter": "c1",
+   "file": "rrf.py",
+   "line": 41,
+   "function": "<module>",
+   "scopeId": 0,
+   "signals": [
+    {
+     "signal": "spine:why",
+     "reason": "vector_ranking = ['C', 'E', 'A', 'B']"
+    }
+   ],
+   "statement": "vector_ranking = [\n    \"C\",  # rank 1\n    \"E\",  # rank 2\n    \"A\",  # rank 3\n    \"B\",  # rank 4\n]",
+   "score": 3.0,
+   "values": [
+    {
+     "id": "s4-18dea1.v1",
+     "role": "set",
+     "name": "vector_ranking",
+     "length": 20,
+     "text": "['C', 'E', 'A', 'B']"
+    }
+   ]
+  },
+  {
+   "id": "s27-43ad07",
+   "key": "43ad07",
+   "step": 27,
+   "chapter": "c2",
+   "file": "rrf.py",
+   "line": 110,
+   "function": "main",
+   "scopeId": 1,
+   "signals": [
+    {
+     "signal": "chapter:start",
+     "reason": "chapter opened by print_ranking"
+    }
+   ],
+   "statement": "print_ranking(\"Vector ranking\", vector_ranking)",
+   "score": 4.0,
+   "values": []
+  },
+  {
+   "id": "s43-ad361b",
+   "key": "ad361b",
+   "step": 43,
+   "chapter": "c3",
+   "file": "rrf.py",
+   "line": 112,
+   "function": "main",
+   "scopeId": 1,
+   "signals": [
+    {
+     "signal": "chapter:start",
+     "reason": "chapter opened by rrf"
+    },
+    {
+     "signal": "spine:why",
+     "reason": "rankings = {'BM25': ['A', 'C', 'B', 'D'], 'Vector': ['C', 'E', 'A', 'B…"
+    }
+   ],
+   "statement": "rankings = {\n        \"BM25\": bm25_ranking,\n        \"Vector\": vector_ranking,\n    }",
+   "score": 4.5,
+   "values": [
+    {
+     "id": "s43-ad361b.v1",
+     "role": "set",
+     "name": "rankings",
+     "length": 62,
+     "text": "{'BM25': ['A', 'C', 'B', 'D'], 'Vector': ['C', 'E', 'A', 'B']}"
+    }
+   ]
+  },
+  {
+   "id": "s45-ce0cc1",
+   "key": "ce0cc1",
+   "step": 45,
+   "chapter": "c3",
+   "file": "rrf.py",
+   "line": 119,
+   "function": "main",
+   "scopeId": 1,
+   "signals": [
+    {
+     "signal": "narrative:binds",
+     "reason": "main keeps a call's result"
+    },
+    {
+     "signal": "spine:why",
+     "reason": "scores = {'A': 0.032266458495966696, 'B': 0.03149801587301587, 'C': …"
+    }
+   ],
+   "statement": "scores = rrf(\n        rankings=rankings,\n        k=60,\n    )",
+   "score": 3.5,
+   "values": [
+    {
+     "id": "s45-ce0cc1.v1",
+     "role": "set",
+     "name": "scores",
+     "length": 130,
+     "text": "{'A': 0.032266458495966696, 'B': 0.03149801587301587, 'C': 0.03252247488101534, 'D': 0.015625, 'E': 0.01612903225806451…(+2 chars)"
+    }
+   ],
+   "prose": {
+    "title": "Scores after both lists",
+    "text": "C ends highest because it is near the top of both lists.",
+    "order": 2,
+    "quote": {
+     "field": "s45-ce0cc1.v1",
+     "name": "scores",
+     "from": 54,
+     "to": 78,
+     "text": "'C': 0.03252247488101534",
+     "length": 119,
+     "recordingCut": true
+    }
+   }
+  },
+  {
+   "id": "s53-189112",
+   "key": "189112",
+   "step": 53,
+   "chapter": "c4",
+   "file": "rrf.py",
+   "line": 73,
+   "function": "rrf",
+   "scopeId": 4,
+   "signals": [
+    {
+     "signal": "chapter:start",
+     "reason": "chapter opened by reciprocal_rank"
+    },
+    {
+     "signal": "narrative:binds",
+     "reason": "rrf keeps a call's result"
+    }
+   ],
+   "statement": "contribution = reciprocal_rank(rank, k)",
+   "score": 4.5,
+   "values": [
+    {
+     "id": "s53-189112.v1",
+     "role": "set",
+     "name": "contribution",
+     "length": 19,
+     "text": "0.01639344262295082"
+    },
+    {
+     "id": "s53-189112.v2",
+     "role": "call",
+     "name": "reciprocal_rank()",
+     "length": 19,
+     "text": "0.01639344262295082"
+    }
+   ],
+   "prose": {
+    "title": "The top rank is worth 0.01639344262295082",
+    "text": "`reciprocal_rank` gives the top rank 0.01639344262295082, so a first place is worth little more than a second.",
+    "order": 3
+   }
+  },
+  {
+   "id": "s56-cf5c54",
+   "key": "cf5c54",
+   "step": 56,
+   "chapter": "c4",
+   "file": "rrf.py",
+   "line": 75,
+   "function": "rrf",
+   "scopeId": 4,
+   "signals": [
+    {
+     "signal": "chapter:result",
+     "reason": "what reciprocal_rank produced lands"
+    }
+   ],
+   "statement": "print(\n                f\"{document_id}: \"\n                f\"rank={rank} \"\n                f\"=> 1 / ({k} + {rank}) \"\n                f\"= {contribution:.6f}\"\n            )",
+   "score": 3.0,
+   "values": [
+    {
+     "id": "s56-cf5c54.v1",
+     "role": "printed",
+     "name": "output",
+     "length": 36,
+     "text": "A: rank=1 => 1 / (60 + 1) = 0.016393"
+    },
+    {
+     "id": "s56-cf5c54.v2",
+     "role": "set",
+     "name": "contribution",
+     "length": 19,
+     "text": "0.01639344262295082"
+    },
+    {
+     "id": "s56-cf5c54.v3",
+     "role": "call",
+     "name": "reciprocal_rank()",
+     "length": 19,
+     "text": "0.01639344262295082"
+    }
+   ]
+  },
+  {
+   "id": "s57-639699",
+   "key": "639699",
+   "step": 57,
+   "chapter": "c4",
+   "file": "rrf.py",
+   "line": 82,
+   "function": "rrf",
+   "scopeId": 4,
+   "signals": [
+    {
+     "signal": "narrative:binds",
+     "reason": "rrf keeps a call's result"
+    },
+    {
+     "signal": "spine:why",
+     "reason": "scores = {'A': 0.01639344262295082}"
+    }
+   ],
+   "statement": "scores[document_id] = (\n                scores.get(document_id, 0)\n                + contribution\n            )",
+   "score": 3.5,
+   "values": [
+    {
+     "id": "s57-639699.v1",
+     "role": "set",
+     "name": "scores",
+     "length": 26,
+     "text": "{'A': 0.01639344262295082}"
+    }
+   ]
+  },
+  {
+   "id": "s58-2589fc",
+   "key": "2589fc",
+   "step": 58,
+   "chapter": "c4",
+   "file": "rrf.py",
+   "line": 71,
+   "function": "rrf",
+   "scopeId": 4,
+   "signals": [
+    {
+     "signal": "spine:why",
+     "reason": "document_id = 'C'"
+    }
+   ],
+   "statement": "for rank, document_id in enumerate(ranking, start=1):",
+   "score": 3.0,
+   "values": [
+    {
+     "id": "s58-2589fc.v1",
+     "role": "set",
+     "name": "rank",
+     "length": 1,
+     "text": "2"
+    },
+    {
+     "id": "s58-2589fc.v2",
+     "role": "set",
+     "name": "document_id",
+     "length": 3,
+     "text": "'C'"
+    }
+   ]
+  },
+  {
+   "id": "s59-189112",
+   "key": "189112",
+   "step": 59,
+   "chapter": "c4",
+   "file": "rrf.py",
+   "line": 73,
+   "function": "rrf",
+   "scopeId": 4,
+   "signals": [
+    {
+     "signal": "spine:why",
+     "reason": "contribution = 0.016129032258064516"
+    }
+   ],
+   "statement": "contribution = reciprocal_rank(rank, k)",
+   "score": 2.75,
+   "repeat": true,
+   "values": [
+    {
+     "id": "s59-189112.v1",
+     "role": "set",
+     "name": "contribution",
+     "length": 20,
+     "text": "0.016129032258064516"
+    },
+    {
+     "id": "s59-189112.v2",
+     "role": "call",
+     "name": "reciprocal_rank()",
+     "length": 20,
+     "text": "0.016129032258064516"
+    }
+   ]
+  },
+  {
+   "id": "s65-189112",
+   "key": "189112",
+   "step": 65,
+   "chapter": "c4",
+   "file": "rrf.py",
+   "line": 73,
+   "function": "rrf",
+   "scopeId": 4,
+   "signals": [
+    {
+     "signal": "spine:why",
+     "reason": "contribution = 0.015873015873015872"
+    }
+   ],
+   "statement": "contribution = reciprocal_rank(rank, k)",
+   "score": 2.5,
+   "repeat": true,
+   "values": [
+    {
+     "id": "s65-189112.v1",
+     "role": "set",
+     "name": "contribution",
+     "length": 20,
+     "text": "0.015873015873015872"
+    },
+    {
+     "id": "s65-189112.v2",
+     "role": "call",
+     "name": "reciprocal_rank()",
+     "length": 20,
+     "text": "0.015873015873015872"
+    }
+   ]
+  },
+  {
+   "id": "s67-66ea63",
+   "key": "66ea63",
+   "step": 67,
+   "chapter": "c4",
+   "file": "rrf.py",
+   "line": 57,
+   "function": "reciprocal_rank",
+   "scopeId": 7,
+   "signals": [
+    {
+     "signal": "spine:return",
+     "reason": "reciprocal_rank returns the value the goal is built from"
+    },
+    {
+     "signal": "spine:why",
+     "reason": "on the way to the goal"
+    }
+   ],
+   "statement": "return 1 / (k + rank)",
+   "score": 3.0,
+   "values": [
+    {
+     "id": "s67-66ea63.v1",
+     "role": "returned",
+     "name": "reciprocal_rank returned",
+     "length": 20,
+     "text": "0.015873015873015872"
+    }
+   ]
+  },
+  {
+   "id": "s71-189112",
+   "key": "189112",
+   "step": 71,
+   "chapter": "c4",
+   "file": "rrf.py",
+   "line": 73,
+   "function": "rrf",
+   "scopeId": 4,
+   "signals": [
+    {
+     "signal": "spine:why",
+     "reason": "contribution = 0.015625"
+    }
+   ],
+   "statement": "contribution = reciprocal_rank(rank, k)",
+   "score": 2.25,
+   "repeat": true,
+   "values": [
+    {
+     "id": "s71-189112.v1",
+     "role": "set",
+     "name": "contribution",
+     "length": 8,
+     "text": "0.015625"
+    },
+    {
+     "id": "s71-189112.v2",
+     "role": "call",
+     "name": "reciprocal_rank()",
+     "length": 8,
+     "text": "0.015625"
+    }
+   ]
+  },
+  {
+   "id": "s73-66ea63",
+   "key": "66ea63",
+   "step": 73,
+   "chapter": "c4",
+   "file": "rrf.py",
+   "line": 57,
+   "function": "reciprocal_rank",
+   "scopeId": 8,
+   "signals": [
+    {
+     "signal": "spine:return",
+     "reason": "reciprocal_rank returns the value the goal is built from"
+    },
+    {
+     "signal": "spine:why",
+     "reason": "on the way to the goal"
+    }
+   ],
+   "statement": "return 1 / (k + rank)",
+   "score": 2.75,
+   "repeat": true,
+   "values": [
+    {
+     "id": "s73-66ea63.v1",
+     "role": "returned",
+     "name": "reciprocal_rank returned",
+     "length": 8,
+     "text": "0.015625"
+    }
+   ]
+  },
+  {
+   "id": "s88-66ea63",
+   "key": "66ea63",
+   "step": 88,
+   "chapter": "c4",
+   "file": "rrf.py",
+   "line": 57,
+   "function": "reciprocal_rank",
+   "scopeId": 10,
+   "signals": [
+    {
+     "signal": "spine:return",
+     "reason": "reciprocal_rank returns the value the goal is built from"
+    },
+    {
+     "signal": "spine:why",
+     "reason": "on the way to the goal"
+    }
+   ],
+   "statement": "return 1 / (k + rank)",
+   "score": 2.5,
+   "repeat": true,
+   "values": [
+    {
+     "id": "s88-66ea63.v1",
+     "role": "returned",
+     "name": "reciprocal_rank returned",
+     "length": 20,
+     "text": "0.016129032258064516"
+    }
+   ]
+  },
+  {
+   "id": "s103-1b647f",
+   "key": "1b647f",
+   "step": 103,
+   "chapter": "c4",
+   "file": "rrf.py",
+   "line": 87,
+   "function": "rrf",
+   "scopeId": 4,
+   "signals": [
+    {
+     "signal": "spine:why",
+     "reason": "on the way to the goal"
+    }
+   ],
+   "statement": "return scores",
+   "score": 3.0,
+   "values": [
+    {
+     "id": "s103-1b647f.v1",
+     "role": "returned",
+     "name": "rrf returned",
+     "length": 130,
+     "text": "{'A': 0.032266458495966696, 'B': 0.03149801587301587, 'C': 0.03252247488101534, 'D': 0.015625, 'E': 0.01612903225806451…(+2 chars)"
+    }
+   ]
+  },
+  {
+   "id": "s104-8b1200",
+   "key": "8b1200",
+   "step": 104,
+   "chapter": "c5",
+   "file": "rrf.py",
+   "line": 124,
+   "function": "main",
+   "scopeId": 1,
+   "signals": [
+    {
+     "signal": "chapter:start",
+     "reason": "chapter opened by main"
+    },
+    {
+     "signal": "narrative:binds",
+     "reason": "main keeps a call's result"
+    },
+    {
+     "signal": "spine:why",
+     "reason": "fused_ranking = [('C', 0.03252247488101534), ('A', 0.032266458495966696), (…"
+    }
+   ],
+   "statement": "fused_ranking = sorted(\n        scores.items(),\n        key=lambda item: item[1],\n        reverse=True,\n    )",
+   "score": 5.0,
+   "values": [
+    {
+     "id": "s104-8b1200.v1",
+     "role": "set",
+     "name": "fused_ranking",
+     "length": 131,
+     "text": "[('C', 0.03252247488101534), ('A', 0.032266458495966696), ('B', 0.03149801587301587), ('E', 0.016129032258064516), ('D'…(+12 chars)"
+    }
+   ],
+   "prose": {
+    "title": "Sorted by fused score",
+    "text": "The sort puts C at 0.03252247488101534 ahead of A.",
+    "order": 4
+   }
+  },
+  {
+   "id": "s110-489ea6",
+   "key": "489ea6",
+   "step": 110,
+   "chapter": "c5",
+   "file": "rrf.py",
+   "line": 130,
+   "function": "main",
+   "scopeId": 1,
+   "signals": [
+    {
+     "signal": "chapter:result",
+     "reason": "what main produced lands"
+    }
+   ],
+   "statement": "print(\"\\n\")",
+   "score": 3.0,
+   "values": [
+    {
+     "id": "s110-489ea6.v1",
+     "role": "printed",
+     "name": "output",
+     "length": 2,
+     "text": "\\n"
+    },
+    {
+     "id": "s110-489ea6.v2",
+     "role": "set",
+     "name": "fused_ranking",
+     "length": 131,
+     "text": "[('C', 0.03252247488101534), ('A', 0.032266458495966696), ('B', 0.03149801587301587), ('E', 0.016129032258064516), ('D'…(+12 chars)"
+    }
+   ]
+  },
+  {
+   "id": "s116-1b7722",
+   "key": "1b7722",
+   "step": 116,
+   "chapter": "c5",
+   "file": "rrf.py",
+   "line": 139,
+   "function": "main",
+   "scopeId": 1,
+   "signals": [
+    {
+     "signal": "spine:why",
+     "reason": "document = Document(id='C', text='Primary button used for important ac…"
+    }
+   ],
+   "statement": "document = DOCUMENTS[document_id]",
+   "score": 3.0,
+   "values": [
+    {
+     "id": "s116-1b7722.v1",
+     "role": "set",
+     "name": "document",
+     "length": 66,
+     "text": "Document(id='C', text='Primary button used for important actions')"
+    }
+   ]
+  },
+  {
+   "id": "s117-f589a6",
+   "key": "f589a6",
+   "step": 117,
+   "chapter": "c5",
+   "file": "rrf.py",
+   "line": 141,
+   "function": "main",
+   "scopeId": 1,
+   "signals": [
+    {
+     "signal": "spine:why",
+     "reason": "on the way to the goal"
+    }
+   ],
+   "statement": "print(\n            f\"{position}. {document_id} \"\n            f\"RRF={score:.6f}\"\n        )",
+   "score": 3.0,
+   "values": [
+    {
+     "id": "s117-f589a6.v1",
+     "role": "printed",
+     "name": "output",
+     "length": 17,
+     "text": "1. C RRF=0.032522"
+    }
+   ],
+   "prose": {
+    "title": "The winner printed",
+    "text": "The report rounds the score to 0.032522.",
+    "order": 5
+   }
+  },
+  {
+   "id": "s118-c3c59a",
+   "key": "c3c59a",
+   "step": 118,
+   "chapter": "c5",
+   "file": "rrf.py",
+   "line": 145,
+   "function": "main",
+   "scopeId": 1,
+   "signals": [
+    {
+     "signal": "spine:why",
+     "reason": "on the way to the goal"
+    }
+   ],
+   "statement": "print(f\"   {document.text}\")",
+   "score": 3.0,
+   "values": [
+    {
+     "id": "s118-c3c59a.v1",
+     "role": "printed",
+     "name": "output",
+     "length": 44,
+     "text": "   Primary button used for important actions"
+    }
+   ]
+  },
+  {
+   "id": "s139-72d7e4",
+   "key": "72d7e4",
+   "step": 139,
+   "chapter": "c5",
+   "file": "rrf.py",
+   "line": 152,
+   "function": "main",
+   "scopeId": 1,
+   "signals": [
+    {
+     "signal": "narrative:binds",
+     "reason": "main keeps a call's result"
+    }
+   ],
+   "statement": "all_documents = set()",
+   "score": 3.0,
+   "values": []
+  },
+  {
+   "id": "s145-8632dd",
+   "key": "8632dd",
+   "step": 145,
+   "chapter": "c5",
+   "file": "rrf.py",
+   "line": 157,
+   "function": "main",
+   "scopeId": 1,
+   "signals": [
+    {
+     "signal": "spine:why",
+     "reason": "all_documents = {'A', 'B', 'C', 'D', 'E'}"
+    }
+   ],
+   "statement": "for document_id in sorted(all_documents):",
+   "score": 3.0,
+   "values": [
+    {
+     "id": "s145-8632dd.v1",
+     "role": "set",
+     "name": "all_documents",
+     "length": 25,
+     "text": "{'A', 'B', 'C', 'D', 'E'}"
+    },
+    {
+     "id": "s145-8632dd.v2",
+     "role": "set",
+     "name": "document_id",
+     "length": 3,
+     "text": "'A'"
+    },
+    {
+     "id": "s145-8632dd.v3",
+     "role": "took",
+     "name": "branch",
+     "length": 52,
+     "text": "for document_id in sorted(all_documents) ran 5 times"
+    }
+   ]
+  },
+  {
+   "id": "s147-0dbfda",
+   "key": "0dbfda",
+   "step": 147,
+   "chapter": "c5",
+   "file": "rrf.py",
+   "line": 159,
+   "function": "main",
+   "scopeId": 1,
+   "signals": [
+    {
+     "signal": "spine:why",
+     "reason": "on the way to the goal"
+    }
+   ],
+   "statement": "print(f\"\\nDocument {document_id}\")",
+   "score": 3.0,
+   "values": [
+    {
+     "id": "s147-0dbfda.v1",
+     "role": "printed",
+     "name": "output",
+     "length": 12,
+     "text": "\\nDocument A"
+    }
+   ]
+  },
+  {
+   "id": "s152-3b5946",
+   "key": "3b5946",
+   "step": 152,
+   "chapter": "c5",
+   "file": "rrf.py",
+   "line": 172,
+   "function": "main",
+   "scopeId": 1,
+   "signals": [
+    {
+     "signal": "narrative:binds",
+     "reason": "main keeps a call's result"
+    },
+    {
+     "signal": "spine:why",
+     "reason": "rank = 1"
+    }
+   ],
+   "statement": "rank = ranking.index(document_id) + 1",
+   "score": 3.5,
+   "values": [
+    {
+     "id": "s152-3b5946.v1",
+     "role": "set",
+     "name": "rank",
+     "length": 1,
+     "text": "1"
+    }
+   ]
+  },
+  {
+   "id": "s153-01c733",
+   "key": "01c733",
+   "step": 153,
+   "chapter": "c6",
+   "file": "rrf.py",
+   "line": 173,
+   "function": "main",
+   "scopeId": 1,
+   "signals": [
+    {
+     "signal": "chapter:start",
+     "reason": "chapter opened by reciprocal_rank x8"
+    },
+    {
+     "signal": "narrative:binds",
+     "reason": "main keeps a call's result"
+    },
+    {
+     "signal": "spine:why",
+     "reason": "contribution = 0.01639344262295082"
+    }
+   ],
+   "statement": "contribution = reciprocal_rank(rank, k=60)",
+   "score": 5.0,
+   "values": [
+    {
+     "id": "s153-01c733.v1",
+     "role": "set",
+     "name": "contribution",
+     "length": 19,
+     "text": "0.01639344262295082"
+    },
+    {
+     "id": "s153-01c733.v2",
+     "role": "call",
+     "name": "reciprocal_rank()",
+     "length": 19,
+     "text": "0.01639344262295082"
+    }
+   ]
+  },
+  {
+   "id": "s155-66ea63",
+   "key": "66ea63",
+   "step": 155,
+   "chapter": "c6",
+   "file": "rrf.py",
+   "line": 57,
+   "function": "reciprocal_rank",
+   "scopeId": 18,
+   "signals": [
+    {
+     "signal": "spine:return",
+     "reason": "reciprocal_rank returns the value the goal is built from"
+    },
+    {
+     "signal": "spine:why",
+     "reason": "on the way to the goal"
+    }
+   ],
+   "statement": "return 1 / (k + rank)",
+   "score": 3.0,
+   "values": [
+    {
+     "id": "s155-66ea63.v1",
+     "role": "returned",
+     "name": "reciprocal_rank returned",
+     "length": 19,
+     "text": "0.01639344262295082"
+    }
+   ]
+  },
+  {
+   "id": "s156-b082d5",
+   "key": "b082d5",
+   "step": 156,
+   "chapter": "c6",
+   "file": "rrf.py",
+   "line": 175,
+   "function": "main",
+   "scopeId": 1,
+   "signals": [
+    {
+     "signal": "chapter:result",
+     "reason": "what reciprocal_rank x8 produced lands"
+    }
+   ],
+   "statement": "total += contribution",
+   "score": 3.0,
+   "values": [
+    {
+     "id": "s156-b082d5.v1",
+     "role": "set",
+     "name": "total",
+     "length": 19,
+     "text": "0.01639344262295082"
+    },
+    {
+     "id": "s156-b082d5.v2",
+     "role": "set",
+     "name": "contribution",
+     "length": 19,
+     "text": "0.01639344262295082"
+    },
+    {
+     "id": "s156-b082d5.v3",
+     "role": "call",
+     "name": "reciprocal_rank()",
+     "length": 19,
+     "text": "0.01639344262295082"
+    }
+   ],
+   "prose": {
+    "title": "A running total starts",
+    "text": "The breakdown adds each list's contribution into `total`.",
+    "order": 6
+   }
+  },
+  {
+   "id": "s157-f9ef0c",
+   "key": "f9ef0c",
+   "step": 157,
+   "chapter": "c6",
+   "file": "rrf.py",
+   "line": 177,
+   "function": "main",
+   "scopeId": 1,
+   "signals": [
+    {
+     "signal": "spine:why",
+     "reason": "on the way to the goal"
+    }
+   ],
+   "statement": "print(\n                f\"  {ranking_name:10}: \"\n                f\"rank {rank} \"\n                f\"-> 1/(60+{rank}) \"\n                f\"= {contribution:.6f}\"\n            )",
+   "score": 3.0,
+   "values": [
+    {
+     "id": "s157-f9ef0c.v1",
+     "role": "printed",
+     "name": "output",
+     "length": 43,
+     "text": "  BM25      : rank 1 -> 1/(60+1) = 0.016393"
+    }
+   ]
+  },
+  {
+   "id": "s222-d2e3b6",
+   "key": "d2e3b6",
+   "step": 222,
+   "chapter": "c6",
+   "file": "rrf.py",
+   "line": 165,
+   "function": "main",
+   "scopeId": 1,
+   "signals": [
+    {
+     "signal": "exception:rare-arm",
+     "reason": "took True in 2 of 10 passes"
+    }
+   ],
+   "statement": "if document_id not in ranking:",
+   "score": 2.0,
+   "values": [
+    {
+     "id": "s222-d2e3b6.v1",
+     "role": "took",
+     "name": "branch",
+     "length": 39,
+     "text": "if document_id not in ranking took True"
+    }
+   ],
+   "prose": {
+    "title": "A document missing from a list",
+    "text": "This arm runs only when a document is absent from a ranking, so it adds nothing.",
+    "order": 7
+   }
+  },
+  {
+   "id": "s223-9cad22",
+   "key": "9cad22",
+   "step": 223,
+   "chapter": "c6",
+   "file": "rrf.py",
+   "line": 166,
+   "function": "main",
+   "scopeId": 1,
+   "signals": [
+    {
+     "signal": "spine:why",
+     "reason": "on the way to the goal"
+    }
+   ],
+   "statement": "print(\n                    f\"  {ranking_name:10}: \"\n                    \"not retrieved -> +0\"\n                )",
+   "score": 3.0,
+   "values": [
+    {
+     "id": "s223-9cad22.v1",
+     "role": "printed",
+     "name": "output",
+     "length": 33,
+     "text": "  Vector    : not retrieved -> +0"
+    }
+   ]
+  },
+  {
+   "id": "s237-01c733",
+   "key": "01c733",
+   "step": 237,
+   "chapter": "c6",
+   "file": "rrf.py",
+   "line": 173,
+   "function": "main",
+   "scopeId": 1,
+   "signals": [
+    {
+     "signal": "spine:why",
+     "reason": "contribution = 0.016129032258064516"
+    }
+   ],
+   "statement": "contribution = reciprocal_rank(rank, k=60)",
+   "score": 2.75,
+   "repeat": true,
+   "values": [
+    {
+     "id": "s237-01c733.v1",
+     "role": "set",
+     "name": "contribution",
+     "length": 20,
+     "text": "0.016129032258064516"
+    },
+    {
+     "id": "s237-01c733.v2",
+     "role": "call",
+     "name": "reciprocal_rank()",
+     "length": 20,
+     "text": "0.016129032258064516"
+    }
+   ]
+  },
+  {
+   "id": "s242-9eb311",
+   "key": "9eb311",
+   "step": 242,
+   "chapter": "c6",
+   "file": "rrf.py",
+   "line": 184,
+   "function": "main",
+   "scopeId": 1,
+   "signals": [
+    {
+     "signal": "spine:goal",
+     "reason": "the goal: the program's output"
+    },
+    {
+     "signal": "spine:why",
+     "reason": "on the way to the goal"
+    }
+   ],
+   "statement": "print(f\"  {'TOTAL':10}: {total:.6f}\")",
+   "score": 5.0,
+   "values": [
+    {
+     "id": "s242-9eb311.v1",
+     "role": "printed",
+     "name": "output",
+     "length": 22,
+     "text": "  TOTAL     : 0.016129"
+    }
+   ],
+   "prose": {
+    "title": "The total",
+    "text": "The last line prints the summed contribution, 0.016129.",
+    "order": 8
+   }
+  }
+ ],
+ "timing": {
+  "ms": 10,
+  "whyCalls": 12
+ },
+ "intro": "The script fuses two rankings of the same documents with reciprocal rank fusion, then prints how each document's score was built. A document's score is the sum of one small fraction per list it appears in.",
+ "pick": [
+  "s3-1cc568",
+  "s45-ce0cc1",
+  "s53-189112",
+  "s104-8b1200",
+  "s117-f589a6",
+  "s156-b082d5",
+  "s222-d2e3b6",
+  "s242-9eb311"
+ ],
+ "prose": {
+  "stops": 8,
+  "chapters": 4,
+  "warnings": [
+   "c3 holds a picked stop but has no title; the page uses the function that opens it"
+  ]
+ }
+}

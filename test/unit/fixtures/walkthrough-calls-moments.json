@@ -1,0 +1,466 @@
+[
+ {
+  "kind": "start",
+  "step": 0,
+  "location": {
+   "file": "/fixture/main.py",
+   "line": 1,
+   "function": "<module>",
+   "fileId": 1
+  },
+  "text": "module main.py starts",
+  "values": [],
+  "id": "m0",
+  "durationMs": null,
+  "gloss": null
+ },
+ {
+  "kind": "call",
+  "step": 1,
+  "location": {
+   "file": "/fixture/main.py",
+   "line": 33,
+   "function": "<module>",
+   "fileId": 1
+  },
+  "text": "call to main from <module>",
+  "values": [],
+  "scopeId": 1,
+  "entryStep": 2,
+  "endStep": 23,
+  "callee": {
+   "file": "/fixture/main.py",
+   "line": 28,
+   "function": "main",
+   "fileId": 1
+  },
+  "id": "m1",
+  "durationMs": null,
+  "gloss": null
+ },
+ {
+  "kind": "call",
+  "step": 3,
+  "location": {
+   "file": "/fixture/main.py",
+   "line": 29,
+   "function": "main",
+   "fileId": 1
+  },
+  "text": "call to ask from main",
+  "values": [
+   {
+    "role": "in",
+    "name": "x",
+    "text": "3"
+   },
+   {
+    "role": "out",
+    "name": "return",
+    "text": "7"
+   }
+  ],
+  "scopeId": 2,
+  "entryStep": 4,
+  "endStep": 10,
+  "callee": {
+   "file": "/fixture/main.py",
+   "line": 9,
+   "function": "ask",
+   "fileId": 1
+  },
+  "id": "m2",
+  "durationMs": null,
+  "gloss": null
+ },
+ {
+  "kind": "tool",
+  "step": 6,
+  "location": {
+   "file": "/fixture/main.py",
+   "line": 3,
+   "function": "double",
+   "fileId": 1
+  },
+  "text": "callback into double from ask",
+  "values": [
+   {
+    "role": "in",
+    "name": "s",
+    "text": "3"
+   },
+   {
+    "role": "out",
+    "name": "return",
+    "text": "6"
+   }
+  ],
+  "scopeId": 3,
+  "entryStep": 6,
+  "endStep": 7,
+  "callee": {
+   "file": "/fixture/main.py",
+   "line": 3,
+   "function": "double",
+   "fileId": 1
+  },
+  "callerScopeId": 2,
+  "id": "m3",
+  "durationMs": null,
+  "gloss": null
+ },
+ {
+  "kind": "tool",
+  "step": 8,
+  "location": {
+   "file": "/fixture/main.py",
+   "line": 6,
+   "function": "inc",
+   "fileId": 1
+  },
+  "text": "callback into inc from ask",
+  "values": [
+   {
+    "role": "in",
+    "name": "s",
+    "text": "6"
+   },
+   {
+    "role": "out",
+    "name": "return",
+    "text": "7"
+   }
+  ],
+  "scopeId": 4,
+  "entryStep": 8,
+  "endStep": 9,
+  "callee": {
+   "file": "/fixture/main.py",
+   "line": 6,
+   "function": "inc",
+   "fileId": 1
+  },
+  "callerScopeId": 2,
+  "id": "m4",
+  "durationMs": null,
+  "gloss": null
+ },
+ {
+  "kind": "value",
+  "step": 9,
+  "location": {
+   "file": "/fixture/main.py",
+   "line": 10,
+   "function": "ask",
+   "fileId": 1
+  },
+  "text": "out = 7",
+  "values": [
+   {
+    "role": "value",
+    "name": "out",
+    "text": "7"
+   }
+  ],
+  "id": "m5",
+  "durationMs": null,
+  "gloss": null
+ },
+ {
+  "kind": "print",
+  "step": 10,
+  "location": {
+   "file": "/fixture/main.py",
+   "line": 29,
+   "function": "main",
+   "fileId": 1
+  },
+  "text": "prints 7",
+  "values": [],
+  "id": "m6",
+  "durationMs": null,
+  "gloss": null
+ },
+ {
+  "kind": "call",
+  "step": 11,
+  "location": {
+   "file": "/fixture/main.py",
+   "line": 30,
+   "function": "main",
+   "fileId": 1
+  },
+  "text": "call to outer from main",
+  "values": [
+   {
+    "role": "in",
+    "name": "x",
+    "text": "4"
+   },
+   {
+    "role": "out",
+    "name": "return",
+    "text": "10"
+   }
+  ],
+  "scopeId": 5,
+  "entryStep": 12,
+  "endStep": 17,
+  "callee": {
+   "file": "/fixture/main.py",
+   "line": 18,
+   "function": "outer",
+   "fileId": 1
+  },
+  "id": "m7",
+  "durationMs": null,
+  "gloss": null
+ },
+ {
+  "kind": "call",
+  "step": 13,
+  "location": {
+   "file": "/fixture/main.py",
+   "line": 19,
+   "function": "outer",
+   "fileId": 1
+  },
+  "text": "call to inner from outer",
+  "values": [
+   {
+    "role": "in",
+    "name": "x",
+    "text": "4"
+   },
+   {
+    "role": "out",
+    "name": "return",
+    "text": "10"
+   }
+  ],
+  "scopeId": 6,
+  "entryStep": 14,
+  "endStep": 17,
+  "callee": {
+   "file": "/fixture/main.py",
+   "line": 13,
+   "function": "inner",
+   "fileId": 1
+  },
+  "id": "m8",
+  "durationMs": null,
+  "gloss": null
+ },
+ {
+  "kind": "value",
+  "step": 15,
+  "location": {
+   "file": "/fixture/main.py",
+   "line": 14,
+   "function": "inner",
+   "fileId": 1
+  },
+  "text": "y = 5",
+  "values": [
+   {
+    "role": "value",
+    "name": "y",
+    "text": "5"
+   }
+  ],
+  "id": "m9",
+  "durationMs": null,
+  "gloss": null
+ },
+ {
+  "kind": "value",
+  "step": 16,
+  "location": {
+   "file": "/fixture/main.py",
+   "line": 15,
+   "function": "inner",
+   "fileId": 1
+  },
+  "text": "z = 10",
+  "values": [
+   {
+    "role": "value",
+    "name": "z",
+    "text": "10"
+   }
+  ],
+  "id": "m10",
+  "durationMs": null,
+  "gloss": null
+ },
+ {
+  "kind": "print",
+  "step": 17,
+  "location": {
+   "file": "/fixture/main.py",
+   "line": 30,
+   "function": "main",
+   "fileId": 1
+  },
+  "text": "prints 10",
+  "values": [],
+  "id": "m11",
+  "durationMs": null,
+  "gloss": null
+ },
+ {
+  "kind": "call",
+  "step": 18,
+  "location": {
+   "file": "/fixture/main.py",
+   "line": 31,
+   "function": "main",
+   "fileId": 1
+  },
+  "text": "call to rank from main",
+  "values": [
+   {
+    "role": "in",
+    "name": "scores",
+    "text": "{'a': 3, 'b': 1}"
+   },
+   {
+    "role": "out",
+    "name": "return",
+    "text": "[('b', 1), ('a', 3)]"
+   }
+  ],
+  "scopeId": 7,
+  "entryStep": 19,
+  "endStep": 23,
+  "callee": {
+   "file": "/fixture/main.py",
+   "line": 21,
+   "function": "rank",
+   "fileId": 1
+  },
+  "id": "m12",
+  "durationMs": null,
+  "gloss": null
+ },
+ {
+  "kind": "call",
+  "step": 20,
+  "location": {
+   "file": "/fixture/main.py",
+   "line": 22,
+   "function": "rank",
+   "fileId": 1
+  },
+  "text": "call 1 of 2 to <lambda> from rank",
+  "values": [],
+  "scopeId": 8,
+  "entryStep": 21,
+  "endStep": 21,
+  "callee": {
+   "file": "/fixture/main.py",
+   "line": 24,
+   "function": "<lambda>",
+   "fileId": 1
+  },
+  "id": "m13",
+  "durationMs": null,
+  "gloss": null
+ },
+ {
+  "kind": "call",
+  "step": 20,
+  "location": {
+   "file": "/fixture/main.py",
+   "line": 22,
+   "function": "rank",
+   "fileId": 1
+  },
+  "text": "call 2 of 2 to <lambda> from rank",
+  "values": [],
+  "scopeId": 9,
+  "entryStep": 22,
+  "endStep": 22,
+  "callee": {
+   "file": "/fixture/main.py",
+   "line": 24,
+   "function": "<lambda>",
+   "fileId": 1
+  },
+  "id": "m14",
+  "durationMs": null,
+  "gloss": null
+ },
+ {
+  "kind": "value",
+  "step": 22,
+  "location": {
+   "file": "/fixture/main.py",
+   "line": 22,
+   "function": "rank",
+   "fileId": 1
+  },
+  "text": "ranked = [('b', 1), ('a', 3)]",
+  "values": [
+   {
+    "role": "value",
+    "name": "ranked",
+    "text": "[('b', 1), ('a', 3)]"
+   }
+  ],
+  "id": "m15",
+  "durationMs": null,
+  "gloss": null
+ },
+ {
+  "kind": "value",
+  "step": 23,
+  "location": {
+   "file": "/fixture/main.py",
+   "line": 33,
+   "function": "<module>",
+   "fileId": 1
+  },
+  "text": "main() = None",
+  "values": [
+   {
+    "role": "value",
+    "name": "main()",
+    "text": "None"
+   }
+  ],
+  "id": "m16",
+  "durationMs": null,
+  "gloss": null
+ },
+ {
+  "kind": "print",
+  "step": 23,
+  "location": {
+   "file": "/fixture/main.py",
+   "line": 31,
+   "function": "main",
+   "fileId": 1
+  },
+  "text": "prints [('b', 1), ('a', 3)]",
+  "values": [],
+  "id": "m17",
+  "durationMs": null,
+  "gloss": null
+ },
+ {
+  "kind": "end",
+  "step": 23,
+  "location": {
+   "file": "/fixture/main.py",
+   "line": 26,
+   "function": "rank",
+   "fileId": 1
+  },
+  "text": "run ends with exit code 0 after 12 ms",
+  "values": [],
+  "id": "m18",
+  "durationMs": null,
+  "gloss": null
+ }
+]

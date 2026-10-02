@@ -1,0 +1,19 @@
+node_modules/
+dist/
+out/
+*.vsix
+.vscode-test/
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+.DS_Store
+.claude/worktrees/
+handoffs/
+.pyokka/replay/
+.pyokka-replay/
+.pyokka/findings/
+.pyokka/band-tmp/
+
+# Copied from Quokka.js (Wallaby.js) for research; kept locally, not published
+docs/reference/quokka/

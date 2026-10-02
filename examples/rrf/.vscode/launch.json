@@ -1,0 +1,28 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "pyokka",
+      "request": "launch",
+      "name": "Pyokka: Debug Current File",
+      "program": "${file}"
+    },
+    {
+      "type": "pyokka",
+      "request": "launch",
+      "name": "Pyokka: api (user code only)",
+      "module": "api.main",
+      "cwd": "${workspaceFolder}",
+      "stopOnEntry": true
+    },
+    {
+      "type": "pyokka",
+      "request": "launch",
+      "name": "Pyokka: api (step into library code)",
+      "module": "api.main",
+      "cwd": "${workspaceFolder}",
+      "stopOnEntry": true,
+      "libraryCode": true
+    }
+  ]
+}

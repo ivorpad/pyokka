@@ -1,0 +1,4 @@
+{
+  // the demo files run on every edit; the e2e suite relies on it too
+  "pyokka.runMode": "auto"
+}

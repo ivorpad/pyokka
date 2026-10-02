@@ -1,0 +1,17 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "pyokka",
+  "description": "Claude Code plugins that ship with Pyokka, the Python run recorder for VS Code",
+  "owner": {
+    "name": "Ivor Padilla"
+  },
+  "plugins": [
+    {
+      "name": "pyokka-band",
+      "description": "Shows where the Pyokka Time Machine of a VS Code session is (code, values, stack, a short explanation, bugs in the run) above the Claude Code prompt",
+      "source": "./claude-plugin/pyokka-band",
+      "homepage": "https://github.com/ivorpad/pyokka",
+      "category": "development"
+    }
+  ]
+}

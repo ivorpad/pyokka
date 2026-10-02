@@ -1,0 +1,17 @@
+{
+  "Pyokka Snap": {
+    "prefix": ["snap"],
+    "body": ["\"\"\"{{", "$TM_SELECTED_TEXT$0", "}}\"\"\""],
+    "description": "Pyokka snap: runs the fenced code in module scope"
+  },
+  "Pyokka Snap With Output": {
+    "prefix": ["snapo"],
+    "body": ["\"\"\"{{", "$TM_SELECTED_TEXT$0", "}}\"\"\"", "#» "],
+    "description": "Pyokka snap whose output is written back into the file"
+  },
+  "Pyokka Live Comment": {
+    "prefix": ["?"],
+    "body": ["# ?$0"],
+    "description": "Log the value of this statement / expression"
+  }
+}
