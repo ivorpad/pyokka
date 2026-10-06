@@ -1,5 +1,16 @@
 # Pyokka
 
+Pyokka is a VS Code extension for Python. It shows runtime values next to your code as you type and has a time-travel debugger you can step through forwards and backwards. It is for Python developers in VS Code or Cursor, and for agents that need to ask what a program did. To try it: `gh release download --repo ivorpad/pyokka --pattern '*.vsix' && code --install-extension pyokka-*.vsix`, then open a Python file and press `Cmd/Ctrl+K Q`.
+
+https://github.com/user-attachments/assets/f9330b28-e8c5-49f2-838b-2ce495ab4d8d
+
+[![Pyokka's debugger driven from a terminal: stops at each stage of demo.py, steps into reciprocal_rank, values next to the code](docs/media/pyokka.gif)](docs/media/pyokka.mp4)
+
+*An agent drives the debugger from a terminal: `pyokka debug demo.py --at rrf --at reciprocal_rank
+--at demo.py:124`, then `continue` and `step` from stop to stop. The editor shows each pause with
+its values on the line, and the Pyokka panel has the call stack, the locals and the program's
+output. Click it for [the video](docs/media/pyokka.mp4).*
+
 Python playground in your editor: runtime values next to your code as you type,
 live coverage in the gutter, an Output & Details panel, and a time-travel
 debugger with an interactive timeline you can step through forwards **and
@@ -12,15 +23,6 @@ Pyokka is an independent project, not affiliated with Wallaby.js, the maker of
 Quokka. It contains no Quokka source code. Its command names, settings and keys
 follow Quokka's so that the two feel the same in the editor, and `examples/demo.py`
 follows the outline of Quokka's interactive demo, rewritten in Python.
-
-https://github.com/user-attachments/assets/f9330b28-e8c5-49f2-838b-2ce495ab4d8d
-
-[![Pyokka's debugger driven from a terminal: stops at each stage of demo.py, steps into reciprocal_rank, values next to the code](docs/media/pyokka.gif)](docs/media/pyokka.mp4)
-
-*An agent drives the debugger from a terminal: `pyokka debug demo.py --at rrf --at reciprocal_rank
---at demo.py:124`, then `continue` and `step` from stop to stop. The editor shows each pause with
-its values on the line, and the Pyokka panel has the call stack, the locals and the program's
-output. Click it for [the video](docs/media/pyokka.mp4).*
 
 Requires Python 3.12 or newer and VS Code 1.93 or newer. The runtime is pure
 standard library and ships inside the extension; nothing is installed into your
