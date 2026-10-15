@@ -38,14 +38,29 @@ def file_hash(path: str) -> str | None:
         return None
 
 
-def build_request(path: str, content: str, *, library_code: bool, record_locals: bool, auto_log: bool, timeout_ms: int, argv: list[str], run_id: str, http: str = "off", http_observe: bool = True, recording: dict | None = None) -> dict:
+def run_dirs(path: str, cwd: str | None) -> tuple[str, str]:
+    """``(workspaceRoot, cwd)`` of a run of ``path``: the file's directory, or ``--cwd DIR``.
+
+    DIR is also the workspace root when it holds the file (a project root, so the project's own
+    imports count as user code); a DIR elsewhere moves only the working directory.
+    """
+    here = os.path.dirname(path)
+    if not cwd:
+        return here, here
+    cwd = os.path.abspath(cwd)
+    inside = os.path.realpath(path).startswith(os.path.realpath(cwd).rstrip(os.sep) + os.sep)
+    return (cwd if inside else here), cwd
+
+
+def build_request(path: str, content: str, *, library_code: bool, record_locals: bool, auto_log: bool, timeout_ms: int, argv: list[str], run_id: str, http: str = "off", http_observe: bool = True, recording: dict | None = None, cwd: str | None = None, mode: str = "normal") -> dict:
     """``recording`` holds the run's limits as config keys: ``maxTraceSteps``, ``exclude``, ``only``, ``maxValueChars`` (the ones given)."""
+    root, run_cwd = run_dirs(path, cwd)
     request = {
         "type": "run",
         "runId": run_id,
         "file": {"path": path, "displayName": os.path.basename(path), "content": content},
-        "workspaceRoot": os.path.dirname(path),
-        "cwd": os.path.dirname(path),
+        "workspaceRoot": root,
+        "cwd": run_cwd,
         "argv": list(argv),
         "env": {},
         "projectFiles": [],
@@ -53,23 +68,30 @@ def build_request(path: str, content: str, *, library_code: bool, record_locals:
         "markers": [],
         "expressionsToEvaluate": {},
         "watch": [],
-        "mode": "normal",
+        "mode": mode,
     }
     request["config"].update({k: v for k, v in (recording or {}).items() if v not in (None, [])})
     return request
 
 
-def save_run(file: str, out_path: str, *, library_code: bool = False, keep: bool = False, record_locals: bool = True, auto_log: bool = False, timeout_ms: int = 0, argv: list[str] | None = None, http: str = "off", http_observe: bool = True, progress: Callable[[str], None] | None = None, recording: dict | None = None, python: Any = None) -> dict:
+def save_run(file: str, out_path: str, *, library_code: bool = False, keep: bool = False, record_locals: bool = True, auto_log: bool = False, timeout_ms: int = 0, argv: list[str] | None = None, http: str = "off", http_observe: bool = True, progress: Callable[[str], None] | None = None, recording: dict | None = None, python: Any = None, cwd: str | None = None, mode: str = "normal", test: str | None = None) -> dict:
     """Run ``file`` and write ``out_path``. Returns the meta written (``exitCode`` included).
 
     ``http`` (``off`` | ``record`` | ``replay``) is the run's ``config.http`` and ``http_observe`` its
     ``config.httpObserve`` (false: the HTTP clients are left alone, no ``http.exchange`` rows);
     ``meta.config`` records both. ``recording`` adds the run's limits (``build_request``); ``python`` is
-    the ``interpreter.Interpreter`` the runner starts under (pyokka's own when None)."""
+    the ``interpreter.Interpreter`` the runner starts under (pyokka's own when None); ``cwd`` is the
+    directory the program runs in (``run_dirs``), the file's own when None; ``mode`` is ``normal``,
+    ``snaps`` or ``profile`` (a ``.cpuprofile`` and no steps: ``meta.profile`` names it); ``test``
+    runs only that test of the file under its runner (``one_test.py``)."""
     path = os.path.abspath(file)
     content = read_text(path)
     run_id = "cli-%d" % int(_dt.datetime.now().timestamp() * 1000)
-    request = build_request(path, content, library_code=library_code, record_locals=record_locals, auto_log=auto_log, timeout_ms=timeout_ms, argv=argv or [], run_id=run_id, http=http, http_observe=http_observe, recording=recording)
+    request = build_request(path, content, library_code=library_code, record_locals=record_locals, auto_log=auto_log, timeout_ms=timeout_ms, argv=argv or [], run_id=run_id, http=http, http_observe=http_observe, recording=recording, cwd=cwd, mode=mode)
+    if test:
+        from .one_test import apply_test
+
+        apply_test(request, path, test, argv or [])
     started = _dt.datetime.now(_dt.timezone.utc)
     keep_info: dict | None = None
     if keep:
@@ -127,6 +149,7 @@ def save_run(file: str, out_path: str, *, library_code: bool = False, keep: bool
         "runId": run_id,
         "file": path,
         "workspaceRoot": request["workspaceRoot"],
+        "cwd": request["cwd"],
         "argv": request["argv"],
         "config": request["config"],
         "started": started.isoformat(timespec="seconds"),
@@ -137,6 +160,11 @@ def save_run(file: str, out_path: str, *, library_code: bool = False, keep: bool
     }
     if keep_info is not None:
         meta["keep"] = keep_info
+    if test:
+        meta["test"] = test
+        meta["module"] = request["module"]
+    if isinstance((finished or {}).get("profile"), dict) and finished["profile"].get("path"):  # type: ignore[index]
+        meta["profile"] = finished["profile"]  # type: ignore[index]
     trace = next((e for e in reversed(events) if e.get("type") == "trace" and not e.get("partial")), None)
     if trace is not None and trace.get("truncated"):
         from .recording import cap_info
@@ -160,9 +188,18 @@ def summary_line(out_path: str, meta: dict, events: list[dict]) -> str:
     uncaught = next((e for e in events if e.get("type") == "error" and not e.get("handled")), None)
     cap = meta.get("recording") if isinstance(meta.get("recording"), dict) else None
     steps = "%s of %s steps recorded" % (format(cap["kept"], ","), format(meta.get("stepCount"), ",") if isinstance(meta.get("stepCount"), int) else "?") if cap else "%s steps" % meta.get("stepCount")
+    profile = meta.get("profile") if isinstance(meta.get("profile"), dict) else None
+    if profile:
+        steps = "profiled, no steps recorded"
     bits = ["saved %s: %s, %d files, exit %s" % (out_path, steps, len(meta.get("files") or []), meta.get("exitCode"))]
+    if profile:
+        bits.append("profile: %s" % profile.get("path"))
     if uncaught is not None:
-        bits.append("error: %s: %s" % (uncaught.get("errorType"), str(uncaught.get("message", ""))[:160]))
+        from ..cli import error_where
+
+        bits.append("error: %s: %s%s" % (uncaught.get("errorType"), str(uncaught.get("message", ""))[:160], error_where(uncaught, os.path.dirname(str(meta.get("file") or "")))))
+        if uncaught.get("hint"):
+            bits.append("  hint: %s" % uncaught["hint"])
     if isinstance(meta.get("recording"), dict):
         from .recording import warning_lines
 

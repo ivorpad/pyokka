@@ -1,6 +1,6 @@
 /** Panel state: everything the host pushes plus local UI state, driven by a reducer. */
 import type { CompletionItem, StackFrame, ValueNode } from '../src/shared/protocol';
-import type { DebuggerState, DebugSessionPanel, ExceptionsPanel, ExecutionGraphPanel, HostToWebview, HttpPanel, PanelEntry, PanelSettings, PreviewCaller, TimelineModel, TourPanel, VariableView, ViewId, WalkthroughPanel, WhyView } from '../src/shared/webviewProtocol';
+import type { DebuggerState, DebugSessionPanel, ExceptionsPanel, ExecutionGraphPanel, HostToWebview, HttpPanel, PanelEntry, PanelSettings, PreviewCaller, StoryPanel, TimelineModel, TourPanel, VariableView, ViewId, WalkthroughPanel, WhyView } from '../src/shared/webviewProtocol';
 import { spliceNode } from './format';
 import type { DebugOutputChunk } from './src-shared';
 import { EMPTY_SELECTION, pruneSelection, type Selection } from './selection';
@@ -105,6 +105,8 @@ export interface PanelState {
   diagramLogId: string | null;
   /** the Variable pane: the queried name and the host's answer (history null while it computes) */
   variable: VariableView | null;
+  /** the browser page's Code Story: null until the page sends one */
+  story: StoryPanel | null;
   /** the HTTP view's table (rows so far while a run is in flight): null before the first run */
   http: HttpPanel | null;
   /** the Details pane's "why" tree: the queried step and name and the host's answer (tree null while it computes) */
@@ -169,6 +171,7 @@ export function initialState(prefs: UiPrefs = DEFAULT_PREFS): PanelState {
     view: prefs.view,
     diagramLogId: null,
     variable: null,
+    story: null,
     http: null,
     why: null,
     selection: EMPTY_SELECTION,
@@ -442,6 +445,8 @@ function reduceHost(state: PanelState, m: HostToWebview): PanelState {
       return { ...state, diff: { left: m.left, right: m.right }, view: 'diff' };
     case 'variable':
       return { ...state, variable: m.view.name ? m.view : null };
+    case 'story':
+      return { ...state, story: m.story, view: !m.story && state.view === 'story' ? 'output' : state.view };
     case 'http':
       return { ...state, http: m.panel };
     case 'why': {

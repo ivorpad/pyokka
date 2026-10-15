@@ -1,5 +1,6 @@
 /**
- * Pyokka snippets (~/.pyokka/pyokka.code-snippets), New File picker, New Python File.
+ * Pyokka snippets (~/.pyokka/pyokka.code-snippets), New File picker, New Python File. The picker
+ * lists the snippets for Python: those without a `scope`, or with `python` in it.
  */
 import * as vscode from 'vscode';
 import * as fs from 'node:fs';
@@ -13,6 +14,8 @@ export interface PyokkaSnippet {
   prefix: string[];
   body: string[];
   description?: string;
+  /** VS Code's snippet `scope`: the languages it is for (`python`, `python,markdown`) */
+  scope?: string;
 }
 
 const STARTER = `// Pyokka snippets: pick one with "Pyokka: New File" (Cmd/Ctrl+K L).
@@ -47,17 +50,23 @@ export const NEW_FILE_STARTER = `# 🐍 Pyokka is running this file. Values appe
 
 `;
 
+/** A snippet for Python: no `scope`, or one that names `python`. */
+export function isPythonSnippet(s: Pick<PyokkaSnippet, 'scope'>): boolean {
+  return !s.scope || s.scope.split(',').some((l) => l.trim() === 'python');
+}
+
 export function snippetsFile(): string {
   return path.join(pyokkaHome(), 'pyokka.code-snippets');
 }
 
 export function loadSnippets(): PyokkaSnippet[] {
-  const raw = readJsonFile<Record<string, { prefix?: string | string[]; body?: string | string[]; description?: string }>>(snippetsFile(), {});
+  const raw = readJsonFile<Record<string, { prefix?: string | string[]; body?: string | string[]; description?: string; scope?: string }>>(snippetsFile(), {});
   return Object.entries(raw).map(([name, s]) => ({
     name,
     prefix: Array.isArray(s.prefix) ? s.prefix : s.prefix ? [s.prefix] : [],
     body: Array.isArray(s.body) ? s.body : s.body ? [s.body] : [],
     description: s.description,
+    ...(typeof s.scope === 'string' ? { scope: s.scope } : {}),
   }));
 }
 
@@ -102,7 +111,8 @@ export class SnippetsFeature {
     const file = snippetsFile();
     const raw = readJsonFile<Record<string, unknown>>(file, {});
     const body = editor.document.getText(editor.selection).replace(/\$/g, '\\$').split(/\r?\n/);
-    raw[name] = { prefix: prefix || name, body, description: `Created from ${path.basename(editor.document.fileName)}` };
+    const lang = editor.document.languageId;
+    raw[name] = { prefix: prefix || name, body, description: `Created from ${path.basename(editor.document.fileName)}`, ...(lang !== 'python' ? { scope: lang } : {}) };
     writeJsonFile(file, raw);
     const pick = await vscode.window.showInformationMessage(`Pyokka snippet "${name}" saved.`, 'Open snippets file');
     if (pick) await this.editSnippets();
@@ -121,7 +131,7 @@ export class SnippetsFeature {
     type Item = vscode.QuickPickItem & { action: () => Promise<void> };
     const items: Item[] = [];
     items.push({ label: '$(new-file) Empty Python file', description: 'Untitled, Pyokka started', action: () => this.newPythonFile() });
-    const snippets = loadSnippets();
+    const snippets = loadSnippets().filter(isPythonSnippet);
     if (snippets.length) items.push({ label: 'Pyokka snippets', kind: vscode.QuickPickItemKind.Separator, action: async () => undefined });
     for (const s of snippets) {
       items.push({
@@ -129,7 +139,8 @@ export class SnippetsFeature {
         description: s.prefix.join(', '),
         detail: s.description,
         action: async () => {
-          const doc = await vscode.workspace.openTextDocument({ language: 'python', content: snippetBodyToText(s.body) });
+          const content = snippetBodyToText(s.body);
+          const doc = await vscode.workspace.openTextDocument({ language: 'python', content });
           await vscode.window.showTextDocument(doc, { preview: false });
           await this.manager.start(doc, { autoLog: true });
         },

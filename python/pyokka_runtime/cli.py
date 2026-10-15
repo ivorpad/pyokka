@@ -12,6 +12,16 @@ from .execute import Execution, RunSpec, install_step_streams
 from .protocol import decode_steps, dumps, ev_run_finished
 
 
+def error_where(event: dict, root: str) -> str:
+    """``  (bad.py:2)``: the innermost frame of an error event, where it was raised, or "" without one."""
+    from .agent.source import display_path
+
+    top = (event.get("stack") or [None])[0]
+    if not isinstance(top, dict) or not top.get("path") or not top.get("line"):
+        return ""
+    return "  (%s:%s)" % (display_path(str(top["path"]), root), top["line"])
+
+
 def _pretty(event: dict, out: Any, main: str = "") -> None:
     kind = event.get("type")
     if kind == "log":
@@ -26,7 +36,9 @@ def _pretty(event: dict, out: Any, main: str = "") -> None:
         if not str(event.get("text", "")).endswith("\n"):
             out.write("\n")
     elif kind == "error":
-        out.write("[error @%s%s] %s: %s\n" % (event.get("rid"), "" if not event.get("handled") else ", handled", event.get("errorType"), event.get("message")))
+        out.write("[error @%s%s] %s: %s%s\n" % (event.get("rid"), "" if not event.get("handled") else ", handled", event.get("errorType"), event.get("message"), error_where(event, os.path.dirname(main))))
+        if event.get("hint"):
+            out.write("  hint: %s\n" % event["hint"])
     elif kind == "coverage":
         states = event.get("states", [])
         summary = {s: states.count(s) for s in sorted(set(states))}
@@ -49,6 +61,11 @@ def _pretty(event: dict, out: Any, main: str = "") -> None:
         out.write("[file %s] %s: %d ranges, %d statements, %d functions, magic=%s\n" % (event.get("fileId"), event.get("path"), len(event.get("ranges", [])), len(event.get("statements", [])), len(event.get("functions", [])), event.get("magic")))
     elif kind == "locals":
         out.write("[locals] %d entries\n" % len(event.get("entries", [])))
+    elif kind == "run.finished" and isinstance(event.get("profile"), dict) and event["profile"].get("path"):
+        # a profile run records no steps: its result is the .cpuprofile, which only the dict above named
+        out.write("[%s] %s\n" % (kind, {k: v for k, v in event.items() if k not in ("type",)}))
+        out.write("profile: %s\n" % event["profile"]["path"])
+        out.write("profiled, no steps recorded, exit %s\n" % event.get("exitCode"))
     else:
         out.write("[%s] %s\n" % (kind, {k: v for k, v in event.items() if k not in ("type",)}))
 
@@ -68,12 +85,15 @@ def run_file(args: Any, recording: dict | None = None) -> int:
             _pretty(event, real_stdout, path)
         real_stdout.flush()
 
+    from .agent.save import run_dirs
+
+    root, run_cwd = run_dirs(path, getattr(args, "cwd", None))
     request = {
         "type": "run",
         "runId": "cli",
         "file": {"path": path, "displayName": os.path.basename(path)},
-        "workspaceRoot": os.path.dirname(path),
-        "cwd": os.path.dirname(path),
+        "workspaceRoot": root,
+        "cwd": run_cwd,
         "argv": [],
         "env": {},
         "projectFiles": [],
@@ -85,6 +105,10 @@ def run_file(args: Any, recording: dict | None = None) -> int:
     }
     if args.trace_context is not None:
         request["traceContext"] = {"step": args.trace_context, "prefetch": 10}
+    if getattr(args, "test", None):
+        from .agent.one_test import apply_test
+
+        apply_test(request, path, args.test, [])
     spec = RunSpec.from_request(request)
     if args.instrumented:
         from .instrument import InstrumentOptions, Instrumenter

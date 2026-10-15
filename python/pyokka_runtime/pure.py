@@ -131,20 +131,34 @@ def _helper(name: str, args: list) -> ast.Call:
     return ast.Call(func=ast.Name(id=name, ctx=ast.Load()), args=args, keywords=[])
 
 
-def eval_pure(node: ast.AST, globals_: dict, locals_: Any = None, filename: str = "<pyokka-evaluate>") -> Any:
-    """Evaluate one checked expression node. Neither namespace is modified.
+def compile_pure(node: ast.AST, filename: str = "<pyokka-evaluate>") -> Any:
+    """Check one expression node and compile it with every call routed through the runtime check.
+
+    ``ValueError`` when it may not run. The node is rewritten in place. A breakpoint condition or a
+    break-when watch compiles once and runs at every hit with ``run_pure``.
+    """
+    check_pure(node)
+    expr = ast.fix_missing_locations(ast.Expression(body=_Calls().visit(node)))
+    return compile(expr, filename, "eval")
+
+
+def run_pure(code: Any, globals_: dict, locals_: Any = None) -> Any:
+    """Evaluate what ``compile_pure`` made. Neither namespace is modified.
 
     Both namespaces are merged into the copy the expression runs in, locals over globals, so a
     comprehension's body sees the frame's variables (its own scope would only reach globals).
     """
-    check_pure(node)
     namespace = dict(globals_)
     if locals_ is not None and locals_ is not globals_:
         namespace.update(locals_)
     namespace[BUILTIN_FN] = lambda name: _builtin(name, namespace)
     namespace[METHOD_FN] = _method
-    expr = ast.fix_missing_locations(ast.Expression(body=_Calls().visit(node)))
-    return eval(compile(expr, filename, "eval"), namespace)  # noqa: S307 - only pure calls survive check_pure and the rewrite
+    return eval(code, namespace)  # noqa: S307 - only pure calls survive check_pure and the rewrite
 
 
-__all__ = ["PURE_BUILTINS", "METHODS", "RULE", "check_pure", "eval_pure"]
+def eval_pure(node: ast.AST, globals_: dict, locals_: Any = None, filename: str = "<pyokka-evaluate>") -> Any:
+    """Check, compile and evaluate one expression node. Neither namespace is modified."""
+    return run_pure(compile_pure(node, filename), globals_, locals_)
+
+
+__all__ = ["PURE_BUILTINS", "METHODS", "RULE", "check_pure", "compile_pure", "eval_pure", "run_pure"]

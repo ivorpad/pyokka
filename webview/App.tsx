@@ -15,7 +15,9 @@ import { Walkthrough } from './components/Walkthrough';
 import { Tour } from './components/Tour';
 import { tourGotoMessage } from './tourView';
 import { VariablePane } from './components/VariablePane';
+import { StoryPane } from './components/StoryPane';
 import { allEntries, entriesForDebugger, initialState, reduce, visibleEntries, type Entry } from './model';
+import { setValueSyntax, syntaxForName } from './format';
 import { applyTheme } from './monaco';
 import { orderedSelection, pruneSelection } from './selection';
 import type { HostToWebview, PanelSettings, ValueNode, ViewId } from './src-shared';
@@ -32,6 +34,10 @@ export function App() {
     const onMessage = (ev: MessageEvent) => {
       const m = ev.data as HostToWebview | undefined;
       if (!m || typeof m !== 'object' || !('type' in m)) return;
+      // values are spelled in the bound session's language; set before the render the dispatch causes
+      if (m.type === 'session') setValueSyntax(m.language ?? syntaxForName(m.name));
+      else if (m.type === 'init') setValueSyntax(syntaxForName(m.sessionName));
+      else if (m.type === 'debug.session' && m.state) setValueSyntax(syntaxForName(m.state.displayName));
       dispatch({ type: 'host', message: m });
     };
     window.addEventListener('message', onMessage);
@@ -341,7 +347,10 @@ export function App() {
               onBreakpointRemove={(file, line, fn) => post({ type: 'debug.breakpoint.remove', file, ...(line !== undefined ? { line } : {}), ...(fn ? { function: fn } : {}) })}
               onExceptions={(mode) => post({ type: 'debug.exceptions', mode })}
               onView={(v) => setView(v)}
+              onControl={(action) => post({ type: 'debug.control', action })}
             />
+          ) : state.view === 'story' ? (
+            <StoryPane story={state.story} onPick={(line, open) => post({ type: 'story.pick', line, ...(open ? { open: true } : {}) })} onClose={() => setView(debuggerActive ? 'debugger' : 'output')} />
           ) : state.view === 'run-diagram' ? (
             <ExecutionDiagram
               graph={state.executionGraph}

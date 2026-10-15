@@ -8,7 +8,8 @@
 import type { TraceScope } from '../shared/protocol';
 import { collapse } from './decisions';
 import type { FileMap } from './decisions';
-import { namesOf, stripCode } from './names';
+import { namesOf, stripCode, stripJsCode } from './names';
+import { walkFileMap } from './decisions';
 import type { WalkthroughInputs } from './walkthroughShared';
 import { STATEMENTS_MAX, type GraphRow } from './executionGraphTypes';
 
@@ -64,6 +65,16 @@ function skipStatement(lines: string[], r: [number, number, number, number]): bo
 }
 
 /**
+ * Not a statement node in a JS/TS file: a decision or loop header, a function or class
+ * declaration, a block, an import or re-export, `break`/`continue`/`debugger`, a directive.
+ */
+const JS_SKIP = /^(?:(?:if|else|for|while|do|switch|try|function|class|import|break|continue|debugger)\b|async\s+function\b|export\s+(?:default\s+)?(?:async\s+)?(?:function|class)\b|export\s*(?:\{|\*)|\{|['"][^'"]*['"]\s*;?\s*$)/;
+
+function skipJsStatement(lines: string[], r: [number, number, number, number]): boolean {
+  return JS_SKIP.test(stripJsCode(rangeLines(lines, r)).trim());
+}
+
+/**
  * One draft per (file, start line) a user-code step ran (rule S1), in first-step order, bounded at
  * STATEMENTS_MAX per parent (S7); `truncated` says the bound cut some.
  */
@@ -102,6 +113,14 @@ export function collectStatements(inputs: WalkthroughInputs, ctx: StatementConte
     if (!sources.has(fileId)) sources.set(fileId, inputs.readSource(fileId));
     return sources.get(fileId);
   };
+  const jsMaps = new Map<number, FileMap | undefined>();
+  const jsMap = (fileId: number): FileMap | undefined => {
+    if (!jsMaps.has(fileId)) {
+      const walk = files.get(fileId)?.walk;
+      jsMaps.set(fileId, walk ? walkFileMap(walk) : undefined);
+    }
+    return jsMaps.get(fileId);
+  };
   const inWindow = (step: number): boolean => !ctx.window || ctx.window.some(([a, b]) => a <= step && step <= b);
 
   const drafts = new Map<string, StatementDraft>();
@@ -117,13 +136,14 @@ export function collectStatements(inputs: WalkthroughInputs, ctx: StatementConte
     if (drafts.has(key) || skipped.has(key)) continue;
     const parentKey = ctx.scopeKey(scope);
     const lines = source(loc.fileId);
-    if (parentKey === undefined || !ctx.hasNode(parentKey) || !lines || skipStatement(lines, loc.range)) {
+    const js = jsMap(loc.fileId);
+    if (parentKey === undefined || !ctx.hasNode(parentKey) || !lines || (js ? skipJsStatement(lines, loc.range) : skipStatement(lines, loc.range))) {
       skipped.add(key);
       continue;
     }
     const slice = rangeLines(lines, loc.range);
-    const code = stripCode(slice);
-    const names = namesOf(slice);
+    const code = js ? stripJsCode(slice) : stripCode(slice);
+    const names = js ? (js.names?.get(`${loc.range[0]}:${loc.range[1]}`) ?? { targets: [], reads: [] }) : namesOf(slice);
     drafts.set(key, { key, parentKey, label: collapse(code, 60), file: loc.path, line: loc.range[0], fileId: loc.fileId, text: collapse(code, 200), targets: names.targets, reads: names.reads, firstStep: i, hits: hitsByRid.get(rid) ?? 1, rows: [] });
   }
 
@@ -143,9 +163,15 @@ export function collectStatements(inputs: WalkthroughInputs, ctx: StatementConte
   return { statements, truncated };
 }
 
-/** A decision's names for the data edges: a loop assigns its `for` target and reads its iterable, an `if`/`while`/`match` reads its condition. */
+/** A decision's names for the data edges: a loop assigns its `for` target and reads its iterable, an `if`/`while`/`match` reads its condition (a JS/TS header: the runtime's names for it). */
 export function decisionNames(map: FileMap, line: number): { targets: string[]; reads: string[] } {
   const loop = map.loops.get(line);
+  if (map.js) {
+    // a JS/TS header's names come from the runtime's AST, at the header's own position
+    const at = loop ?? map.decisions.get(line);
+    const n = at?.col !== undefined ? map.names?.get(`${line}:${at.col}`) : undefined;
+    return n ? { targets: [...n.targets], reads: [...n.reads] } : { targets: [], reads: [] };
+  }
   if (loop) {
     if (loop.kind === 'while') return { targets: [], reads: namesOf([loop.text]).reads };
     const i = loop.text.indexOf(' in ');

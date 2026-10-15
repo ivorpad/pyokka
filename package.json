@@ -3,7 +3,7 @@
   "displayName": "Pyokka",
   "publisher": "ivor",
   "description": "Python playground in your editor: live values, coverage, and a time-travel debugger with an interactive timeline.",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/ivorpad/pyokka.git"
@@ -483,6 +483,26 @@
         "category": "Pyokka"
       },
       {
+        "command": "pyokka.investigateValue",
+        "title": "Investigate a Value",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.learnRun",
+        "title": "Learn from This Run",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.pinRun",
+        "title": "Pin Run as Baseline",
+        "category": "Pyokka"
+      },
+      {
+        "command": "pyokka.verifyFix",
+        "title": "Verify Fix",
+        "category": "Pyokka"
+      },
+      {
         "command": "pyokka.whyVariable",
         "title": "Why This Value",
         "category": "Pyokka"
@@ -885,6 +905,22 @@
           "when": "pyokka.hasActiveSession"
         },
         {
+          "command": "pyokka.investigateValue",
+          "when": "pyokka.hasActiveSession"
+        },
+        {
+          "command": "pyokka.learnRun",
+          "when": "pyokka.hasActiveSession"
+        },
+        {
+          "command": "pyokka.pinRun",
+          "when": "pyokka.hasActiveSession"
+        },
+        {
+          "command": "pyokka.verifyFix",
+          "when": "pyokka.hasActiveSession"
+        },
+        {
           "command": "pyokka.whyVariable",
           "when": "false"
         },
@@ -1025,7 +1061,7 @@
         },
         {
           "command": "pyokka.startOnCurrentFile",
-          "when": "editorLangId == python && !pyokka.isActiveEditorRunningPyokka",
+          "when": "(editorLangId == python) && !pyokka.isActiveEditorRunningPyokka",
           "group": "navigation@2"
         }
       ],
@@ -1042,19 +1078,19 @@
         "command": "pyokka.startOnCurrentFile",
         "key": "ctrl+k q",
         "mac": "cmd+k q",
-        "when": "!terminalFocus"
+        "when": "!terminalFocus && editorLangId != javascript && editorLangId != typescript && editorLangId != javascriptreact && editorLangId != typescriptreact"
       },
       {
         "command": "pyokka.createFile",
         "key": "ctrl+k l",
         "mac": "cmd+k l",
-        "when": "!terminalFocus"
+        "when": "!terminalFocus && editorLangId != javascript && editorLangId != typescript && editorLangId != javascriptreact && editorLangId != typescriptreact"
       },
       {
         "command": "pyokka.stopCurrent",
         "key": "ctrl+k e",
         "mac": "cmd+k s",
-        "when": "!terminalFocus && pyokka.hasActiveSession"
+        "when": "!terminalFocus && pyokka.hasActiveSession && editorLangId != javascript && editorLangId != typescript && editorLangId != javascriptreact && editorLangId != typescriptreact"
       },
       {
         "command": "pyokka.showValue",
@@ -1080,7 +1116,7 @@
         "command": "pyokka.installMissingPackageForFile",
         "key": "ctrl+k i",
         "mac": "cmd+k i",
-        "when": "!terminalFocus && pyokka.hasActiveSession"
+        "when": "!terminalFocus && pyokka.hasActiveSession && editorLangId != javascript && editorLangId != typescript && editorLangId != javascriptreact && editorLangId != typescriptreact"
       },
       {
         "command": "pyokka.clearValue",
@@ -1182,19 +1218,19 @@
         "command": "pyokka.startOnCurrentFile",
         "key": "ctrl+alt+p q",
         "mac": "ctrl+alt+p q",
-        "when": "!terminalFocus"
+        "when": "!terminalFocus && editorLangId != javascript && editorLangId != typescript && editorLangId != javascriptreact && editorLangId != typescriptreact"
       },
       {
         "command": "pyokka.createFile",
         "key": "ctrl+alt+p l",
         "mac": "ctrl+alt+p l",
-        "when": "!terminalFocus"
+        "when": "!terminalFocus && editorLangId != javascript && editorLangId != typescript && editorLangId != javascriptreact && editorLangId != typescriptreact"
       },
       {
         "command": "pyokka.stopCurrent",
         "key": "ctrl+alt+p e",
         "mac": "ctrl+alt+p s",
-        "when": "!terminalFocus && pyokka.hasActiveSession"
+        "when": "!terminalFocus && pyokka.hasActiveSession && editorLangId != javascript && editorLangId != typescript && editorLangId != javascriptreact && editorLangId != typescriptreact"
       },
       {
         "command": "pyokka.showValue",
@@ -1212,19 +1248,19 @@
         "command": "pyokka.installMissingPackageForFile",
         "key": "ctrl+alt+p i",
         "mac": "ctrl+alt+p i",
-        "when": "!terminalFocus && pyokka.hasActiveSession"
+        "when": "!terminalFocus && pyokka.hasActiveSession && editorLangId != javascript && editorLangId != typescript && editorLangId != javascriptreact && editorLangId != typescriptreact"
       },
       {
         "command": "pyokka.newPythonFile",
         "key": "ctrl+k j",
         "mac": "cmd+k j",
-        "when": "!terminalFocus"
+        "when": "!terminalFocus && editorLangId != javascript && editorLangId != typescript && editorLangId != javascriptreact && editorLangId != typescriptreact"
       },
       {
         "command": "pyokka.newPythonFile",
         "key": "ctrl+alt+p j",
         "mac": "ctrl+alt+p j",
-        "when": "!terminalFocus"
+        "when": "!terminalFocus && editorLangId != javascript && editorLangId != typescript && editorLangId != javascriptreact && editorLangId != typescriptreact"
       }
     ],
     "languages": [
@@ -1700,7 +1736,7 @@
             "null"
           ],
           "default": null,
-          "markdownDescription": "Characters one recorded value keeps in its inline text. Unset: 120 for a local variable, 200 for a logged value. `0` keeps the whole value up to a ceiling of 1,000,000 characters. A cut value ends in `\u2026(+N chars)`. Same as `pyokka run --max-value-chars`."
+          "markdownDescription": "Characters one recorded value keeps in its inline text. Unset: 120 for a local variable, 200 for a logged value. `0` keeps the whole value up to a ceiling of 1,000,000 characters. A cut value ends in `…(+N chars)`. Same as `pyokka run --max-value-chars`."
         },
         "pyokka.timeMachine.autoLog": {
           "type": "boolean",
@@ -1864,6 +1900,7 @@
   "scripts": {
     "build": "node esbuild.mjs",
     "watch": "node esbuild.mjs --watch",
+    "pyokka-web": "node dist/web/server.js",
     "package": "node esbuild.mjs --production && vsce package --no-dependencies",
     "typecheck": "tsc --noEmit -p .",
     "test": "npm run typecheck && vitest run && npm run test:py",

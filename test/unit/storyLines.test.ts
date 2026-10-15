@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { scopeTop, storyBlockLines } from '../../src/session/storyLines';
+import { jsModuleSpan, scopeTop, storyBlockLines } from '../../src/session/storyLines';
 
 /** `{line: step}` for the lines a block ran. */
 const ran = (m: Record<number, number>): Map<number, number> => new Map(Object.entries(m).map(([l, s]) => [Number(l), s]));
@@ -91,5 +91,39 @@ describe('scope top', () => {
     expect(scopeTop(['# a', '# b', '@cache', '@wraps(f)', 'def f():', '    pass'], 5)).toBe(1);
     // a blank line breaks the run
     expect(scopeTop(['# far above', '', '@cache', 'def f():', '    pass'], 4)).toBe(3);
+  });
+
+  it('in JS/TS walks up over // lines, JSDoc blocks and decorators, not over a #private field', () => {
+    expect(scopeTop(['// a', '/**', ' * Adds.', ' */', '@log', 'function add(a, b) {', '}'], 6, 'javascript')).toBe(1);
+    expect(scopeTop(['class C {', '  #count = 0;', '  inc() {', '  }', '}'], 3, 'javascript')).toBe(3);
+  });
+});
+
+describe('scopeTop for JS/TS', () => {
+  it('walks up over JSDoc, line comments and decorators, not over code', () => {
+    const src = ['const x = 1;', '/**', ' * Adds.', ' */', '// helper', '@logged', 'function add(a, b) {', '  return a + b;', '}'];
+    expect(scopeTop(src, 7, 'javascript')).toBe(2);
+    expect(scopeTop(['let y = 2;', 'function f() {}'], 2, 'javascript')).toBe(2);
+    // the Python rule is unchanged: `//` is not a Python comment
+    expect(scopeTop(['// x', 'def f():'], 2)).toBe(2);
+  });
+});
+
+describe('jsModuleSpan', () => {
+  const src = ['import x from "x";', '', '// adds', 'function add(a, b) {', '  return a + b;', '}', '', 'const t = add(1, 2);', 'console.log(t);', '', '/** later */', 'function later() {', '  return 1;', '}'];
+  const functions = [
+    { name: '<module>', bodyRange: [1, 0, 14, 1] },
+    { name: 'add', bodyRange: [4, 0, 6, 1] },
+    { name: 'later', bodyRange: [12, 0, 14, 1] },
+  ];
+
+  it("keeps a module block's context out of the hoisted functions around it", () => {
+    expect(jsModuleSpan(src, [8, 9], functions)).toEqual([7, 10]);
+    const lines = storyBlockLines(src, new Map([[8, 0], [9, 1]]), { span: jsModuleSpan(src, [8, 9], functions) });
+    expect(lines.map((l) => (l.kind === 'line' ? l.line : '…'))).toEqual([8, 9]);
+  });
+
+  it('leaves a function between two module lines to the fold rule', () => {
+    expect(jsModuleSpan(src, [1, 8], functions)).toEqual([1, 10]);
   });
 });

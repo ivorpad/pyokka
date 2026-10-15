@@ -7,8 +7,11 @@ import { EventEmitter } from 'node:events';
 import { Session } from './session';
 import type { RunMode } from './types';
 import type { RecordFromSpec, RunMode as ProtocolRunMode } from '../shared/protocol';
-import { namedInterpreter, resolveInterpreter, showInterpreterError, type Interpreter } from '../runtime/interpreter';
+import { invalidateVersionCache, InterpreterError, namedInterpreter, resolveInterpreter, selectInterpreterCommand, showInterpreterError, type Interpreter } from '../runtime/interpreter';
+import { isRunnable } from '../runtime/language';
 import { RecentFilesStore } from './recentFilesStore';
+import { isDiskReload, isProjectFile, SETTLE_READS_MS } from './diskReload';
+import { readFileSync } from 'node:fs';
 import { setting } from '../config/settings';
 import { setContext } from '../util/context';
 import { log } from '../util/log';
@@ -56,6 +59,8 @@ export class SessionManager extends EventEmitter<SessionManagerEvents> {
   private preferredFolder: string | undefined;
   private readonly editStarted = new Set<string>();
   private readonly disposables: vscode.Disposable[] = [];
+  /** one non-recursive watch per file (open Python documents, the project files a run imported): it reaches files outside the workspace too */
+  private readonly fileWatchers = new Map<string, { watcher: vscode.FileSystemWatcher; text: string | undefined; timers: NodeJS.Timeout[] }>();
   private startedAtLeastOnce = false;
   private trustPromptAnswer: boolean | undefined;
 
@@ -71,13 +76,24 @@ export class SessionManager extends EventEmitter<SessionManagerEvents> {
       vscode.workspace.onDidChangeTextDocument((e) => this.onDocumentChanged(e)),
       vscode.workspace.onDidSaveTextDocument((doc) => this.onDocumentSaved(doc)),
       vscode.workspace.onDidCloseTextDocument((doc) => this.onDocumentClosed(doc)),
-      vscode.workspace.onDidOpenTextDocument((doc) => void this.maybeAutoStart(doc, 'open')),
+      vscode.workspace.onDidOpenTextDocument((doc) => {
+        this.watchDocument(doc);
+        void this.maybeAutoStart(doc, 'open');
+      }),
       vscode.window.onDidChangeActiveTextEditor(() => this.updateActive()),
     );
-    for (const doc of vscode.workspace.textDocuments) void this.maybeAutoStart(doc, 'open');
+    for (const doc of vscode.workspace.textDocuments) {
+      this.watchDocument(doc);
+      void this.maybeAutoStart(doc, 'open');
+    }
   }
 
   dispose(): void {
+    for (const w of this.fileWatchers.values()) {
+      w.watcher.dispose();
+      for (const t of w.timers) clearTimeout(t);
+    }
+    this.fileWatchers.clear();
     for (const d of this.disposables) d.dispose();
     for (const s of [...this.sessions.values()]) this.stopSession(s, false);
   }
@@ -182,7 +198,7 @@ export class SessionManager extends EventEmitter<SessionManagerEvents> {
   }
 
   async start(doc: vscode.TextDocument, opts: StartOptions = {}): Promise<Session | undefined> {
-    if (doc.languageId !== 'python' && !doc.fileName.endsWith('.py')) {
+    if (!isRunnable(doc)) {
       void vscode.window.showInformationMessage('Pyokka runs Python files. Open a .py file or create one with "Pyokka: New Python File".');
       return undefined;
     }
@@ -202,8 +218,19 @@ export class SessionManager extends EventEmitter<SessionManagerEvents> {
     try {
       interpreter = opts.interpreter ? await namedInterpreter(opts.interpreter) : await resolveInterpreter(doc.uri);
     } catch (err) {
-      void showInterpreterError(err);
-      return undefined;
+      // as VS Code's debugger does: no usable interpreter asks for one (a launch that named its own keeps its error)
+      const picked = !opts.interpreter && err instanceof InterpreterError ? await selectInterpreterCommand(err.reason ?? err.message) : undefined;
+      if (!picked) {
+        void showInterpreterError(err);
+        return undefined;
+      }
+      invalidateVersionCache();
+      try {
+        interpreter = await resolveInterpreter(doc.uri);
+      } catch (again) {
+        void showInterpreterError(again);
+        return undefined;
+      }
     }
     const workspaceRoot = this.workspaceRootFor(doc, opts.projectRoot);
     const extraPythonPath = this.forFileSitePackages(doc);
@@ -223,6 +250,7 @@ export class SessionManager extends EventEmitter<SessionManagerEvents> {
       id: doc.uri.scheme === 'file' ? undefined : `untitled-${shortHash(doc.getText())}`,
     });
     this.emit('sessionsChanged');
+    session.on('runFinished', () => this.watchSessionFiles(session));
     this.emit('sessionStarted', session);
     this.updateActive();
     session.start().catch((err) => {
@@ -280,19 +308,63 @@ export class SessionManager extends EventEmitter<SessionManagerEvents> {
 
   /* ---------- document wiring ---------- */
 
+  /** Watch an open Python file: the file service then reloads it on an outside write, workspace or not. */
+  private watchDocument(doc: vscode.TextDocument): void {
+    if (doc.uri.scheme === 'file' && isRunnable(doc)) this.watchFile(doc.uri.fsPath);
+  }
+
+  /** Watch the project files a session's run imported, so an outside write to one that is not open reruns it. */
+  watchSessionFiles(session: Session): void {
+    for (const f of session.files.all()) if (isProjectFile(f.path)) this.watchFile(f.path);
+  }
+
+  private watchFile(fsPath: string): void {
+    if (this.fileWatchers.has(fsPath)) return;
+    const watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(path.dirname(fsPath), path.basename(fsPath)));
+    const entry = { watcher, text: readText(fsPath), timers: [] as NodeJS.Timeout[] };
+    this.fileWatchers.set(fsPath, entry);
+    watcher.onDidChange(() => this.onDiskChange(fsPath));
+    watcher.onDidCreate(() => this.onDiskChange(fsPath));
+    // a write made while the watch was starting can be missed (FSEvents): read the file again once it has settled
+    for (const ms of SETTLE_READS_MS) entry.timers.push(setTimeout(() => this.onDiskChange(fsPath), ms));
+  }
+
+  /**
+   * A watched file changed on disk. An open document is VS Code's to reload, and its reload
+   * arrives as a document change (`isDiskReload`); a file that is not open has no document, so
+   * the sessions that imported it rerun here (On Save and Automatic; On Demand waits).
+   */
+  private onDiskChange(fsPath: string): void {
+    const entry = this.fileWatchers.get(fsPath);
+    if (!entry) return;
+    const text = readText(fsPath);
+    if (text === undefined || text === entry.text) return;
+    entry.text = text;
+    if (vscode.workspace.textDocuments.some((d) => d.uri.scheme === 'file' && d.uri.fsPath === fsPath)) return;
+    for (const s of this.all()) {
+      if (!s.files.byPath(fsPath)) continue;
+      if (s.runMode === 'auto' || s.runMode === 'onSave') s.scheduleRun('dependency', 0);
+    }
+  }
+
   private onDocumentChanged(e: vscode.TextDocumentChangeEvent): void {
     const own = this.get(e.document);
     if (own) own.onDocumentChanged(e);
-    else if (e.document.languageId === 'python' && e.contentChanges.length) void this.maybeAutoStart(e.document, 'edit');
+    else if (isRunnable(e.document) && e.contentChanges.length) void this.maybeAutoStart(e.document, 'edit');
     if (e.document.uri.scheme !== 'file' || e.document.languageId !== 'python' || !e.contentChanges.length) return;
-    // project-file dependency watch: a session that imported this file re-runs
-    for (const s of this.sessions.values()) {
-      if (s === own) continue;
-      if (s.files.byPath(e.document.uri.fsPath) && s.runMode === 'auto') s.scheduleRun('dependency');
+    const entry = this.fileWatchers.get(e.document.uri.fsPath);
+    if (entry && !e.document.isDirty) entry.text = e.document.getText();
+    // project-file dependency watch: a session that imported this file re-runs; On Save only when it was reloaded from disk
+    const dependents = this.all().filter((s) => s !== own && s.files.byPath(e.document.uri.fsPath));
+    const reloaded = dependents.some((s) => s.runMode === 'onSave') && isDiskReload(e.document);
+    for (const s of dependents) {
+      if (s.runMode === 'auto' || (s.runMode === 'onSave' && reloaded)) s.scheduleRun('dependency');
     }
   }
 
   private onDocumentSaved(doc: vscode.TextDocument): void {
+    const entry = doc.uri.scheme === 'file' ? this.fileWatchers.get(doc.uri.fsPath) : undefined;
+    if (entry) entry.text = doc.getText(); // the save already reruns; its watch event is not an outside write
     const own = this.get(doc);
     if (own) own.onDocumentSaved();
     if (doc.uri.scheme !== 'file') return;
@@ -304,9 +376,20 @@ export class SessionManager extends EventEmitter<SessionManagerEvents> {
 
   private onDocumentClosed(doc: vscode.TextDocument): void {
     const s = this.get(doc);
-    if (!s) return;
     // keep the "was running" memory so automaticRestart can bring it back
-    this.stopSession(s, false);
+    if (s) this.stopSession(s, false);
+    if (doc.uri.scheme === 'file') this.unwatchUnused(doc.uri.fsPath);
+  }
+
+  /** Drop the watch of a file nothing needs: not open, and no session's run imported it. */
+  private unwatchUnused(fsPath: string): void {
+    const entry = this.fileWatchers.get(fsPath);
+    if (!entry) return;
+    if (vscode.workspace.textDocuments.some((d) => d.uri.scheme === 'file' && d.uri.fsPath === fsPath)) return;
+    if (this.all().some((s) => s.filePath === fsPath || s.files.byPath(fsPath))) return;
+    entry.watcher.dispose();
+    for (const t of entry.timers) clearTimeout(t);
+    this.fileWatchers.delete(fsPath);
   }
 
   private rememberRunning(doc: vscode.TextDocument, running: boolean): void {
@@ -319,7 +402,7 @@ export class SessionManager extends EventEmitter<SessionManagerEvents> {
 
   /** `open`/`edit`/undefined per automaticRestart, automaticStartRegex and smartStart rules. */
   autoStartModeFor(doc: vscode.TextDocument): 'open' | 'edit' | undefined {
-    if (doc.languageId !== 'python' || doc.uri.scheme !== 'file') return undefined;
+    if (!isRunnable(doc) || doc.uri.scheme !== 'file') return undefined;
     const rules = setting<{ pattern?: string; startMode?: string }[]>('smartStart', [], doc.uri);
     for (const rule of rules) {
       if (!rule || typeof rule.pattern !== 'string') continue;
@@ -360,5 +443,13 @@ export class SessionManager extends EventEmitter<SessionManagerEvents> {
       this.editStarted.add(doc.uri.toString());
       await this.start(doc);
     }
+  }
+}
+
+function readText(fsPath: string): string | undefined {
+  try {
+    return readFileSync(fsPath, 'utf8');
+  } catch {
+    return undefined;
   }
 }

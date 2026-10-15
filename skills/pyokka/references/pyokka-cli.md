@@ -5,11 +5,17 @@ Every verb takes `RUN` (a `run.json`) or `--live` (an open VS Code session with
 to read. Errors go to stderr as `error: <what>` plus a line saying what to do next, exit 2; with
 `--json` the same thing arrives as `{"ok": false, "error", "hint"}` on stdout.
 
+Bare `pyokka` prints every command, then a first command per job (a saved run, the map, a live
+pause, the MCP server), and exits 2; `pyokka --help` (or `-h`) prints the same and exits 0.
+`pyokka VERB --help` lists that command's flags. [Every command](#every-command) has one synopsis
+per verb.
+
 Contents: [Recording a run](#recording-a-run) · [Mapping](#mapping-a-run-you-do-not-know) ·
 [Stepping](#stepping) · [Following a value](#following-a-value) ·
 [Comparing two runs](#comparing-two-runs-after-an-edit) ·
 [Reports](#reports-exceptions-http-graph) · [Tours](#tours-of-a-large-run) · [The page](#the-page) ·
-[Shapes](#the-shapes-worth-knowing) · [Live only](#live-only)
+[Shapes](#the-shapes-worth-knowing) · [Live only](#live-only) · [Every command](#every-command) ·
+[Environment](#environment)
 
 ## Recording a run
 
@@ -17,10 +23,13 @@ Contents: [Recording a run](#recording-a-run) · [Mapping](#mapping-a-run-you-do
 pyokka run FILE [--save RUN.JSON] [--library-code] [--keep] [--no-locals]
                 [--http off|record|replay] [--timeout MS] [--watch EXPR] [--auto-log]
                 [--max-steps N] [--exclude GLOB]... [--only GLOB]... [--max-value-chars N]
-                [--python PATH] -- ARGS
+                [--python PATH] [--cwd DIR] [--test NAME] [--mode normal|snaps|profile]
+                [--trace-context STEP] [--record-locals] [--instrumented] -- ARGS
 ```
 
 `--save` is what writes the recording; without it the command prints the event stream.
+`--cwd DIR` runs the program in DIR instead of the file's directory, for a script that reads
+paths relative to the project root; a DIR that holds the file is also the project root.
 
 - `--library-code` instruments third-party packages too, never the stdlib. Without it `--into` on
   a library call steps over it. Ask for it when the question is what a library did with an
@@ -29,6 +38,16 @@ pyokka run FILE [--save RUN.JSON] [--library-code] [--keep] [--no-locals]
   `pyokka release run.json` shuts it down.
 - `--no-locals` skips recording locals at every step, which is what `var` and `why` read. Leave
   it on unless the run is enormous.
+- `--test NAME` runs one test of a test file under its runner and records only that test's body
+  (and the file's top level): `test_b`, `TestCart::test_total` or `test_b[2]` is a pytest node id,
+  `Cart.test_total` a unittest name, anything else a pytest `-k` expression. pytest runs with
+  `-s --assert=plain -p no:cacheprovider`, so it leaves no `.pytest_cache`; it has to be
+  installed in the interpreter that runs the program.
+- `--mode profile` runs the file under `cProfile` with no recording and prints `profiled, no steps
+  recorded` and `profile: PATH` (a `.cpuprofile`); `--mode snaps` records value snapshots only.
+- Without `--save`: `--instrumented` prints the instrumented source instead of running it,
+  `--record-locals` records locals in the event stream, and `--trace-context STEP` evaluates the
+  `--watch EXPR` expressions from that step on.
 - `--http record` writes every HTTP exchange to `.pyokka/replay/<hash>.jsonl` next to the file;
   `--http replay` answers later runs from it, so a program that calls an API runs again with no
   network and no tokens and returns the same values.
@@ -39,8 +58,8 @@ pyokka run demo.py --save run.json
 # saved run.json: 243 steps, 1 files, exit 0
 ```
 
-**Which Python runs the program.** The first match: `--python PATH` (an interpreter or a venv
-directory), `$PYOKKA_PYTHON`, `$VIRTUAL_ENV`, a `.venv` in the file's directory or a parent up to
+**Which Python runs the program.** The first match: `--python PATH` (an interpreter, a venv
+directory, or a command on PATH such as `python3.12`), `$PYOKKA_PYTHON`, `$VIRTUAL_ENV`, a `.venv` in the file's directory or a parent up to
 the git root, else pyokka's own. The runtime goes on that interpreter's `PYTHONPATH`, so the
 project's packages import as they do for the program. It needs Python 3.12 or newer and says so by
 name when it is older. The first line of `run` names the interpreter and why it was picked; when it
@@ -253,7 +272,7 @@ JSON: `{step, file, line, function, statement, error?: {type, message, caught}, 
 
 ## Comparing two runs after an edit
 
-**`diff BEFORE.json AFTER.json [--limit K]`** or **`diff BEFORE.json --live`** answers "what did my
+**`diff BEFORE.json AFTER.json [--limit K] [--ignore NAME]`** or **`diff BEFORE.json --live`** answers "what did my
 edit change": every statement that did something different, with the values it assigned, the arm
 a branch took, how often a loop ran, the calls it made with their arguments, what it printed and
 what it raised. Record the before, edit, then record the after (or let the open session re-run,
@@ -323,6 +342,107 @@ step} | null, b}]}]}`. `kind` is `value`, `branch`, `loop`, `call`, `return`, `p
 `error` or `decision`; a capped group is `{kind, name, more}`. `textA`/`textB` are a statement's
 first line (` …` when it goes on); an `edited` one also has `sourceA`/`sourceB`, all its lines.
 
+## Investigating one value
+
+**`investigate RUN --value NAME [--at STEP]`** puts the single verbs' answers about one value on
+one page: its changes (`var`), `why` at the step that made it, `origin` from the step where the
+new value is first visible, the run's `exceptions`, and the project lines that did not run or ran
+in part. Without `--at` it picks the first `nan`, `inf` or `None` the name held, else its last
+change, and the `selected:` line names that step, its `file:line` and the step where the value is
+visible. `--at STEP` explains that step instead: `why` and `origin` both start there.
+
+```sh
+pyokka investigate RUN --value NAME [--at STEP]
+pyokka investigate rrf.json --value fused_ranking
+# investigate fused_ranking
+# note: Evidence covers this input only.
+# selected: #104 demo.py:124 main  fused_ranking = [('C', 0.0325…  (the last change, visible from #110)
+# -- history (var)
+# -- why
+# -- origin
+# -- exceptions
+```
+
+The `note:` lines come first and say where the recording has gaps: no locals, the locals limit
+(100,000 entries) reached, a trace cut at its step cap, a recording that began at a pause
+(`--record-from`), no `run.finished` event, a user file with no recorded source copy, values cut
+at `--max-value-chars`. Read them before trusting a final value.
+
+JSON: `{kind: "investigation", name, notes, history, exceptions, coverage, selection?: {changeStep,
+observedStep, suspicious}, step?, context?, why?, origin?, comparisons?}`, each part in its own
+verb's shape.
+
+## Practicing on a run
+
+**`learn RUN [--at STEP] [--prediction TEXT] [--reveal]`** turns a run into an exercise. Bare, it
+lists up to 12 checkpoints (calls, decisions, errors, prints) as step, kind, `file:line` and the
+source line, with no values. Pick one with `--at STEP --prediction TEXT`: the prediction is kept
+and the values stay hidden. Add `--reveal` to see what the run recorded there (the moment, its
+values, the arm a decision took, what a print printed) and a `match:` line that says which
+recorded value equals the prediction, compared as text and also without a repr's quotes.
+
+```sh
+pyokka learn rrf.json --at 11 --prediction "BM25 ranking" --reveal
+# at #11  call demo.py:109  print_ranking("BM25 ranking", bm25_ranking)
+# your prediction: BM25 ranking
+# recorded:
+#   call to print_ranking from main
+#   #11 title = 'BM25 ranking'
+#   #11 ranking = ['A', 'C', 'B', 'D']
+# match: yes, title = 'BM25 ranking' at #11
+```
+
+JSON: `{kind: "learning", notes, coverage, checkpoints: [{step, kind, file, line, function, source,
+prompt}], step?, prediction?, prompt?, observed?, moments?, recorded?: [{name, text, step}],
+match?: {matched, name?, text?, step?}}`; `observed` is the step's `context`.
+
+## Baselines and fix checks
+
+**`pin RUN --out PATH`** copies a saved run byte for byte to a new file readable only by you, to
+keep as the before of a fix (`--live` writes the session's recording). It refuses a PATH that
+exists, so a baseline stays as it was pinned: pick a new name for the next one.
+
+```sh
+pyokka pin run.json --out baseline.json
+# pinned /work/run.json (243 steps) to /work/baseline.json
+```
+
+JSON: `{pinned, from, steps}`.
+
+**`verify RUN --after PATH | --rerun [--out PATH] [--ignore NAME] [--expect NAME=VALUE]
+[--test-out PATH]`** checks a fix against that baseline. It prints the `diff` of the two runs,
+then one `PASS` or `FAIL` line per `--expect`: the last recorded change of NAME against VALUE,
+written as the value's repr (`--expect total=22`, `--expect "name='Ada'"`). `--rerun` runs the
+baseline's file again with its saved arguments, cwd and limits (recorded HTTP is replayed) and
+`--out` keeps that run. `--ignore NAME` leaves a name's values out of the comparison, a timestamp
+for example, and the report lists what it left out; `diff --ignore NAME` does the same.
+
+```sh
+pyokka verify RUN (--after RUN2 | --rerun [--out PATH]) [--ignore NAME]... [--expect NAME=VALUE]... [--test-out FILE]
+pyokka pin before.json --out baseline.json
+# fix cart.py
+pyokka verify baseline.json --rerun --expect total=22 --test-out test_cart_regression.py
+# ... the diff ...
+# PASS total = 22 at #8 (expected 22)
+# wrote test_cart_regression.py: `python -m pytest test_cart_regression.py` reruns the file and checks these values
+# verified: the expected values hold for this input
+```
+
+The exit status is 0 when every expectation passes on a run that exited 0, and 1 when one fails.
+An expectation passes only on a complete recording: an after run cut at its step cap, started
+with `--record-from`, without a `run.finished` event, past the locals limit, with the value cut
+at `--max-value-chars`, or whose last change was made in place (`(same object)` in `var`) gets
+`FAIL` with the reason. Record the after run again without that limit. With no `--expect`,
+`verify` prints the comparison and `not verified`, since a diff alone does not say the fix is
+right.
+
+`--test-out PATH` writes a pytest file for the reviewed expectations. It reruns the file through
+the Pyokka runtime with the interpreter that recorded the baseline and checks each value, so
+`python -m pytest PATH` keeps the fix in place. It refuses a PATH that exists.
+
+JSON: the `diff` shape plus `checks: [{name, expected, actual, step, passed, reason?}], verified,
+coverage, exceptions, test?`.
+
 ## Reports: exceptions, HTTP, graph
 
 **`exceptions RUN`** answers "what did this program swallow": one row per exception type, raise
@@ -333,6 +453,10 @@ which is the place to look when a program runs to the end and did nothing.
 **`http RUN`** is every HTTP request: method, status, the statement that made it, size, time,
 and whether it was live, recorded, replayed or a miss. URLs print with query values stripped;
 bodies stay in the recording file.
+
+**`coverage RUN [--file F]`** lists per file the statement lines that ran and the spans that did
+not (`not run: 3, 12-15`), plus lines that ran in part or raised. `--file` lists that file line by
+line with hits. It is the quick check for a branch the run never took.
 
 ## Tours of a large run
 
@@ -441,6 +565,23 @@ plus `debug: {active, paused, frontier}` and `others` on a live session.
 cap cut it, and `files: [{fileId, path, sha256}]`. Read `events` through the verbs, which is what they are
 for.
 
+## The browser page
+
+```
+pyokka web FILE [--port N] [--open] [--no-watch] [--python PATH]
+pyokka web ctl [--port N] state | step over | debug start | eval EXPR | ...
+```
+
+`pyokka web FILE` serves the Pyokka panel, a code pane and the Time Machine in a browser tab
+(http://127.0.0.1:4777/ by default; `--port N` or `PYOKKA_PORT` moves it) and reruns the file when
+it changes on disk. It runs the bridge the extension ships under `node` (20 or newer) on PATH, else under
+the Node inside VS Code (its Electron binary with `ELECTRON_RUN_AS_NODE=1`). `pyokka web ctl`
+drives the open tab: `state` first, then the moves, `say` for a narration bubble, `break LINE` and
+`debug start` for the page's own debugger, `scratchpad open` at a pause for an experiment with
+the pause's values in a separate `python -I`, `scratchpad say TEXT --line N` for a bubble in it;
+`pyokka web -h` lists every command. Exactly one tab may
+be open per page. docs/WEB.md is the full reference.
+
 ## Live only
 
 **`state --live`** is how you find out what exists. It never moves anything.
@@ -467,6 +608,76 @@ stores it in the saved run. Never automatic, and the result is a gloss, not an o
 
 **`cache [--clear]`** is the instrumented-library-file cache (`$PYOKKA_HOME/cache`).
 
+## Every command
+
+One synopsis per command. `--json`, `--live` and `--session NAME|PATH` are on every command
+that reads a run or a session and are left out below; `RUN` is a saved `run.json`, omitted with
+`--live`.
+
+```
+pyokka run FILE [--save RUN.JSON] ... -- ARGS          (Recording a run, above)
+pyokka story RUN [--file F | --scope NAME | --line F:L] [--limit LINES]
+pyokka walkthrough RUN [--file F] [--scope NAME] [--from N] [--to M] [--all]
+pyokka steps RUN [--from N] [--count K] [--line F:L]
+pyokka find RUN TEXT [--limit LIMIT]
+pyokka context RUN N [--line F:L] [--scope]
+pyokka step RUN N --into|--over|--out|--back|--back-over|--back-out|--to M [--count N] [--scope]
+pyokka values RUN --line F:L
+pyokka var RUN NAME [--file F] [--scope NAME] [--limit K]
+pyokka why RUN STEP [NAME] [--depth N]
+pyokka origin RUN STEP [EXPR] [--depth N]
+pyokka eval RUN EXPRESSION [--frame N]
+pyokka expand RUN VALUE_ID [--path SEGMENT]...
+pyokka release RUN
+pyokka state RUN
+pyokka graph RUN [--all] [--scope NAME] [--expand PKG]... [--no-statements] [--dot]
+pyokka exceptions RUN
+pyokka http RUN
+pyokka coverage RUN [--file F]
+pyokka diff BEFORE.json AFTER.json [--limit K] [--ignore NAME]...
+pyokka tour RUN [--goal NAME|FILE:LINE] [--budget TOKENS] [--prose PATH] [--out PATH]
+pyokka narrate RUN [--command CMD] [--dry-run]
+pyokka history RUN --out PATH [--at STEP|FILE:LINE]... [--var NAME]... [--why STEP NAME]...
+        [--pause] [--prose PATH] [--pad N] [--limit K] [--lang L] [--scope] [--append] [--value-chars N]
+pyokka watch --live
+pyokka shell --live
+pyokka debug FILE [--at FILE:LINE|NAME]... [--module M] [--cwd DIR] [--env K=V]... [--python PATH]
+        [--stop-on-entry] [--record | --record-from NAME|FILE:LINE] [--library-code] [--no-focus]
+        [--configuration NAME] [--test NAME] [--args ...]
+pyokka continue --live [--no-wait] [--until EXPR | --to FILE:LINE] [--no-start]
+pyokka pause --live [--no-wait]
+pyokka stop --live
+pyokka restart --live [--stop-on-entry] [--no-start]
+pyokka break --live [FILE:LINE...] [--when EXPR] [--at NAME|FILE:LINE]... [--remove FILE:LINE|NAME]...
+        [--list] [--on-exception off|uncaught|raised] [--no-start]
+pyokka watches --live [--add EXPR]... [--break-when change|true] [--remove ID]... [--list]
+pyokka locals --live [--frame N] [--scope local|global|all] [--names-only] [--name NAME]...
+pyokka exec --live SOURCE [--frame N]
+pyokka record --live
+pyokka mcp
+pyokka cache [--clear] [--json]
+pyokka serve
+pyokka _child --port PORT --token TOKEN
+pyokka _keep --socket SOCKET [--idle SECONDS]
+pyokka _imports FILE [--root DIR]
+pyokka _scratch
+```
+
+`debug --configuration NAME` takes program or module, args, cwd, env, envFile, python,
+stopOnEntry and `justMyCode: false` (as `--library-code`) from a `debugpy` or `python`
+configuration of the nearest `.vscode/launch.json` above FILE, `--cwd` or the current directory;
+flags given on the command line win, and the answer's first line names the keys it did not apply.
+`debug --test NAME` launches the test runner on FILE the way `run --test` does. `exec --frame N`
+runs the statement in frame N of the pause. `continue`, `restart` and `break` with no debug
+session start the last `pyokka debug` launch from this directory again; `--no-start` makes them
+fail instead.
+
+`cache` prints the instrumented-library-file cache's directory, entry count and size; `--clear`
+empties it. `serve` is the NDJSON runner the extension and `run --save` talk to, `_child` the
+process a runner spawns for one run when it does not fork, and `_keep` the process `run --keep`
+leaves behind (it exits after `--idle` seconds with no connection, or on `release`); the CLI starts these three itself. `_imports` and `_scratch` are the browser page's: the project files
+a file imports, and the Scratchpad's prepare, seed, format and run, one JSON request on stdin.
+
 ## Environment
 
 - `PYOKKA_HOME` is the directory for Pyokka's per-user state, `~/.pyokka` when unset or empty
@@ -481,3 +692,7 @@ stores it in the saved run. Never automatic, and the result is a gloss, not an o
   `PYOKKA_HOME`.
 - `PYOKKA_CODE` is the `code` binary `pyokka debug` opens the window with, and
   `PYOKKA_NO_FOCUS=1` leaves window focus alone.
+- `PYOKKA_SPAWN=1` makes the runner start each run in a fresh interpreter, and `PYOKKA_FORK=1`
+  makes it fork on macOS too (it forks on Linux and spawns on macOS by default).
+- `PYOKKA_KEEP_DIR` is where `run --keep` puts the kept runner's socket (default: the temp
+  directory).

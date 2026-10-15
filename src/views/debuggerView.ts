@@ -307,6 +307,7 @@ function reasonText(ds: DebugSession, _frame: number): string {
       return s;
     }
     case 'watch':
+      if (p.watch?.error) return `watch ${p.watch.exp} failed: ${redact(p.watch.error)}`;
       return p.watch ? `watch ${p.watch.exp} → ${redact(p.watch.text)}` : 'watch';
     case 'pause':
       return 'paused on request';

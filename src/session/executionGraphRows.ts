@@ -57,8 +57,9 @@ export function notRun(builder: MomentBuilder, dec: { loop: boolean; fileId: num
   const entry = builder.fileMapOf(dec.fileId).decisions.get(dec.line);
   if (!entry) return [];
   if (entry.kind === 'match') return entry.arms.filter((a) => !dec.takens.has(`case ${a.text}`)).map((a) => a.body[0]);
-  const t = dec.takens.has('True');
-  const f = dec.takens.has('False');
+  // Python records `True`/`False`, a JS/TS decision `true`/`false`
+  const t = dec.takens.has('True') || dec.takens.has('true');
+  const f = dec.takens.has('False') || dec.takens.has('false');
   if (t && f) return [];
   if (f) return entry.body[0] ? [entry.body[0]] : [];
   if (t) return entry.orelse[0] ? [entry.orelse[0]] : [];

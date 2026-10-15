@@ -1,6 +1,7 @@
 /**
  * Pyokka extension host entry: activation, wiring, every command.
  */
+import { lastInvestigation, registerInvestigation } from './features/investigation';
 import * as vscode from 'vscode';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -51,6 +52,7 @@ import { installCliShim } from './features/cliShim';
 import { GraphProvider } from './features/executionGraph';
 import { buildExceptionReport } from './session/exceptionReport';
 import { walkthroughInputs } from './agent/bridgeSupport';
+import { RUNNABLE_SELECTOR } from './runtime/language';
 import { editSessionSettings, selectAction, type QuickPickDeps } from './features/quickPicks';
 import { invalidateVersionCache, onDidChangePythonEnvironment, selectInterpreterCommand } from './runtime/interpreter';
 import { setContext, resetContextCache } from './util/context';
@@ -61,6 +63,12 @@ declare const __PYOKKA_BUILD__: string;
 export const PYOKKA_BUILD: string = typeof __PYOKKA_BUILD__ === 'string' ? __PYOKKA_BUILD__ : 'unknown';
 
 let manager: SessionManager | undefined;
+
+/** The runtime the sessions start, and their working directory: `dist/python` (holding `pyokka_runtime`), else the checkout's `python/`. */
+function runtimeDirOf(context: vscode.ExtensionContext): string {
+  const distPython = context.asAbsolutePath('dist/python');
+  return fs.existsSync(path.join(distPython, 'pyokka_runtime')) ? distPython : context.asAbsolutePath('python');
+}
 let bridge: AgentBridge | undefined;
 
 export type { PyokkaApi } from './api';
@@ -68,8 +76,7 @@ export type { PyokkaApi } from './api';
 export function activate(context: vscode.ExtensionContext): PyokkaApi {
   resetContextCache();
   resetDebugContext();
-  const distPython = context.asAbsolutePath('dist/python');
-  const runtimeDir = fs.existsSync(path.join(distPython, 'pyokka_runtime')) ? distPython : context.asAbsolutePath('python');
+  const runtimeDir = runtimeDirOf(context);
   log.info(`Pyokka activating (build ${PYOKKA_BUILD}); runtime dir ${runtimeDir}`);
 
   for (const [k, v] of Object.entries({
@@ -169,15 +176,16 @@ export function activate(context: vscode.ExtensionContext): PyokkaApi {
     tour,
     graphProvider,
     vscode.window.registerWebviewViewProvider(OUTPUT_VIEW_ID, panel, { webviewOptions: { retainContextWhenHidden: true } }),
-    vscode.languages.registerHoverProvider({ language: 'python' }, valuePeek),
+    vscode.languages.registerHoverProvider(RUNNABLE_SELECTOR, valuePeek),
     // the same hover on a Code Story row, through the row's source file and line
     vscode.languages.registerHoverProvider({ scheme: STORY_SCHEME }, new StoryHoverProvider(codeStory, valuePeek)),
     vscode.window.onDidChangeVisibleTextEditors(() => decorator.refreshAll()),
     onDidChangePythonEnvironment(() => {
       invalidateVersionCache();
-      if (mgr.all().length) {
+      const py = mgr.all();
+      if (py.length) {
         void vscode.window.showInformationMessage('Pyokka: the Python interpreter changed. Restart running sessions to use it?', 'Restart').then((pick) => {
-          if (pick) for (const s of mgr.all()) void mgr.start(s.document, { restart: true, runMode: s.runMode, autoLog: s.autoLog });
+          if (pick) for (const s of py) void mgr.start(s.document, { restart: true, runMode: s.runMode, autoLog: s.autoLog });
         });
       }
     }),
@@ -256,6 +264,7 @@ export function activate(context: vscode.ExtensionContext): PyokkaApi {
   };
   const activeDoc = (): vscode.TextDocument | undefined => vscode.window.activeTextEditor?.document;
   const active = (): Session | undefined => mgr.active();
+  registerInvestigation(context, runtimeDir, active);
   const requireSession = (): Session | undefined => {
     const s = active();
     if (!s) void vscode.window.showInformationMessage('Pyokka: no active session. Start one with "Pyokka: Start on Current File" (Cmd/Ctrl+K Q).');
@@ -316,14 +325,17 @@ export function activate(context: vscode.ExtensionContext): PyokkaApi {
   reg('pyokka.selectWorkspaceFolder', () => mgr.selectWorkspaceFolder());
   reg('pyokka.showLogs', () => log.show());
   reg('pyokka.clearLibraryCache', () => clearLibraryCacheCommand(mgr));
+  const offerRestart = async (exe: string): Promise<void> => {
+    const affected = mgr.all();
+    if (!affected.length) return;
+    const pick = await vscode.window.showInformationMessage(`Pyokka will use ${exe}. Restart running sessions?`, 'Restart');
+    if (pick) for (const s of affected) void mgr.start(s.document, { restart: true, runMode: s.runMode, autoLog: s.autoLog });
+  };
   reg('pyokka.selectInterpreter', async () => {
     const exe = await selectInterpreterCommand();
     if (!exe) return;
     invalidateVersionCache();
-    if (mgr.all().length) {
-      const pick = await vscode.window.showInformationMessage(`Pyokka will use ${exe}. Restart running sessions?`, 'Restart');
-      if (pick) for (const s of mgr.all()) void mgr.start(s.document, { restart: true, runMode: s.runMode, autoLog: s.autoLog });
-    }
+    await offerRestart(exe);
   });
 
   /* ---------- panel ---------- */
@@ -554,6 +566,7 @@ export function activate(context: vscode.ExtensionContext): PyokkaApi {
   startView.maybeShowOnFirstActivation();
   log.info('Pyokka activated');
   return {
+    lastInvestigation,
     manager: mgr,
     timeMachine: timeMachine,
     panel,

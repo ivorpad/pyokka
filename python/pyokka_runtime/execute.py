@@ -173,7 +173,10 @@ class _Loader(importlib.machinery.SourceFileLoader):
         source = importlib.util.decode_source(self.get_data(self.path))
         info = self.execution.instrument_source(source, self.path, module_scope=True, library=not self.execution.is_project_file(self.path))
         if info.code is None:
-            raise SyntaxError(info.error or "cannot compile %s" % self.path)
+            # the compiler's own error, so the file and line travel with it (a bare SyntaxError(text)
+            # named neither, and the stack started in this loader)
+            compile(source, self.path, "exec", dont_inherit=True)
+            raise SyntaxError(info.error or "cannot compile %s" % self.path, (self.path, info.error_line or 1, 0, None))
         return info.code
 
     def set_data(self, path: str, data: bytes, *, _mode: int = 0o666) -> None:  # never write bytecode
@@ -353,13 +356,15 @@ class Execution:
         for w in info.warnings:
             self.emit({"type": "log", "logId": "w-%d-%d" % (file_id, len(w)), "kind": "system", "fileId": file_id, "rid": base, "hit": 1, "step": 0, "text": w, "runtimeKey": "warn"})
         if info.error:
+            error_type = "SyntaxError" if "SyntaxError" in info.error else "InstrumentationError"
+            name, _, text = info.error.partition(": ")
             self.emit({
                 "type": "error",
                 "fileId": file_id,
                 "rid": base,
                 "step": self.tracer.cur_step if self.tracer else 0,
-                "message": info.error,
-                "errorType": "SyntaxError" if "SyntaxError" in info.error else "InstrumentationError",
+                "message": text if name == error_type and text else info.error,  # the type travels in errorType, once
+                "errorType": error_type,
                 "stack": [{"fileId": file_id, "line": info.error_line or 1, "col": 0, "function": "<module>", "path": path}],
                 "handled": False,
             })
@@ -490,6 +495,7 @@ class Execution:
                     if code_obj is None:
                         exit_code = 1
                 if code_obj is not None:
+                    tracer.startup_globals = frozenset(module.__dict__)  # `locals --scope global` lists only what the program adds
                     exec(code_obj, module.__dict__)  # noqa: S102 - this is the point
             except SystemExit as exc:
                 code = exc.code

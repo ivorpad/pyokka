@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { SHIM_MARKER, findLauncher, onPath, profileFor, shimScript, shimState, syncShim } from '../../src/features/cliShim';
+import { RETIRED_SHIMS, SHIM_MARKER, SHIM_NAME, dropRetiredShims, findLauncher, onPath, profileFor, shimScript, shimState, syncShim } from '../../src/features/cliShim';
 
 // the module imports vscode for activation; the helpers under test never touch it
 vi.mock('vscode', () => ({}));
@@ -28,6 +28,31 @@ describe('shimScript', () => {
   });
   it('leaves PYOKKA_CODE out when the editor has no launcher', () => {
     expect(shimScript({ runtimeDir: '/r', python: 'python3', version: '1' })).not.toContain('PYOKKA_CODE');
+  });
+});
+
+describe('the commands Pyokka owns in ~/.local/bin', () => {
+  it('writes pyokka and removes only its own retired pyokka-js', () => {
+    expect(SHIM_NAME).toBe('pyokka');
+    expect(RETIRED_SHIMS).toEqual(['pyokka-js']);
+    const bin = tmpdir();
+    const old = `#!/bin/sh\n${SHIM_MARKER} 0.2.0. It is rewritten on every activation; edit nothing here.\nexec node old.mjs "$@"\n`;
+    fs.writeFileSync(path.join(bin, 'pyokka-js'), old, { mode: 0o755 });
+    expect(dropRetiredShims(bin)).toEqual([path.join(bin, 'pyokka-js')]);
+    expect(fs.existsSync(path.join(bin, 'pyokka-js'))).toBe(false);
+    expect(dropRetiredShims(bin)).toEqual([]);
+  });
+  it('never deletes or rewrites tracelight, which the Tracelight extension owns, even one an older Pyokka wrote', () => {
+    const bin = tmpdir();
+    const legacy = `#!/bin/sh\n${SHIM_MARKER} 0.2.0. It is rewritten on every activation; edit nothing here.\nexec node old.mjs "$@"\n`;
+    const current = '#!/bin/sh\n# tracelight-shim: written by the Tracelight extension 0.3.0\nexec node tracelight.mjs "$@"\n';
+    for (const text of [legacy, current]) {
+      fs.writeFileSync(path.join(bin, 'tracelight'), text, { mode: 0o755 });
+      fs.writeFileSync(path.join(bin, 'pyokka'), `#!/bin/sh\n${SHIM_MARKER} 1\n`, { mode: 0o755 });
+      dropRetiredShims(bin);
+      expect(syncShim(path.join(bin, SHIM_NAME), `#!/bin/sh\n${SHIM_MARKER} 2\n`, true)).toBe('updated');
+      expect(fs.readFileSync(path.join(bin, 'tracelight'), 'utf8')).toBe(text);
+    }
   });
 });
 

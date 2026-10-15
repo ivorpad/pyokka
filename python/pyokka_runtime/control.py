@@ -147,7 +147,12 @@ def debug_action(req: dict, frame: Any, debugger: Any, emit: Callable[[dict], No
         if frame is None:
             error("the program is running; pause it first")
         else:
-            reply = {"type": "debug.result", "id": rid, "locals": debugger.locals(_frame_for(req, frame, debugger))}
+            scope = req.get("scope")
+            if scope is not None and scope not in ("local", "global", "all"):
+                error("scope must be local, global or all, got %r" % scope)
+                return None
+            names = req.get("names")
+            reply = {"type": "debug.result", "id": rid, "locals": debugger.locals(_frame_for(req, frame, debugger), scope=scope, names=[str(n) for n in names] if isinstance(names, list) else None, names_only=req.get("namesOnly") is True)}
             if debugger.modified:
                 reply["modified"] = True  # an `exec` has written in this run: these are not only the program's values
             emit(reply)

@@ -10,10 +10,10 @@ import type { DebugSession } from '../debug/debugSession';
 import { AT_UNREADABLE, finishedSlice, readOutput, stopSlice } from '../debug/debugSessionState';
 import { execReply, type StopRunner } from '../debug/debugExec';
 import { functionBreakpoint, mergeBreakpoints, type BreakpointSpec, type LocalVar, type PausedInfo } from '../session/debugState';
-import { currentFunctionBreakpoints, currentSourceBreakpoints } from '../features/debugBreakpoints';
+import { clearEditorBreakpoints, currentFunctionBreakpoints, currentLogpoints, currentSourceBreakpoints } from '../features/debugBreakpoints';
 import { redact } from '../util/redact';
 import { BridgeError, int, type Request } from './bridgeSupport';
-import { applyWatchRequest, breakpointReply, displayWatchItems, exceptionMode, localsReply, parseAtItem, parseBreakItems, pausedReply, resolveFile, type BreakItem, type PathContext } from './bridgeDebugShapes';
+import { applyWatchRequest, breakpointReply, displayWatchItems, exceptionMode, localsReply, logpointReply, parseAtItem, parseBreakItems, pausedReply, resolveFile, type BreakItem, type PathContext } from './bridgeDebugShapes';
 
 /** A stop reply waits for the program: as long as it runs, within reason. */
 export const STOP_TIMEOUT_MS = 600_000;
@@ -57,7 +57,7 @@ export function waitForStop(ds: DebugSession, timeoutMs = STOP_TIMEOUT_MS): Prom
 
 /** A stop as the reply carries it: the slice of 4.3, or `{finished}` when the program ended. */
 export function stopOrFinished(ds: DebugSession, result: PausedInfo | 'finished', opts: { scope?: boolean; valueBag?: boolean }): Promise<Record<string, unknown>> {
-  return result === 'finished' ? Promise.resolve(finishedSlice(ds.lastFinished)) : stopReply(ds, result, opts);
+  return result === 'finished' ? Promise.resolve(finishedSlice(ds.lastFinished, ds.errors)) : stopReply(ds, result, opts);
 }
 
 /**
@@ -149,11 +149,15 @@ export async function breakpoints(ds: DebugSession, req: Request): Promise<Recor
   const ctx = context(ds);
   const mode = exceptionMode(req.exceptions);
   if (mode) await ds.setDebugExceptions(mode);
+  if (req.clear === true) {
+    clearEditorBreakpoints();
+    await ds.setDebugBreakpoints([]);
+  }
   await applyAt(ctx, req, ds.debug.breakpoints, (specs) => ds.setDebugBreakpoints(specs));
   await removeFunctionBreakpoints(req, ds.debug.breakpoints, (specs) => ds.setDebugBreakpoints(specs));
   await applyGutter(ctx, req);
   const echo = await ds.syncVsCodeBreakpoints()?.catch(() => undefined);
-  return { breakpoints: breakpointReply(ctx, mergeBreakpoints(currentSourceBreakpoints(), currentFunctionBreakpoints(), ds.debug.breakpoints), echo ?? (ds.debug.paused?.breakpoint ? [ds.debug.paused.breakpoint] : undefined)), exceptions: ds.debug.exceptions };
+  return { breakpoints: [...breakpointReply(ctx, mergeBreakpoints(currentSourceBreakpoints(), currentFunctionBreakpoints(), ds.debug.breakpoints), echo ?? (ds.debug.paused?.breakpoint ? [ds.debug.paused.breakpoint] : undefined)), ...logpointReply(ctx, currentLogpoints())], exceptions: ds.debug.exceptions };
 }
 
 /**
@@ -204,20 +208,20 @@ const BREAKPOINT_SETTLE_MS = 1_500;
 export async function applyGutter(ctx: PathContext, req: Request): Promise<void> {
   const source = (): vscode.SourceBreakpoint[] => vscode.debug.breakpoints.filter((b): b is vscode.SourceBreakpoint => b instanceof vscode.SourceBreakpoint);
   const matches = (b: vscode.SourceBreakpoint, it: BreakItem, withCondition: boolean): boolean =>
-    b.location.uri.scheme === 'file' && b.location.uri.fsPath === it.path && b.location.range.start.line === it.line - 1 && (!withCondition || (b.condition ?? '') === (it.condition ?? ''));
+    b.location.uri.scheme === 'file' && b.location.uri.fsPath === it.path && b.location.range.start.line === it.line - 1 && (!withCondition || ((b.condition ?? '') === (it.condition ?? '') && (b.logMessage ?? '') === (it.logMessage ?? '')));
   const toAdd: BreakItem[] = [];
   const toRemove: vscode.SourceBreakpoint[] = [];
   if (Array.isArray(req.set)) {
     toRemove.push(...source());
     toAdd.push(...parseBreakItems(ctx, req.set));
   }
-  if (Array.isArray(req.add)) for (const it of parseBreakItems(ctx, req.add)) if (!source().some((b) => matches(b, it, true)) && !toAdd.some((a) => a.path === it.path && a.line === it.line && (a.condition ?? '') === (it.condition ?? ''))) toAdd.push(it);
+  if (Array.isArray(req.add)) for (const it of parseBreakItems(ctx, req.add)) if (!source().some((b) => matches(b, it, true)) && !toAdd.some((a) => a.path === it.path && a.line === it.line && (a.condition ?? '') === (it.condition ?? '') && (a.logMessage ?? '') === (it.logMessage ?? ''))) toAdd.push(it);
   if (Array.isArray(req.remove)) {
     const items = parseBreakItems(ctx, req.remove);
     for (const b of source()) if (items.some((it) => matches(b, it, false)) && !toRemove.includes(b)) toRemove.push(b);
   }
   if (toRemove.length) vscode.debug.removeBreakpoints(toRemove);
-  if (toAdd.length) vscode.debug.addBreakpoints(toAdd.map((it) => new vscode.SourceBreakpoint(new vscode.Location(vscode.Uri.file(it.path), new vscode.Position(it.line - 1, 0)), true, it.condition)));
+  if (toAdd.length) vscode.debug.addBreakpoints(toAdd.map((it) => new vscode.SourceBreakpoint(new vscode.Location(vscode.Uri.file(it.path), new vscode.Position(it.line - 1, 0)), true, it.condition, undefined, it.logMessage)));
   if (!toRemove.length && !toAdd.length) return;
   const settled = (): boolean => toAdd.every((it) => source().some((b) => matches(b, it, true))) && toRemove.every((b) => !source().includes(b));
   const started = Date.now();

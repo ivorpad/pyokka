@@ -95,7 +95,7 @@ export const TOOL_SPEC = {
     '"explain" and "bugs" pick the view; "step" moves the Time Machine to `step`; "origin" shows and returns where the bad value of the bug on the current step came from (`pyokka origin`), newest step first, with the root to fix; "fix" writes a fix plan for that bug, aimed at the root, to .pyokka/findings and leaves the source file as it is.',
     'Applying the fix is the person\'s choice: point them to `/pk a` (apply) and `/pk u` (undo).',
     'At a `pyokka debug` pause without a recording the band shows the paused frame: "show" and "explain" work, "step", "bugs", "origin" and "fix" answer that they need a recording.',
-    'Pass `session` (a file name such as "invoices.py") when several VS Code sessions are live.',
+    'Pass `session` (a file name such as "invoices.py" or "invoices.ts") when several VS Code sessions are live.',
   ].join(' '),
   inputSchema: {
     type: 'object',

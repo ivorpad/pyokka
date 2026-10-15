@@ -17,6 +17,7 @@ from pathlib import Path
 import pytest
 
 from pyokka_runtime.agent.source import AgentError, SavedRun
+from pyokka_runtime.agent.tour.astinfo import FileInfo
 from pyokka_runtime.agent.tour.build import build_tour, stable_key
 from pyokka_runtime.agent.tour.model import TourRun
 from pyokka_runtime.agent.tour.text import render_tour
@@ -90,6 +91,17 @@ def test_pageindex_chapters_are_the_six_phases():
     assert [c["title"] for c in doc["chapters"]][1:5] == ["complexity", "merge", "expand", "generate_doc_description"]
     assert [c["llm"] for c in doc["chapters"]] == [0, 0, 0, 14, 1, 4]
     assert doc["run"]["http"] == 19 and doc["run"]["llm"] == 19
+
+
+def test_a_kept_copy_with_redacted_values_still_parses():
+    # the copy a run keeps of a file that is gone: the redactor's value (max_tokens=«redacted»), and
+    # the word it took from the next line after a name ending in "tokens:" (pageindex utils.py:966)
+    src = "def f(text, n):\n    if n < limit_tokens:\n        «redacted» text.strip()\n    call(max_tokens=«redacted»)\n    return text\n"
+    info = FileInfo(src.split("\n"))
+    assert info.tree is not None
+    assert sorted(info.statements) == [1, 2, 3, 4, 5]
+    assert info.defs == {"f"}
+    assert FileInfo(["def f(:"]).tree is None
 
 
 def test_pageindex_runtime_and_size():

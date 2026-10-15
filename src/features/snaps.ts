@@ -1,5 +1,6 @@
 /**
- * Snaps: `"""{{ … }}"""` fences discovered in Python files, per-file allow, output write-back.
+ * Snaps: `"""{{ … }}"""` fences discovered in Python files, per-file allow, output write-back
+ * (`#» ` lines under the fence).
  */
 import * as vscode from 'vscode';
 import type { Session } from '../session/session';
@@ -8,8 +9,13 @@ import { setContext } from '../util/context';
 import { setting } from '../config/settings';
 import { inlineTextFor } from '../session/valuesAsOf';
 
-import { findSnaps, fenceAt, OUTPUT_PREFIX, type SnapFence } from './snapFences';
-export { findSnaps, fenceAt, OUTPUT_PREFIX, type SnapFence } from './snapFences';
+import { findSnaps as findFences, fenceAt, insideFence, OUTPUT_PREFIX, type SnapFence } from './snapFences';
+import { isRunnable, RUNNABLE_SELECTOR } from '../runtime/language';
+export { fenceAt, OUTPUT_PREFIX, type SnapFence } from './snapFences';
+
+function findSnaps(doc: vscode.TextDocument): SnapFence[] {
+  return isRunnable(doc) ? findFences(doc.getText()) : [];
+}
 
 const ALLOWED_KEY = 'pyokka.snapsAllowed';
 const DISCOVERY_OFF_KEY = 'pyokka.snapsDiscoveryOff';
@@ -24,7 +30,7 @@ export class Snaps implements vscode.HoverProvider, vscode.Disposable {
     private readonly manager: SessionManager,
   ) {
     this.disposables.push(
-      vscode.languages.registerHoverProvider({ language: 'python' }, this),
+      vscode.languages.registerHoverProvider(RUNNABLE_SELECTOR, this),
       vscode.workspace.onDidChangeTextDocument((e) => this.onChange(e)),
       vscode.window.onDidChangeActiveTextEditor(() => this.updateContext()),
     );
@@ -68,7 +74,7 @@ export class Snaps implements vscode.HoverProvider, vscode.Disposable {
 
   provideHover(document: vscode.TextDocument, position: vscode.Position): vscode.Hover | undefined {
     if (!this.discoveryEnabled(document)) return undefined;
-    const fences = findSnaps(document.getText());
+    const fences = findSnaps(document);
     const f = fenceAt(fences, position.line);
     if (!f || position.line !== f.openLine) return undefined;
     if (this.isAllowed(document)) {
@@ -83,8 +89,8 @@ export class Snaps implements vscode.HoverProvider, vscode.Disposable {
 
   private onChange(e: vscode.TextDocumentChangeEvent): void {
     const doc = e.document;
-    if (doc.languageId !== 'python' || !this.discoveryEnabled(doc)) return;
-    const fences = findSnaps(doc.getText());
+    if (!isRunnable(doc) || !this.discoveryEnabled(doc)) return;
+    const fences = findSnaps(doc);
     // double Space inside a fence allows execution
     const change = e.contentChanges[0];
     if (change && change.text === ' ' && e.contentChanges.length === 1 && !this.isAllowed(doc)) {
@@ -132,7 +138,7 @@ export class Snaps implements vscode.HoverProvider, vscode.Disposable {
   private async onSessionStarted(session: Session): Promise<void> {
     const doc = session.document;
     if (!this.isAllowed(doc) || !this.discoveryEnabled(doc)) return;
-    const fences = findSnaps(doc.getText());
+    const fences = findSnaps(doc);
     this.fenceCounts.set(doc.uri.toString(), fences.length);
     if (!fences.length) return;
     if (setting<boolean>('snapsAutoRunConfirmOnOpen', true, doc.uri)) {
@@ -167,8 +173,9 @@ export class Snaps implements vscode.HoverProvider, vscode.Disposable {
   }
 
   private outputBlock(doc: vscode.TextDocument, fence: SnapFence): vscode.Range {
+    const prefix = OUTPUT_PREFIX.trim();
     let end = fence.closeLine + 1;
-    while (end < doc.lineCount && doc.lineAt(end).text.trimStart().startsWith(OUTPUT_PREFIX.trim())) end++;
+    while (end < doc.lineCount && doc.lineAt(end).text.trimStart().startsWith(prefix)) end++;
     return new vscode.Range(fence.closeLine + 1, 0, end, 0);
   }
 
@@ -176,7 +183,7 @@ export class Snaps implements vscode.HoverProvider, vscode.Disposable {
     const editor = vscode.window.activeTextEditor;
     if (!editor) return;
     const s = this.manager.get(editor.document);
-    const fences = findSnaps(editor.document.getText());
+    const fences = findSnaps(editor.document);
     const fence = fenceAt(fences, editor.selection.active.line) ?? fences[0];
     if (!fence) {
       void vscode.window.showInformationMessage('Pyokka: no snap fence at the cursor.');
@@ -190,7 +197,7 @@ export class Snaps implements vscode.HoverProvider, vscode.Disposable {
         const loc = s.locate(e.rid);
         if (!loc || loc.fileId !== fileId) continue;
         const line0 = loc.range[0] - 1;
-        if (line0 <= fence.openLine || line0 >= fence.closeLine) continue;
+        if (!insideFence(fence, line0)) continue;
         const list = byRid.get(e.rid) ?? [];
         list.push(e);
         byRid.set(e.rid, list);
@@ -199,12 +206,13 @@ export class Snaps implements vscode.HoverProvider, vscode.Disposable {
       for (const [, logs] of ordered) lines.push(inlineTextFor(logs).text);
       for (const err of s.state.errors) {
         const loc = s.locate(err.rid);
-        if (loc && loc.fileId === fileId && loc.range[0] - 1 > fence.openLine && loc.range[0] - 1 < fence.closeLine) lines.push(`${err.errorType}: ${err.message}`);
+        if (loc && loc.fileId === fileId && insideFence(fence, loc.range[0] - 1)) lines.push(`${err.errorType}: ${err.message}`);
       }
     }
     if (!lines.length) lines.push('(no output)');
     const indent = /^\s*/.exec(editor.document.lineAt(fence.closeLine).text)?.[0] ?? '';
-    const text = lines.map((l) => `${indent}${OUTPUT_PREFIX}${l}`).join('\n') + '\n';
+    const prefix = OUTPUT_PREFIX;
+    const text = lines.map((l) => `${indent}${prefix}${l}`).join('\n') + '\n';
     const block = this.outputBlock(editor.document, fence);
     await editor.edit((b) => b.replace(block, text));
   }
@@ -212,7 +220,7 @@ export class Snaps implements vscode.HoverProvider, vscode.Disposable {
   async deleteOutput(): Promise<void> {
     const editor = vscode.window.activeTextEditor;
     if (!editor) return;
-    const fences = findSnaps(editor.document.getText());
+    const fences = findSnaps(editor.document);
     const fence = fenceAt(fences, editor.selection.active.line) ?? fences.find((f) => this.outputBlock(editor.document, f).end.line > f.closeLine + 1);
     if (!fence) return;
     const block = this.outputBlock(editor.document, fence);

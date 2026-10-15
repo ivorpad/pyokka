@@ -820,6 +820,10 @@ overall: run the suites on a Windows machine first.
 
 ## 38. MCP server mirroring the CLI
 
+**Done (2026-10-10)**: `pyokka mcp`, six tools then (18 by 0.4.0), `python/tests/test_mcp.py`,
+checked with Claude Code as the client. Left: the extension registering it through
+`vscode.lm.registerMcpServerDefinitionProvider`.
+
 **Design.** Once the CLI has shown which commands agents use, a stdio MCP server with
 those (five, not twenty), stdlib JSON-RPC, registered by the extension through
 `vscode.lm.registerMcpServerDefinitionProvider`; the tool descriptions come from the

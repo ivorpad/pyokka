@@ -165,10 +165,10 @@ Lines that ran in other functions have nothing, because nothing kept them; that 
 pyokka continue --live [--no-wait | --until EXPR | --to FILE:LINE]
 pyokka step --live --into|--over|--out [--count N]
 pyokka pause --live [--no-wait]
-pyokka locals --live [--frame N]
+pyokka locals --live [--frame N] [--scope local|global|all] [--names-only] [--name NAME]...
 pyokka eval --live EXPR [--frame N]
-pyokka break --live [FILE:LINE ...] [--when EXPR] [--at NAME] [--remove F:L] [--list]
-                    [--on-exception off|uncaught|raised]
+pyokka break --live [FILE:LINE ...] [--when EXPR] [--log-message TEXT] [--at NAME] [--remove F:L]
+                    [--clear] [--list] [--on-exception off|uncaught|raised]
 pyokka watches --live [--add EXPR [--break-when change|true]] [--remove ID] [--list]
 pyokka stop --live | pyokka restart --live [--stop-on-entry]
 pyokka record --live
@@ -176,6 +176,13 @@ pyokka record --live
 
 `--frame N` sends `locals`, `eval` and `exec` to a caller frame; the stop's `stack:` numbers
 them, innermost 0.
+
+`locals` lists the frame's variables, a closure's free variables included. `--scope local` keeps
+the function's own names (parameters and locals), `--scope global` lists the module-level values
+the program bound (functions, classes, modules and the names the module had before it ran are
+left out), `--scope all` is the frame's variables plus those globals. `--names-only` prints one
+`name: type` per line without rendering any value, the cheap first look at a frame with large
+values; `--name NAME` (repeatable) prints only those.
 
 `eval --live` reads without side effects: names, attributes, subscripts, operators and pure
 calls (`len`, `sorted`, `isinstance`, non-mutating methods of `str`, `dict`, `list`, `tuple`,
@@ -186,6 +193,16 @@ A `def` line as a breakpoint pauses at every call of the function. `break --live
 pauses only when the expression is true there. `watches --live --add EXPR --break-when true`
 pauses at the first statement where an expression turns true, before that statement runs, which
 is how you find where a value became `None` without knowing where to look.
+
+Conditions, break-when watches and `--until` run under the same rule as `eval`: names,
+attributes, subscripts, operators and pure calls (`len`, `sorted`, `d.get`). Write them as
+reads; `lst.append(1)` is refused and the stop says so (`condition failed: ValueError: cannot call
+lst.append here`). A watch that fails to evaluate stops once with `watch EXP failed: ERROR`; fix
+or remove it with `watches --live --remove ID`.
+
+`break --live FILE:LINE --log-message TEXT` makes that line a logpoint: it shows in the
+Breakpoints view and in the listing and never pauses the debugger. `break --live --clear` removes
+every breakpoint and logpoint of the session and the editor.
 
 `break --live --on-exception raised` pauses at every raise in the program's own code, the ones a
 `try` swallows included; `uncaught` (the default) only where nobody caught it; `off` never. When

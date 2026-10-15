@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import dataclasses
 import enum
+import inspect
 import itertools
 import math
 import types
@@ -70,8 +71,10 @@ class Serializer:
         expression_root: str | None = None,
         expand_tree: dict | None = None,
         id_prefix: str | None = None,
+        function_source: bool = False,
     ) -> None:
         self.limits = limits
+        self.function_source = function_source
         self.root_key = root_key
         self.hit = hit
         self.registry = registry
@@ -148,7 +151,10 @@ class Serializer:
             return self._leaf("module", getattr(obj, "__name__", "<module>"), path, expr)
         tname = type_name(obj)
         if tname == "function":
-            return self._leaf("function", _function_repr(obj), path, expr)
+            node = self._leaf("function", _function_repr(obj), path, expr)
+            if self.function_source:
+                node.update(function_source(obj))
+            return node
         if isinstance(obj, _LEAF_TYPES) or isinstance(obj, (int, float, complex, str)):
             # int/str subclasses land here too: show as their class with a repr value.
             return self._leaf(tname, short_repr(obj, self.limits.string_length), path, expr)
@@ -507,8 +513,9 @@ def serialize(
     expression_root: str | None = None,
     query_path: list[str] | None = None,
     id_prefix: str | None = None,
+    function_source: bool = False,
 ) -> dict:
-    """Serialize ``obj`` into a protocol value node."""
+    """Serialize ``obj`` into a protocol value node; ``function_source`` adds a function's source (``function_source()``)."""
     ser = Serializer(
         limits,
         root_key=root_key,
@@ -518,5 +525,31 @@ def serialize(
         expression_root=expression_root,
         expand_tree=expand_tree,
         id_prefix=id_prefix,
+        function_source=function_source,
     )
     return ser.root(obj, query_path, depth)
+
+
+FUNCTION_SOURCE_MAX = 2000
+
+
+def function_source(fn: Any) -> dict:
+    """``{functionSource, functionSourceCapped?, functionLocation}`` of a Python function, from ``inspect.getsource``.
+
+    The source is scrubbed of secret values and cut at ``FUNCTION_SOURCE_MAX`` characters.
+    Nothing when there is no source file (a builtin, ``exec``'d code, a REPL function). It reads
+    the file (through ``linecache``), so only the debugger's variables ask for it, not each step.
+    """
+    code = getattr(fn, "__code__", None)
+    if code is None:
+        return {}
+    try:
+        text = inspect.getsource(fn)
+    except (OSError, TypeError):
+        return {}
+    text = secrets.current.scrub(text)
+    out: dict[str, Any] = {"functionSource": text[:FUNCTION_SOURCE_MAX]}
+    if len(text) > FUNCTION_SOURCE_MAX:
+        out["functionSourceCapped"] = True
+    out["functionLocation"] = {"path": code.co_filename, "line": code.co_firstlineno}
+    return out

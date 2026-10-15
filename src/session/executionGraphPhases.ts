@@ -30,8 +30,19 @@ const LABEL_TARGETS_MAX = 3;
 
 type Member = StatementNode | DecisionNode;
 
+/** a `#` line, or a JS/TS `//`, `/* … *\/` or JSDoc continuation (`* …`) line */
 function isComment(line: string | undefined): boolean {
-  return line !== undefined && line.trim().startsWith('#');
+  if (line === undefined) return false;
+  const t = line.trim();
+  return t.startsWith('#') || t.startsWith('//') || t.startsWith('/*') || t === '*/' || t === '*' || t.startsWith('* ');
+}
+
+/** the comment's words: a `#` line as the Python builder strips it, a JS line without its `//`, `/**`, `*` or `*\/` (undefined when nothing is left) */
+function commentText(line: string): string | undefined {
+  const t = line.trim();
+  if (t.startsWith('#')) return t.replace(/^#+\s?/, '');
+  const words = t.replace(/^(?:\/\/+|\/\*+|\*\/|\*(?!\/))\s?/, '').replace(/\s*\*+\/$/, '').trim();
+  return words || undefined;
 }
 
 function isBlank(line: string | undefined): boolean {
@@ -48,13 +59,14 @@ function ellipsize(s: string, max: number): string {
   return s.length > max ? s.slice(0, max - 1) + '…' : s;
 }
 
-/** The comment block directly above `line` (1-based), joined with spaces and stripped of its `#`; '' when the line above is not a comment. */
+/** The comment block directly above `line` (1-based), joined with spaces and stripped of its markers; '' when the line above is not a comment. */
 export function commentAbove(source: readonly string[], line: number): string {
   const parts: string[] = [];
   for (let l = line - 1; l >= 1; l--) {
     const text = source[l - 1];
     if (!isComment(text)) break;
-    parts.unshift(text!.trim().replace(/^#+\s?/, ''));
+    const words = commentText(text!);
+    if (words !== undefined) parts.unshift(words);
   }
   return parts.join(' ').trim();
 }

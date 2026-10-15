@@ -75,7 +75,7 @@ const answer = (w: World, argv: readonly string[]) => {
   }
   if (verb === 'exceptions' && isLive) return typeof w.exceptions === 'string' ? done(w.exceptions, 2) : done(JSON.stringify(w.exceptions))
   if (verb === 'exceptions') return done(JSON.stringify({ total: w.totals.shift() ?? 0 }))
-  if (verb === 'python3') return done(argv[1]?.includes('/.pyokka/band-tmp/') ? w.printed.patched : w.printed.original)
+  if (verb === 'python3' || verb === 'node') return done(argv[1]?.includes('/.pyokka/band-tmp/') ? w.printed.patched : w.printed.original)
   return done('')
 }
 

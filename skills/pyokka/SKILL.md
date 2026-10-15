@@ -1,6 +1,6 @@
 ---
 name: pyokka
-description: See what Python code does with the `pyokka` CLI and the user's VS Code window, in one of three modes given as the first argument. `debug` pauses a running program at a function or line, steps it and reads the frame. `explain` walks a person through a run in their editor, one line per message. `show` investigates a recording or a pause and delivers a page where every value comes from a command: a tour of the whole run, or a code-history page around chosen steps. Use when asked to debug, step, break, pause, explain, walk through, or "show me" what a Python program did, why a value is what it is, or what a library did with an argument.
+description: 'See what Python code does with Pyokka''s MCP tools or its `pyokka` CLI and the user''s VS Code window, in one of three modes given as the first argument. `debug` pauses a running program at a function or line, steps it and reads the frame. `explain` walks a person through a run in their editor, one line per message. `show` investigates a recording or a pause and delivers a page where every value comes from a command: a tour of the whole run, or a code-history page around chosen steps. Use when asked to debug, step, break, pause, explain, walk through, or "show me" what a Python program did, why a value is what it is, or what a library did with an argument.'
 argument-hint: debug | explain | show [what to look at]
 disable-model-invocation: true
 ---
@@ -11,6 +11,11 @@ disable-model-invocation: true
 
 The first word after the skill name is the mode: `/pyokka debug create_design`,
 `$pyokka explain demo.py`. Load that mode's file and follow it; it says what to deliver.
+Read only that file up front. The job's first command and its `pyokka VERB --help` carry the
+flags (`pyokka debug FILE --at NAME` pauses a live program, `pyokka run FILE --save run.json`
+records one); open [references/pyokka-cli.md](references/pyokka-cli.md) or
+[references/live-debugger.md](references/live-debugger.md) when a command fails or its help
+leaves the question open.
 
 | mode | for | what you hand back | read |
 |---|---|---|---|
@@ -36,8 +41,61 @@ needs a real port, real input or a real API. `--record` does both at one pause. 
 without `--record` has no history at all, even after it finishes; `references/debug.md`, "History
 while debugging", says what to use instead.
 
-Every command takes `--json` for the raw shape; the text form is for you. The flags, JSON shapes
-and an example of each verb: [references/pyokka-cli.md](references/pyokka-cli.md).
+Every command takes `--json` for the raw shape; the text form is for you. `pyokka VERB --help`
+lists a verb's flags; [references/pyokka-cli.md](references/pyokka-cli.md) has the JSON shapes
+and an example of each verb, for when a command fails or the help does not say enough.
+
+## Use the MCP tools when they answer
+
+The same commands are MCP tools ([references/mcp.md](references/mcp.md) has every argument).
+Check once per session and take the first route that works:
+
+1. Tools named `pyokka_run`, `pyokka_debug` and so on are in your tool list: call them.
+2. `mcporter list pyokka --brief` prints eight signatures (about 1.8 KB): the server is
+   registered in mcporter. Call a tool with `mcporter call pyokka.TOOL key=value ...`, arrays as
+   JSON (`'at=["rrf"]'`), or the whole object as `--args '{...}'`. Before the first call to a
+   tool, `mcporter list pyokka.TOOL` prints its parameters; the listing without `--brief` is every
+   tool's docs at once, about 18 KB.
+3. Neither works: use the CLI, found as the next section says.
+
+`mcporter config add pyokka --command pyokka --arg mcp --scope home` registers it. The references
+write commands in CLI form. Each maps to one tool:
+
+| CLI | tool and arguments |
+|---|---|
+| `run FILE --save R` (`--mode`, `--cwd`, `--test`, `--auto-log`, ...) | `pyokka_run` `file`, `save`, `mode`, `cwd`, `test`, `auto_log`, ... |
+| `state`, `walkthrough`, `story`, `steps`, `find`, `graph`, `exceptions`, `http`, `tour`, `diff` | `pyokka_map` `action`, `run` |
+| `context R N`, `step R N --into` | `pyokka_step` `run`, `step`, `move: "into"` |
+| `var`, `why`, `origin`, `values`, `eval`, `expand`, `release` | `pyokka_value` `action`, `run`, `name`, `step` |
+| `coverage` | `pyokka_coverage` `run`, `file` |
+| `debug FILE --at NAME --args ...` (`--configuration`, `--test`) | `pyokka_debug` `action: "start"`, `file`, `at: [NAME]`, `args: [...]`, `configuration`, `test` |
+| `continue`, `pause`, `stop`, `restart`, `break`, `watches`, `locals`, `exec`, `record` with `--live` | `pyokka_debug` with that `action` |
+| `state --live` after the person steps in VS Code | `pyokka_debug` `action: "status"`, `wait_seconds` |
+| `history`, `narrate` | `pyokka_history`, `pyokka_narrate` |
+| `investigate R --value NAME`, `learn R --at N --reveal`, `pin R --out P`, `verify R --after R2 --expect N=V` | `pyokka_investigate`, `pyokka_learn`, `pyokka_pin`, `pyokka_verify` with the same flags as arguments |
+| no command: where a run stands, live pause apart from the Time Machine | `pyokka_session` `run` or `live: true` |
+| no command: the first or last step a value or a line happened | `pyokka_seek` `run`, `value` + `equals` or `file` + `line` |
+| no command: save and reopen named steps of a run, checked by its sha256 | `pyokka_save_investigation`, `pyokka_open_investigation` |
+| `web FILE`, `web ctl ...` | `pyokka_page` `action: "open"`, `file`, then any ctl command as `action` (`state`, `step`, `say`, `debug`, `wait_pause`, ...) |
+| `web ctl scratchpad open\|experiment\|save\|list\|load\|say ...` | `pyokka_scratchpad` `op`, then `code`, `inputs`, `mocks`, `title`, `id`, `version`, `text` |
+| `--live`, `--session NAME`, `--json` | `live: true`, `session`, `json: true` (`pyokka_debug` is always live) |
+
+What differs from the shell:
+
+- **Absolute paths.** The server resolves `file`, `run`, `save`, `out` and `cwd` against its own
+  working directory, the one its client started it in. Pass absolute paths.
+- **Timeouts.** `mcporter call` gives up after 60 seconds. Pass `--timeout MS` with
+  `pyokka_debug` `status` and a long `wait_seconds`, a `pyokka_run` whose `timeout_ms` is over
+  60000, and a cold `pyokka_debug` start that has to open VS Code.
+- **State lives outside the server.** Each `mcporter call` starts its own `pyokka mcp` process.
+  The debug session lives in VS Code, a kept runner in its own process and a recording in its
+  `run.json`, so the next call finds them.
+- **Hints name CLI commands.** An error comes back as the CLI's `error:` line and hint. Translate
+  the hint's command through the table.
+
+`watch`, `shell`, `cache`, `run` without `--save` (`--json`, `--instrumented`) and `serve` have no
+tool; use the CLI for them. To finish clean through tools: `pyokka_debug` `break` with `remove`,
+then `break` alone lists what is left, then `stop`; `pyokka_value` `release` for a kept runner.
 
 ## Before the first command: find the runtime and the editor
 
@@ -57,7 +115,7 @@ and fails as `No module named pyokka_runtime`. Look in this order:
    `ivor.pyokka-*`, take the highest version, and set `PYTHONPATH` to its `dist/python`.
 
 Verify before going on: `pyokka -h` (or `python -m pyokka_runtime -h`) must print the usage line
-with `debug` and `history` in it. If none of the three gives that, stop there and tell the user
+with `debug` and `history` in it, and ends with a first command per job (`start here:`). If none of the three gives that, stop there and tell the user
 which step failed.
 
 The debugger may also need the editor's launcher. A cold `pyokka debug` opens a URI through `code`
@@ -85,7 +143,7 @@ with the `--exclude` it names (or a higher `--max-steps`) before you read the ru
 on to the user when your answer depends on what came after the cap.
 
 **A debug session is made, not found.** In `debug` mode the first command is `pyokka debug FILE
---at NAME` (or `--module M`): it starts the session in the user's VS Code window and prints the
+--at NAME` (or `--module M`; through MCP, `pyokka_debug` with `action: "start"`, `file` and `at`): it starts the session in the user's VS Code window and prints the
 first stop. Make it your first command: nothing is running until it starts the session, so a
 `--live` command sent before it answers `no live session`. Every `--live` command after the first
 stop drives that session.
@@ -142,8 +200,14 @@ the same `--live` session your commands drive.
 - Applying a fix is the person's choice. Point them to `/pk a` to write the planned edit to the
   file (it records the run again) and `/pk u` to put the original back, and leave the source file
   as it is yourself.
+- `{"action": "explain"}` and `{"action": "bugs"}` pick the band's view, and
+  `{"action": "step", "step": N}` moves the Time Machine to step N.
 - Tell the person the keys once: `/pk n` next step, `/pk w` where from, `/pk f` plan a fix,
-  `/pk x` the bugs, and bare `/pk` for the rest.
+  `/pk x` the bugs, and bare `/pk` for the rest. The rest: `/pk b` back, `/pk i` into, `/pk o`
+  out, `/pk p` prose on or off, `/pk r` record again (or record from the pause); in the bugs view
+  `/pk j` and `/pk k` next and previous bug, `/pk g` go to its step, `/pk e` back to the
+  explanation, `/pk r` rescan; on a fix plan `/pk a` apply, `/pk u` undo, `/pk f` try again,
+  `/pk d` dismiss.
 - At a plain `pyokka debug FILE --at NAME` pause, show the band too. It reads the pause from the
   debugger: the place, the code, the frame's variables with their shape, the stack and the prose,
   marked `paused · no recording`. `/pk n`, `i` and `o` step the program. For history (back, bugs,
@@ -181,4 +245,13 @@ you added (`break --live --remove F:L` for a line, `--remove NAME` for one `--at
 confirm with `break --live --list`, then `stop --live` unless the user wants the pause kept, and
 check `state --live`. Removing needs a session to reach the window: once the program has exited,
 its breakpoints stay until the next launch. Breakpoints that were there before you belong to the
-user; leave them. If you were interrupted before this, say which of it is still undone.
+user; leave them. Release a kept runner with `pyokka release run.json`.
+
+Every process you started for the task is yours to end: the runner `run --keep` left (its
+`kept: pid N, socket S` line), a `pyokka mcp` server you spawned, a `watch --live` or `shell --live`
+left in the background, a server you launched yourself, under `pyokka debug` or not. Note each PID
+and port when it starts. When the task is done, stop them (`pyokka release` for a kept runner,
+`stop --live` for a debug run, `kill PID` for the rest) and confirm with `pgrep -fl pyokka` or the
+port, or ask the person whether to keep them running, naming each PID and port. Reuse a process
+you already started for a file instead of starting a second one. If you were interrupted before
+this, say which of it is still undone.

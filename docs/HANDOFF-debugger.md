@@ -165,7 +165,7 @@ Agents (3): `src/agent/bridgeDebug.ts` and the bridge cases, Python `agent/live.
 `commands.py`, `render.py`; `test/e2e/debug-live.test.js` drives the real CLI against a host;
 `docs/PROTOCOL.md` "Debugging over the bridge"; README and `skills/pyokka-agent/SKILL.md`.
 DAP (4): `src/debug/dapTypes.ts`, `dapTranslator.ts`, `dapAdapter.ts`, `contributes.debuggers`
-type `pyokka`; `test/unit/dapTranslator.test.ts`. QA cases DBG-01 to DBG-12 in `docs/QA.md`.
+type `pyokka`; `test/unit/dapTranslator.test.ts`.
 
 Completion for watch expressions (2026-09-14, night): `python/pyokka_runtime/complete.py`
 behind the `complete` request (control channel and runner; capability `complete`),

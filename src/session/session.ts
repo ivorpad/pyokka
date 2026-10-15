@@ -9,6 +9,7 @@ import { EventEmitter } from 'node:events';
 import type { Completions, CoverageEvent, ErrorEvent, HttpExchangeEvent, HttpMode, LocalsEvent, LogEvent, OutputEvent, Range4, RunEvent, RunFinishedEvent, RunMode as ProtocolRunMode, StatementBinding, TimeEvent, WatchEvent } from '../shared/protocol';
 import { decodeSteps } from '../shared/protocol';
 import { RunnerClient } from '../runtime/runnerClient';
+import { runtimeLanguage } from '../runtime/language';
 import type { Interpreter } from '../runtime/interpreter';
 import { FileTable, type RidLocation } from './fileTable';
 import { MarkerStore, type EditDelta, type SessionMarker } from './markers';
@@ -17,11 +18,12 @@ import { TraceModel } from '../timeMachine/traceModel';
 import { resolveSessionConfig, setting, type ResolvedSessionConfig } from '../config/settings';
 import { log } from '../util/log';
 import { freshNavState, type NavState, type RunMode, type SessionStatus, type WatchEntry } from './types';
+import { isDiskReload } from './diskReload';
 import { applyEditToDirtyLines } from './dirtyLines';
 import { PartialScopes } from './traceDelta';
 import { DebugController, type DebugStartOptions } from './debugController';
 import { appendOutput as appendToBuffer } from './outputBuffer';
-import type { BreakpointSpec, BreakWatchSpec, DebugBreakpointEcho, DebugState, ExceptionMode, LocalVar, PausedInfo, StepKind } from './debugState';
+import type { BreakpointSpec, BreakWatchSpec, DebugBreakpointEcho, DebugState, ExceptionMode, LocalVar, LocalsOptions, PausedInfo, StepKind } from './debugState';
 import type { ExecResult } from '../debug/debugExec';
 
 export interface RunState {
@@ -168,7 +170,7 @@ export class Session extends EventEmitter<SessionEvents> {
     this.key = opts.document.uri.toString();
     this.interpreter = opts.interpreter;
     this.workspaceRoot = opts.workspaceRoot;
-    this.displayName = path.basename(opts.document.fileName) + (opts.document.isUntitled && !opts.document.fileName.endsWith('.py') ? '.py' : '');
+    this.displayName = path.basename(opts.document.fileName) + (opts.document.isUntitled && !/\.py$/.test(opts.document.fileName) ? '.py' : '');
     this.filePath = opts.document.uri.scheme === 'file' ? opts.document.uri.fsPath : path.join(opts.workspaceRoot || os.tmpdir(), this.displayName);
     this.mode = opts.mode ?? 'normal';
     this.extraPythonPath = opts.extraPythonPath ?? [];
@@ -264,6 +266,12 @@ export class Session extends EventEmitter<SessionEvents> {
     this.traceContext = ctx;
   }
 
+  /** a run with worker threads: the runtime counts a watch window in the main thread's statements */
+  private withMainStep(ctx: { step: number; prefetch: number }): { step: number; prefetch: number; mainStep?: number } {
+    const main = this.state.trace?.mainStepOf(ctx.step);
+    return main === undefined ? ctx : { ...ctx, mainStep: main };
+  }
+
   /**
    * Only the Automatic run mode may execute the file without an explicit user action
    * (hover, watch, auto log, markers, logpoints). On Save / On Demand queue the request
@@ -289,7 +297,7 @@ export class Session extends EventEmitter<SessionEvents> {
   private projectFiles(): { path: string; content: string }[] {
     const out: { path: string; content: string }[] = [];
     for (const doc of vscode.workspace.textDocuments) {
-      if (doc === this.document || doc.languageId !== 'python' || doc.uri.scheme !== 'file' || !doc.isDirty) continue;
+      if (doc === this.document || runtimeLanguage(doc) !== runtimeLanguage(this.document) || doc.uri.scheme !== 'file' || !doc.isDirty) continue;
       out.push({ path: doc.uri.fsPath, content: doc.getText() });
     }
     return out;
@@ -312,6 +320,7 @@ export class Session extends EventEmitter<SessionEvents> {
     const mode = opts.mode ?? this.mode;
     this.config = resolveSessionConfig(this.document.uri, this.workspaceRoot, this.document.uri.scheme === 'file' ? path.dirname(this.document.uri.fsPath) : undefined);
     const env: Record<string, string> = { ...this.config.env };
+    // the per-file install folders go on PYTHONPATH
     if (this.extraPythonPath.length) env['PYTHONPATH'] = [...this.extraPythonPath, env['PYTHONPATH'] ?? process.env['PYTHONPATH'] ?? ''].filter(Boolean).join(path.delimiter);
     const debugExtras = this.debugCtl.requestExtras();
     const request = {
@@ -327,7 +336,7 @@ export class Session extends EventEmitter<SessionEvents> {
       markers: this.markers.forRun(),
       expressionsToEvaluate: {},
       watch: this.watches.map((w) => ({ id: w.id, exp: w.exp, range: w.range })),
-      traceContext: this.nav.active && this.watches.length ? this.traceContext : undefined,
+      traceContext: this.nav.active && this.watches.length && this.traceContext ? this.withMainStep(this.traceContext) : undefined,
       mode,
     };
     log.info(`[${this.displayName}] run ${runId} (${reason}, ${mode}, ${request.markers.length} markers, ${request.watch.length} watches${this.http === 'off' ? '' : `, http ${this.http}`})`);
@@ -553,7 +562,7 @@ export class Session extends EventEmitter<SessionEvents> {
     return this.debugCtl.setExceptions(mode);
   }
 
-  debugLocals(opts?: { frameId?: number }): Promise<LocalVar[]> {
+  debugLocals(opts?: LocalsOptions): Promise<LocalVar[]> {
     return this.debugCtl.locals(opts);
   }
 
@@ -581,7 +590,10 @@ export class Session extends EventEmitter<SessionEvents> {
     this.markers.applyEdits(deltas);
     for (const delta of deltas) this.dirtyLines = applyEditToDirtyLines(this.dirtyLines, delta);
     this.emit('stateChanged');
+    // VS Code reloads an external write as a content change on a clean document, with no
+    // onDidSaveTextDocument: for On Save that reload is the save
     if (this.runMode === 'auto') this.scheduleRun('edit');
+    else if (this.runMode === 'onSave' && isDiskReload(e.document)) this.scheduleRun('save', 0);
   }
 
   onDocumentSaved(): void {

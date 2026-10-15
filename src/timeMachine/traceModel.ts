@@ -43,6 +43,17 @@ export class TraceModel {
     for (const s of scopes) this.scopeById.set(s.scopeId, s);
   }
 
+  /**
+   * A trace with worker threads (scopes with `thread`): the main thread's statements before step
+   * `i`; undefined when every step is the main thread's.
+   */
+  mainStepOf(i: number): number | undefined {
+    if (!this.scopes.some((s) => s.thread !== undefined)) return undefined;
+    let n = 0;
+    for (let j = 0; j < i && j < this.count; j++) if (this.scopeById.get(this.scopeId(j))?.thread === undefined) n++;
+    return n;
+  }
+
   static empty(): TraceModel {
     return new TraceModel(new Int32Array(0), [], false, () => undefined);
   }
@@ -110,10 +121,57 @@ export class TraceModel {
     }
     return out;
   }
+  /**
+   * Steps by scope (built on the first move that needs it): each scope's steps in order, so over
+   * and out are a binary search per scope of the lineage, not a scan. A long call (a worker's
+   * message handler, a task with nothing left in its callers) is otherwise a scan across it.
+   */
+  private byScope: { start: Int32Array; steps: Int32Array } | null | undefined;
+  private scopeIndex(): { start: Int32Array; steps: Int32Array } | null {
+    if (this.byScope !== undefined) return this.byScope;
+    let max = -1;
+    for (let j = 0; j < this.count; j++) {
+      const sid = this.steps[j * 4 + 1]!;
+      if (sid < 0) return (this.byScope = null);
+      if (sid > max) max = sid;
+    }
+    if (max < 0 || max > this.count * 4 + 4096) return (this.byScope = null);
+    const start = new Int32Array(max + 2);
+    for (let j = 0; j < this.count; j++) start[this.steps[j * 4 + 1]! + 1]!++;
+    for (let k = 1; k < start.length; k++) start[k]! += start[k - 1]!;
+    const fill = start.slice(0, max + 1);
+    const steps = new Int32Array(this.count);
+    for (let j = 0; j < this.count; j++) steps[fill[this.steps[j * 4 + 1]!]!++] = j;
+    return (this.byScope = { start, steps });
+  }
   private nextIn(i: number, scopes: Set<number>, dir: 1 | -1): number {
     if (!this.valid(i) || scopes.size === 0) return -1;
-    for (let j = i + dir; j >= 0 && j < this.count; j += dir) if (scopes.has(this.scopeId(j))) return j;
-    return -1;
+    const idx = this.scopeIndex();
+    if (idx === null) {
+      for (let j = i + dir; j >= 0 && j < this.count; j += dir) if (scopes.has(this.scopeId(j))) return j;
+      return -1;
+    }
+    let best = -1;
+    for (const sid of scopes) {
+      if (sid < 0 || sid + 1 >= idx.start.length) continue;
+      let lo = idx.start[sid]!;
+      let hi = idx.start[sid + 1]!;
+      // the first of the scope's steps after i
+      while (lo < hi) {
+        const mid = (lo + hi) >> 1;
+        if (idx.steps[mid]! <= i) lo = mid + 1;
+        else hi = mid;
+      }
+      if (dir === 1) {
+        if (lo < idx.start[sid + 1]! && (best < 0 || idx.steps[lo]! < best)) best = idx.steps[lo]!;
+      } else {
+        // the last before i: below the first after i, skipping i itself
+        let k = lo - 1;
+        if (k >= idx.start[sid]! && idx.steps[k]! === i) k--;
+        if (k >= idx.start[sid]! && idx.steps[k]! > best) best = idx.steps[k]!;
+      }
+    }
+    return best;
   }
   stepOver(i: number): number {
     return this.nextIn(i, this.lineage(i, false), 1);

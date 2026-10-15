@@ -406,9 +406,11 @@ class LiveRun:
         """A stop reply: the slice of the frontier step plus ``paused``, or ``finished`` when the run ended."""
         return reply if isinstance(reply.get("finished"), dict) else self._slice(reply)
 
-    def breakpoints(self, *, add: list[dict] | None = None, remove: list[dict] | None = None, exceptions: str | None = None, at: str | None = None) -> dict:
-        """``at`` is a function name whose entry pauses; the runtime resolves it, not the host."""
+    def breakpoints(self, *, add: list[dict] | None = None, remove: list[dict] | None = None, exceptions: str | None = None, at: str | None = None, clear: bool = False) -> dict:
+        """``at`` is a function name whose entry pauses; the runtime resolves it, not the host. ``clear`` empties the list first."""
         req: dict[str, Any] = {"type": "break"}
+        if clear:
+            req["clear"] = True
         if add:
             req["add"] = list(add)
         if remove:
@@ -417,7 +419,7 @@ class LiveRun:
             req["exceptions"] = exceptions
         if at:
             req["at"] = at
-        if not add and not remove and not exceptions and not at:
+        if not add and not remove and not exceptions and not at and not clear:
             req["list"] = True
         return self.request(req)
 
@@ -431,17 +433,25 @@ class LiveRun:
             req["list"] = True
         return self.request(req)
 
-    def locals(self, *, value_bag: bool = False, frame: int | None = None) -> dict:
+    def locals(self, *, value_bag: bool = False, frame: int | None = None, scope: str | None = None, names_only: bool = False, names: list[str] | None = None) -> dict:
         req: dict[str, Any] = {"type": "locals"}
         if value_bag:
             req["valueBag"] = True
         if frame:
             req["frameId"] = frame
+        if scope:
+            req["scope"] = scope
+        if names_only:
+            req["namesOnly"] = True
+        if names:
+            req["names"] = list(names)
         return self.request(req)
 
-    def watch(self, on_event: Callable[[dict], None]) -> None:
-        """``watch`` once, then hand every streamed event over until the bridge closes or Ctrl-C."""
+    def watch(self, on_event: Callable[[dict], None], on_watching: Callable[[], None] | None = None) -> None:
+        """``watch`` once (then ``on_watching``), and hand every streamed event over until the bridge closes or Ctrl-C."""
         self.request({"type": "watch"})
+        if on_watching is not None:
+            on_watching()
         try:
             while True:
                 try:
@@ -488,6 +498,8 @@ def stop_reason(paused: dict) -> str:
         return "step %s" % (paused.get("kind") or "into")
     if reason == "watch":
         w = paused.get("watch") if isinstance(paused.get("watch"), dict) else {}
+        if w.get("error"):
+            return "watch %s failed: %s" % (w.get("exp"), w["error"])
         return "watch %s: %s" % (w.get("exp"), w.get("text")) if w else "watch"
     if reason == "exception":
         e = paused.get("exception") if isinstance(paused.get("exception"), dict) else {}

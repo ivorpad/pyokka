@@ -157,10 +157,13 @@ class SavedRun:
             src = "\n".join(self.source_lines(file_id))
             table: dict[int, dict] = {}
             if f and src:
-                try:
-                    entries = statement_bindings(src)
-                except (SyntaxError, ValueError):
-                    entries = []
+                # a run of another runtime (the Node one) saves its own table: this parser reads Python only
+                entries = f.get("bindings")
+                if not isinstance(entries, list):
+                    try:
+                        entries = statement_bindings(src)
+                    except (SyntaxError, ValueError):
+                        entries = []
                 table = index_bindings(entries, f.get("ranges") or [], f.get("statements") or [], [int(fn.get("rid", -1)) for fn in f.get("functions") or []], int(f.get("rangeBase", 0)))
             self._bindings[file_id] = table
         return self._bindings[file_id]

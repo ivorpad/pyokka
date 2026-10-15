@@ -1,6 +1,6 @@
 /** Pure snap-fence discovery, shared by the Snaps feature and unit tests. */
 export interface SnapFence {
-  /** 0-based lines */
+  /** 0-based lines of the `"""{{` and `}}"""` lines */
   openLine: number;
   closeLine: number;
 }
@@ -26,4 +26,9 @@ export function findSnaps(text: string): SnapFence[] {
 
 export function fenceAt(fences: SnapFence[], line: number): SnapFence | undefined {
   return fences.find((f) => line >= f.openLine && line <= f.closeLine);
+}
+
+/** Is a statement starting on `line` (0-based) the fence's code? */
+export function insideFence(fence: SnapFence, line: number): boolean {
+  return line > fence.openLine && line < fence.closeLine;
 }

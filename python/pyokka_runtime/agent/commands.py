@@ -142,6 +142,10 @@ def add_commands(sub: argparse._SubParsersAction) -> None:
     p.add_argument("--no-statements", dest="statements", action="store_false", help="no statement nodes: only modules, functions, packages and decisions")
     p.add_argument("--dot", action="store_true", help="print a Graphviz digraph instead of the text form")
 
+    p = sub.add_parser("coverage", help="which statements ran: per file the lines that ran, the ones that never did and the partial ones; --file F lists that file line by line with hit counts")
+    run_arg(p)
+    p.add_argument("--file", metavar="F", help="also list this file line by line: hits, and which lines did not run (path suffix or basename)")
+
     p = sub.add_parser("exceptions", help="every exception the run raised: where, where it was caught, how often; broad handlers flagged")
     run_arg(p)
     p = sub.add_parser("http", help="every HTTP request of the run: method, status, the statement that made it (file:line, step), size, time, live / recorded / replayed / miss")
@@ -153,9 +157,35 @@ def add_commands(sub: argparse._SubParsersAction) -> None:
     p.add_argument("--live", action="store_true", help="the open VS Code session is the after (setting pyokka.agentAccess)")
     p.add_argument("--session", metavar="NAME|PATH", help="with --live: the session's file name or descriptor path, when more than one is open")
     p.add_argument("--limit", type=int, default=40, metavar="K", help="at most this many statements (default 40)")
+    p.add_argument("--ignore", action="append", default=[], metavar="NAME", help="leave the values and logged values of NAME out of the comparison, e.g. a timestamp (repeatable)")
     p.set_defaults(run=None)
 
     add_tour_parser(sub, run_arg)
+
+    p = sub.add_parser("investigate", help="follow one value: its changes (var), why and origin at the selected step, the run's exceptions and the lines that did not run, after notes on where the recording has gaps")
+    run_arg(p)
+    p.add_argument("--value", metavar="NAME", help="the name or attribute path to follow (scores, self.total)")
+    p.add_argument("--at", type=int, default=None, metavar="STEP", help="the step to explain; default: the first nan/inf/None value of NAME, else its last change")
+
+    p = sub.add_parser("learn", help="practice on a run: checkpoints (calls, decisions, errors, prints) with their values hidden; predict one, then --reveal it")
+    run_arg(p)
+    p.add_argument("--at", type=int, default=None, metavar="STEP", help="the checkpoint to practice")
+    p.add_argument("--prediction", metavar="TEXT", help="your prediction, kept beside what the run recorded and compared with it")
+    p.add_argument("--reveal", action="store_true", help="show what the run recorded at --at STEP and whether the prediction matches")
+
+    p = sub.add_parser("verify", help="check a fix: compare the baseline RUN with an after run (diff), and check final recorded values with --expect; exit 1 when an expectation fails")
+    run_arg(p)
+    g = p.add_mutually_exclusive_group()
+    g.add_argument("--after", metavar="PATH", help="the after run, saved after the fix")
+    g.add_argument("--rerun", action="store_true", help="run the baseline's file again with its saved arguments, cwd and limits; recorded HTTP is replayed")
+    p.add_argument("--out", metavar="PATH", help="with --rerun: save the new run here (a new file)")
+    p.add_argument("--ignore", action="append", default=[], metavar="NAME", help="leave the values of NAME out of the comparison, as in diff (repeatable)")
+    p.add_argument("--expect", action="append", default=[], metavar="NAME=VALUE", help="the final recorded value of NAME, as its repr text: total=22, name='Ada' (repeatable)")
+    p.add_argument("--test-out", dest="test_out", metavar="PATH", help="write a pytest file that reruns the file and checks the --expect values; refuses to overwrite")
+
+    p = sub.add_parser("pin", help="copy a recording to a new private file to keep as a baseline; refuses to overwrite")
+    run_arg(p)
+    p.add_argument("--out", required=True, metavar="PATH", help="the new baseline file; an existing file is refused")
 
     p = sub.add_parser("narrate", help="ask a model for one sentence of gloss per walkthrough moment and store it in the saved run (never automatic)")
     run_arg(p)
@@ -180,11 +210,13 @@ def add_commands(sub: argparse._SubParsersAction) -> None:
     p.add_argument("--module", metavar="M", help="run a dotted module like `python -m` instead of a file (implies --live)")
     p.add_argument("--cwd", metavar="DIR", help="working directory the program runs in (default: the file's directory)")
     p.add_argument("--env", action="append", default=[], metavar="K=V", help="an environment variable for the program (repeatable)")
-    p.add_argument("--python", metavar="PATH", help="interpreter to run with (default: the window's)")
+    p.add_argument("--python", metavar="PATH", help="interpreter to run with, a path or a command on PATH such as python3.12 (default: the window's)")
     p.add_argument("--at", action="append", metavar="FILE:LINE|NAME", help="stop here: a line, or a function name whose entry pauses; repeat it for one stop per stage (`continue` goes from one to the next). Every one is set before the program starts and shows in the Breakpoints view")
     p.add_argument("--record", action="store_true", help="also record the run, so the Time Machine, the Code Story and `why` open over it at every pause (slower; needs a file, not --module)")
     p.add_argument("--record-from", dest="record_from", metavar="NAME|FILE:LINE", help="run at the debugger's speed up to here, pause, and record from this pause on: the Time Machine, `why`, `var` and `history` cover what runs after it (needs a file, not --module). It is also an --at")
     p.add_argument("--library-code", dest="library_code", action="store_true", help="step into and pause inside third-party packages too (never the standard library); off by default, so a breakpoint in a library function and `step --into` on a library call both need it")
+    p.add_argument("--configuration", metavar="NAME", help="take program or module, args, cwd, env, envFile, python, stopOnEntry and justMyCode from this debugpy/python configuration of the nearest .vscode/launch.json (above FILE, --cwd or here); flags given here win, and the keys it does not apply are named")
+    p.add_argument("--test", metavar="NAME", help="run only this test of FILE under its runner, as `run --test` does: a pytest node id (test_b, TestCart::test_total), a unittest name (Cart.test_total), or a pytest -k expression; `--at NAME` pauses in it")
     p.add_argument("--args", nargs=argparse.REMAINDER, default=[], metavar="...", help="everything after this goes to the program (sys.argv[1:]); must come last")
     p = sub.add_parser("continue", help="--live: resume the paused program; prints the next stop, or `finished: exit N`")
     p.add_argument("--no-start", dest="no_start", action="store_true", help="with no debug session, fail instead of starting the last `pyokka debug` launch from this directory again")
@@ -210,6 +242,8 @@ def add_commands(sub: argparse._SubParsersAction) -> None:
     p.add_argument("--at", action="append", metavar="NAME|FILE:LINE", help="break at a function's entry by name (`--at rrf`, `--at Ranker.rank`), repeatable; the runtime resolves it, so a module imported later gets it too")
     p.add_argument("--remove", action="append", default=[], metavar="FILE:LINE|NAME", help="remove this breakpoint (repeatable): FILE:LINE for a line, NAME for the function breakpoint `--at NAME` set")
     p.add_argument("--list", action="store_true", help="list the breakpoints (the default with nothing else)")
+    p.add_argument("--log-message", dest="log_message", metavar="TEXT", help="make the FILE:LINE given a logpoint with this message: it shows in the Breakpoints view and the listing, and never pauses the debugger")
+    p.add_argument("--clear", action="store_true", help="remove every breakpoint and logpoint of the session and the editor, before anything else this command adds")
     p.add_argument("--on-exception", dest="on_exception", choices=["off", "uncaught", "raised"], default=None, help="when the debugger pauses on an exception: uncaught (the default) stops where an exception nobody caught was raised, raised stops at every raise in your code, off never")
     p = sub.add_parser("watches", help="--live: watch expressions: --add EXPR shows its value at every stop in the panel; with --break-when change|true it pauses the run instead; --remove ID; list")
     live_arg(p)
@@ -220,6 +254,9 @@ def add_commands(sub: argparse._SubParsersAction) -> None:
     p = sub.add_parser("locals", help="--live: the paused frame's variables, one `name = value` per line")
     live_arg(p)
     p.add_argument("--frame", type=int, default=None, metavar="N", help="which frame of the pause, innermost 0 (the stop's `stack` numbers them)")
+    p.add_argument("--scope", choices=["local", "global", "all"], default=None, help="local: the function's own names (parameters, locals; not a closure's free variables); global: the module-level values the program bound; all: the frame's variables plus those globals (default: the frame's variables)")
+    p.add_argument("--names-only", dest="names_only", action="store_true", help="one `name: type` per line, without reading the values")
+    p.add_argument("--name", action="append", default=None, metavar="NAME", help="only this variable (repeatable)")
     p = sub.add_parser("record", help="--live: record from the current pause on, in a run started with --record-from that has not reached that point yet; prints the pause as step 0")
     live_arg(p)
     p = sub.add_parser("exec", help="--live: run a statement in the paused frame: an assignment, a call, an import, a block. The program sees the new value when it continues; `eval` reads without writing")
@@ -246,7 +283,7 @@ def add_commands(sub: argparse._SubParsersAction) -> None:
     p.add_argument("--value-chars", type=int, default=None, metavar="N", help="characters of one value on a card (default: what the run kept, its --max-value-chars, 200 when it does not say; 0 shows every value whole)")
 
 
-COMMANDS = ("story", "steps", "step", "context", "values", "find", "var", "why", "origin", "eval", "expand", "release", "state", "watch", "shell", "walkthrough", "graph", "exceptions", "narrate", "http", "history", "diff", "tour", *DEBUG_COMMANDS)
+COMMANDS = ("story", "steps", "step", "context", "values", "find", "var", "why", "origin", "eval", "expand", "release", "state", "watch", "shell", "walkthrough", "graph", "exceptions", "coverage", "narrate", "http", "history", "diff", "tour", "investigate", "learn", "pin", "verify", *DEBUG_COMMANDS)
 
 
 def parse_line(spec: str, flag: str = "--line") -> tuple[str, int]:
@@ -271,8 +308,8 @@ def _remove_item(spec: str) -> dict:
 
 
 def is_live(args: Any) -> bool:
-    if getattr(args, "command", None) == "debug" and (getattr(args, "program", None) or getattr(args, "module", None)):
-        return True  # `pyokka debug app.py` needs no flag: a file (or a module) is always live
+    if getattr(args, "command", None) == "debug" and (getattr(args, "program", None) or getattr(args, "module", None) or getattr(args, "configuration", None)):
+        return True  # `pyokka debug app.py` needs no flag: a file (or a module, or a launch.json configuration) is always live
     return bool(getattr(args, "live", False) or getattr(args, "session", None))
 
 
@@ -320,9 +357,11 @@ def _parse_env(items: list) -> dict:
 
 
 def debug_launch(args: Any) -> dict | None:
-    """The launch `pyokka debug FILE|--module M` asks for; None when it names neither."""
+    """The launch `pyokka debug FILE|--module M|--configuration NAME` asks for; None when it names none."""
     from .debug_start import build_launch, parse_at
+    from .launch_config import apply_configuration
 
+    apply_configuration(args)
     if not (getattr(args, "program", None) or getattr(args, "module", None)):
         return None
     _split_at(args)
@@ -341,11 +380,22 @@ def debug_launch(args: Any) -> dict | None:
             '%s runs the file as a Pyokka run-all session, which has no module launch' % ("--record-from" if record_from else "--record"),
             "drop it for a module, or give a file: `pyokka debug app.py --record-from NAME`",
         )
+    program, module, argv, cwd = getattr(args, "program", None), getattr(args, "module", None), list(getattr(args, "args", []) or []), getattr(args, "cwd", None)
+    test = getattr(args, "test", None)
+    if test:
+        if not program or module or record or record_from:
+            raise AgentError("--test needs FILE, without --module, --record or --record-from", "e.g. `pyokka debug tests/test_cart.py --test test_total --at test_total`")
+        from .one_test import runner_for
+
+        module, words = runner_for(program, test)
+        argv = [*words, *argv]
+        cwd = cwd or os.path.dirname(os.path.abspath(program))
+        program = None
     return build_launch(
-        program=getattr(args, "program", None),
-        module=getattr(args, "module", None),
-        args=list(getattr(args, "args", []) or []),
-        cwd=getattr(args, "cwd", None),
+        program=program,
+        module=module,
+        args=argv,
+        cwd=cwd,
         env=_parse_env(getattr(args, "env", [])),
         python=getattr(args, "python", None),
         stop_on_entry=bool(getattr(args, "stop_on_entry", False)),
@@ -486,7 +536,7 @@ def open_source(args: Any) -> RunSource:
         args.live = True  # the shell has no saved-run form, so `pyokka shell` and `pyokka shell --session demo.py` are live
     if args.command in DEBUG_COMMANDS and not is_live(args):
         raise AgentError("%s drives the open VS Code session, not a saved run" % args.command, LIVE_HINT)
-    if args.command == "debug" and (getattr(args, "program", None) or getattr(args, "module", None)):
+    if args.command == "debug" and (getattr(args, "program", None) or getattr(args, "module", None) or getattr(args, "configuration", None)):
         return _open_debug_start(args)
     if is_live(args):
         from .live import LiveRun, list_sessions, pick_session, prefer_kind
@@ -561,10 +611,15 @@ def dispatch(args: Any, out: Any = None) -> int:
         raised = exec_error(result) if args.command == "exec" else None
         if raised:
             err.write("%s\n" % redact(raised))
+        if getattr(args, "_configuration", None):
+            from .launch_config import configuration_line
+
+            out.write(configuration_line(args._configuration) + "\n")
         if getattr(args, "_relaunched", None):
             out.write("no debug session was running: started the last launch from this directory again, `%s`\n" % args._relaunched)
         out.write(render(args.command, result, source, args))
-    return 0
+    # `verify` with an expectation that failed (or that the recording cannot support) exits 1
+    return 1 if args.command == "verify" and result.get("checks") and not result.get("verified") else 0
 
 
 def recording_notes(source: Any) -> list[tuple[str | None, dict]]:
@@ -651,6 +706,10 @@ def _run_command(args: Any, source: RunSource) -> dict:
         return run_tour(args, source)
     if cmd == "exceptions":
         return source.exceptions()
+    if cmd == "coverage":
+        from .coverage import coverage_report
+
+        return coverage_report(source, file=args.file)
     if cmd == "http":
         return source.http()
     if cmd == "history":
@@ -706,23 +765,45 @@ def _run_command(args: Any, source: RunSource) -> dict:
     if cmd == "restart":
         return source.restart(stop_on_entry=args.stop_on_entry)  # type: ignore[attr-defined]
     if cmd == "break":
-        add = [{"file": f, "line": l, **({"condition": args.when} if args.when else {})} for f, l in (parse_line(spec, "break") for spec in args.positions)]
+        log_message = getattr(args, "log_message", None)
+        if log_message is not None and not log_message.strip():
+            # VS Code takes an empty logMessage for an ordinary breakpoint, which would pause where a logpoint was asked for
+            raise AgentError("--log-message needs text", "e.g. `break --live demo.py:12 --log-message 'total is {total}'`")
+        add = [{"file": f, "line": l, **({"condition": args.when} if args.when else {}), **({"logMessage": log_message} if log_message else {})} for f, l in (parse_line(spec, "break") for spec in args.positions)]
         if args.when and not add:
             raise AgentError("--when needs a FILE:LINE to apply to", "e.g. `break --live demo.py:12 --when 'payload is None'`")
+        if log_message and not add:
+            raise AgentError("--log-message needs a FILE:LINE to apply to", "e.g. `break --live demo.py:12 --log-message 'total is {total}'`")
         remove = [_remove_item(spec) for spec in args.remove]
         for extra in getattr(args, "also_at", []) or []:
             source.breakpoints(at=extra)  # type: ignore[attr-defined]
-        return source.breakpoints(add=add, remove=remove, exceptions=args.on_exception, at=getattr(args, "at", None))  # type: ignore[attr-defined]
+        return source.breakpoints(add=add, remove=remove, exceptions=args.on_exception, at=getattr(args, "at", None), clear=bool(getattr(args, "clear", False)))  # type: ignore[attr-defined]
     if cmd == "watches":
         return source.watches(add=[{"exp": exp, **({"breakWhen": args.break_when} if args.break_when else {})} for exp in args.add], remove=list(args.remove))  # type: ignore[attr-defined]
     if cmd == "locals":
-        return source.locals(value_bag=bool(args.json), frame=getattr(args, "frame", None))  # type: ignore[attr-defined]
+        return source.locals(value_bag=bool(args.json), frame=getattr(args, "frame", None), scope=getattr(args, "scope", None), names_only=bool(getattr(args, "names_only", False)), names=getattr(args, "name", None))  # type: ignore[attr-defined]
     if cmd == "exec":
         return source.exec(args.source, frame=getattr(args, "frame", None))  # type: ignore[attr-defined]
     if cmd == "diff":
         from .diff import diff_command
 
         return diff_command(args, source)
+    if cmd == "investigate":
+        from .workflows import investigate_command
+
+        return investigate_command(args, source)
+    if cmd == "learn":
+        from .workflows import learn_command
+
+        return learn_command(args, source)
+    if cmd == "verify":
+        from .workflows import verify_command
+
+        return verify_command(args, source)
+    if cmd == "pin":
+        from .workflows import pin_command
+
+        return pin_command(args, source)
     if cmd == "record":
         return source.record()  # type: ignore[attr-defined]
     if cmd == "narrate":

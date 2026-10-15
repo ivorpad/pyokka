@@ -1,6 +1,8 @@
-/** Monaco bootstrap: worker wiring, python language, transparent themes. */
+/** Monaco bootstrap: worker wiring, the python and javascript languages, transparent themes. */
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
 import 'monaco-editor/esm/vs/basic-languages/python/python.contribution';
+// JS/TS sessions: values and code previews in the panel are coloured as JavaScript
+import 'monaco-editor/esm/vs/basic-languages/javascript/javascript.contribution';
 import type { Theme } from './model';
 
 export { monaco };

@@ -1,5 +1,6 @@
 /**
- * Quick package install for `ModuleNotFoundError`: hover, code action and the two commands.
+ * Quick package install for `ModuleNotFoundError`: hover, code action and the two commands. A
+ * per-file install goes to a private folder on the session's PYTHONPATH.
  */
 import * as vscode from 'vscode';
 import * as fs from 'node:fs';
@@ -8,6 +9,7 @@ import type { Session } from '../session/session';
 import type { SessionManager } from '../session/sessionManager';
 import { ensureDir } from '../util/paths';
 import { log } from '../util/log';
+import { RUNNABLE_SELECTOR } from '../runtime/language';
 
 const PIP_NAMES: Record<string, string> = { cv2: 'opencv-python', PIL: 'pillow', yaml: 'pyyaml', sklearn: 'scikit-learn', bs4: 'beautifulsoup4', dotenv: 'python-dotenv', dateutil: 'python-dateutil', Crypto: 'pycryptodome', git: 'GitPython', jwt: 'PyJWT', attr: 'attrs', serial: 'pyserial', usb: 'pyusb', wx: 'wxPython', gi: 'PyGObject', docx: 'python-docx', pptx: 'python-pptx', magic: 'python-magic', ldap: 'python-ldap', Levenshtein: 'python-Levenshtein', OpenSSL: 'pyopenssl', psycopg2: 'psycopg2-binary', MySQLdb: 'mysqlclient', skimage: 'scikit-image', google: 'google-api-python-client', telegram: 'python-telegram-bot' };
 
@@ -36,7 +38,7 @@ export class PackageInstall implements vscode.HoverProvider, vscode.CodeActionPr
   private readonly disposables: vscode.Disposable[] = [];
 
   constructor(private readonly manager: SessionManager) {
-    const selector: vscode.DocumentSelector = [{ language: 'python' }];
+    const selector: vscode.DocumentSelector = RUNNABLE_SELECTOR;
     this.disposables.push(
       vscode.languages.registerHoverProvider(selector, this),
       vscode.languages.registerCodeActionsProvider(selector, this, { providedCodeActionKinds: [vscode.CodeActionKind.QuickFix] }),
@@ -87,7 +89,7 @@ export class PackageInstall implements vscode.HoverProvider, vscode.CodeActionPr
   private async pickPackage(session: Session, arg: unknown): Promise<string | undefined> {
     const fromArg = arg && typeof arg === 'object' ? (arg as { package?: string }).package : typeof arg === 'string' ? arg : undefined;
     if (fromArg) return fromArg;
-    const missing = [...session.missingModules].map(pipNameFor);
+    const missing = [...session.missingModules].map((m) => pipNameFor(m));
     if (missing.length === 1) return missing[0];
     if (missing.length > 1) {
       const pick = await vscode.window.showQuickPick(missing, { title: 'Pyokka: which package?' });

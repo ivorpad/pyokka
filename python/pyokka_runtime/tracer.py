@@ -7,6 +7,7 @@ surfaces as a ``system`` log instead of breaking the user's program.
 
 from __future__ import annotations
 
+import ast
 import bisect
 import builtins
 import sys
@@ -32,6 +33,7 @@ from .protocol import (
     ev_trace,
 )
 from . import secrets
+from .pure import compile_pure, run_pure
 from .serialize import Registry, expression_name, serialize, short_repr
 from .values import LOCALS_CHARS, LOG_CHARS, cut_entry, value_chars
 from .values import child_by_segment
@@ -478,10 +480,12 @@ class Tracer(LogMixin, ErrorMixin, RecordFromMixin):
             if not exp:
                 continue
             try:
-                code = compile(exp, "<watch %s>" % wid, "eval")
+                code: Any = compile_pure(ast.parse(exp, "<watch %s>" % wid, mode="eval").body, "<watch %s>" % wid)
             except SyntaxError as exc:
                 self.emit({"type": "watch", "watchId": wid, "step": start, "error": "SyntaxError: %s" % exc.msg})
                 continue
+            except ValueError as exc:
+                code = "ValueError: %s" % exc  # refused by the pure rule: reported at every step it is asked for
             self.watch_codes.append((wid, code, exp))
         if self.watch_codes:
             self.watch_lo = start
@@ -489,8 +493,11 @@ class Tracer(LogMixin, ErrorMixin, RecordFromMixin):
 
     def _eval_watches(self, step: int, frame: Any) -> None:
         for wid, code, exp in self.watch_codes:
+            if isinstance(code, str):
+                self.emit({"type": "watch", "watchId": wid, "step": step, "error": code})
+                continue
             try:
-                value = eval(code, frame.f_globals, frame.f_locals)  # noqa: S307 - user watch expression
+                value = run_pure(code, frame.f_globals, frame.f_locals)
             except BaseException as exc:  # noqa: BLE001
                 self.emit({"type": "watch", "watchId": wid, "step": step, "error": "%s: %s" % (type(exc).__name__, exc)})
                 continue

@@ -82,7 +82,8 @@ export function parseTourOutput(code: number | null, stdout: string, stderr: str
 /** Run `python -m pyokka_runtime <argv>` in the runtime directory; resolves with the tour. */
 export function runTourCli(o: TourCliOptions, argv: string[]): Promise<TourDoc> {
   return new Promise((resolve, reject) => {
-    const child = spawn(o.python, ['-m', 'pyokka_runtime', ...argv], {
+    const exe = o.python;
+    const child = spawn(exe, ['-m', 'pyokka_runtime', ...argv], {
       cwd: o.runtimeDir,
       env: { ...process.env, PYTHONIOENCODING: 'utf-8', ...(o.env ?? {}) },
       stdio: ['ignore', 'pipe', 'pipe'],
@@ -105,7 +106,7 @@ export function runTourCli(o: TourCliOptions, argv: string[]): Promise<TourDoc> 
     child.stderr.setEncoding('utf8');
     child.stdout.on('data', (c: string) => (stdout += c));
     child.stderr.on('data', (c: string) => (stderr += c));
-    child.on('error', (err) => finish(() => reject(new TourError(`${o.python} could not start: ${err.message}`, 'check the Python interpreter (Pyokka: Select Python Interpreter)'))));
+    child.on('error', (err) => finish(() => reject(new TourError(`${exe} could not start: ${err.message}`, 'check the Python interpreter (Pyokka: Select Python Interpreter)'))));
     child.on('close', (code) => {
       finish(() => {
         try {

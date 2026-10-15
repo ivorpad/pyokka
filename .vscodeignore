@@ -2,8 +2,9 @@
 .vscode-test/**
 src/**
 webview/**
+web/**
 test/**
-node_modules/**
+**/node_modules/**
 docs/**
 scripts/**
 python/**/__pycache__/**

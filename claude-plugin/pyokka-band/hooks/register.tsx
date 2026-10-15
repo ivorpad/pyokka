@@ -9,7 +9,7 @@ import { narrationPrompt } from './narration'
 import { baseName, descriptorsIn, errorMessage, jsonOf, NEEDS_RECORDING, statementLines, stepOutcome, toFindings, toOrigin, toSpot } from './parse'
 import type { RawContext, RawFinding, RawOrigin } from './parse'
 import { fixedText, originAnswer, planPath, planText } from './plans'
-import { findingAt, FIXER, FOLLOW_MS, IDLE_MS, memory, NARRATOR, POLL_MS, PYOKKA, PYOKKA_COMMAND } from './state'
+import { findingAt, FIXER, FOLLOW_MS, IDLE_MS, memory, NARRATOR, plainRun, POLL_MS, PYOKKA_COMMAND, PYOKKA } from './state'
 import { scratchDir, WINDOW_AFTER, WINDOW_BEFORE } from './state'
 import { bugsView, errorView, explainView } from './views'
 
@@ -251,7 +251,7 @@ async function minuteNow($: EngineInterface): Promise<string> {
 async function exceptionsIn($: EngineInterface, file: string, cwd: string, scratch: string): Promise<{ stdout: string; caught: number }> {
   const saved = `${scratch}/${baseName(file)}.json`
   const ran = await $.process.run([...PYOKKA, 'run', file, '--save', saved], { cwd, timeoutMs: 60_000 })
-  const plain = await $.process.run(['python3', file], { cwd, timeoutMs: 60_000 })
+  const plain = await $.process.run(plainRun(file), { cwd, timeoutMs: 60_000 })
   const doc = jsonOf<{ total?: number }>(await $.process.run([...PYOKKA, 'exceptions', saved, '--json'], { timeoutMs: 20_000 }))
   return { stdout: (plain.stdout || ran.stderr).trim(), caught: doc?.total ?? -1 }
 }
@@ -530,7 +530,7 @@ export const register: Register = on => {
       const named = e.command.match(/--session\s+(\S+)/)?.[1]
       // `pyokka debug FILE` names the program it starts: follow it by name, so the band reads
       // its pause rather than a session it followed before
-      const started = e.command.match(/\bpyokka\s+debug\s+([^\s-]\S*\.py)\b/)?.[1]
+      const started = e.command.match(/\bpyokka\s+debug\s+([^\s-]\S*\.py)(?=\s|$)/)?.[1]
       if (named) memory.session = named
       else if (started) memory.session = baseName(started)
       await stamp($)

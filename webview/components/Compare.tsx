@@ -1,6 +1,6 @@
 /** Compare view: Monaco diff editor, left = earlier entry. */
 import { useEffect, useRef } from 'preact/hooks';
-import { formatText, valueCategory } from '../format';
+import { editorLanguage, formatText, valueCategory } from '../format';
 import type { Entry, Theme } from '../model';
 import { monaco, monacoTheme, READONLY_OPTIONS } from '../monaco';
 import { IconButton } from './ui';
@@ -59,7 +59,7 @@ export function Compare(props: CompareProps) {
     const editor = editorRef.current;
     if (!editor) return;
     const old = editor.getModel();
-    editor.setModel({ original: monaco.editor.createModel(props.left.text, 'python'), modified: monaco.editor.createModel(props.right.text, 'python') });
+    editor.setModel({ original: monaco.editor.createModel(props.left.text, editorLanguage()), modified: monaco.editor.createModel(props.right.text, editorLanguage()) });
     old?.original.dispose();
     old?.modified.dispose();
   }, [props.left.text, props.right.text]);

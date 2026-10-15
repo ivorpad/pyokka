@@ -16,5 +16,5 @@
     "jsxImportSource": "preact",
     "types": ["node"]
   },
-  "include": ["src", "webview", "test"]
+  "include": ["src", "webview", "web", "test"]
 }

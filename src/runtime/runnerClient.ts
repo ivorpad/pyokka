@@ -127,6 +127,12 @@ export class RunnerClient extends EventEmitter<RunnerClientEvents> {
       this.options.log?.(`runner stderr: ${text.trimEnd()}`);
       this.emit('stderr', text);
     });
+    proc.stdin?.on('error', (err) => {
+      // a failed write (EPIPE once the child is gone) also emits here; its callback alone cannot handle it
+      if (this.proc !== proc) return;
+      this.options.log?.(`runner input error: ${err.message}`);
+      this.failPending(new Error(`Pyokka runner input failed: ${err.message}`));
+    });
     proc.on('error', (err) => {
       this.options.log?.(`runner spawn error: ${err.message}`);
       this.failPending(new Error(`Pyokka runner failed to start: ${err.message}`));
@@ -201,6 +207,15 @@ export class RunnerClient extends EventEmitter<RunnerClientEvents> {
     const reply = await this.send(body, timeoutMs);
     if (reply.type === 'error') throw new Error(reply.message);
     return reply;
+  }
+
+  /**
+   * Send any host request and resolve with the runner's raw reply, an `error` reply included. The
+   * browser bridge (web/server.ts) relays requests it does not interpret through here.
+   */
+  async forward(body: HostBody, timeoutMs = 30_000): Promise<RunnerMessage> {
+    await this.start();
+    return this.send(body, timeoutMs);
   }
 
   /** Send a run; resolves when the runner acknowledged it (events stream afterwards). */

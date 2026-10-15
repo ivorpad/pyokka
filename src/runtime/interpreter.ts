@@ -4,11 +4,14 @@ import * as fs from 'node:fs';
 import { execFile } from 'node:child_process';
 import { log } from '../util/log';
 import { setting } from '../config/settings';
+import { installedInterpreters, interpreterKey, isApplePlaceholder, isVenvExecutable, whichSync, workspaceVenvs } from './pythonDiscovery';
+
+export { isVenvExecutable } from './pythonDiscovery';
 
 export interface Interpreter {
   path: string;
   version: [number, number, number];
-  source: 'setting' | 'python-extension' | 'defaultInterpreterPath' | 'PATH' | 'user';
+  source: 'setting' | 'python-extension' | 'venv' | 'defaultInterpreterPath' | 'PATH' | 'user';
   /** true when the executable lives inside a virtual environment (pyvenv.cfg next to bin/) */
   isVenv: boolean;
 }
@@ -20,6 +23,11 @@ const versionCache = new Map<string, Promise<[number, number, number] | undefine
 export function probeVersion(exe: string): Promise<[number, number, number] | undefined> {
   let p = versionCache.get(exe);
   if (!p) {
+    // Apple's placeholder answers by opening the "install developer tools" dialog: never run it
+    if (isApplePlaceholder(exe)) {
+      log.info(`${exe} is Apple's placeholder without the Command Line Tools; not running it`);
+      return Promise.resolve(undefined);
+    }
     p = new Promise((resolve) => {
       execFile(exe, ['-c', 'import sys;print("%d.%d.%d"%sys.version_info[:3])'], { timeout: 10000 }, (err, stdout) => {
         if (err) return resolve(undefined);
@@ -37,15 +45,14 @@ export function invalidateVersionCache(exe?: string): void {
   else versionCache.clear();
 }
 
-export function isVenvExecutable(exe: string): boolean {
-  const dir = path.dirname(exe);
-  return fs.existsSync(path.join(dir, '..', 'pyvenv.cfg')) || fs.existsSync(path.join(dir, 'pyvenv.cfg')) || /[\\/](\.venv|venv|\.virtualenvs)[\\/]/.test(exe);
-}
 
 type PythonApi = {
   environments: {
     getActiveEnvironmentPath(resource?: vscode.Uri): { id: string; path: string };
     resolveEnvironment(env: unknown): Promise<{ executable: { uri?: vscode.Uri }; version?: { major: number; minor: number; micro: number } | undefined } | undefined>;
+    /** every environment the extension found, as its own interpreter picker lists them (empty until a discovery ran) */
+    readonly known?: readonly { path: string; executable?: { uri?: vscode.Uri }; environment?: { type?: string; name?: string }; tools?: readonly string[] }[];
+    refreshEnvironments?(options?: { forceRefresh?: boolean }): Promise<void>;
     onDidChangeActiveEnvironmentPath: vscode.Event<{ resource?: vscode.WorkspaceFolder | undefined; path: string }>;
   };
 };
@@ -92,6 +99,13 @@ export function onDidChangePythonEnvironment(listener: () => void): vscode.Dispo
   return new vscode.Disposable(() => inner?.dispose());
 }
 
+/** The workspace folder of `resource` first, then the others. */
+function folderPaths(resource?: vscode.Uri): string[] {
+  const own = resource ? vscode.workspace.getWorkspaceFolder(resource)?.uri.fsPath : undefined;
+  const all = (vscode.workspace.workspaceFolders ?? []).map((f) => f.uri.fsPath);
+  return own ? [own, ...all.filter((f) => f !== own)] : all;
+}
+
 function candidates(resource?: vscode.Uri): (() => Promise<{ exe: string; source: Interpreter['source'] } | undefined>)[] {
   return [
     async () => {
@@ -101,6 +115,11 @@ function candidates(resource?: vscode.Uri): (() => Promise<{ exe: string; source
     async () => {
       const exe = await fromPythonExtension(resource);
       return exe ? { exe, source: 'python-extension' } : undefined;
+    },
+    // the project's own .venv (or venv), found without the Python extension
+    async () => {
+      const exe = workspaceVenvs(folderPaths(resource))[0];
+      return exe ? { exe, source: 'venv' } : undefined;
     },
     async () => {
       const s = vscode.workspace.getConfiguration('python', resource).get<string>('defaultInterpreterPath', '').trim();
@@ -112,7 +131,8 @@ function candidates(resource?: vscode.Uri): (() => Promise<{ exe: string; source
 }
 
 export class InterpreterError extends Error {
-  constructor(message: string, readonly actions: { title: string; command: string }[] = []) {
+  /** `reason`: the short form the interpreter picker shows as its title */
+  constructor(message: string, readonly actions: { title: string; command: string }[] = [], readonly reason?: string) {
     super(message);
   }
 }
@@ -142,10 +162,10 @@ export async function resolveInterpreter(resource?: vscode.Uri): Promise<Interpr
     { title: 'Show Logs', command: 'pyokka.showLogs' },
   ];
   if (tooOld) {
-    throw new InterpreterError(`Pyokka needs Python ${MIN_PYTHON.join('.')} or newer; ${tooOld.exe} is ${tooOld.version.join('.')}. Pick another interpreter with "Pyokka: Select Python Interpreter".`, actions);
+    throw new InterpreterError(`Pyokka needs Python ${MIN_PYTHON.join('.')} or newer; ${tooOld.exe} is ${tooOld.version.join('.')}. Pick another interpreter with "Pyokka: Select Python Interpreter".`, actions, `${tooOld.exe} is Python ${tooOld.version.join('.')}; pick a ${MIN_PYTHON.join('.')}+ interpreter`);
   }
   log.warn(`No usable Python found. Tried: ${tried.join(', ') || 'nothing'}`);
-  throw new InterpreterError(`Pyokka could not find a Python ${MIN_PYTHON.join('.')}+ interpreter. Install one or set "pyokka.python.interpreter".`, actions);
+  throw new InterpreterError(`Pyokka could not find a Python ${MIN_PYTHON.join('.')}+ interpreter. Install one or set "pyokka.python.interpreter".`, actions, `no Python ${MIN_PYTHON.join('.')}+ found; pick an interpreter`);
 }
 
 /**
@@ -185,33 +205,106 @@ function browseStartUri(): vscode.Uri | undefined {
   return process.env['HOME'] ? vscode.Uri.file(process.env['HOME']) : undefined;
 }
 
-/** Quick pick of discovered interpreters (or a file dialog); writes `pyokka.python.interpreter` for the workspace. */
-export async function selectInterpreterCommand(): Promise<string | undefined> {
-  const found = new Map<string, string>();
+/** The Python extension's known environments, after one discovery when it has found none yet (a few seconds at most). */
+async function knownEnvironments(): Promise<{ exe: string; label: string }[]> {
+  const api = await pythonApi();
+  const envs = api?.environments;
+  if (!envs) return [];
+  try {
+    if (!envs.known?.length && envs.refreshEnvironments) await Promise.race([envs.refreshEnvironments(), new Promise((r) => setTimeout(r, 4000))]);
+    return (envs.known ?? []).flatMap((e) => {
+      const exe = e.executable?.uri?.fsPath ?? e.path;
+      const kind = [e.environment?.type, e.environment?.name].filter(Boolean).join(' ') || e.tools?.join(', ') || '';
+      return exe ? [{ exe, label: kind ? `Python extension: ${kind}` : 'Python extension' }] : [];
+    });
+  } catch (err) {
+    log.warn(`known environments unavailable: ${String(err)}`);
+    return [];
+  }
+}
+
+/**
+ * Every interpreter worth offering, labelled by where it was found: the current choice, the Python
+ * extension's selection and its known environments, the workspace venv, `python.defaultInterpreterPath`,
+ * the names on PATH, and the usual install places. One entry per interpreter; Apple's placeholder is left out.
+ */
+export async function discoverInterpreters(resource?: vscode.Uri): Promise<{ exe: string; label: string }[]> {
+  const out = new Map<string, { exe: string; label: string }>();
   const add = (exe: string | undefined, label: string): void => {
-    if (exe && !found.has(exe)) found.set(exe, label);
+    if (!exe || isApplePlaceholder(exe)) return;
+    const full = whichSync(exe);
+    if (!full || !fs.existsSync(full)) return;
+    const key = interpreterKey(full);
+    if (!out.has(key)) out.set(key, { exe: full, label });
   };
-  add(setting<string>('python.interpreter', '').trim() || undefined, 'current setting');
-  add(await fromPythonExtension(), 'Python extension');
-  add(vscode.workspace.getConfiguration('python').get<string>('defaultInterpreterPath', '').trim() || undefined, 'python.defaultInterpreterPath');
-  for (const name of ['python3', 'python3.14', 'python3.13', 'python3.12', 'python']) add(name, 'on PATH');
-  const items: (vscode.QuickPickItem & { exe?: string; action?: string })[] = [];
+  const current = setting<string>('python.interpreter', '', resource).trim();
+  if (current) add(resolveSettingPath(current, resource), 'current setting');
+  add(await fromPythonExtension(resource), 'selected in the Python extension');
+  for (const e of await knownEnvironments()) add(e.exe, e.label);
+  for (const exe of workspaceVenvs(folderPaths(resource))) add(exe, 'workspace venv');
+  add(vscode.workspace.getConfiguration('python', resource).get<string>('defaultInterpreterPath', '').trim() || undefined, 'python.defaultInterpreterPath');
+  for (const name of ['python3', 'python3.14', 'python3.13', 'python3.12', 'python']) add(name, `${name} on PATH`);
+  for (const exe of installedInterpreters()) add(exe, installLabel(exe));
+  return [...out.values()];
+}
+
+function installLabel(exe: string): string {
+  if (exe.includes('/.pyenv/')) return 'pyenv';
+  if (exe.includes('/uv/python/') || exe.includes('/.local/bin/')) return 'uv';
+  if (exe.startsWith('/opt/homebrew/') || exe.includes('/Cellar/')) return 'Homebrew';
+  if (exe.includes('/Python.framework/')) return 'python.org';
+  if (/\/(mini|ana)conda3|miniforge3|mambaforge|\.conda\//.test(exe)) return 'conda';
+  return 'installed';
+}
+
+/** Probe at most `limit` interpreters at a time. */
+async function probeAll(exes: string[], limit = 12): Promise<([number, number, number] | undefined)[]> {
+  const out: ([number, number, number] | undefined)[] = new Array(exes.length);
+  let next = 0;
   await Promise.all(
-    [...found.entries()].map(async ([exe, label]) => {
-      invalidateVersionCache(exe);
-      const v = await probeVersion(exe);
-      if (!v) return;
-      const ok = v[0] > 3 || (v[0] === 3 && v[1] >= MIN_PYTHON[1]);
-      items.push({ label: `${ok ? '$(check)' : '$(warning)'} ${exe}`, description: `Python ${v.join('.')}`, detail: ok ? label : `${label} (too old, needs ${MIN_PYTHON.join('.')}+)`, exe });
+    Array.from({ length: Math.min(limit, exes.length) }, async () => {
+      while (next < exes.length) {
+        const i = next++;
+        invalidateVersionCache(exes[i]);
+        out[i] = await probeVersion(exes[i]!);
+      }
     }),
   );
-  items.sort((a, b) => a.label.localeCompare(b.label));
+  return out;
+}
+
+const GET_PYTHON_URL = 'https://github.com/ivorpad/pyokka#requirements';
+
+/**
+ * Quick pick of the interpreters on this machine (or a file dialog), like VS Code's own; writes
+ * `pyokka.python.interpreter` for the workspace. `reason` titles the picker when a start found none.
+ */
+export async function selectInterpreterCommand(reason?: string): Promise<string | undefined> {
+  const found = await discoverInterpreters();
+  const versions = await probeAll(found.map((f) => f.exe));
+  const current = setting<string>('python.interpreter', '').trim();
+  const currentKey = current ? interpreterKey(whichSync(resolveSettingPath(current)) ?? current) : undefined;
+  const ok = (v: [number, number, number]) => v[0] > MIN_PYTHON[0] || (v[0] === MIN_PYTHON[0] && v[1] >= MIN_PYTHON[1]);
+  const rows = found.flatMap((f, i) => (versions[i] ? [{ ...f, version: versions[i]! }] : []));
+  rows.sort((a, b) => Number(ok(b.version)) - Number(ok(a.version)) || b.version[0] - a.version[0] || b.version[1] - a.version[1] || b.version[2] - a.version[2]);
+  const items: (vscode.QuickPickItem & { exe?: string; action?: string })[] = rows.map((r) => ({
+    label: `${ok(r.version) ? '$(check)' : '$(warning)'} Python ${r.version.join('.')}`,
+    description: r.exe,
+    detail: `${r.label}${interpreterKey(r.exe) === currentKey ? ' · current' : ''}${ok(r.version) ? '' : ` · too old, Pyokka needs ${MIN_PYTHON.join('.')}+`}`,
+    exe: r.exe,
+  }));
   const BROWSE = 'browse';
   const TYPE = 'type';
   items.push({ label: '$(folder-opened) Browse for a python executable…', detail: 'Opens a file dialog in the current folder (e.g. .venv/bin/python)', action: BROWSE });
   items.push({ label: '$(edit) Type a path…', detail: 'Absolute, or relative to the workspace folder', action: TYPE });
-  const pick = await vscode.window.showQuickPick(items, { title: 'Pyokka: Python interpreter', placeHolder: 'Interpreter used to run Pyokka files (Python 3.12+)' });
+  const GET = 'get';
+  if (!rows.some((r) => ok(r.version))) items.push({ label: `$(link-external) Get Python ${MIN_PYTHON.join('.')}+…`, detail: 'python.org, Homebrew, uv or pyenv: how to install one, in the README', action: GET });
+  const pick = await vscode.window.showQuickPick(items, { title: reason ? `Pyokka: ${reason}` : 'Pyokka: Python interpreter', placeHolder: `Interpreter used to run Pyokka files (Python ${MIN_PYTHON.join('.')}+), as VS Code's debugger uses the one you select`, matchOnDescription: true, matchOnDetail: true, ignoreFocusOut: !!reason });
   if (!pick) return undefined;
+  if (pick.action === GET) {
+    void vscode.env.openExternal(vscode.Uri.parse(GET_PYTHON_URL));
+    return undefined;
+  }
   let exe = pick.exe;
   if (pick.action === BROWSE) {
     const chosen = await vscode.window.showOpenDialog({ canSelectFiles: true, canSelectFolders: false, canSelectMany: false, defaultUri: browseStartUri(), openLabel: 'Use as interpreter', title: 'Pyokka: choose a Python 3.12+ executable' });

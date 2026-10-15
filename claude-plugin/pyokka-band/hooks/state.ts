@@ -3,7 +3,10 @@ import type { Finding } from '../types'
 // The band's settings, and what one load of the plugin remembers outside its atoms (the atoms
 // are in register.tsx, where the validator can read every update of them).
 
+/** The CLI that reads a program. */
 export const PYOKKA = ['pyokka']
+/** How the program runs without the Time Machine, for a fix check. */
+export const plainRun = (path: string) => ['python3', path]
 export const POLL_MS = 3000
 export const FOLLOW_MS = 60_000
 // With no pyokka command, band press or band tool call for this long, the band steps aside.

@@ -19,6 +19,7 @@ import type { SessionMarker } from '../session/markers';
 import { asOfFooter, entryAsOf, finalEntry } from '../session/valuesAsOf';
 import { sessionVariableHistory } from '../session/variableQuery';
 import { memberChainAt, truncateOneLine } from '../util/text';
+import { isKeyword } from '../runtime/language';
 import { entryText } from '../views/panelSupport';
 import { localFooter, localOwner, pickLocal } from './hoverLocals';
 
@@ -70,7 +71,7 @@ export class ValuePeekProvider implements vscode.HoverProvider {
 
     // a bare name (a parameter, a local): the run's recorded variables answer without a run, as of
     // the step while navigating; a fresh run would not give the value at this step anyway
-    const bare = /^[A-Za-z_]\w*$/.test(span.text);
+    const bare = /^[A-Za-z_$][\w$]*$/.test(span.text);
     const history = bare && (s.nav.active || !s.implicitRunsAllowed) ? await this.history(s, span.text) : undefined;
     if (token.isCancellationRequested) return undefined;
     if (history) {
@@ -257,11 +258,6 @@ function sameRange(a: Range4, b: Range4): boolean {
   return a[0] === b[0] && a[1] === b[1] && a[2] === b[2] && a[3] === b[3];
 }
 
-const KEYWORDS = new Set(['and', 'as', 'assert', 'async', 'await', 'break', 'class', 'continue', 'def', 'del', 'elif', 'else', 'except', 'finally', 'for', 'from', 'global', 'if', 'import', 'in', 'is', 'lambda', 'nonlocal', 'not', 'or', 'pass', 'raise', 'return', 'try', 'while', 'with', 'yield', 'print', 'True', 'False', 'None']);
-
-function isKeyword(text: string): boolean {
-  return KEYWORDS.has(text);
-}
 
 function escapeMd(text: string): string {
   return text.replace(/[\\`*_{}[\]()#+\-.!|<>]/g, (c) => `\\${c}`);

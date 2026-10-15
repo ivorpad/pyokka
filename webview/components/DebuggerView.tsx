@@ -34,6 +34,8 @@ export interface DebugSessionViewProps {
   onBreakpointRemove: (file: string, line?: number, fn?: string) => void;
   onExceptions: (mode: 'off' | 'uncaught' | 'raised') => void;
   onView?: (view: ViewId) => void;
+  /** Pause, Restart and Stop in the Running header */
+  onControl?: (action: 'pause' | 'restart' | 'stop') => void;
 }
 
 /** A pane header: the title, a count when it helps, and actions that appear on hover. */
@@ -48,7 +50,7 @@ function SectionHead({ title, count, note, actions }: { title: string; count?: n
   );
 }
 
-export function DebugSessionView({ state, onOpen, onWatchAdd, onWatchRemove, onBreakpointRemove, onExceptions, onView }: DebugSessionViewProps) {
+export function DebugSessionView({ state, onOpen, onWatchAdd, onWatchRemove, onBreakpointRemove, onExceptions, onView, onControl }: DebugSessionViewProps) {
   const [watchText, setWatchText] = useState('');
   const [watchMode, setWatchMode] = useState<WatchMode>('display');
   const [adding, setAdding] = useState(false);
@@ -95,6 +97,13 @@ export function DebugSessionView({ state, onOpen, onWatchAdd, onWatchRemove, onB
           <>
             <span class="pk-dbg-lead">{state.running ? 'Running' : 'The program ended'}</span>
             <span class="pk-dbg-hint">{state.running ? 'it stops at a breakpoint, an exception, or a pause' : ''}</span>
+            {live && onControl ? (
+              <span class="pk-dbg-controls">
+                <IconButton icon="debug-pause" title="Pause" onClick={() => onControl('pause')} />
+                <IconButton icon="debug-restart" title="Restart" onClick={() => onControl('restart')} />
+                <IconButton icon="debug-stop" title="Stop" onClick={() => onControl('stop')} />
+              </span>
+            ) : null}
           </>
         )}
         {state.thread && <span class="pk-dbg-chip pk-dbg-thread">{state.thread.name}</span>}

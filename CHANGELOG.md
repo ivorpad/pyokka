@@ -2,6 +2,298 @@
 
 ## Unreleased
 
+## 0.4.0
+
+- The README covers the browser page (`pyokka web`), the 18 MCP tools, the investigation
+  commands and the new `run`, `debug`, `break` and `locals` flags. `docs/` drops what had gone
+  stale: the QA plan written against the 2026-09-12 build, the demo recording script, the MCP
+  server's status note of 2026-10-10 and the September screenshots.
+- `pyokka tour` on a saved run whose files are gone keeps the stops in them. It reads the copy the
+  run kept, where the redactor put `«redacted»` in place of a value (`max_tokens=«redacted»`); that
+  copy did not parse, so the file lost every statement and the tour its stops there. The copy is
+  read with `...` in those places, and a line that still does not parse as `pass`
+  (`python/pyokka_runtime/agent/tour/astinfo.py` `parse_source`).
+- `pyokka web` (and MCP `pyokka_page open`) runs the page's bridge on the Node inside VS Code when
+  no `node` is on PATH: VS Code's Electron binary with `ELECTRON_RUN_AS_NODE=1`, found from
+  `$PYOKKA_CODE`, `code` on PATH or the app folder, as VS Code's own `code` command runs. The bridge
+  clears the flag so the programs it runs do not inherit it.
+- A start that finds no Python 3.12+ opens the interpreter picker instead of an error, as VS Code's
+  debugger asks for an interpreter. The picker lists the interpreters on the machine with their
+  versions: the Python extension's environments, the workspace venv, the PATH, and Homebrew,
+  python.org, pyenv, uv and conda installs. The project's `.venv` (or `venv`) is used without the
+  Python extension, after the extension's own choice. Apple's `/usr/bin/python3` is never run
+  while no Command Line Tools stand behind it, so it no longer opens their installer. VS Code's
+  terminals get `~/.local/bin` on PATH while the `pyokka` command is installed there. The README
+  has a Requirements section.
+- `pyokka verify RUN --after PATH | --rerun [--out PATH] [--ignore NAME] [--expect NAME=VALUE]
+  [--test-out PATH]` prints the diff against a baseline and a `PASS`/`FAIL` line per expected final
+  value (exit 1 on a failure or an incomplete recording); `--test-out` writes a pytest file that
+  reruns the file and checks those values. `diff --ignore NAME` leaves a name's values out.
+- `pyokka learn RUN [--at STEP] [--prediction TEXT] [--reveal]` lists up to 12 checkpoints (calls,
+  decisions, errors, prints) with their values hidden; `--at` keeps a prediction, and `--reveal`
+  prints what the run recorded at that step plus a `match:` line naming the value that equals it.
+- `pyokka investigate RUN --value NAME [--at STEP]` prints one value's `var` history, `why` and
+  `origin` at its first `nan`/`inf`/`None` or last change (or at STEP), the run's exceptions and the
+  project lines that did not run, after `note:` lines on where the recording has gaps (locals limit,
+  step cap, `--record-from` start, no `run.finished`, no kept source, cut values).
+- `pyokka pin RUN --out PATH` copies a saved run byte for byte to a new owner-only file to keep as
+  a baseline (`--live`: the session's recording); an existing PATH is refused with exit 2
+  (`python/pyokka_runtime/agent/workflows.py`).
+- The Debug Console shows what the program prints during a debug session.
+- `pyokka mcp`: the CLI as an MCP server on stdin/stdout for Claude Code, Codex and other MCP
+  clients, stdlib JSON-RPC, with tools whose answers are the commands' own text: `pyokka_run`,
+  `pyokka_map`, `pyokka_step`, `pyokka_value`, `pyokka_coverage` and `pyokka_debug`, and the twelve
+  the entries below add. Add it with `claude mcp add pyokka -- pyokka mcp` (README, "As an MCP
+  server").
+- `pyokka coverage RUN|--live [--file F]`: per file the statement lines that ran, did not run, ran
+  in part or raised; `--file` lists one file line by line with its hits.
+- The keys for Start on Current File, New File, Stop Current, Install Missing Package and New
+  Python File (⌘K Q, L, S, I, J and their Ctrl+Alt+P twins) no longer fire in JavaScript /
+  TypeScript editors, so an extension for those languages can bind the same keys there.
+- MCP `pyokka_debug {"action": "start", "file": F, "args": [...]}` reaches the program: the tool put
+  FILE after `--`, so the parser read `--args` as an extra positional and refused the call with
+  `unrecognized arguments`. FILE now goes before `--args` (`python/pyokka_runtime/agent/mcp.py`
+  `words_debug`); a file whose name starts with `-` is passed as `./NAME`.
+- `--python NAME` takes a command on PATH, as a shell would: `pyokka run app.py --python python3.12`
+  and `pyokka debug app.py --python python3.12` look the name up with `shutil.which`
+  (`python/pyokka_runtime/agent/interpreter.py` `on_path`). They used to take it as a file in the
+  current directory, so `run` said "does not exist" and `debug` sent the window a path that is not
+  there and waited 20 s for a session. A name that is not on PATH is refused at once: `--python
+  NAME: no such command on PATH`. A value with a `/`, or one that exists from the current directory
+  (`.venv`), is still a path.
+- A SyntaxError in an imported module names its file and line: `pyokka run main.py` prints `[error
+  @1] SyntaxError: '(' was never closed  (bad.py:2)` and `--save` prints `error: ... (bad.py:2)`,
+  where both said `SyntaxError: SyntaxError: ...` with no place. The `error` event's stack starts
+  with a `<module>` frame at `bad.py:2` instead of the runtime's loader
+  (`python/pyokka_runtime/errors.py` `_compile_frame`), and its traceback ends in the compiler's own
+  `File "bad.py", line 2`. Every `run` error line now ends in the `(file:line)` it was raised at.
+- A debug run that ends says why: the debug replies carry `finished.error` {type, message, file,
+  line} from the innermost frame of the uncaught exception (`src/debug/debugSessionState.ts`
+  `uncaughtError`), and `pyokka debug`, `continue --live` and `stop --live` print it under
+  `finished: exit N, K steps` as `error: ValueError: too big: 3 (raise_app.py:3)`. A module that did
+  not compile is named the same way (`error: SyntaxError: ... (bad.py:2)`).
+- A break-when watch that fails to evaluate stops once and says why instead of never firing: `pyokka
+  watches --live --add '1/0' --break-when change` then `continue --live` prints `paused at
+  loop_app.py:2 (watch 1/0 failed: ZeroDivisionError: division by zero)`, and the next `continue`
+  runs on, since the same error does not stop again. The pause carries `watch.error`
+  (`python/pyokka_runtime/debugger.py` `_watch_fires`); a name that is not bound yet stays silent as
+  before.
+- Breakpoint conditions, break-when watches, `continue --until` and recorded watch expressions run
+  under the pure rule `eval` already used (`python/pyokka_runtime/pure.py`
+  `compile_pure`/`run_pure`), so none of them can change the program. `break --live app.py:4 --when
+  'lst.append(1) or True'` pauses with `condition failed: ValueError: cannot call `lst.append` here`
+  and `lst` stays empty; a watch the rule refuses stops once with `watch EXP failed: ...`. Each one
+  compiles once, when it is set.
+- A runner whose stdin breaks (EPIPE after the child died) rejects the requests in flight with
+  `Pyokka runner input failed: write EPIPE` instead of throwing in the extension host and leaving
+  them to time out (`src/runtime/runnerClient.ts`).
+- Bare `pyokka` prints every command and then a first command per job (`pyokka run FILE --save
+  run.json`, then `pyokka story run.json --file FILE`; `pyokka walkthrough run.json`; `pyokka debug
+  FILE --at NAME`; `pyokka mcp`) and `pyokka VERB --help`, and exits 2; `pyokka --help` prints the
+  same and exits 0 (`python/pyokka_runtime/__main__.py` `START`). It used to print one usage line
+  and "the following arguments are required".
+- `pyokka run FILE --mode profile` ends with `profile: PATH` (the .cpuprofile it wrote) and
+  `profiled, no steps recorded, exit N` (`python/pyokka_runtime/cli.py` `_pretty`). The path was
+  only inside the `[run.finished]` dict, after a `[trace] 0 steps` line that read like a failed
+  runner.
+- `pyokka run FILE --cwd DIR` runs the program in DIR instead of the file's directory, with or
+  without `--save`; a DIR that holds the file is also the run's workspace root, so the project's own
+  imports count as user code, and a saved run records it as `meta.cwd`
+  (`python/pyokka_runtime/agent/save.py` `run_dirs`). A DIR that does not exist is refused before
+  anything runs.
+- `pyokka locals --live` takes `--scope local|global|all` (the function's own names; the
+  module-level values the program bound; both), `--names-only` (one `name: type` per line, no value
+  rendered) and `--name NAME` (repeatable). Without them it lists the frame's variables as before
+  (`python/pyokka_runtime/debugger.py` `Debugger.locals`; the bridges pass `scope`, `names`,
+  `namesOnly`).
+- `pyokka break --live FILE:LINE --log-message TEXT` makes that line a logpoint (VS Code's
+  `logMessage`): it shows in the Breakpoints view and the `break` listing as `log TEXT (logpoint:
+  never pauses)` and never pauses the debugger; `break --live --clear` removes every breakpoint and
+  logpoint of the session and the editor. Evaluating the message in a debug run is not part of this
+  change.
+- A `ModuleNotFoundError` raised on an interpreter that is not the project's carries a `hint` when
+  the program's project has `uv.lock`, `poetry.lock` or `pyproject.toml` and a `.venv`: `pyokka
+  run`, `run --save` and a finished debug run print `hint: ... rerun with --python .venv/bin/python`
+  under the error (`python/pyokka_runtime/hints.py`). A run on that `.venv`, or a project without
+  those files, gets no hint; the interpreter is never switched by itself.
+- On Save sessions rerun when a file they ran changes on disk outside VS Code (another editor, an
+  agent, `git checkout`), files outside the workspace included: an open file reloaded from disk
+  counts as a save, and an imported module that is not open is watched and reruns the sessions that
+  imported it (`src/session/diskReload.ts`, `SessionManager.watchFile`). Each watched file is read
+  again 250 ms and 1 s after its watch starts, for a write made while the watch was starting.
+  Unsaved edits and On Demand still wait for a run.
+- MCP `pyokka_debug {"action": "status", "wait_seconds": 60}` waits for the person to pause the
+  program in VS Code (a breakpoint, Pause, a step), then prints `paused after waiting N s` above the
+  `state --live` text. With nothing pausing it answers `still running after N s`; a run that is
+  paused or over answers at once. `wait_seconds` goes up to 600 (`python/pyokka_runtime/agent/mcp_status.py`).
+- MCP tools `pyokka_history` and `pyokka_narrate` wrap `pyokka history` and `pyokka narrate`:
+  `pyokka_history {"run": R, "out": "/tmp/s/history.json", "var": ["total"], "why": [{"step": 40,
+  "name": "total"}]}` writes the same code-history JSON the command writes and answers its text;
+  `pyokka_narrate {"run": R, "dry_run": true}` prints the prompt, `command` picks the model command.
+- MCP `pyokka_run` takes `mode` (`normal`, `snaps`, `profile`), `auto_log` and `cwd`, and
+  `pyokka_map {"action": "graph"}` takes `expand` (a list of packages), `no_statements` and `dot`,
+  the flags of `run` and `graph`. `pyokka run FILE --save R --mode profile` now profiles: `--save`
+  used to send mode normal whatever was asked. A profile run's summary says `profiled, no steps
+  recorded` and `profile: PATH`, and the saved meta keeps `profile`.
+- `pyokka run FILE --test NAME` and `pyokka debug FILE --test NAME` run one test of a test file
+  under its runner and record (or pause in) only that test's body: `--test test_b` or
+  `--test TestCart::test_total` is a pytest node id, `--test Cart.test_total` a unittest name,
+  anything else a pytest `-k` expression. pytest runs as `python -m pytest FILE::NAME -q -s
+  --assert=plain -p no:cacheprovider`, so the project gets no `.pytest_cache`
+  (`python/pyokka_runtime/agent/one_test.py`).
+- `pyokka debug --configuration NAME` starts a `debugpy` or `python` configuration of the nearest
+  `.vscode/launch.json` (above FILE, `--cwd` or the current directory): `program` or `module`,
+  `args`, `cwd`, `env`, `envFile` (else `${workspaceFolder}/.env`, as the Python extension reads),
+  `python`, `stopOnEntry`, and `justMyCode: false` as `--library-code`. `${workspaceFolder}`,
+  `${file}` and the other path variables are filled in; flags given on the command line win. The
+  answer starts with `configuration "NAME" from PATH (not applied: KEY, ...)`, and an unknown name
+  lists the configurations there (`python/pyokka_runtime/agent/launch_config.py`).
+- MCP: `pyokka_debug {"action": "start"}` takes `configuration` and `test`, `pyokka_debug
+  {"action": "locals"}` takes `scope` (`local`, `global`, `all`), `names_only` and `names`, and
+  `pyokka_run` takes `test`, the flags `debug --configuration`, `--test`, `locals --scope`,
+  `--names-only`, `--name` and `run --test` give the CLI.
+- Skill: SKILL.md tells the agent to read only its mode's file up front, then take flags from
+  the job's first command and `pyokka VERB --help`; `pyokka-cli.md` and `live-debugger.md` are for
+  a command that fails or a question the help leaves open.
+- Skill: `debug.md` treats a debug run that ends without pausing (`finished: exit N, K steps`) as a
+  setup failure: read the exit code, the `error:` line and the program's output, find why the stop's
+  line did not run, fix the stop or the entry and start again before replying.
+- Skill: "Finish clean" in SKILL.md covers the processes the agent started (a `run --keep` runner,
+  a `pyokka mcp` server, a background `watch --live` or `shell --live`, a server it launched): note
+  each PID and port, stop them and confirm with `pgrep`, or ask the person whether to keep them.
+- Skill: SKILL.md's "Use the MCP tools when they answer" sends the agent to the `pyokka_*` tools
+  first, then to `mcporter list pyokka --brief` / `mcporter call pyokka.TOOL`, then to the CLI,
+  with a table from each CLI command to its tool and what differs (absolute paths, mcporter's
+  60 s timeout, state kept in VS Code and the runner). `references/mcp.md` lists every tool's
+  arguments and the `mcporter config add pyokka --command pyokka --arg mcp` line.
+- Skill: `skills/pyokka/agents/openai.yaml` sets `policy.allow_implicit_invocation: false`, so
+  Codex starts the skill only on `$pyokka`, as Claude Code does on `/pyokka`
+  (`disable-model-invocation: true`).
+- `python/tests/test_skill_coverage.py` holds the skill to the CLI: it fails when a command or one
+  of its flags has no synopsis in `skills/pyokka/references`, an MCP argument or action is missing
+  from `mcp.md`, a band key (`/pk d`, `/pk g`, ...) or tool action is unnamed, a `PYOKKA_` variable
+  is undocumented, the frontmatter holds a plain value with `: `, or either "only when the user
+  asks" key is gone. `pyokka-cli.md` gains "Every command" (one synopsis per command, `cache`,
+  `serve`, `_child` and `_keep` included) and `PYOKKA_SPAWN`, `PYOKKA_FORK`, `PYOKKA_KEEP_DIR`;
+  `debug.md` names `--test` and `--configuration`.
+- MCP tools `pyokka_session` and `pyokka_seek` (`python/pyokka_runtime/agent/mcp_session.py`), both
+  JSON and read-only. `pyokka_session {"live": true}` reports the open session with the program's
+  actual pause (`livePause`) apart from the Time Machine's position (`recordedSelection`) and the
+  actions that apply now; with `run` it reads a saved run at `step`. `pyokka_seek {"run", "value":
+  "total", "equals": "6"}` answers the first (or `occurrence: "last"`) step where the value was made
+  and the step that can read it; `{"run", "file", "line"}` the first or last run of that line. Both
+  say when the recording has gaps.
+- MCP tools `pyokka_save_investigation {path, run, question, checkpoints: [{name, step}]}` and
+  `pyokka_open_investigation {path}` (`python/pyokka_runtime/agent/saved_investigation.py`): the
+  first writes a new JSON file (never an overwrite) with the run's relative path and sha256 and
+  answers each checkpoint's context; the second reopens it and refuses a run whose sha256 changed,
+  since a re-recorded run's steps may be other moments.
+- MCP tools `pyokka_investigate`, `pyokka_learn`, `pyokka_pin` and `pyokka_verify`: the four verbs
+  as tools whose answer is the command's own text (`python/pyokka_runtime/agent/mcp.py`); a `verify`
+  whose expectation fails answers its `FAIL` lines as an error result.
+- Editor commands Pyokka: Investigate a Value, Learn from This Run, Pin Run as Baseline and Verify
+  Fix run `investigate`, `learn`, `pin` and `verify` over the active session's run and show the
+  answer in a Markdown preview (`src/features/investigation.ts`). Pin keeps the run as this file's
+  baseline; Verify Fix runs the edited file once and compares it with that baseline, checking an
+  optional `NAME=VALUE`. Each takes its inputs as a command argument too (`{name}`, `{step,
+  prediction}`, `{expect}`).
+- Pyokka in a browser (`docs/WEB.md`): `node dist/web/server.js FILE` (`npm run pyokka-web -- FILE`)
+  serves the panel beside a Monaco code pane at http://127.0.0.1:4777/, re-runs the file when it is
+  saved, and runs edits typed in the page. `?layout=panel` is the panel alone, for VS Code's Simple
+  Browser next to the editor. An agent steps the Time Machine and explains lines in a bubble with
+  `node dist/web/server.js ctl step over --say "..."`, the HTTP API behind it, or the `pyokka_*`
+  WebMCP tools.
+- The page has every view of the panel: Time Machine watches, Variable History and Why, the
+  Execution Diagram, HTTP record/replay, Narrate and the Tour (through `claude`, `codex` or
+  `PYOKKA_EXPLAIN_COMMAND`), and the live Debugger with gutter breakpoints and its controls
+  under the code. Agents get `ctl var`, `why`, `watch`, `break` and `debug`, and the matching
+  WebMCP tools.
+- The page also has what VS Code opens as editors: the Code Story in the right panel's CODE STORY
+  view, following the Time Machine while the code pane keeps the source; Profile, as a table of the hottest functions with the `.cpuprofile` at
+  `/api/profile`; Show Instrumented File; Show Logs. The Settings view's run modes work (On Save,
+  On Demand), and View Recent Files switches the page to another file the bridge ran. Agents get
+  `ctl story` and `ctl profile`.
+- The browser page's debugger starts the way VS Code's does: `ctl debug start` runs to the first
+  breakpoint and pauses at the first statement only when asked or when no breakpoint can hit in the
+  files the run touches (`web/debugHost.ts`, `entryPause`); `break 88 on` then `debug start` pauses
+  at `demo.py:88`. `ctl eval EXPR` at a pause runs in the paused frame and answers its `at`, or the
+  runtime's own error (`NameError: name 'rect1' is not defined` at line 8).
+- The browser page's `ctl debug start` answers as soon as the run ends without pausing (a breakpoint
+  that never hits) instead of waiting 10 s, and `debug start`/`debug state` of a run that ended
+  answer `exitCode` and `errors` ({type, message, file, line} of each uncaught exception) where they
+  said only `running: false` (`web/agent.ts` `debugSummary`, `web/debugHost.ts`).
+- `pyokka web FILE [--port N] [--open]` serves the browser page and `pyokka web ctl [--port N]
+  state|step|debug ...` drives it, from the installed extension: the vsix now ships `dist/web` and
+  the CLI runs its bridge under node (`python/pyokka_runtime/agent/web.py`). It says what to do when
+  the page is not built, when node is missing, when the port is taken and when nothing is served on
+  the port; `pyokka web -h` names the bridge it runs.
+- Page control checks: `state.context` names the live debug run or the recording an agent acts on,
+  and `expect` (`ctl --expect-run|--expect-step|--expect-frame|--expect-file|--expect-source`)
+  refuses a command once that context moved on. The API refuses two open pages, a second pending
+  command and a page that disconnects mid-command with a 409 and the reason, and live debugger moves
+  answer only at a confirmed new pause or end.
+- Page Step buttons: while the Time Machine is on, the header has Step (the next recorded event) and
+  Step back, and the live debugger bar has Step; `ctl step next` and the WebMCP `pyokka_step` kind
+  `next` move exactly one recorded event.
+- The page bridge starts no recorded run of its own (a save from any editor, a settings change)
+  while the live debugger has a run, so a paused program is not executed a second time beside it;
+  the page still shows the saved source, and Run or a save after the debug run runs it.
+- The page shows the new text of an imported file saved on disk, atomic renames included (`mv tmp
+  imported.py`), without moving the Time Machine or the paused debugger and without running
+  anything; the bridge re-reads a newly watched file 250 ms and 1 s later for a write its directory
+  watch missed.
+- `ctl peek NAME` (HTTP `{"action":"peek","name":"cfg.opts"}`) returns a binding of the live pause
+  as its ValueNode tree with run, step, frame, file and line, walking a dotted path and expanding
+  levels the pause did not capture, without evaluating anything. WebMCP tools register on
+  `document.modelContext`, with `navigator.modelContext` as the fallback.
+- Page bridge `--no-run` starts without running the file, and the page gets the main file's local
+  imports before any run (listed by `python -m pyokka_runtime _imports FILE --root DIR` with stdlib
+  `ast`, standard library and site-packages left out). A tab with no unsaved edits reloads itself
+  when its bridge comes back on a rebuilt page bundle.
+- The browser page answers `ctl wait-pause [--after N] [--timeout MS]` (agent command `waitPause`):
+  without `--after` it reads the pause cursor; with it, it returns at the next pause of the live
+  debugger (with that pause's state), when the run ends, or after the timeout, at most 25 s. It may
+  wait beside one other command, which is how an agent waits for the step a person or another
+  command takes (`web/debugHost.ts` `waitForPause`).
+- MCP tool `pyokka_page`: `{"action": "open", "file"}` starts the browser page's bridge as a child
+  of the MCP server and returns the URL for one browser tab; every `pyokka web ctl` command is an
+  action (`state`, `step`, `say`, `breakpoint`, `debug`, `peek`, `wait_pause` up to 25 s, ...)
+  answered with the bridge's JSON, an HTTP or page error being an error result; `close` stops a page
+  the server started and `list` names them (`python/pyokka_runtime/agent/mcp_page.py`).
+- Page: at a debugger pause the code pane shows the frame's values as hovers on identifiers and
+  shadows beside declarations (assignment targets, parameters, `for` and `with ... as` targets),
+  scoped by the runtime's new `bindings` `identifiers` (ast + symtable, UTF-16 offsets); `ctl
+  values` reads them back.
+- Page: the shadows beside declarations keep the debug run's code history (`total = 0 → 2 → 6` over
+  its pauses), and a function value's hover shows its source: the debugger's `locals` reply adds
+  `functionSource` and `functionLocation` from `inspect.getsource`.
+- Page: Cmd/Ctrl-click on a name opens its definition in a separate read-only tab; the
+  runtime's new `definition` request resolves it with `ast` only, through imports into the project's
+  own files (standard library and installed packages open nothing); `ctl definition LINE COLUMN`
+  answers what a click opens.
+- Page: the Debugger pane colours values, its height drags, and its variables open as a tree; a
+  paused value's hover lays a long repr out like `pprint`; the Debugger view's Running header has
+  Pause, Restart and Stop.
+- Page: breakpoints survive a tab reload and show in a second tab, because the bridge keeps the
+  last set the page sent (`debug.breakpoints`).
+- Page: Show Variable History, from the code pane's context menu or the "Show history of NAME" link
+  at the top of a hover, opens the right panel's Variable view. During a live debug session it
+  lists the name's value at each pause and follows new pauses.
+- Page: a Scratchpad (the toolbar's beaker, `ctl scratchpad ...`, MCP `pyokka_scratchpad`) runs an
+  experiment seeded from the live pause in a separate `python -I`: values that rebuild exactly as
+  Inputs, the rest named as unavailable, the source file's imports and definitions copied at their
+  line numbers, `unittest.mock` mocks, values beside each line, and no network on macOS
+  (`sandbox-exec`). Scratchpads are named, and a saved version is never overwritten.
+- Page: `ctl scratchpad say TEXT [--line N]` (MCP and WebMCP `pyokka_scratchpad` `op: "say"`) shows
+  an explanation in a bubble under a line of the scratchpad's code; no text clears it, and new code
+  in the scratchpad clears it too. `state` answers it as `explainer`.
+- Page WebMCP: a 15th tool, `pyokka_scratchpad`. On `document.modelContext` every tool resolves with
+  its answer, which the browser hands the agent as JSON once, and a refused command resolves with
+  `{"isError": true, "error": "..."}`. Before, the answer arrived wrapped in MCP's `content` text
+  and a refusal looked like a success. Each tool has a title and the draft's `readOnlyHint`,
+  `untrustedContentHint` and `consequentialHint`; the tools register with one `AbortSignal`, and a
+  name the browser refuses later shows on the WebMCP chip.
+
 ## 0.3.0
 
 - The band checks a proposed fix on a copy in `.pyokka/band-tmp/` next to the program instead of

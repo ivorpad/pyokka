@@ -24,6 +24,9 @@ Quokka. It contains no Quokka source code. Its command names, settings and keys
 follow Quokka's so that the two feel the same in the editor, and `examples/demo.py`
 follows the outline of Quokka's interactive demo, rewritten in Python.
 
+The same panel also runs in a browser tab next to a code pane (`pyokka web FILE`), with a
+Scratchpad for trying code against a paused program's values; see [In a browser](#in-a-browser).
+
 Requires Python 3.12 or newer and VS Code 1.93 or newer. The runtime is pure
 standard library and ships inside the extension; nothing is installed into your
 environment.
@@ -32,7 +35,7 @@ Contents: [In pictures](#in-pictures) · [Two products](#two-products) · [Insta
 [Coverage](#coverage) · [Run modes and code with side effects](#run-modes-and-code-with-side-effects) ·
 [The Pyokka panel](#the-pyokka-panel) · [Time Machine](#time-machine) · [Code Story](#code-story) · [Debugger](#debugger) ·
 [Understanding a run](#understanding-a-run) · [HTTP: observe, record, replay](#http-observe-record-replay) ·
-[Secrets](#secrets) · [More features](#more-features) · [Agent access: the pyokka CLI](#agent-access-the-pyokka-cli) ·
+[Secrets](#secrets) · [More features](#more-features) · [In a browser](#in-a-browser) · [Agent access: the pyokka CLI](#agent-access-the-pyokka-cli) ·
 [Configuration](#configuration) · [Settings reference](#settings-reference) · [Commands and keys](#commands-and-keys) ·
 [Files Pyokka writes](#files-pyokka-writes) · [Development](#development) · [Status](#status)
 
@@ -123,7 +126,7 @@ from source instead:
 
 ```sh
 npm install
-node esbuild.mjs --production && ./node_modules/.bin/vsce package --no-dependencies --allow-missing-repository
+node esbuild.mjs --production && ./node_modules/.bin/vsce package --no-dependencies
 code --install-extension pyokka-*.vsix --force
 ```
 
@@ -138,6 +141,41 @@ the Automatic run mode so the demo re-runs as you type.
 
 Cursor works with the same `.vsix`. Every `Cmd/Ctrl+K` chord below is also
 `Ctrl+Alt+P` plus the same letter, because Cursor takes `Cmd+K` for itself.
+
+### Requirements
+
+Pyokka runs your file with a Python 3.12 or newer that you pick, the way VS Code's debugger runs
+the interpreter selected in the Python extension. Nothing else is installed: the runtime is the
+standard library only and ships inside the extension.
+
+The first file you start uses, in this order: the `pyokka.python.interpreter` setting, the
+environment selected in the Python extension, the project's own `.venv` (or `venv`),
+`python.defaultInterpreterPath`, then `python3` and `python` on the PATH VS Code got from your
+shell. When none of them is a 3.12+, Pyokka opens its interpreter picker instead of failing: it
+lists the interpreters on the machine with their versions (the Python extension's environments,
+the workspace venv, the PATH, Homebrew, python.org, pyenv, uv and conda installs), and the one you
+pick is saved for the workspace. "Pyokka: Select Python Interpreter" opens the same picker any time.
+
+A Mac with no Python 3.12+ yet needs one first, from any of these:
+
+| Where from | Admin password | Lands in |
+|---|---|---|
+| [python.org](https://www.python.org/downloads/macos/) installer | yes | `/usr/local/bin/python3` |
+| Homebrew: `brew install python@3.13` | no, once Homebrew is set up | `/opt/homebrew/bin/python3` |
+| uv: `uv python install 3.13 --default` | no | `~/.local/bin/python3` (`--default` adds the `python3` name) |
+| pyenv, conda, or a project venv | no | found by the picker |
+
+Apple's own `/usr/bin/python3` without the Command Line Tools is a placeholder that opens their
+installer; Pyokka never runs it. With the tools it is Python 3.9, which is too old.
+
+The rest is optional, per feature:
+
+| Feature | Needs |
+|---|---|
+| The `pyokka` CLI for agents (`pyokka.agentAccess`) | nothing: it writes `~/.local/bin/pyokka`, and VS Code's terminals get that directory on their PATH |
+| The browser page (`pyokka web`) | nothing: it runs on `node` 20+ when one is on PATH, else on the Node inside VS Code |
+| Narrate and the Tour | `claude` or `codex` on PATH, or GitHub Copilot in VS Code, or `pyokka.explain.command` |
+| Quick Package Install | nothing: `uv pip` when `uv` is on PATH, else `python -m pip` |
 
 ## Quick start
 
@@ -850,6 +888,19 @@ the standard library (`getattr(obj, name, default)` over a raising
 inside libraries stay out; one raised in a library and caught by the program is
 in. Clicking a row moves the Time Machine to the raising step.
 
+**Investigate, learn, pin, verify.** Four commands over the active session's run, each answering
+in a Markdown preview. "Pyokka: Investigate a Value" asks for a name (`total`, `self.balance`)
+and shows its changes, `why` and `origin` at its first `nan`, `inf` or `None` (else its last
+change), the run's exceptions and the project lines that never ran, after a note for each gap
+in the recording (the locals limit, the step cap, no kept source). "Pyokka: Learn from This Run"
+lists up to 12 checkpoints (calls, decisions, errors, prints) with their values hidden: predict
+one, then reveal what the run recorded. "Pyokka: Pin Run as Baseline" keeps the run for this
+file, and "Pyokka: Verify Fix" runs the edited file once, compares it with the baseline and
+checks an optional `NAME=VALUE`; a baseline that recorded its HTTP calls is compared with a run
+that replays them. They are `pyokka investigate`, `learn`, `pin` and `verify` over a saved run
+or `--live`; `verify` exits 1 when an expectation fails, and `--test-out PATH` writes a pytest
+file that reruns the program and checks the same values.
+
 ## HTTP: observe, record, replay
 
 Every run lists the HTTP requests the program made, like a browser's Network
@@ -947,11 +998,13 @@ the runtime installs); a library file's source is fetched on demand.
 
 **Interpreter.** Resolution order: `pyokka.python.interpreter` (absolute, or
 relative to the workspace folder), the environment selected in the Python
-extension, `python.defaultInterpreterPath`, then `python3` and `python` on the
-PATH. Anything below 3.12 is refused with a message. "Pyokka: Select Python
-Interpreter for Pyokka" lists candidates and a Browse entry (a file dialog in
-the current file's folder; the choice is validated and saved for the workspace,
-relative when it lives inside it). When the Python extension's environment
+extension, the workspace's `.venv` or `venv`, `python.defaultInterpreterPath`,
+then `python3` and `python` on the PATH (see [Requirements](#requirements)).
+Anything below 3.12 is refused, and a start that finds none opens the picker.
+"Pyokka: Select Python Interpreter for Pyokka" lists the interpreters on the
+machine with their versions, a Browse entry (a file dialog in the current
+file's folder) and Type a path; the choice is validated and saved for the
+workspace, relative when it lives inside it. When the Python extension's environment
 changes, Pyokka offers to restart running sessions.
 
 **Environment.** Runs load `python.envFile` (default `${workspaceFolder}/.env`)
@@ -977,6 +1030,42 @@ always).
 picked, every run with its reason, the untrusted-workspace decision, and the
 build timestamp on activation.
 
+## In a browser
+
+`pyokka web FILE --open` serves the panel and a Monaco code pane at http://127.0.0.1:4777/,
+outside VS Code. A small local bridge runs the same Python runtime (on `node` 20+ from the PATH,
+else on the Node inside VS Code) and re-runs the file whenever it changes on disk; typing in the
+page runs the edited buffer without saving it, and Ctrl/Cmd+S writes it. `--no-run` starts
+without a run and `--port N` moves it. [`docs/WEB.md`](docs/WEB.md) is the full reference.
+
+Every view of the panel works there: the Time Machine with its watches, Variable History and Why,
+the Execution Diagram, HTTP record and replay, Narrate and the Tour, Profile, the run modes and
+View Recent Files. What VS Code opens as an editor opens in the page's right panel, so the code
+pane always shows the source: the Code Story follows the Time Machine there, and Show Variable
+History (the code pane's context menu, or "Show history of NAME" at the top of a hover) lists a
+name's changes, or during a debug session its value at each pause.
+
+The live Debugger runs the file for real, with nothing recorded: gutter breakpoints (F9), and the
+call stack, the variables and the step controls under the code pane. At a pause, hovering an
+identifier shows the paused frame's value (which name is which binding comes from the runtime's
+`ast` and `symtable` reading, so a parameter `x` never shows the module's `x`), and each
+declaration has a shadow with the values its binding had at this run's pauses (`total = 0 → 2 →
+6`). Cmd/Ctrl-click opens a definition from the project's own files in a read-only tab.
+
+The Scratchpad (the toolbar's beaker) tries code against a pause without moving it. It copies the
+function around the paused line into a separate `python -I`, with the pause's values as Inputs (a
+value a fresh process cannot rebuild is named as unavailable), the file's imports and definitions
+at their line numbers and optional `unittest.mock` mocks, and runs it with values beside each
+line and, on macOS, no network (`sandbox-exec`). Scratchpads have names and saved versions that
+are never overwritten.
+
+An agent drives the same page. `pyokka web ctl state|step|line|say|eval|var|why|break|debug|scratchpad
+...` moves it and answers with the page's state, and `--say "..."` puts an explanation in a
+bubble under the line. The MCP tool `pyokka_page` does the same from an MCP client and can start
+the page, and a browser that offers WebMCP (`document.modelContext`, a draft) gets 15 `pyokka_*`
+tools, `pyokka_scratchpad` among them. The page serves one main file at a time and refuses
+commands while two tabs are open on it.
+
 ## Agent access: the pyokka CLI
 
 The runtime doubles as a command line, stdlib only, in `python/`. Run it as
@@ -994,10 +1083,44 @@ Linux), a script that runs the installed extension's own runtime and is rewritte
 activation, so it follows upgrades. It needs no admin rights. A file already at that path that the
 extension did not write, such as a `uv tool install` symlink, is left alone.
 
+### As an MCP server
+
+`pyokka mcp` serves the same commands to Claude Code, Codex and any other MCP client over
+stdin/stdout, as 18 tools:
+
+| tool | what it does |
+|---|---|
+| `pyokka_run` | records a file and returns the run path the other tools take |
+| `pyokka_map` | state, walkthrough, story, steps, find, graph, exceptions, http, tour, diff |
+| `pyokka_step` | the Time Machine at a step, and its moves |
+| `pyokka_value` | var, why, origin, values, eval, expand, release |
+| `pyokka_coverage` | which lines ran, never ran or ran in part |
+| `pyokka_debug` | the live debugger in VS Code: start (a file, a module, a launch configuration, one test), continue, pause, stop, restart, break, watches, locals, exec, record, and `status` with `wait_seconds` to wait for the person's next pause; steps and `eval` go through `pyokka_step` and `pyokka_value` with `live` |
+| `pyokka_history`, `pyokka_narrate` | the data behind a code-history page; a model's gloss per walkthrough moment |
+| `pyokka_investigate`, `pyokka_learn`, `pyokka_pin`, `pyokka_verify` | the four verbs of the same names |
+| `pyokka_session`, `pyokka_seek` | where a saved run or the open session stands, and the step where a value or a line first or last happened, as JSON |
+| `pyokka_save_investigation`, `pyokka_open_investigation` | a question and named steps of a run kept in a file, reopened only while the run's sha256 is unchanged |
+| `pyokka_page`, `pyokka_scratchpad` | the browser page: open it, then every `pyokka web ctl` command and the Scratchpad |
+
+A tool answers what the command prints, errors included, so the skill's method reads the same
+either way; `pyokka_session` and `pyokka_seek` answer JSON.
+
+```
+claude mcp add pyokka -- pyokka mcp
+codex mcp add pyokka -- pyokka mcp
+```
+
+Without `pyokka` on the PATH, point the client at the checkout:
+`python3 -m pyokka_runtime mcp` with `PYTHONPATH=<repo>/python`. `pyokka_run` saves to
+`.pyokka/runs/<name>.json` next to the file unless given `save`. `pyokka_debug` and `live: true`
+need VS Code with the extension and `pyokka.agentAccess` on.
+
 ### Putting `pyokka` on your PATH
 
-The script works by its full path, `~/.local/bin/pyokka`, from any shell. For the bare `pyokka`,
-`~/.local/bin` has to be on your PATH, which a stock macOS and some Linux setups do not do.
+The script works by its full path, `~/.local/bin/pyokka`, from any shell, and by its bare name in
+VS Code's own terminals, which get `~/.local/bin` on their PATH from the extension. For the bare
+`pyokka` in other terminals, `~/.local/bin` has to be on your PATH, which a stock macOS and some
+Linux setups do not do.
 Check first:
 
 ```sh
@@ -1049,10 +1172,13 @@ The skill only loads when asked by name (`disable-model-invocation`). With no mo
 from the request's verb.
 
 **Saved run.** `pyokka run FILE --save run.json [--library-code] [--keep]
-[--http record|replay]` executes the file once and writes the run with file
-hashes; local variables are recorded unless `--no-locals`. Every command then
+[--http record|replay] [--cwd DIR] [--test NAME]` executes the file once and writes the run with
+file hashes; local variables are recorded unless `--no-locals`. Every command then
 takes `run.json`. `--keep` leaves the process alive so `eval` and `expand` can
-read final values (`release` shuts it down).
+read final values (`release` shuts it down). `--cwd DIR` runs the program in DIR instead of the
+file's folder. `--test NAME` records one test of a test file under its runner: `test_b` or
+`TestCart::test_total` is a pytest node id, `Cart.test_total` a unittest name, anything else a
+pytest `-k` expression. `--python` takes a path or a command on the PATH (`--python python3.12`).
 
 **Live.** With `pyokka.agentAccess` on (off by default) each VS Code session
 listens on a local Unix socket with a token, described in
@@ -1068,7 +1194,12 @@ terminal: a file (or `--module M`) implies `--live`, so no flag is needed. It
 takes `--args ...` (everything after it goes to the program), `--cwd DIR`,
 `--env K=V` (repeatable), `--python PATH`, `--at NAME|FILE:LINE` (a breakpoint
 set before the program starts, shown in the Breakpoints view too),
-`--stop-on-entry`, `--library-code` and `--record`. The reply is the first stop.
+`--stop-on-entry`, `--library-code`, `--record`, `--test NAME` (one test, as `run --test`) and
+`--configuration NAME`, a `debugpy` or `python` configuration of the nearest `.vscode/launch.json`
+(its `program` or `module`, `args`, `cwd`, `env`, `envFile`, `python`, `stopOnEntry` and
+`justMyCode`; flags given on the command line win, and the reply names the keys it did not
+apply). The reply is the first stop. A run that ends without pausing prints `finished: exit N, K
+steps` and, when an exception ended it, `error: TYPE: MESSAGE (file:line)`.
 `--library-code` steps into and pauses inside third-party packages, never the
 standard library: without it a breakpoint in a library function and
 `step --live --into` on a library call both step over. `--at rrf` breaks
@@ -1127,8 +1258,16 @@ pure and cannot write.
 
 `break --live FILE:LINE [--when EXPR]` sets breakpoints, mirrored in the
 editor's gutter, and `--on-exception raised|uncaught|off` says where an
-exception pauses the run; `watches --live --add EXPR --break-when change|true`
-makes a watch pause the run; `locals --live` lists the paused frame. `state
+exception pauses the run; `--log-message TEXT` makes the line a logpoint that
+never pauses, and `--clear` removes every breakpoint and logpoint. `watches --live
+--add EXPR --break-when change|true` makes a watch pause the run. Conditions,
+watches and `continue --until` run under the same pure rule as `eval`, so none
+of them can change the program (`--when 'lst.append(1) or True'` pauses with
+``condition failed: ValueError: cannot call `lst.append` here: ...``), and a watch that
+fails to evaluate stops once and says why. `locals --live` lists the paused
+frame, `--scope local|global|all` picks the function's own names, the module's
+or both, `--names-only` prints `name: type` lines and `--name NAME` (repeatable)
+only those. `state
 --live` lists both sessions of a file, the debug one first, and marks the one it
 is connected to. The verbs that read a recording (`why`, `var`, `story`,
 `walkthrough`, `graph`, `exceptions`, `http`, `values`, `find`, `steps`) are
@@ -1152,6 +1291,14 @@ pyokka values RUN --line F:L          every value logged on that line, by hit
 pyokka find RUN TEXT [--limit K]      values, locals, errors, output and source lines that mention TEXT
 pyokka var  RUN NAME [--file F] [--scope NAME] [--limit K]   every step where NAME changed: value, statement, what it read
 pyokka why  RUN STEP [NAME] [--depth N]   why NAME had its value after STEP, five levels back
+pyokka origin RUN STEP EXPR [--depth N]   where a bad value was made: the chain back across calls and containers, its root marked
+pyokka coverage RUN [--file F]        per file the lines that ran, never ran and ran in part; --file lists one file with hit counts
+pyokka diff BEFORE AFTER [--ignore NAME] [--limit K]   what an edit changed, statement by statement (--live: the session is the after)
+pyokka tour RUN [--goal NAME|F:L] [--budget TOKENS] [--prose PATH] [--out PATH]   chapters and the steps worth a stop (docs/TOUR.md)
+pyokka investigate RUN --value NAME [--at STEP]   one value's changes, why and origin, the run's exceptions, the lines that never ran
+pyokka learn RUN [--at STEP --prediction TEXT] [--reveal]   checkpoints with their values hidden; predict one, then reveal it
+pyokka pin RUN --out PATH             copy a run to a new owner-only file as a baseline; never overwrites
+pyokka verify RUN --after PATH|--rerun [--expect NAME=VALUE] [--ignore NAME] [--test-out PATH]   the diff against a baseline and a PASS/FAIL per expected value; exit 1 on a FAIL
 pyokka eval RUN EXPR                  a pure expression over the finished run: names, attributes, operators and calls that cannot change it (--keep or --live)
 pyokka expand RUN VALUE_ID [--path SEGMENT ...]
 pyokka state RUN                      file, step count, exit code, staleness (live: the Time Machine position)
@@ -1163,19 +1310,22 @@ pyokka exceptions RUN
 pyokka http RUN                       every request: method, status, the statement that made it, size, time, source
 pyokka release RUN                    shut down the runner kept by --keep
 pyokka cache [--clear]                the cache of instrumented library files: directory, entries, size; --clear empties it
-pyokka debug [FILE | --module M] [--args ...] [--cwd DIR] [--env K=V] [--python PATH] [--at NAME|F:L] [--stop-on-entry] [--library-code] [--record]   start the debugger and print the first stop (a FILE or --module implies --live)
+pyokka debug [FILE | --module M] [--args ...] [--cwd DIR] [--env K=V] [--python PATH] [--at NAME|F:L] [--stop-on-entry] [--library-code] [--record] [--record-from NAME|F:L] [--configuration NAME] [--test NAME]   start the debugger and print the first stop (a FILE or --module implies --live)
 pyokka debug --live [--stop-on-entry]   the same for the open session's file
 pyokka restart --live [--stop-on-entry]   stop the program and start it again, in the same debug session
 pyokka stop --live                    end the program; a debug session is then gone, a recording session and its run stay
 pyokka continue --live [--no-wait | --until EXPR | --to F:L]   resume to the next stop, or `finished: exit N, K steps`; --no-wait answers `resumed` at once
 pyokka pause --live [--no-wait]       pause the running program at its next statement; --no-wait answers `pause requested` at once
 pyokka step --live --into|--over|--out [--count N]   run the program to its next stop; --count N takes N stops and prints the last
-pyokka break --live [F:L ...] [--when EXPR] [--at NAME] [--remove F:L] [--list] [--on-exception off|uncaught|raised]   breakpoints: list, add, remove (a def line pauses at every call), --at NAME a function's entry; where an exception pauses the run
+pyokka break --live [F:L ...] [--when EXPR] [--at NAME] [--remove F:L] [--list] [--log-message TEXT] [--clear] [--on-exception off|uncaught|raised]   breakpoints: list, add, remove (a def line pauses at every call), --at NAME a function's entry, --log-message a logpoint; where an exception pauses the run
 pyokka watches --live [--add EXPR [--break-when change|true]] [--remove ID]   a watch expression shown at every stop; --break-when pauses the run on it instead
-pyokka locals --live [--frame N]      the paused frame's variables, one per line (--frame reads a caller frame)
+pyokka locals --live [--frame N] [--scope local|global|all] [--names-only] [--name NAME]   the paused frame's variables, one per line (--frame reads a caller frame)
+pyokka record --live                  record from the current pause on, in a run started with --record-from that has not reached its point yet
 pyokka exec --live SOURCE [--frame N]   run a statement in the paused frame: an assignment, a call, an import, a block; the program sees it when it continues
 pyokka shell --live [--session NAME] [--json]   one command per stdin line over one connection: the one-shot words without --live, each result as the one-shot prints it
 pyokka history RUN [--at STEP|F:L] [--var NAME] [--why STEP NAME] [--pause] --out PATH [--prose PATH] [--pad N] [--limit K] [--append]   the data behind a code-history page: the source each checkpoint needs, the values as of it, and the command that reproduces them
+pyokka web FILE [--port N] [--open] [--no-run] [--python PATH]   the browser page; `pyokka web ctl COMMAND` drives it, `pyokka web -h` lists the commands
+pyokka mcp                            the commands as MCP tools, on stdin/stdout
 ```
 
 Every `step` and `context` answer has the same shape: the location, the call
@@ -1491,6 +1641,11 @@ belong to a tree view Pyokka does not have and are hidden.
 | `~/.pyokka/config.json` | Read as the second configuration layer; never written |
 | `<workspace>/.pyokka/replay/<hash>.jsonl` | HTTP recordings (`.pyokka-replay/` when `.pyokka` is a config file) |
 | a temporary `.cpuprofile` | Written by a profile run and opened in the editor |
+| `~/.local/bin/pyokka` | The CLI script, while `pyokka.agentAccess` is on; rewritten on every activation |
+| VS Code's workspace storage, `baselines/` | Runs kept by Pin Run as Baseline, for Verify Fix |
+| `<file's folder>/.pyokka/runs/<name>.json` | Runs the MCP tool `pyokka_run` saves when it is given no `save` path |
+| `~/.pyokka/scratchpads/<id>/<n>.json` | The browser page's saved scratchpads, one file per version, never overwritten |
+| `~/.pyokka/recent.json` | The files the browser page's bridge ran (its View Recent Files) |
 
 The runtime never writes into your project otherwise, and the extension never
 edits your files except Insert / Delete Snap Output and the `.gitignore` line
@@ -1534,23 +1689,20 @@ close any other window that runs one first.
 Package an installable `.vsix`:
 
 ```sh
-node esbuild.mjs --production && ./node_modules/.bin/vsce package --no-dependencies --allow-missing-repository
+node esbuild.mjs --production && ./node_modules/.bin/vsce package --no-dependencies
 ```
+
+A release is `scripts/release.sh`: the checks, the version from the `Bump:` trailers since the
+last tag, the `## Unreleased` changelog section cut into the release notes, the build, an
+annotated tag and a GitHub release with the `.vsix`.
 
 `package.json` was generated from Quokka's manifest by `scripts/gen-manifest.py`.
 That manifest is not in the repository, so the script stops without a local
 copy; edit `package.json` directly.
 The wire contract between the extension and the runtime is `docs/PROTOCOL.md`;
 build notes, decisions and quirks are in `docs/HANDOFF.md`, the ranked work
-items in `docs/HANDOFF-understanding-generated-code.md`, and the manual test
-plan in `docs/QA.md`. Screenshots of Pyokka itself, used while building it,
-are in `docs/reference/pyokka-live/`.
-
-## Screenshots
-
-Captures from the Extension Development Host on `examples/demo.py` are in
-`docs/reference/pyokka-live/` (they are not embedded here until the extension
-has a repository URL for the Marketplace to resolve image links against).
+items in `docs/HANDOFF-understanding-generated-code.md`, the browser page in
+`docs/WEB.md` and `pyokka tour` in `docs/TOUR.md`.
 
 ## Status
 
@@ -1564,12 +1716,13 @@ edit-and-continue, breakpoints, auto play, Code Story, recent files, snippets,
 quick package install, profiler, snaps, start view, run modes with shadow values
 and hover evaluation, secrets masking, library stepping, HTTP observe / record
 / replay, the walkthrough and its narration, variable history, the provenance
-tree, the execution diagram, the exceptions report, and agent access through
-the CLI and the bridge.
+tree, the execution diagram, the exceptions report, the investigation commands,
+and agent access through the CLI, the bridge and the MCP server. The browser
+page, its debugger and its Scratchpad are checked in Chrome.
 
-Not ported by decision: licensing and editions, Codeclip sharing, the
-JavaScript-only runtime configuration, and the curated interactive-examples
-library.
+Not ported from Quokka by decision: licensing and editions, Codeclip sharing,
+the runtime settings that only apply to JavaScript, and the curated
+interactive-examples library.
 
 Each run is a child of the long-lived runner: a fork on Linux, a fresh
 interpreter on macOS and Windows (`PYOKKA_SPAWN=1` forces the fresh interpreter
@@ -1582,8 +1735,10 @@ a signal is reported as a runtime error naming the signal and is never re-run.
 
 Known gaps: Windows has not been exercised (it uses the same fresh-interpreter
 mode as macOS); the inline config dict is stripped but
-not applied; `story --live` and `find --live` are refused; there is no MCP
-server yet, the CLI is the agent surface.
+not applied; `story --live` and `find --live` are refused; the extension does not yet
+register `pyokka mcp` with VS Code's own MCP support (Copilot), so it is added by hand;
+the browser page serves one main file at a time, and its Scratchpad has no network
+sandbox outside macOS.
 
 ## License
 

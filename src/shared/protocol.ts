@@ -185,10 +185,30 @@ export type HostRequest =
   | { type: 'complete'; id: number; runId: string; expression: string; limit?: number }
   | { type: 'shadow'; id: number; runId: string; source: string }
   | { type: 'source'; id: number; runId: string; fileId: number }
-  | { type: 'bindings'; id: number; source: string }
+  | { type: 'bindings'; id: number; source: string; identifiers?: boolean }
+  /** where the name at `offset` (UTF-16) of `source`, the file at `path`, is defined in project files (ast only) */
+  | { type: 'definition'; id: number; source: string; path: string; offset: number }
   | DebugRequest
   | { type: 'stop'; id: number; runId: string }
   | { type: 'shutdown'; id: number };
+
+/**
+ * Lexical identities of a source's names (`bindings` with `identifiers: true`): offsets are UTF-16
+ * code units into the source sent. A scope's `parent` is where its free names resolve (a function
+ * in a class body skips the class); a reference's `scope` is the scope whose binding it names, -1
+ * for a builtin or an undefined name; `path` is the attribute chain read off it.
+ */
+/** A definition (`definition` reply): 1-based line, and column in UTF-16 units. */
+export interface DefinitionLocation {
+  path: string;
+  line: number;
+  column: number;
+}
+
+export interface SourceIdentifiers {
+  scopes: { start: number; end: number; parent: number; names: string[]; function?: boolean; class?: boolean; comprehension?: boolean; name?: string }[];
+  references: { start: number; end: number; name: string; scope: number; path: string[]; declaration?: boolean }[];
+}
 
 /* ---------- variable history (bridge `var` reply, `pyokka var --json`, the panel's Variable pane) ---------- */
 
@@ -231,6 +251,8 @@ export interface VariableHistory {
   truncated: boolean;
   /** the run recorded locals (`recordLocals`); without them only logged values and assignment sites are known */
   recordedLocals: boolean;
+  /** the browser page during a live debug session: the changes are values at its pauses, `step` the pause's ordinal (no Time Machine step, no Why) */
+  pauses?: boolean;
 }
 
 /** What one statement assigns and reads, from the AST of its file (`bindings` reply); positions as in the range table. */
@@ -397,6 +419,10 @@ export type ValueType =
 
 export interface ValueNode {
   type: ValueType;
+  /** a function's source (`inspect.getsource`, at most 2000 characters), in the debugger's variables */
+  functionSource?: string;
+  functionSourceCapped?: boolean;
+  functionLocation?: { path: string; line: number };
   value?: string;
   length?: number;
   capped?: string | boolean;
@@ -434,6 +460,19 @@ export interface RunEventBase {
   seq: number;
 }
 
+/** `file.instrumented.walk`: decisions, loops, returns and functions by 1-based line, from a runtime that sends its AST (the Python runtime does not; decisions.ts reads indentation) */
+export interface WalkTable {
+  decisions: (
+    | { kind: 'if'; label: 'if' | 'else if'; line: number; col: number; text: string; body: [number, number]; orelse: [number, number] }
+    | { kind: 'match'; keyword: 'switch'; line: number; col: number; text: string; arms: { text: string; body: [number, number]; default?: boolean }[] }
+  )[];
+  loops: { kind: 'for' | 'while'; line: number; col: number; text: string; end: number }[];
+  returns: number[];
+  functions: { name: string; line: number; end: number }[];
+  /** what each statement assigns and reads (the `bindings` table's names), for the execution graph's data edges */
+  names?: { line: number; col: number; assigns: string[]; reads: string[] }[];
+}
+
 export interface FileInstrumentedEvent extends RunEventBase {
   type: 'file.instrumented';
   fileId: number;
@@ -443,6 +482,8 @@ export interface FileInstrumentedEvent extends RunEventBase {
   statements: number[];
   functions: { rid: number; name: string; bodyRange: Range4 }[];
   magic: { rid: number; kind: 'value' | 'time' | 'autoExpand' | 'timeAutoExpand' }[];
+  /** JS/TS runtime: what the statements are, from the AST (decisions.ts reads Python's indentation without it) */
+  walk?: WalkTable;
   /** absent for library files (4-8 MB per run for openai): the `source` request serves it on demand */
   instrumentedSource?: string;
   /** time spent instrumenting or loading this file from the cache; the runner keeps it out of `timeoutMs` */
@@ -482,6 +523,8 @@ export interface StackFrame {
   col: number;
   rid?: number;
   function: string;
+  /** the frame's file; the only place a frame outside the recorded files (`fileId: 0`) is named */
+  path?: string;
 }
 
 /** Where a caught exception was finally handled (docs/PROTOCOL.md, `error`): the matching `except` clause, or the `with` whose `__exit__` swallowed it. */
@@ -514,6 +557,8 @@ export interface ErrorEvent extends RunEventBase {
   lastStep?: number;
   /** the uncaught exception only: the formatted traceback (last 4000 chars) */
   traceback?: string;
+  /** the uncaught exception only: advice when it says the run used the wrong interpreter (`hints.py`) */
+  hint?: string;
 }
 
 /** coverage state per local range id */
@@ -565,6 +610,8 @@ export interface TraceScope {
   returnedLength?: number;
   /** The exception type the function left by, when it returned nothing. */
   raised?: string;
+  /** JS: the `worker_threads` worker that ran this scope (absent on the main thread). */
+  thread?: { name: string; ident: number };
 }
 
 export interface TraceEvent extends RunEventBase {
@@ -726,7 +773,8 @@ export type RunnerMessage =
   | { type: 'executed'; id: number; text: string; modified: boolean; valueBag?: ValueBag; exception?: { type: string; message: string; traceback?: string } }
   | ({ type: 'completed'; id: number } & Completions)
   | { type: 'source'; id: number; fileId: number; instrumentedSource?: string | null }
-  | { type: 'bindings'; id: number; statements: StatementBinding[] }
+  | { type: 'bindings'; id: number; statements: StatementBinding[]; identifiers?: SourceIdentifiers }
+  | { type: 'definition'; id: number; locations: DefinitionLocation[] }
   | ({ type: 'debug.result'; id: number } & Record<string, unknown>)
   | { type: 'error'; id: number; message: string }
   | { type: 'runner.error'; message: string; detail?: string };

@@ -121,7 +121,7 @@ export class TourHost implements vscode.Disposable {
       const started = Date.now();
       try {
         await fs.promises.writeFile(runFile, JSON.stringify(recording));
-        const doc = await this.run(this.cli(session), tourArgv(runFile, entry.args));
+        const doc = await this.run(await this.cli(session), tourArgv(runFile, entry.args));
         entry.doc = doc;
         log.info(`[${session.displayName}] tour of ${runId}: ${doc.chapters.length} chapters, ${doc.candidates.length} stops in ${Date.now() - started} ms`);
         return doc;
@@ -138,7 +138,8 @@ export class TourHost implements vscode.Disposable {
     return entry.computing;
   }
 
-  private cli(session: Session) {
+  /** Who builds the tour: `pyokka tour` with the session's Python. */
+  private async cli(session: Session) {
     return { python: session.interpreter.path, runtimeDir: this.runtimeDir, env: { PYOKKA_HOME: pyokkaHome() } };
   }
 
@@ -209,7 +210,7 @@ export class TourHost implements vscode.Disposable {
         const prose = parseProseAnswer(answer);
         const proseFile = path.join(e.dir, 'prose.json');
         await fs.promises.writeFile(proseFile, JSON.stringify(prose));
-        return this.run(this.cli(session), tourArgv(e.runFile, { ...e.args, prose: proseFile }));
+        return this.run(await this.cli(session), tourArgv(e.runFile, { ...e.args, prose: proseFile }));
       });
       if (session.isDisposed || this.entries.get(session.key) !== e) return undefined;
       e.doc = merged;

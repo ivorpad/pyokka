@@ -34,7 +34,7 @@ export function libraryCacheDir(env: Record<string, string | undefined>): string
   return path.join(pyokkaHome(env), 'cache');
 }
 
-/** Remove the entries of `dir`; a missing directory is empty. Throws when the directory cannot be listed. */
+/** Remove the `*.bin` entries of `dir`; a missing directory is empty. Throws when the directory cannot be listed. */
 export function clearLibraryCache(dir: string): ClearResult {
   const out: ClearResult = { removed: 0, bytes: 0, failed: 0 };
   let entries: fs.Dirent[];

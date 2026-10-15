@@ -197,8 +197,15 @@ def _main(*argv: str) -> tuple[int, str]:
 
 
 def test_cli_end_to_end_on_the_rrf_fixture(tmp_path: Path):
+    # the recording moved from the scratch directory it was made in, which is gone (a run whose
+    # file is missing is stale), to this test's own, and the program put back from the copy the run
+    # kept. Every path moves, the trace's file table too: the stop ids hash the path under the root.
+    text = lzma.decompress((FIXTURES / "rrf.json.xz").read_bytes()).decode("utf-8")
+    root = json.loads(text)["meta"]["workspaceRoot"]
+    doc = json.loads(text.replace(json.dumps(root)[1:-1], json.dumps(str(tmp_path))[1:-1]))
+    (tmp_path / "rrf.py").write_text(doc["meta"]["files"][0]["source"], encoding="utf-8")
     run = tmp_path / "rrf.json"
-    run.write_bytes(lzma.decompress((FIXTURES / "rrf.json.xz").read_bytes()))
+    run.write_text(json.dumps(doc), encoding="utf-8")
     out = tmp_path / "tour.json"
     code, text = _main("tour", str(run), "--prose", str(FIXTURES / "rrf.prose.json"), "--out", str(out))
     assert code == 0, text

@@ -327,3 +327,40 @@ describe('story blocks', () => {
     expect(storyBlocks(TraceModel.empty())).toEqual([]);
   });
 });
+
+describe('TraceModel with worker threads', () => {
+  /**
+   * main: 1, 2 (postMessage), then the worker's handler 10, 11, 12 (scope 2 under the worker's
+   * scope 1), then main 3. Moves from inside the handler never land in the main thread.
+   */
+  function threads(): TraceModel {
+    const steps = packSteps([
+      [1, 0, 0],
+      [9, 1, 1, 4],
+      [2, 0, 0],
+      [10, 2, 2, 4],
+      [11, 2, 2],
+      [12, 2, 2],
+      [3, 0, 0],
+    ]);
+    const scopes = [scope(0, '<module>', -1, 0, 0, 6), { ...scope(1, '<worker 1>', 0, 1, 1, 1), thread: { name: 'Worker 1', ident: 1 } }, { ...scope(2, 'onmessage', 1, 2, 3, 5), thread: { name: 'Worker 1', ident: 1 } }];
+    return new TraceModel(steps, scopes, false, resolve);
+  }
+
+  it('counts the main thread statements before a step', () => {
+    const m = threads();
+    expect(m.mainStepOf(0)).toBe(0);
+    expect(m.mainStepOf(3)).toBe(2);
+    expect(m.mainStepOf(6)).toBe(2);
+    expect(nested().mainStepOf(3)).toBeUndefined();
+  });
+
+  it('steps over and out by the scope chain, across the other thread', () => {
+    const m = threads();
+    expect(m.stepOver(3)).toBe(4);
+    expect(m.stepOut(4)).toBe(6); // the module is the worker scope's parent
+    expect(m.stepBackOut(4)).toBe(2);
+    expect(m.stepBackOver(3)).toBe(2);
+    expect(m.stepOver(2)).toBe(6);
+  });
+});

@@ -2311,3 +2311,46 @@ body[data-theme='hc'] .pk-exec-chip {
 .pk-tour-locals {
   margin: 2px 0 8px;
 }
+
+/* ---------- CODE STORY (the browser page; VS Code opens it as an editor) ---------- */
+.pk-codestory-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 2px 0 8px;
+  font-family: var(--pk-mono);
+  font-size: var(--pk-mono-size);
+  line-height: 18px;
+  white-space: pre;
+}
+.pk-codestory-row {
+  padding: 0 8px;
+  min-height: 18px;
+}
+.pk-codestory-row.pick {
+  cursor: pointer;
+}
+.pk-codestory-row.pick:hover {
+  background: var(--pk-hover);
+}
+.pk-codestory-row.current {
+  background: color-mix(in srgb, var(--pk-back) 14%, transparent);
+}
+.pk-codestory-box {
+  outline: 1px solid var(--pk-back);
+  outline-offset: 1px;
+  border-radius: 2px;
+}
+.pk-codestory-dim {
+  opacity: 0.45;
+}
+.pk-codestory-body .tk-cmt {
+  color: var(--pk-dim);
+}
+.pk-codestory-value {
+  color: var(--pk-tk-value);
+  font-style: italic;
+}
+.pk-codestory-value.error {
+  color: var(--pk-error);
+}

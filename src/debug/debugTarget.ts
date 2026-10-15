@@ -6,8 +6,8 @@
  *
  * vscode-free at runtime (`DebugSession` is a type import), so vitest can build a fake target.
  */
-import type { Completions, RunFinishedEvent, ValueBag, ValueNode } from '../shared/protocol';
-import type { BreakpointSpec, BreakWatchSpec, DebugBreakpointEcho, DebugState, ExceptionMode, LocalVar, PausedInfo, PausedThread, StepKind } from '../session/debugState';
+import type { Completions, OutputEvent, RunFinishedEvent, ValueBag, ValueNode } from '../shared/protocol';
+import type { BreakpointSpec, BreakWatchSpec, DebugBreakpointEcho, DebugState, ExceptionMode, LocalVar, LocalsOptions, PausedInfo, PausedThread, StepKind } from '../session/debugState';
 import type { LaunchConfig } from './debugSessionState';
 import type { ExecResult } from './debugExec';
 import type { DebugSession } from './debugSession';
@@ -78,7 +78,7 @@ export interface DebugTarget {
   debugContinue(): Promise<void>;
   debugStep(kind: StepKind): Promise<void>;
   debugPause(): Promise<void>;
-  debugLocals(opts?: { frameId?: number }): Promise<LocalVar[]>;
+  debugLocals(opts?: LocalsOptions): Promise<LocalVar[]>;
   /** side-effect-free, in the frame `frameId` names (innermost by default); undefined when it cannot answer */
   evaluate(expression: string, opts?: { frameId?: number }): Promise<{ text: string; valueBag?: ValueBag } | undefined>;
   /**
@@ -105,6 +105,8 @@ export interface DebugTarget {
   onPaused(fn: (info: PausedInfo) => void): () => void;
   onResumed(fn: () => void): () => void;
   onFinished(fn: (exitCode: number | null) => void): () => void;
+  /** what the program prints, as it prints it (the Debug Console shows it) */
+  onOutput?(fn: (stream: 'stdout' | 'stderr', text: string) => void): () => void;
   waitForPause(timeoutMs?: number): Promise<PausedInfo | 'finished'>;
 }
 
@@ -162,6 +164,11 @@ export function wrapDebugSession(ds: DebugSession): DebugTarget {
     onResumed: (fn) => {
       ds.on('resumed', fn);
       return () => ds.off('resumed', fn);
+    },
+    onOutput: (fn) => {
+      const handler = (ev: OutputEvent): void => fn(ev.stream, ev.text);
+      ds.on('output', handler);
+      return () => ds.off('output', handler);
     },
     onFinished: (fn) => {
       // a restart replaces the child inside this session: its finish must not end the debug session
