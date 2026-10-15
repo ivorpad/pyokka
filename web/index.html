@@ -1,0 +1,45 @@
+<!doctype html>
+<!-- Pyokka in a browser: served by the bridge (node dist/web/server.js FILE), see docs/WEB.md -->
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Pyokka</title>
+<script>
+  // what the panel's host normally injects: the Monaco worker and the codicons stylesheet
+  window.__pyokka = { workerUri: new URL('/webview/editor.worker.js', location.href).href, codiconsUri: new URL('/webview/codicons/codicon.css', location.href).href };
+</script>
+<link rel="icon" href="/web/logo.png" />
+<link rel="stylesheet" href="/web/app.css" />
+</head>
+<body>
+<header class="pkw-bar">
+  <img class="pkw-logo" src="/web/logo.png" alt="" />
+  <span class="pkw-brand">Pyokka</span>
+  <span id="pkw-file" class="pkw-file"></span>
+  <button id="pkw-back" class="pkw-btn" type="button" title="Back to the running file" hidden><i class="codicon codicon-arrow-left"></i></button>
+  <span class="pkw-spacer"></span>
+  <span id="pkw-webmcp" class="pkw-chip" title="This page offers its Time Machine to an agent in the browser as WebMCP tools (pyokka_state, pyokka_step, pyokka_say, pyokka_scratchpad, ...)" hidden>WebMCP</span>
+  <span id="pkw-runtime" class="pkw-runtime"></span>
+  <span id="pkw-status" class="pkw-dot off"></span>
+  <button id="pkw-run" class="pkw-btn" type="button" title="Run again"><i class="codicon codicon-play"></i></button>
+  <button id="pkw-tm" class="pkw-btn" type="button" title="Time Machine: start at the cursor line, or stop"><i class="codicon codicon-history"></i></button>
+  <button id="pkw-step-back" class="pkw-btn" type="button" title="Step back: the previous statement, into calls" aria-label="Step back" hidden><i class="codicon codicon-debug-step-back"></i></button>
+  <button id="pkw-step" class="pkw-btn" type="button" title="Step: the next recorded event" aria-label="Step" hidden><i class="codicon codicon-debug-step-into pkw-step-forward"></i></button>
+  <button id="pkw-debug" class="pkw-btn" type="button" title="Debug: run live and pause at breakpoints (click the gutter or F9 to set one)"><i class="codicon codicon-debug-alt"></i></button>
+  <button id="pkw-scratch-toggle" class="pkw-btn" type="button" title="Scratchpad: an experiment with the pause's values, in a separate python -I" aria-label="Scratchpad"><i class="codicon codicon-beaker"></i></button>
+  <button id="pkw-layout" class="pkw-btn" type="button" title="Code and panel / panel only / code only"><i class="codicon codicon-layout"></i></button>
+</header>
+<main id="pkw-main">
+  <section id="pkw-codecol" aria-label="Code">
+    <div id="pkw-code"></div>
+    <div id="pkw-debugpane"></div>
+  </section>
+  <div id="pkw-split" role="separator" aria-orientation="vertical"></div>
+  <section id="pkw-panel"><div id="root"></div><aside id="pkw-scratchpad" aria-label="Scratchpad" hidden></aside></section>
+</main>
+<div id="pkw-notice" class="pkw-notice" role="status" hidden></div>
+<div id="pkw-recent" class="pkw-recent" hidden></div>
+<script type="module" src="/web/app.js"></script>
+</body>
+</html>

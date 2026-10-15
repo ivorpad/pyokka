@@ -79,7 +79,8 @@ export interface PausedInfo {
   kind?: StepKind;
   breakpoint?: DebugBreakpointEcho;
   conditionError?: string;
-  watch?: { id: string; exp: string; text: string };
+  /** `error`: the watch failed to evaluate (it stops once per distinct error) */
+  watch?: { id: string; exp: string; text: string; error?: string };
   /** with reason exception: what was raised, and whether it reached the top */
   exception?: PausedException;
   /** the thread being served; absent from an older runtime */
@@ -99,6 +100,26 @@ export interface LocalVar {
   name: string;
   text: string;
   valueBag?: ValueBag;
+  /** the value's type name, sent with `namesOnly` (no text, no value bag) */
+  type?: string;
+}
+
+/** Which variables `locals` answers (docs/PROTOCOL.md, `locals`): a frame, a scope, some names, names only. */
+export interface LocalsOptions {
+  frameId?: number;
+  scope?: 'local' | 'global' | 'all';
+  names?: string[];
+  namesOnly?: boolean;
+}
+
+/** The runtime's `locals` request fields of `opts`, the ones that are set. */
+export function localsRequest(opts: LocalsOptions): Record<string, unknown> {
+  return {
+    ...(opts.frameId ? { frameId: opts.frameId } : {}),
+    ...(opts.scope ? { scope: opts.scope } : {}),
+    ...(opts.names?.length ? { names: opts.names } : {}),
+    ...(opts.namesOnly ? { namesOnly: true } : {}),
+  };
 }
 
 export interface DebugState {
@@ -177,6 +198,13 @@ export function mapSourceBreakpoints(list: readonly SourceBreakpointLike[]): Bre
     out.push(spec);
   }
   return out;
+}
+
+/** Enabled file logpoints (a `logMessage`): Pyokka logs them in a recorded run and never pauses on them. */
+export function mapLogpoints(list: readonly SourceBreakpointLike[]): { path: string; line: number; condition?: string; logMessage: string }[] {
+  return list
+    .filter((bp) => bp.enabled && bp.logMessage && bp.location.uri.scheme === 'file')
+    .map((bp) => ({ path: bp.location.uri.fsPath, line: bp.location.range.start.line + 1, ...(bp.condition?.trim() ? { condition: bp.condition.trim() } : {}), logMessage: bp.logMessage! }));
 }
 
 /**

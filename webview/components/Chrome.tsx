@@ -77,7 +77,7 @@ export function Rail({ view, debuggerActive, debugSessionActive = false, running
         onClick={() => (debuggerActive ? onView('debugger') : onCommand('pyokka.debug'))}
       />
       {debugSessionActive && <IconButton icon="debug-alt" title="Show Debugger" active={view === 'debug'} onClick={() => onView('debug')} />}
-      <IconButton icon="book" title="View Code Story" onClick={() => onCommand('pyokka.viewCodeStory')} />
+      <IconButton icon="book" title="View Code Story" active={view === 'story'} onClick={() => onCommand('pyokka.viewCodeStory')} />
       <IconButton icon="symbol-variable" title="Variable History" active={view === 'variable'} onClick={() => onView(view === 'variable' ? 'output' : 'variable')} />
       <IconButton icon="globe" title={httpTitle} active={view === 'http'} class={http === 'off' ? undefined : `pk-rail-badge mode-${http}`} onClick={() => onView(view === 'http' ? 'output' : 'http')} />
       <IconButton icon="pulse" title="Profile" onClick={() => onCommand('pyokka.profile')} />

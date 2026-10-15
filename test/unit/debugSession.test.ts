@@ -13,7 +13,9 @@ vi.mock('vscode', () => ({
 }));
 vi.mock('../../src/util/context', () => ({ setContext: (key: string, value: boolean) => void contextKeys.set(key, value) }));
 vi.mock('../../src/debug/debugContext', () => ({ updateDebugContext: () => undefined }));
-vi.mock('../../src/runtime/interpreter', () => ({ resolveInterpreter: async () => ({ path: '/v/bin/python', version: [3, 12, 9], source: 'setting', isVenv: true }) }));
+vi.mock('../../src/runtime/interpreter', () => ({
+  resolveInterpreter: async () => ({ path: '/v/bin/python', version: [3, 12, 9], source: 'setting', isVenv: true }),
+}));
 vi.mock('../../src/features/debugBreakpoints', () => ({ currentSourceBreakpoints: () => gutter, currentFunctionBreakpoints: () => functionGutter }));
 vi.mock('../../src/util/log', () => ({ log: { info: () => undefined, warn: () => undefined, error: () => undefined } }));
 vi.mock('../../src/config/settings', () => ({
@@ -36,9 +38,12 @@ class FakeRunner extends EventEmitter {
   disposed = false;
   capabilities = ['record'];
   locals: { name: string; text: string }[] = [];
+  /** what the session spawned: the executable, its arguments */
+  options: { command: string; args?: string[] } | undefined;
 
-  constructor() {
+  constructor(options?: { command: string; args?: string[] }) {
     super();
+    this.options = options;
     runners.push(this);
   }
   async start(): Promise<{ capabilities: string[] }> {
@@ -317,5 +322,18 @@ describe('DebugSessionManager', () => {
     expect(mgr.all()).toEqual([]);
     expect(started).toHaveLength(1);
     mgr.dispose();
+  });
+});
+
+describe('the interpreter of a debug session', () => {
+  beforeEach(() => {
+    runners = [];
+  });
+
+  it('runs a Python program on the resolved Python', async () => {
+    const ds = make();
+    await ds.start();
+    expect(runners[0]!.options?.command).toBe('/v/bin/python');
+    expect(runners[0]!.options?.args).toBeUndefined();
   });
 });

@@ -1,0 +1,26 @@
+<!doctype html>
+<!-- A definition opened from the Pyokka page (Cmd/Ctrl-click): read only, no run or debugger. See web/source.ts. -->
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Source · Pyokka</title>
+<script>
+  window.__pyokka = { workerUri: new URL('/webview/editor.worker.js', location.href).href, codiconsUri: new URL('/webview/codicons/codicon.css', location.href).href };
+</script>
+<link rel="icon" href="/web/logo.png" />
+<link rel="stylesheet" href="/web/source.css" />
+</head>
+<body class="pkw-source-page">
+<header class="pkw-bar">
+  <img class="pkw-logo" src="/web/logo.png" alt="" />
+  <span class="pkw-brand">Pyokka</span>
+  <span id="pkw-source-path" class="pkw-file">Source</span>
+  <span class="pkw-spacer"></span>
+  <span class="pkw-chip">Read only</span>
+</header>
+<p id="pkw-source-error" role="alert" hidden></p>
+<main id="pkw-source-editor" aria-label="Definition source"></main>
+<script type="module" src="/web/source.js"></script>
+</body>
+</html>

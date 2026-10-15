@@ -8,7 +8,8 @@ import pytest
 from pyokka_runtime.redact import REDACTED, redact, redact_value
 
 FIXTURE = Path(__file__).resolve().parents[2] / "test" / "unit" / "fixtures" / "redact.json"
-CASES = json.loads(FIXTURE.read_text(encoding="utf-8"))["cases"]
+# Slack-shaped tokens are spelled `<xox>` in the fixture so secret scanners do not take the fake one for a real token.
+CASES = json.loads(FIXTURE.read_text(encoding="utf-8").replace("<xox>", "xox"))["cases"]
 
 
 @pytest.mark.parametrize("given,expected", CASES, ids=[c[0][:30] for c in CASES])

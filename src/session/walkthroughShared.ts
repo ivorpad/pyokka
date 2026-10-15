@@ -15,7 +15,7 @@ export const INLINE_MAX = 60;
 export const PARAM_MAX = 20;
 export const ORDER: Record<string, number> = { start: 0, call: 1, tool: 1, decision: 2, value: 3, print: 4, error: 5, end: 9 };
 export const VALUE_KINDS = new Set(['value', 'autoLog', 'logpoint']);
-export const SKIP_PARAMS = new Set(['self', 'cls']);
+export const SKIP_PARAMS = new Set(['self', 'cls', 'this']);
 const LIBRARY_MARKERS = ['site-packages', 'dist-packages'];
 
 export type MomentKind = 'start' | 'end' | 'call' | 'tool' | 'decision' | 'value' | 'print' | 'error';

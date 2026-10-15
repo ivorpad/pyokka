@@ -13,14 +13,17 @@
  * - `returns`: lines holding a `return` statement.
  * - `qualnames` by `def` line: `Class.method`; `functions` by `def` line: `{name, line, end}`.
  */
-import type { Range4 } from '../shared/protocol';
+import type { Range4, WalkTable } from '../shared/protocol';
 
 export const WORD_CUT = 60;
 
 export interface IfDecision {
   kind: 'if';
-  label: 'if' | 'elif';
+  /** `else if` in JavaScript */
+  label: 'if' | 'elif' | 'else if';
   line: number;
+  /** JS: the header's column (a statement on the same line is not the header) */
+  col?: number;
   text: string;
   body: [number, number];
   /** the else arm: the `else` block, or the `elif` header through the end of the chain; [0, 0] without one */
@@ -28,14 +31,18 @@ export interface IfDecision {
 }
 export interface MatchDecision {
   kind: 'match';
+  /** a JavaScript `switch` (its arms `case X` and `default`) */
+  keyword?: 'switch';
   line: number;
+  col?: number;
   text: string;
-  arms: { text: string; body: [number, number] }[];
+  arms: { text: string; body: [number, number]; default?: boolean }[];
 }
 export type Decision = IfDecision | MatchDecision;
 export interface Loop {
   kind: 'for' | 'while';
   line: number;
+  col?: number;
   text: string;
   end: number;
 }
@@ -45,11 +52,15 @@ export interface FunctionSpan {
   end: number;
 }
 export interface FileMap {
+  /** built from a JS/TS file's `walk` table: values read `true`/`false` */
+  js?: boolean;
   decisions: Map<number, Decision>;
   loops: Map<number, Loop>;
   returns: Set<number>;
   qualnames: Map<number, string>;
   functions: Map<number, FunctionSpan>;
+  /** a JS/TS file's statement names from the runtime's AST, keyed `line:col` */
+  names?: Map<string, { targets: string[]; reads: string[] }>;
 }
 
 /** Whitespace runs to one space, cut at `limit` with an ellipsis (Python's `collapse`). */
@@ -123,8 +134,22 @@ function keywordOf(text: string): { keyword: 'if' | 'elif' | 'for' | 'while' | '
   return { keyword: KEYWORDS[kw]!, rest: text.slice(m[0].length) };
 }
 
-/** Build the map from the source lines and the file's statement ranges (source order). */
-export function fileMap(lines: string[], statements: Range4[]): FileMap {
+/** A JS/TS file's map, from the runtime's AST table (`file.instrumented.walk`). */
+export function walkFileMap(walk: WalkTable): FileMap {
+  const out: FileMap = { js: true, decisions: new Map(), loops: new Map(), returns: new Set(walk.returns), qualnames: new Map(), functions: new Map() };
+  for (const d of walk.decisions) out.decisions.set(d.line, d.kind === 'if' ? { kind: 'if', label: d.label, line: d.line, col: d.col, text: d.text, body: d.body, orelse: d.orelse } : { kind: 'match', keyword: 'switch', line: d.line, col: d.col, text: d.text, arms: d.arms });
+  for (const l of walk.loops) out.loops.set(l.line, { kind: l.kind, line: l.line, col: l.col, text: l.text, end: l.end });
+  if (walk.names) out.names = new Map(walk.names.map((n) => [`${n.line}:${n.col}`, { targets: n.assigns, reads: n.reads }]));
+  for (const f of walk.functions) {
+    if (!out.qualnames.has(f.line)) out.qualnames.set(f.line, f.name);
+    if (!out.functions.has(f.line)) out.functions.set(f.line, { name: f.name, line: f.line, end: f.end });
+  }
+  return out;
+}
+
+/** Build the map from the source lines and the file's statement ranges (source order); a JS/TS file's `walk` table when it has one. */
+export function fileMap(lines: string[], statements: Range4[], walk?: WalkTable): FileMap {
+  if (walk) return walkFileMap(walk);
   const out: FileMap = { decisions: new Map(), loops: new Map(), returns: new Set(), qualnames: new Map(), functions: new Map() };
   const sorted = [...statements].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
   const firstStatementAfter = (line: number, col: number): number => {

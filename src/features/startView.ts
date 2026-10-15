@@ -67,13 +67,15 @@ export class StartView implements vscode.Disposable {
     }
   }
 
+  /** The demo, `examples/demo.py`, as an untitled copy. */
   async launchDemo(): Promise<void> {
-    const file = this.context.asAbsolutePath('examples/demo.py');
+    const rel = 'examples/demo.py';
+    const file = this.context.asAbsolutePath(rel);
     let content: string;
     try {
       content = fs.readFileSync(file, 'utf8');
     } catch {
-      void vscode.window.showErrorMessage('Pyokka: examples/demo.py is missing from the extension.');
+      void vscode.window.showErrorMessage(`Pyokka: ${rel} is missing from the extension.`);
       return;
     }
     const doc = await vscode.workspace.openTextDocument({ language: 'python', content });
@@ -124,7 +126,23 @@ export class StartView implements vscode.Disposable {
   p { line-height: 1.45; }
 </style></head>
 <body>
-<header><img src="${logo}" alt=""><div><h1>Welcome to Pyokka</h1><p class="sub">A live Python scratchpad: values next to your code as you type, coverage in the gutter, and a Time Machine that steps backwards.</p></div></header>
+${intro(String(logo))}
+<h2>Keyboard shortcuts</h2>
+<table>${rows.map(([a, b]) => `<tr><td>${a}</td><td>${b}</td></tr>`).join('')}</table>
+<p class="sub">In Cursor, every <code>${mod}+K</code> chord is also available as <code>Ctrl+Alt+P</code> + letter.</p>
+<script nonce="${nonce}">
+  const vscode = acquireVsCodeApi();
+  const bind = (id, type) => document.getElementById(id).addEventListener('click', () => vscode.postMessage({ type }));
+  for (const [id, type] of [['demo', 'demo'], ['new', 'newFile'], ['recent', 'recent'], ['interp', 'interpreter'], ['settings', 'settings']]) {
+    document.getElementById(id)?.addEventListener('click', () => vscode.postMessage({ type }));
+  }
+</script>
+</body></html>`;
+  }
+}
+
+/** The welcome header, buttons and cards. */
+const intro = (logo: string): string => `<header><img src="${logo}" alt=""><div><h1>Welcome to Pyokka</h1><p class="sub">A live Python scratchpad: values next to your code as you type, coverage in the gutter, and a Time Machine that steps backwards.</p></div></header>
 <div class="actions">
   <button id="demo">🚀 Launch Interactive Demo</button>
   <button id="new" class="secondary">New Python File</button>
@@ -133,19 +151,8 @@ export class StartView implements vscode.Disposable {
   <button id="settings" class="secondary">Settings</button>
 </div>
 <div class="cards">
-  <div class="card"><b>Live values</b>Type a variable name on its own line, use <code>print()</code>, or add <code>&nbsp;# ?</code> after any expression. <code># ?.</code> times it, <code># ?+</code> expands it.</div>
+  <div class="card"><b>Live values</b>Type a variable name on its own line, use <code>print()</code>, or add <code>&nbsp;# ?</code> after any expression. <code>?.</code> times it, <code>?+</code> expands it.</div>
   <div class="card"><b>Time Machine</b>Press <code>Shift+F5</code> on any line. Step forwards and backwards; the panel shows the timeline, call stack and watches.</div>
   <div class="card"><b>Code Story</b>Run <i>Pyokka: View Code Story</i> to read the execution in order, one block per function call.</div>
   <div class="card"><b>Requirements</b>Python 3.12 or newer. The runtime ships inside the extension; nothing is installed into your environment.</div>
-</div>
-<h2>Keyboard shortcuts</h2>
-<table>${rows.map(([a, b]) => `<tr><td>${a}</td><td>${b}</td></tr>`).join('')}</table>
-<p class="sub">In Cursor, every <code>${mod}+K</code> chord is also available as <code>Ctrl+Alt+P</code> + letter.</p>
-<script nonce="${nonce}">
-  const vscode = acquireVsCodeApi();
-  const bind = (id, type) => document.getElementById(id).addEventListener('click', () => vscode.postMessage({ type }));
-  bind('demo', 'demo'); bind('new', 'newFile'); bind('recent', 'recent'); bind('interp', 'interpreter'); bind('settings', 'settings');
-</script>
-</body></html>`;
-  }
-}
+</div>`;

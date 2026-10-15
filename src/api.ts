@@ -23,6 +23,8 @@ import type { GraphProvider } from './features/executionGraph';
 
 /** API returned from activate(); used by the e2e tests. */
 export interface PyokkaApi {
+  /** the text Investigate a Value, Learn from This Run, Pin Run as Baseline or Verify Fix showed last */
+  lastInvestigation(): string | undefined;
   manager: SessionManager;
   timeMachine: TimeMachine;
   panel: OutputPanel;

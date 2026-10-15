@@ -86,7 +86,9 @@ export class Narrator implements vscode.Disposable {
   }
 
   private promptTemplate(): string {
-    return fs.readFileSync(path.join(this.runtimeDir, 'pyokka_runtime', 'agent', 'narrate_prompt.md'), 'utf8');
+    // the runtime's template, in `pyokka_runtime/agent/`
+    const dir = path.join(this.runtimeDir, 'pyokka_runtime', 'agent');
+    return fs.readFileSync(path.join(dir, 'narrate_prompt.md'), 'utf8');
   }
 
   /** One batched call for the session's last run. Resolves with the glosses, or undefined when it failed (reported once). */

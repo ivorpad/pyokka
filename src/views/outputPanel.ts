@@ -293,7 +293,7 @@ export class OutputPanel implements vscode.WebviewViewProvider, TimeMachineSink,
     const s = this.bound;
     if (!s) return;
     const finished = s.state.finished;
-    this.post({ type: 'session', name: s.displayName, running: s.running, durationMs: finished?.durationMs, runMode: s.runMode, timedOutMs: finished?.timedOut ? finished.durationMs : undefined, replayed: finished?.replayed });
+    this.post({ type: 'session', name: s.displayName, language: 'python', running: s.running, durationMs: finished?.durationMs, runMode: s.runMode, timedOutMs: finished?.timedOut ? finished.durationMs : undefined, replayed: finished?.replayed });
   }
 
   private postErrors(): void {

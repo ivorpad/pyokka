@@ -26,11 +26,12 @@ import * as path from 'node:path';
 import { interpreterRefusal, type SessionManager } from '../session/sessionManager';
 import type { Session } from '../session/session';
 import type { PausedInfo } from '../session/debugState';
-import type { RecordFromSpec, RunFinishedEvent } from '../shared/protocol';
+import type { LogEvent, OutputEvent, RecordFromSpec, RunFinishedEvent } from '../shared/protocol';
 import { waitForIdle } from '../session/wait';
 import { DapTranslator, type DebugSessionLike } from './dapTranslator';
 import type { DapMessage } from './dapTypes';
 import type { DebugSession } from './debugSession';
+import { isRunnable } from '../runtime/language';
 import type { DebugSessionManager } from './debugSessionManager';
 import { launchKey, launchName, parseLaunch, recordFromSpec, type LaunchConfig } from './debugSessionState';
 import { wrapDebugSession, type DebugTarget, type ReplaySource } from './debugTarget';
@@ -223,7 +224,7 @@ export class PyokkaDebugAdapter implements vscode.DebugAdapter {
     // the replay of this file's last run gives way: one file, one debug toolbar; the Time Machine stays open
     const runAll = launch.program ? this.mgr.all().find((s) => s.document.uri.scheme === 'file' && s.document.uri.fsPath === launch.program) : undefined;
     if (runAll) await stopReplay(runAll, { keepTimeMachine: true });
-    const ds = await this.debugMgr.start(launch, { stopOnEntry: opts.stopOnEntry });
+    const ds: DebugSession = await this.debugMgr.start(launch, { stopOnEntry: opts.stopOnEntry });
     log.info(`[${ds.displayName}] DAP launch (debug session ${ds.id}, no recording)`);
     if (this.debugSession) {
       attachedDebug.set(ds, this.debugSession);
@@ -363,6 +364,19 @@ export function wrapSession(session: Session, mgr: SessionManager, opts: { debug
       session.on('debugResumed', handler);
       return () => session.off('debugResumed', handler);
     },
+    onOutput: (fn) => {
+      // a recording run reports a print as a `log` entry, the rest of what it writes as `output`
+      const out = (ev: OutputEvent): void => fn(ev.stream, ev.text);
+      const logged = (ev: LogEvent): void => {
+        if (ev.kind === 'log') fn('stdout', `${ev.text}\n`);
+      };
+      session.on('output', out);
+      session.on('log', logged);
+      return () => {
+        session.off('output', out);
+        session.off('log', logged);
+      };
+    },
     onFinished: (fn) => {
       const handler = (ev: RunFinishedEvent): void => {
         if (restarting.get(session) === ev.runId) return; // a restart replaces the run inside this debug session
@@ -397,7 +411,7 @@ export function registerDapAdapter(mgr: SessionManager, debugMgr: DebugSessionMa
         // F5 on a Python file with no launch.json arrives empty; a launch without `program` means the active file
         const editor = vscode.window.activeTextEditor;
         if (!config.type && !config.request && !config.name) {
-          if (!editor || editor.document.languageId !== 'python') {
+          if (!editor || !isRunnable(editor.document)) {
             void vscode.window.showInformationMessage('Pyokka: open a Python file to debug it.');
             return undefined;
           }

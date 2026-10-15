@@ -7,8 +7,21 @@ import * as vscode from 'vscode';
 import type { Session } from '../session/session';
 import type { SessionManager } from '../session/sessionManager';
 import type { Decorator } from '../decorations/decorator';
+import { runtimeLanguage, type RuntimeLanguage } from '../runtime/language';
 
 const DEBOUNCE_MS = 200;
+
+const PY_HEAD = /^(def|class|if|elif|else|for|while|try|except|finally|with|return|import|from|@)\b/;
+/** JS/TS lines that are syntax around statements, not a statement with a value of its own */
+const JS_HEAD = /^(function|class|if|else|for|while|do|switch|case|default|try|catch|finally|return|import|export|interface|type|enum|declare|namespace|abstract|@)\b|^(async\s+function|\}|\{|\)|\]|\/\/|\/\*|\*)/;
+
+/** Is an edited line worth a shadow value: a statement, not a header, a brace, a comment or a declaration of a type? */
+export function shadowCandidate(text: string, lang: RuntimeLanguage): boolean {
+  const t = text.trim();
+  if (!t) return false;
+  if (lang === 'javascript') return !JS_HEAD.test(t) && !t.endsWith('{');
+  return !t.startsWith('#') && !t.endsWith(':') && !PY_HEAD.test(t);
+}
 const MAX_LINES = 40;
 
 export class ShadowValues implements vscode.Disposable {
@@ -79,7 +92,7 @@ export class ShadowValues implements vscode.Disposable {
         const text = doc.lineAt(line - 1).text;
         const trimmed = text.trim();
         const previous = session.shadowValues.get(line);
-        if (!trimmed || trimmed.startsWith('#') || trimmed.endsWith(':') || /^(def|class|if|elif|else|for|while|try|except|finally|with|return|import|from|@)\b/.test(trimmed)) {
+        if (!shadowCandidate(text, runtimeLanguage(doc) ?? 'python')) {
           if (previous) {
             session.shadowValues.delete(line);
             changed = true;

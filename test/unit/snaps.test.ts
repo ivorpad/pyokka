@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { findSnaps, fenceAt } from '../../src/features/snapFences';
+import { findSnaps, fenceAt, insideFence, OUTPUT_PREFIX } from '../../src/features/snapFences';
 
 describe('findSnaps', () => {
   it('finds fences anywhere, including inside functions', () => {
@@ -15,5 +15,16 @@ describe('findSnaps', () => {
 
   it('ignores an unterminated fence', () => {
     expect(findSnaps('"""{{\nx\n')).toEqual([]);
+  });
+});
+
+describe('fence lines', () => {
+  it('the code is between the fence lines', () => {
+    expect(insideFence({ openLine: 1, closeLine: 3 }, 1)).toBe(false);
+    expect(insideFence({ openLine: 1, closeLine: 3 }, 2)).toBe(true);
+    expect(insideFence({ openLine: 1, closeLine: 3 }, 3)).toBe(false);
+  });
+  it('writes output under a Python comment marker', () => {
+    expect(OUTPUT_PREFIX).toBe('#» ');
   });
 });

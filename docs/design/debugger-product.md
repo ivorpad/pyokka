@@ -3,7 +3,8 @@
 Round 3 of the debugger, designed 2026-09-15 on top of `ea3ea51`. Two implementers build this in
 parallel without talking to each other: one owns the Python runtime, one owns the VS Code host and
 the CLI. Every shape below is pinned. Where a choice existed it is made here with one sentence of
-why; section 9 lists the choices a coordinator may overturn.
+why; section 9 lists the choices a coordinator may overturn. The `docs/QA.md` this plan extends
+(8.5) was removed in 0.4.0 as stale; `git show v0.3.0:docs/QA.md` has it.
 
 Read with: `docs/HANDOFF-debugger.md` (what the two earlier rounds built), `docs/PROTOCOL.md`
 (the wire), `docs/HANDOFF.md` (build, quirks, decisions).

@@ -111,18 +111,42 @@ export interface StoryDocument {
 
 const isBlank = (text: string | undefined): boolean => (text ?? '').trim() === '';
 
+/** A JS/TS comment or decorator row above a function: `//`, a `/** … *\/` block's rows, `@decorator`. */
+const JS_HEADER = /^(\/\/|\/\*|\*|@)/;
+
 /**
- * Where a function's span starts (L2): the `def` line, walked up over the comment and decorator
- * lines written directly above it. A blank line ends the run.
+ * Where a function's span starts (L2): the `def` line (a JS/TS `function` line), walked up over
+ * the comment and decorator lines written directly above it. A blank line ends the run.
  */
-export function scopeTop(src: readonly string[], defLine: number): number {
+export function scopeTop(src: readonly string[], defLine: number, lang: 'python' | 'javascript' = 'python'): number {
   let top = defLine;
   for (let l = defLine - 1; l >= 1; l--) {
     const text = (src[l - 1] ?? '').trim();
-    if (!text.startsWith('#') && !text.startsWith('@')) break;
+    if (lang === 'javascript' ? !JS_HEADER.test(text) : !text.startsWith('#') && !text.startsWith('@')) break;
     top = l;
   }
   return top;
+}
+
+/**
+ * A JS/TS module block's span (L2): the lines between the functions around the lines it ran. A
+ * function declaration is hoisted, so unlike Python's `def` its line is no step of the module, and
+ * the module's first step can come right after a function, whose closing `}` is not context.
+ */
+export function jsModuleSpan(src: readonly string[], ran: readonly number[], functions: readonly { name: string; bodyRange: readonly number[] }[]): [number, number] | undefined {
+  if (ran.length === 0) return undefined;
+  const first = Math.min(...ran);
+  const last = Math.max(...ran);
+  let lo = 1;
+  let hi = src.length;
+  for (const f of functions) {
+    if (f.name === '<module>') continue;
+    const top = f.bodyRange[0]!;
+    const bottom = f.bodyRange[2]!;
+    if (bottom < first) lo = Math.max(lo, bottom + 1);
+    else if (top > last) hi = Math.min(hi, scopeTop(src, top, 'javascript') - 1);
+  }
+  return lo <= hi ? [lo, hi] : undefined;
 }
 
 /**

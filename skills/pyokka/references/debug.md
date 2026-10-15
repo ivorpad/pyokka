@@ -14,8 +14,15 @@ out) is [live-debugger.md](live-debugger.md). This file is the workflow.
 pyokka debug FILE [--at NAME | --at FILE:LINE] [--args ...] [--stop-on-entry] [--library-code]
                   [--record | --record-from NAME | --record-from FILE:LINE]
 pyokka debug --module app.server --args --port 8000 [--cwd DIR] [--env K=V]
-pyokka debug --module pytest --args --assert=plain -x tests/test_x.py::test_name
+pyokka debug tests/test_x.py --test test_name --at test_name
+pyokka debug --configuration "NAME"      # a debugpy configuration of .vscode/launch.json
 ```
+
+`--test NAME` runs one test under its runner: a pytest node id (`test_name`,
+`TestCart::test_total`), a unittest name (`Cart.test_total`), or a pytest `-k` expression; pytest
+gets `--assert=plain` by itself. `--configuration NAME` reads program or module, args, cwd, env,
+envFile, python and justMyCode from the launch.json the user already debugs with; flags you add
+win, and the first line names the keys Pyokka did not apply.
 
 A file or `--module` implies `--live`. The reply is the first stop: the breakpoint `--at` named,
 the first gutter breakpoint, or the first statement when nothing is set. The window comes to the
@@ -62,7 +69,8 @@ lines.
 **Under pytest, launch with `--assert=plain`.** Pytest's assertion rewriting installs its own
 import hook ahead of Pyokka's, and the modules it compiles may never get instrumented, so
 breakpoints in them never resolve. That is the likely cause, not a proven one. `--assert=plain`
-changes nothing about which tests pass.
+changes nothing about which tests pass. `--test NAME` passes it for you; with `--module pytest`
+add it to `--args`.
 
 ## Ready means paused where you meant
 
@@ -71,6 +79,16 @@ launch whose breakpoint never runs finishes without pausing, the program exits 0
 `stop` reports `0 steps`. None of that means the debugger worked. Before you say it is ready, read
 the first stop's `paused at FILE:LINE` and check it is the file and function you asked for. If it
 is somewhere else, or there was no stop, say so, and fix the launch before going on.
+
+**A run that ends without pausing is a setup failure, not a handoff.** When `debug` answers
+`finished: exit N, K steps` instead of `paused at`, read that answer first: the exit code, the
+`error: Type: message (file:line)` line under it when the program raised, and what the program
+printed (it shows in the VS Code window; the `output:` of an earlier stop has the start). Find
+why the stop's line did not run: an entry that only defines functions, an `if __name__ ==
+"__main__":` guard the launch skipped (a `--module` or a test runner imports the file instead), an
+early `sys.exit`, an exception before the stop, a test filter that matched no test. Fix the stop
+or the entry and start again before you reply. Prefer a first stop before the program's first
+network call or write, so a second start has no side effects.
 
 **Breakpoints outlive the launch.** Gutter breakpoints belong to the VS Code window, so one added
 by `--at`, `break --live` or an earlier session is still there next time, and the run stops at it
@@ -125,9 +143,10 @@ wants, and say which you used:
 | the whole run's history, no pausing | `pyokka run FILE --save run.json`, then `why`, `var`, `walkthrough`, `history` on it (see [show.md](show.md)) |
 | only what is in scope now | answer from the stop's `locals:` and the values shown in the editor |
 
-Under pytest (`--module pytest`) a recording is not available, because both `--record` and
-`pyokka run` need a file: use the page of live pauses or the stop's values, and tell the user that
-history is the part that is missing.
+For one test, `pyokka run tests/test_x.py --test test_name --save run.json` records that test's
+body under pytest, and every history verb works on it. A `--module pytest` or `--test` debug
+launch has no recording (`--record` needs a file run as a script): use the recorded run, the page
+of live pauses or the stop's values, and tell the user which you used.
 
 In Claude Code, the band follows a debug session: call the `band` tool with `{"action": "show"}`
 after the first stop, and pass `--session NAME` on every `--live` command (SKILL.md, "In Claude
@@ -156,7 +175,8 @@ same words without `--live`, about 0.5 ms a command instead of 70 ms.
 | "add a breakpoint in the other file" | `pyokka break --live other.py:12` (or `--at fn`), then `continue --live` |
 | "resume to the next breakpoint" | `pyokka continue --live` |
 | "remove that breakpoint" | `pyokka break --live --remove other.py:12` / `--remove fn` |
-| "debug this test" | `pyokka debug --module pytest --args --assert=plain -x tests/test_x.py::test_name` |
+| "debug this test" | `pyokka debug tests/test_x.py --test test_name --at test_name` |
+| "use my launch config" | `pyokka debug --configuration "Python: app"` |
 | "start the server under the debugger" | `pyokka debug --module app.server --args --port 8000` (no `--reload`) |
 | "run to line 82" | `pyokka continue --live --to demo.py:82` |
 | "step over until `rank == 3`" | `pyokka continue --live --until 'rank == 3'` |

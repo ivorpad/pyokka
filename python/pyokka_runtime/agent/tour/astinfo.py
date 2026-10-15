@@ -15,6 +15,8 @@ import os
 import sys
 from typing import Iterable
 
+from ...redact import REDACTED
+
 STDLIB = set(sys.stdlib_module_names)
 BUILTIN_NAMES = set(dir(builtins))
 # methods of builtin types (str, list, dict, set, bytes): a call to one is never a library boundary
@@ -32,16 +34,38 @@ SUBPROCESS = {"run", "Popen", "call", "check_call", "check_output", "system", "p
 COMPOUND = (ast.If, ast.While, ast.For, ast.AsyncFor, ast.With, ast.AsyncWith, ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Try, ast.Match)
 
 
+def parse_source(source: str) -> ast.Module | None:
+    """The file's tree, or None. The copy a run kept of a file that is gone has ``«redacted»``
+    where the redactor took a value (``max_tokens=«redacted»``), which does not parse: it is read
+    with ``...`` there instead, and a line that still does not parse becomes ``pass``, so the
+    other statements keep their lines."""
+    try:
+        return ast.parse(source)
+    except (SyntaxError, ValueError):
+        if REDACTED not in source:
+            return None
+    marked = {i for i, line in enumerate(source.split("\n")) if REDACTED in line}
+    lines = source.replace(REDACTED, "...").split("\n")
+    while True:
+        try:
+            return ast.parse("\n".join(lines))
+        except ValueError:
+            return None
+        except SyntaxError as e:
+            i = (e.lineno or 0) - 1
+            if i not in marked:
+                return None
+            marked.discard(i)
+            lines[i] = lines[i][: len(lines[i]) - len(lines[i].lstrip())] + "pass"
+
+
 class FileInfo:
     """One file's parse: statements by first line, imports, the names it defines."""
 
     def __init__(self, lines: list[str]) -> None:
         self.lines = lines
         self.source = "\n".join(lines)
-        try:
-            self.tree: ast.Module | None = ast.parse(self.source)
-        except (SyntaxError, ValueError):
-            self.tree = None
+        self.tree: ast.Module | None = parse_source(self.source)
         self.statements: dict[int, ast.stmt] = {}
         self.imports: dict[str, str] = {}
         self.defs: set[str] = set()

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ValueNode, ValueProp } from '../../../src/shared/protocol';
-import { flat, formatText, formatValue, pyQuote, spliceNode, valueCategory } from '../../../webview/format';
+import { editorLanguage, flat, formatText, formatValue, pyQuote, setValueSyntax, spliceNode, syntaxForName, valueCategory } from '../../../webview/format';
 
 let id = 0;
 const n = (type: string, value?: string, extra: Partial<ValueNode> = {}): ValueNode => ({ id: `v${++id}`, queryPath: [`q${id}`], type, value, ...extra });
@@ -95,5 +95,28 @@ describe('valueCategory', () => {
     expect(valueCategory(list([]))).toBe('list');
     expect(valueCategory(str('x'))).toBe('string');
     expect(valueCategory(num(1))).toBe('other');
+  });
+});
+
+describe('JS/TS value syntax', () => {
+  it('spells null, undefined, booleans, NaN and Infinity as JavaScript, and instances as Name { k: v }', () => {
+    setValueSyntax('javascript');
+    try {
+      expect(flat(list([n('bool', 'true'), n('None', 'null'), n('None', 'undefined'), n('number', undefined, { nan: true }), n('number', undefined, { negativeInfinity: true })]))).toBe('[true, null, undefined, NaN, -Infinity]');
+      expect(flat(n('Point', undefined, { props: [p('x', num(1)), p('y', num(2))] }))).toBe('Point {x: 1, y: 2}');
+      expect(formatText(n('Point', undefined, { props: [p('x', num(1))] }), { width: 4 })).toBe('Point {\n    x: 1\n}');
+      expect(editorLanguage()).toBe('javascript');
+    } finally {
+      setValueSyntax('python');
+    }
+    expect(flat(list([n('bool', 'true'), n('None')]))).toBe('[True, None]');
+    expect(editorLanguage()).toBe('python');
+  });
+  it('tells the language from a file name', () => {
+    expect(syntaxForName('app.ts')).toBe('javascript');
+    expect(syntaxForName('a.mjs')).toBe('javascript');
+    expect(syntaxForName('C.tsx')).toBe('javascript');
+    expect(syntaxForName('demo.py')).toBe('python');
+    expect(syntaxForName(null)).toBe('python');
   });
 });

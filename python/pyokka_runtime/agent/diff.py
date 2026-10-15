@@ -228,13 +228,17 @@ def _locals_note(side: Side) -> str:
     return "%s recorded no locals (%s), so assigned values and call arguments are left out; record both with locals to compare them" % (side.tag, where)
 
 
-def diff_sides(a: Side, b: Side, *, limit: int = 40) -> dict:
+def diff_sides(a: Side, b: Side, *, limit: int = 40, ignore: list[str] | None = None) -> dict:
+    """``ignore`` names values and logged values left out of the comparison (a timestamp, a random id)."""
     raw_a, raw_b = a.collect(), b.collect()
     with_locals = a.recorded_locals and b.recorded_locals
-    facts_a, facts_b = comparable(raw_a, with_locals), comparable(raw_b, with_locals)
+    skip = set(ignore or [])
+    facts_a, facts_b = ([f for f in comparable(raw, with_locals) if not (f["channel"][0] in ("value", "log") and f["channel"][1] in skip)] for raw in (raw_a, raw_b))
     for side in (a, b):
         if not side.recorded_locals:
             side.notes.append(_locals_note(side))
+    if skip:
+        b.notes.append("ignored value/log names: %s; their calls, branches and prints are still compared" % ", ".join(sorted(skip)))
     entries: dict[int, dict] = {}
     index_a: dict[tuple[str, int], int] = {}
     index_b: dict[tuple[str, int], int] = {}
@@ -354,12 +358,13 @@ def open_pair(args: Any) -> DiffPair:
 def diff_command(args: Any, source: Any) -> dict:
     """``source`` is the pair ``open_pair`` made, or (in ``pyokka shell``) the live session as the after."""
     limit = max(1, int(getattr(args, "limit", 40) or 40))
+    ignore = list(getattr(args, "ignore", None) or [])
     if isinstance(source, DiffPair):
-        return diff_sides(source.a, source.b, limit=limit)
+        return diff_sides(source.a, source.b, limit=limit, ignore=ignore)
     runs = [r for r in (getattr(args, "runs", None) or []) if r]
     if len(runs) != 1:
         raise AgentError("in the shell, diff takes one saved run, the before; the live session is the after", "e.g. `diff before.json`")
-    return diff_sides(Side("a", runs[0], SavedRun(runs[0])), Side("b", "--live", source), limit=limit)
+    return diff_sides(Side("a", runs[0], SavedRun(runs[0])), Side("b", "--live", source), limit=limit, ignore=ignore)
 
 
 # -- text -----------------------------------------------------------------------------------------------------

@@ -8,7 +8,7 @@ import sys
 
 RUN_EPILOG = """\
 which Python runs the program, first match wins:
-  --python PATH        an interpreter, or a venv directory
+  --python PATH        an interpreter, a venv directory, or a command on PATH (python3.12)
   $PYOKKA_PYTHON       the same, from the environment
   $VIRTUAL_ENV         the activated virtual environment
   .venv                in the program's directory or a parent, up to the git root
@@ -23,9 +23,27 @@ what the recording leaves out is printed, never dropped:
 """
 
 
-def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="pyokka", description="Pyokka runtime: run Python files under the tracer and let an agent step through a saved run.")
-    sub = parser.add_subparsers(dest="command", required=True)
+#: a first command per job, so an agent starts from `VERB --help` instead of the skill's references
+START = """\
+start here:
+  answer from a run   pyokka run FILE --save run.json, then pyokka story run.json --file FILE
+  what happened       pyokka walkthrough run.json
+  pause live          pyokka debug FILE --at NAME  (in VS Code, setting pyokka.agentAccess)
+  as MCP tools        pyokka mcp  (an MCP server on stdin/stdout)
+  teach in a browser  pyokka web FILE  (then pyokka web ctl state)
+then `pyokka VERB --help` for that command's flags
+"""
+
+
+def build_parser() -> argparse.ArgumentParser:
+    """The whole CLI: the runner commands (``serve``, ``run``, ``mcp``, ``cache``) and every command over a run."""
+    parser = argparse.ArgumentParser(
+        prog="pyokka",
+        description="Pyokka runtime: run Python files under the tracer and let an agent step through a saved run.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=START,
+    )
+    sub = parser.add_subparsers(dest="command")
     sub.add_parser("serve", help="NDJSON server on stdin/stdout for the extension host")
     run = sub.add_parser(
         "run",
@@ -51,26 +69,58 @@ def main(argv: list[str] | None = None) -> int:
     run.add_argument("--exclude", action="append", default=[], metavar="GLOB", help="leave this code out of the recording: a dotted module (pkg.flash covers pkg.flash.*) or a path glob relative to the file's directory (pkg/flash, */parser.py); repeatable. It runs at full speed and records no steps")
     run.add_argument("--only", action="append", default=[], metavar="GLOB", help="record only these modules or paths (same forms as --exclude), library ones included; the program file is always recorded; repeatable")
     run.add_argument("--max-value-chars", type=int, default=None, metavar="N", help="characters one recorded value keeps (default 120 for a local, 200 for a logged value); 0 = no limit up to the 1,000,000 ceiling. A cut value ends in …(+N chars)")
-    run.add_argument("--python", metavar="PATH", help="the interpreter that runs the program (a venv directory works too); see below for the default")
+    run.add_argument("--python", metavar="PATH", help="the interpreter that runs the program: a path, a venv directory, or a command on PATH such as python3.12; see below for the default")
+    run.add_argument("--cwd", metavar="DIR", help="the directory the program runs in (default: the file's directory); a DIR that holds the file is also the project root, so its own imports count as user code")
+    run.add_argument("--test", metavar="NAME", help="run only this test of the file under its runner: a pytest node id (test_b, TestCart::test_total, test_b[2]), a unittest name (Cart.test_total, mod.Cart.test_total), or else a pytest -k expression. pytest runs with -s --assert=plain -p no:cacheprovider; the runner's code is not recorded")
     run.add_argument("argv", nargs="*", help="arguments for the program (after --)")
+    web = sub.add_parser("web", add_help=False, help="the browser page: `pyokka web FILE [--port N]` serves it, `pyokka web ctl [--port N] state|step|debug ...` drives it (runs on node from PATH, else on the Node inside VS Code; `pyokka web -h` for the bridge's own usage)")
+    web.add_argument("web_args", nargs=argparse.REMAINDER, metavar="ARGS")
+    sub.add_parser("mcp", help="an MCP server on stdin/stdout: the commands as tools for Claude Code, Codex and other MCP clients (`claude mcp add pyokka -- pyokka mcp`)")
     cache = sub.add_parser("cache", help="the cache of instrumented library files ($PYOKKA_HOME/cache, default ~/.pyokka/cache, or PYOKKA_CACHE_DIR): directory, entries, size")
     cache.add_argument("--clear", action="store_true", help="remove every entry; the next run rewrites what it needs")
     cache.add_argument("--json", action="store_true", help="print the raw JSON shape")
     child = sub.add_parser("_child")
     child.add_argument("--port", type=int, required=True)
     child.add_argument("--token", required=True)
+    imports = sub.add_parser("_imports")  # the page bridge: the project files FILE imports, as a JSON list
+    imports.add_argument("file")
+    imports.add_argument("--root", default=None)
+    sub.add_parser("_scratch")  # the page bridge's Scratchpad: one JSON request on stdin (scratchpad.py)
     keep = sub.add_parser("_keep")
     keep.add_argument("--socket", required=True)
     keep.add_argument("--idle", type=float, default=None)
 
-    from .agent.commands import COMMANDS, add_commands
+    from .agent.commands import add_commands
 
     add_commands(sub)
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    words = list(sys.argv[1:] if argv is None else argv)
+    if words[:1] == ["web"]:
+        # every word after `web` is the bridge's, `-h` included, which argparse would take for itself
+        from .agent.web import web_main
+
+        return web_main(words[1:])
+    parser = build_parser()
     args = parser.parse_args(argv)
+    if args.command is None:
+        # bare `pyokka`: the usage, every command, and where to start
+        parser.print_help(sys.stderr)
+        return 2
     if args.command == "serve":
         from .runner import Runner
 
         return Runner().serve()
+    if args.command == "web":
+        from .agent.web import web_main
+
+        return web_main(list(args.web_args))
+    if args.command == "mcp":
+        from .agent.mcp import serve
+
+        return serve()
     if args.command == "_child":
         from .child import spawned_child_main
 
@@ -80,14 +130,30 @@ def main(argv: list[str] | None = None) -> int:
         from .agent.keep import DEFAULT_IDLE_S, keep_main
 
         return keep_main(["--socket", args.socket, "--idle", str(args.idle if args.idle is not None else DEFAULT_IDLE_S)])
+    if args.command == "_scratch":
+        from .scratchpad import main as scratch_main
+
+        return scratch_main()
+    if args.command == "_imports":
+        import json
+
+        from .imports import local_imports
+
+        print(json.dumps(local_imports(args.file, args.root)))
+        return 0
     if args.command == "cache":
         from .cli import cache_command
 
         return cache_command(args)
+    from .agent.commands import COMMANDS
+
     if args.command in COMMANDS:
         from .agent.commands import dispatch
 
         return dispatch(args)
+    if args.cwd and not os.path.isdir(args.cwd):
+        sys.stderr.write("error: --cwd %s is not a directory\ngive an existing directory, relative to %s or absolute\n" % (args.cwd, os.getcwd()))
+        return 2
     interp = None
     if not args.instrumented:
         from .agent.interpreter import choose, probe
@@ -122,7 +188,7 @@ def main(argv: list[str] | None = None) -> int:
         from .agent.save import save_run
 
         try:
-            meta = save_run(args.file, args.save, library_code=args.library_code, keep=args.keep, record_locals=not args.no_locals, auto_log=args.auto_log, timeout_ms=int(args.timeout or 0), argv=list(args.argv or []), http=args.http, progress=lambda s: print(s), recording=recording, python=interp)
+            meta = save_run(args.file, args.save, library_code=args.library_code, keep=args.keep, record_locals=not args.no_locals, auto_log=args.auto_log, timeout_ms=int(args.timeout or 0), argv=list(args.argv or []), http=args.http, progress=lambda s: print(s), recording=recording, python=interp, cwd=args.cwd, mode=args.mode, test=args.test)
         except (RuntimeError, OSError) as exc:
             sys.stderr.write("error: %s\n" % exc)
             return 2

@@ -108,3 +108,12 @@ describe('buildPhases', () => {
     expect(commentAbove(['#no space', '## two', 'x = 1'], 3)).toBe('no space two');
   });
 });
+
+describe('commentAbove in JS/TS', () => {
+  it('reads // lines and JSDoc blocks without their markers', () => {
+    const src = ['// load the', '// data', 'const a = 1;', '/**', ' * sum the', ' * totals', ' */', 'const b = 2;', '/* tax */', 'const c = 3;'];
+    expect(commentAbove(src, 3)).toBe('load the data');
+    expect(commentAbove(src, 8)).toBe('sum the totals');
+    expect(commentAbove(src, 10)).toBe('tax');
+  });
+});

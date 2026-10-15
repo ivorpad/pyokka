@@ -7,10 +7,10 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { Session } from '../session/session';
-import { type BreakpointSpec, type BreakWatchSpec, type DebugBreakpointEcho, type ExceptionMode, type LocalVar, type PausedInfo } from '../session/debugState';
+import { type BreakpointSpec, type BreakWatchSpec, type DebugBreakpointEcho, type ExceptionMode, type LocalVar, type LocalsOptions, type PausedInfo } from '../session/debugState';
 import { parseAt } from '../debug/debugSessionState';
 import { redact, redactValueBag } from '../util/redact';
-import { int, type Request } from './bridgeSupport';
+import { BridgeError, int, type Request } from './bridgeSupport';
 
 /** How much of the program's output a stop reply carries: the tail, not the whole run. */
 export const OUTPUT_TAIL = 4_000;
@@ -58,6 +58,8 @@ export interface BreakItem {
   path: string;
   line: number;
   condition?: string;
+  /** a logpoint: VS Code's `logMessage`; it never pauses the debugger */
+  logMessage?: string;
 }
 
 /** `[{file | path, line, condition?}]` from a request into absolute specs; entries without a line are dropped. */
@@ -72,6 +74,7 @@ export function parseBreakItems(ctx: PathContext, items: unknown, exists?: (p: s
     const item: BreakItem = { path: resolveFile(ctx, o.file ?? o.path, exists), line };
     const condition = typeof o.condition === 'string' ? o.condition.trim() : '';
     if (condition) item.condition = condition;
+    if (typeof o.logMessage === 'string' && o.logMessage) item.logMessage = o.logMessage;
     out.push(item);
   }
   return out;
@@ -82,6 +85,11 @@ export function parseBreakItems(ctx: PathContext, items: unknown, exists?: (p: s
  * there is one. A function breakpoint (`--at NAME`) carries `function` and learns its `file` and
  * `line` from the echo, because the runtime is what resolves the name.
  */
+/** The `breakpoints` reply's logpoints: `{file, line, condition?, logMessage}`, after the breakpoints. */
+export function logpointReply(ctx: PathContext, list: readonly BreakItem[]): Record<string, unknown>[] {
+  return list.map((lp) => ({ file: displayFile(ctx, lp.path), line: lp.line, ...(lp.condition ? { condition: lp.condition } : {}), logMessage: lp.logMessage }));
+}
+
 export function breakpointReply(ctx: PathContext, list: readonly BreakpointSpec[], echo: readonly DebugBreakpointEcho[] | undefined): Record<string, unknown>[] {
   return list.map((bp) => {
     const e = echo?.find((x) => (bp.function !== undefined ? x.function === bp.function : x.function === undefined && x.path === bp.path && x.line === bp.line && (x.condition ?? '') === (bp.condition ?? '')));
@@ -138,7 +146,7 @@ export function pausedReply(ctx: PathContext, info: PausedInfo): Record<string, 
   const file = ctx.runFiles().find((f) => f.fileId === info.fileId)?.path ?? ctx.filePath;
   const out: Record<string, unknown> = { ...info, file };
   if (info.breakpoint) out.breakpoint = { ...info.breakpoint, ...(info.breakpoint.path ? { file: displayFile(ctx, info.breakpoint.path) } : {}) };
-  if (info.watch) out.watch = { ...info.watch, text: redact(info.watch.text) };
+  if (info.watch) out.watch = { ...info.watch, text: redact(info.watch.text), ...(info.watch.error ? { error: redact(info.watch.error) } : {}) };
   if (info.conditionError) out.conditionError = redact(info.conditionError);
   if (info.exception) out.exception = { ...info.exception, message: redact(info.exception.message) };
   return out;
@@ -158,9 +166,23 @@ export function outputTail(output: string, limit = OUTPUT_TAIL): { text: string;
  * `length` for a sized value) so a reader can say "a list of 2" without the whole bag. A masked
  * value keeps its name and its masked text only.
  */
+/** `locals`' request fields as the runtime takes them; a scope it does not know is refused here. */
+export function localsOptions(req: Request): LocalsOptions {
+  const scope = req.scope;
+  if (scope !== undefined && scope !== null && !['local', 'global', 'all'].includes(String(scope))) throw new BridgeError(`scope must be local, global or all, got ${JSON.stringify(scope)}`, 'send {scope: "local"}, "global" or "all", or leave it out for the frame\'s variables');
+  const names = Array.isArray(req.names) ? req.names.filter((n): n is string => typeof n === 'string') : undefined;
+  return {
+    ...(int(req.frameId) ? { frameId: int(req.frameId) } : {}),
+    ...(scope ? { scope: scope as LocalsOptions['scope'] } : {}),
+    ...(names?.length ? { names } : {}),
+    ...(req.namesOnly === true ? { namesOnly: true } : {}),
+  };
+}
+
 export function localsReply(vars: readonly LocalVar[], valueBag: boolean): Record<string, unknown>[] {
   return vars.map((v) => {
     const out: Record<string, unknown> = { name: v.name, text: redact(v.text) };
+    if (v.type) out.type = v.type;
     const node = v.valueBag?.data;
     if (node && !node.secret) {
       out.type = node.type;

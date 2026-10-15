@@ -56,20 +56,29 @@ def is_debug_reply(result: dict) -> bool:
     return "block" in result and "moves" not in result and "count" not in result
 
 
+def finished_error(fin: dict, source: Any) -> list[str]:
+    """``error: Type: message (file:line)`` for the uncaught exception a finished run carries, else nothing."""
+    e = fin.get("error")
+    if not isinstance(e, dict):
+        return []
+    where = " (%s)" % _loc(source, e.get("file"), e.get("line")) if e.get("file") else ""
+    return ["error: %s: %s%s" % (e.get("type"), _one_line(e.get("message")), where), *(["  hint: %s" % _one_line(e["hint"], 300)] if e.get("hint") else [])]
+
+
 def render_debug_stop(result: dict, source: Any, args: Any) -> list[str]:
     """A stop of a debug session: ``paused at file:line (reason)`` and everything the pause carries."""
     fin = result.get("finished")
     if isinstance(fin, dict):
-        head = "finished: exit %s, %s steps" % (fin.get("exitCode"), fin.get("stepCount"))
+        head = ["finished: exit %s, %s steps" % (fin.get("exitCode"), fin.get("stepCount")), *finished_error(fin, source)]
         stepped = result.get("stepped")
-        return [head] if stepped is None else [head, "%s step%s were taken before it ended" % (stepped, "" if stepped == 1 else "s")]
+        return head if stepped is None else [*head, "%s step%s were taken before it ended" % (stepped, "" if stepped == 1 else "s")]
     if result.get("resumed"):
         return ["resumed"]
     if result.get("requested"):
         return ["pause requested: the program pauses at its next statement"]
     if result.get("stopped"):
         ended = result.get("finished") or {}
-        return ["stopped: exit %s, %s steps" % (ended.get("exitCode"), ended.get("stepCount"))]
+        return ["stopped: exit %s, %s steps" % (ended.get("exitCode"), ended.get("stepCount")), *finished_error(ended, source)]
     loc = result.get("location") or {}
     paused = result.get("paused") if isinstance(result.get("paused"), dict) else {}
     head = "paused at %s (%s%s)" % (_loc(source, loc.get("file") or paused.get("file"), loc.get("line") or paused.get("line")), stop_reason(paused), recording_suffix(paused))

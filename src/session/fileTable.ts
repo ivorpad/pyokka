@@ -2,7 +2,7 @@
  * Per-run table of instrumented files: resolves global range ids to (fileId, range).
  * Pure; shared by the session, decorations and the trace model.
  */
-import type { FileInstrumentedEvent, Range4 } from '../shared/protocol';
+import type { FileInstrumentedEvent, Range4, WalkTable } from '../shared/protocol';
 
 export interface InstrumentedFile {
   fileId: number;
@@ -13,6 +13,7 @@ export interface InstrumentedFile {
   functions: { rid: number; name: string; bodyRange: Range4 }[];
   magic: { rid: number; kind: string }[];
   instrumentedSource?: string;
+  walk?: WalkTable;
 }
 
 export interface RidLocation {
@@ -37,6 +38,7 @@ export class FileTable {
       functions: ev.functions,
       magic: ev.magic,
       instrumentedSource: ev.instrumentedSource,
+      ...(ev.walk ? { walk: ev.walk } : {}),
     };
     this.files.set(f.fileId, f);
     this.sorted = [...this.files.values()].sort((a, b) => a.rangeBase - b.rangeBase);

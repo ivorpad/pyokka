@@ -14,7 +14,7 @@
 import * as vscode from 'vscode';
 import type { SessionManager } from '../session/sessionManager';
 import type { DebugSessionManager } from '../debug/debugSessionManager';
-import { fileHasBreakpoints, functionBreakpoint, mapSourceBreakpoints, type BreakpointSpec, type SourceBreakpointLike } from '../session/debugState';
+import { fileHasBreakpoints, functionBreakpoint, mapLogpoints, mapSourceBreakpoints, type BreakpointSpec, type SourceBreakpointLike } from '../session/debugState';
 import { setContext } from '../util/context';
 import { log } from '../util/log';
 
@@ -28,6 +28,17 @@ function sourceBreakpointsLike(): SourceBreakpointLike[] {
 /** The gutter's breakpoints as a run wants them: enabled, in files, not logpoints, 1-based lines. */
 export function currentSourceBreakpoints(): BreakpointSpec[] {
   return mapSourceBreakpoints(sourceBreakpointsLike());
+}
+
+/** The gutter's logpoints, for the `break` listing (they never reach the debugger). */
+export function currentLogpoints(): ReturnType<typeof mapLogpoints> {
+  return mapLogpoints(sourceBreakpointsLike());
+}
+
+/** `break --clear`: every line, log and function breakpoint in the Breakpoints view goes. */
+export function clearEditorBreakpoints(): void {
+  const all = vscode.debug.breakpoints.filter((b) => b instanceof vscode.SourceBreakpoint || b instanceof vscode.FunctionBreakpoint);
+  if (all.length) vscode.debug.removeBreakpoints(all);
 }
 
 /**

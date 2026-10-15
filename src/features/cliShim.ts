@@ -1,12 +1,13 @@
 /**
- * The `pyokka` command on PATH: a shell script at `~/.local/bin/pyokka` that runs this extension's
- * own `dist/python` runtime. An agent then finds the CLI without knowing where the extension lives,
- * and a path it saved from an older version cannot go stale, because every activation rewrites the
- * script with the current one.
+ * The extension's command on PATH: a shell script at `~/.local/bin/pyokka` that runs this
+ * extension's own `dist/python` runtime. An agent then finds the CLI without knowing where the
+ * extension lives, and a path it saved from an older version cannot go stale, because every
+ * activation rewrites the script with the current one.
  *
  * Written only while `pyokka.agentAccess` is on, since that is the user saying agents may use
  * Pyokka. A script that is already ours is refreshed whatever the setting. Anything else at that
- * path (a `uv tool install` symlink, the user's own script) is never touched.
+ * path (a `uv tool install` symlink, the user's own script) is never touched, and so is every other
+ * name in the directory: Pyokka writes `pyokka` and removes only its own retired commands.
  */
 import * as vscode from 'vscode';
 import * as fs from 'node:fs';
@@ -19,6 +20,10 @@ import { log } from '../util/log';
 
 /** the line that marks a script as one this extension wrote and may rewrite */
 export const SHIM_MARKER = '# pyokka-shim: written by the Pyokka extension';
+/** the one command Pyokka writes in `~/.local/bin` */
+export const SHIM_NAME = 'pyokka';
+/** Pyokka's own commands from older versions, removed when they still carry our marker */
+export const RETIRED_SHIMS: readonly string[] = ['pyokka-js'];
 
 export interface ShimInputs {
   /** the directory holding `pyokka_runtime` */
@@ -75,6 +80,18 @@ export function syncShim(file: string, text: string, allowCreate: boolean): 'cre
   fs.writeFileSync(tmp, text, { mode: 0o755 });
   fs.renameSync(tmp, file);
   return state.kind === 'absent' ? 'created' : 'updated';
+}
+
+/** Remove Pyokka's retired commands from `bin` when they are still ours; returns the files removed. Any other name is left alone. */
+export function dropRetiredShims(bin: string): string[] {
+  const dropped: string[] = [];
+  for (const name of RETIRED_SHIMS) {
+    const old = path.join(bin, name);
+    if (shimState(old).kind !== 'ours') continue;
+    fs.rmSync(old, { force: true });
+    dropped.push(old);
+  }
+  return dropped;
 }
 
 /** The editor's command-line launcher under its app root (`bin/code`, `bin/cursor`), skipping the tunnel binaries. */
@@ -136,22 +153,32 @@ async function offerPath(context: vscode.ExtensionContext): Promise<void> {
 /** Keep the shim current now and whenever agent access is turned on. POSIX only: a Windows user profile has no bin directory on PATH to put it in. */
 export function installCliShim(context: vscode.ExtensionContext, runtimeDir: string): vscode.Disposable {
   if (process.platform === 'win32' || process.env['PYOKKA_E2E'] || context.extensionMode === vscode.ExtensionMode.Test) return new vscode.Disposable(() => {});
-  const file = path.join(os.homedir(), '.local', 'bin', 'pyokka');
+  const bin = path.join(os.homedir(), '.local', 'bin');
+  const version = String(context.extension.packageJSON.version);
+  const launcher = findLauncher(vscode.env.appRoot);
+  const file = path.join(bin, SHIM_NAME);
   const sync = async (): Promise<void> => {
     const allowCreate = setting<boolean>(AGENT_ACCESS_SETTING, false);
-    if (!allowCreate && shimState(file).kind !== 'ours') return;
-    const python = await resolveInterpreter().then((i) => i.path, () => 'python3');
-    const text = shimScript({ runtimeDir, python, launcher: findLauncher(vscode.env.appRoot), version: String(context.extension.packageJSON.version) });
-    const did = syncShim(file, text, allowCreate);
-    if (did === 'foreign') {
-      const state = shimState(file);
-      log.info(`pyokka CLI: left ${file} alone (${state.kind === 'foreign' ? state.why : 'changed meanwhile'})`);
+    if (allowCreate || shimState(file).kind === 'ours') {
+      const text = shimScript({ runtimeDir, python: await resolveInterpreter().then((i) => i.path, () => 'python3'), launcher, version });
+      const did = syncShim(file, text, allowCreate);
+      if (did === 'foreign') {
+        const state = shimState(file);
+        log.info(`pyokka CLI: left ${file} alone (${state.kind === 'foreign' ? state.why : 'changed meanwhile'})`);
+      }
+      if (did === 'created' || did === 'updated') log.info(`pyokka CLI: ${did} ${file} -> ${runtimeDir}`);
+      if (did === 'created' && !onPath(bin, process.env['PATH'] ?? '')) {
+        log.warn(`pyokka CLI: ${bin} is not on PATH, so agents will not find ${file} by name`);
+        void offerPath(context);
+      }
     }
-    if (did === 'created' || did === 'updated') log.info(`pyokka CLI: ${did} ${file} -> ${runtimeDir}`);
-    if (did === 'created' && !onPath(path.dirname(file), process.env['PATH'] ?? '')) {
-      log.warn(`pyokka CLI: ${path.dirname(file)} is not on PATH, so agents will not find ${file} by name`);
-      void offerPath(context);
-    }
+    for (const old of dropRetiredShims(bin)) log.info(`pyokka CLI: removed the retired ${old}`);
+    // VS Code's own terminals find `pyokka` at once, before (or without) a shell profile edit
+    const terminals = context.environmentVariableCollection;
+    if (shimState(file).kind === 'ours' && !onPath(bin, process.env['PATH'] ?? '')) {
+      terminals.description = 'Pyokka puts ~/.local/bin on PATH so the pyokka command works in these terminals';
+      terminals.prepend('PATH', `${bin}${path.delimiter}`);
+    } else terminals.delete('PATH');
   };
   const run = (): void => void sync().catch((err) => log.error('pyokka CLI shim failed', err));
   run();

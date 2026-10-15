@@ -212,7 +212,7 @@ export function collectSources(inputs: Pick<WalkthroughInputs, 'files' | 'readSo
     if (!lines || lines.length === 0) return;
     let map = maps.get(fid);
     if (!map) {
-      map = fileMap(lines, file.statements.map((local) => file.ranges[local]!).filter(Boolean));
+      map = fileMap(lines, file.statements.map((local) => file.ranges[local]!).filter(Boolean), file.walk);
       maps.set(fid, map);
     }
     let start: number;

@@ -9,7 +9,7 @@
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import type { Range4, RecordFromSpec, RunConfig, RunRequest } from '../shared/protocol';
+import type { ErrorEvent, Range4, RecordFromSpec, RunConfig, RunRequest } from '../shared/protocol';
 import type { BlockLine, SliceBlock, SliceError, SliceLocation, SliceOptions, SliceValue } from '../session/contextSlice';
 import type { BreakpointSpec, ExceptionMode, PausedInfo, PausedThread } from '../session/debugState';
 
@@ -100,7 +100,7 @@ export function parseLaunch(raw: Record<string, unknown>, ctx: LaunchContext = {
   if (recordFrom && !parseAt(recordFrom)) throw new Error(`"recordFrom" is FILE:LINE or a function name, the \`--at\` grammar: got ${JSON.stringify(recordFrom)}`);
   // recording from a pause is a recording session: the run-all session holds the trace once it starts
   const record = raw['record'] === true || !!recordFrom;
-  if (!program && !module) throw new Error('a Pyokka launch needs "program" (the Python file to run) or "module" (a dotted name run like `python -m`)');
+  if (!program && !module) throw new Error('a Pyokka launch needs "program" (the Python file to run) or "module" (a dotted Python module name run like `python -m`)');
   if (module && !MODULE_RE.test(module)) throw new Error(`"module" is a dotted module name, not a path: got ${JSON.stringify(module)}`);
   if (module && record) throw new Error('"record": true runs the file as a Pyokka run-all session, which has no module launch; use "record": false, or a "program" launch');
   const rawCwd = str(raw['cwd']);
@@ -147,7 +147,8 @@ export function launchLine(launch: LaunchConfig): string {
   // the interpreter only when the launch names one: a session's is filled in from what it resolved,
   // and printing `python3` for a session that runs a venv would be a guess, not a fact
   const target = launch.module ? `-m ${launch.module}` : (launch.program ?? '');
-  const head = launch.python ? `${launch.python} ${target}` : target;
+  const exe = launch.python;
+  const head = exe ? `${exe} ${target}` : target;
   return [head, ...launch.args].join(' ');
 }
 
@@ -747,7 +748,20 @@ export function libraryPath(file: string | undefined): string | undefined {
   return kept.join('/') || undefined;
 }
 
-/** `{finished: {exitCode, durationMs, stepCount}}`: the program ended instead of stopping. */
-export function finishedSlice(fin: { exitCode: number | null; durationMs: number; stepCount: number } | undefined): Record<string, unknown> {
-  return { finished: { exitCode: fin?.exitCode ?? null, durationMs: fin?.durationMs ?? 0, stepCount: fin?.stepCount ?? 0 } };
+/**
+ * `{type, message, file, line}` of the uncaught exception that ended a run, at its innermost frame,
+ * or undefined. A run that stops before its first step (a module that does not compile) has
+ * nothing else to say why it ended.
+ */
+export function uncaughtError(errors: readonly ErrorEvent[] | undefined): { type: string; message: string; file?: string; line?: number; hint?: string } | undefined {
+  const e = errors?.find((x) => !x.handled);
+  if (!e) return undefined;
+  const top = e.stack?.[0];
+  return { type: e.errorType, message: e.message, ...(top?.path ? { file: top.path, line: top.line } : {}), ...(e.hint ? { hint: e.hint } : {}) };
+}
+
+/** `{finished: {exitCode, durationMs, stepCount, error?}}`: the program ended instead of stopping. */
+export function finishedSlice(fin: { exitCode: number | null; durationMs: number; stepCount: number } | undefined, errors?: readonly ErrorEvent[]): Record<string, unknown> {
+  const error = uncaughtError(errors);
+  return { finished: { exitCode: fin?.exitCode ?? null, durationMs: fin?.durationMs ?? 0, stepCount: fin?.stepCount ?? 0, ...(error ? { error } : {}) } };
 }

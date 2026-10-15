@@ -9,6 +9,7 @@ packages and pyokka's runtime import side by side; the interpreter must be 3.12 
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -80,8 +81,24 @@ def choose(program: str, python: str | None = None, env: dict[str, str] | None =
     return Interpreter(sys.executable, "pyokka's own; no --python, $PYOKKA_PYTHON, $VIRTUAL_ENV or .venv found")
 
 
-def _executable(given: str, flag: str) -> str:
+def on_path(given: str, flag: str) -> str:
+    """A path as given (from the current directory), or a bare command such as ``python3`` found on PATH as a shell would.
+
+    A bare name that is a directory here is a path too: ``--python .venv`` names a venv, and no
+    command is a directory. A bare name that is a file here is still looked up on PATH, as a shell
+    does, so a stray ``./python3`` never shadows the real one.
+    """
     path = os.path.expanduser(given)
+    if os.sep in given or (os.altsep and os.altsep in given) or os.path.isdir(path):
+        return os.path.abspath(path)
+    found = shutil.which(given)
+    if not found:
+        raise AgentError("%s %s: no such command on PATH" % (flag, given), "give the interpreter's path, e.g. %s .venv/bin/python, or a command on PATH such as python3.12" % flag)
+    return found
+
+
+def _executable(given: str, flag: str) -> str:
+    path = on_path(given, flag)
     if os.path.isdir(path):
         inner = venv_python(path)
         if inner is None:
@@ -112,4 +129,4 @@ def probe(interp: Interpreter) -> Interpreter:
     return interp
 
 
-__all__ = ["Interpreter", "choose", "probe", "venv_python", "find_dot_venv"]
+__all__ = ["Interpreter", "choose", "probe", "venv_python", "find_dot_venv", "on_path"]

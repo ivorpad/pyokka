@@ -1,5 +1,7 @@
 /**
- * Pretty-print a value tree (protocol `ValueNode`) as Python source.
+ * Pretty-print a value tree (protocol `ValueNode`) as Python source, or as JavaScript for a JS/TS
+ * session (`setValueSyntax`): the Node runtime sends the same node types (`None` for null and
+ * undefined, `bool`, `dict` for objects and Maps), and only their spelling differs.
  * Pure: no DOM, no Monaco. Every emitted line remembers the node it belongs to so
  * the Details editor can map cursor positions back to nodes (copy path/value,
  * click on `…` to load more).
@@ -7,6 +9,29 @@
 import type { ValueNode, ValueProp } from '../src/shared/protocol';
 
 export const DEFAULT_WIDTH = 100;
+
+/** The language values are spelled in: the bound session's. */
+export type ValueSyntax = 'python' | 'javascript';
+let syntax: ValueSyntax = 'python';
+
+/** Set by the panel when it learns the bound session's language (the `session` message). */
+export function setValueSyntax(next: ValueSyntax | undefined): void {
+  syntax = next ?? 'python';
+}
+
+export function valueSyntax(): ValueSyntax {
+  return syntax;
+}
+
+/** The Monaco language the Details, Compare and preview editors colour values and code with. */
+export function editorLanguage(): string {
+  return syntax === 'javascript' ? 'javascript' : 'python';
+}
+
+/** The session's language from a file name, for views that only know the name (the Debugger view). */
+export function syntaxForName(name: string | null | undefined): ValueSyntax {
+  return name && /\.(m|c)?(j|t)sx?$/i.test(name) ? 'javascript' : 'python';
+}
 export const INDENT = '    ';
 
 export type LineKind = 'value' | 'load' | 'string-capped';
@@ -88,16 +113,21 @@ function childPath(parent: ValueNode, parentPath: string, prop: ValueProp): stri
 
 function primitiveText(node: ValueNode): string {
   if (node.circular) return '[Circular]';
-  if (node.nan) return 'nan';
-  if (node.positiveInfinity) return 'inf';
-  if (node.negativeInfinity) return '-inf';
+  const js = syntax === 'javascript';
+  if (node.nan) return js ? 'NaN' : 'nan';
+  if (node.positiveInfinity) return js ? 'Infinity' : 'inf';
+  if (node.negativeInfinity) return js ? '-Infinity' : '-inf';
   switch (node.type) {
     case 'str':
       return pyQuote(node.value ?? '') + (node.capped ? '…' : '');
     case 'None':
-      return 'None';
-    case 'bool':
-      return node.value === 'True' || node.value === 'true' ? 'True' : node.value === 'False' || node.value === 'false' ? 'False' : (node.value ?? 'False');
+      // JS: the runtime says which of the two it was
+      return js ? (node.value === 'undefined' ? 'undefined' : 'null') : 'None';
+    case 'bool': {
+      const t = node.value === 'True' || node.value === 'true' ? true : node.value === 'False' || node.value === 'false' ? false : undefined;
+      if (t === undefined) return node.value ?? (js ? 'false' : 'False');
+      return js ? String(t) : t ? 'True' : 'False';
+    }
     default:
       return node.value ?? '';
   }
@@ -110,7 +140,7 @@ function brackets(node: ValueNode): [string, string] {
     case 'dict': return ['{', '}'];
     case 'set': return ['{', '}'];
     case 'frozenset': return ['frozenset({', '})'];
-    default: return [`${node.type}(`, ')'];
+    default: return syntax === 'javascript' ? [`${node.type} {`, '}'] : [`${node.type}(`, ')'];
   }
 }
 
@@ -123,7 +153,7 @@ function entryPrefix(parent: ValueNode, prop: ValueProp): string {
     case 'set':
     case 'frozenset':
       return '';
-    default: return `${prop.name}=`;
+    default: return syntax === 'javascript' ? `${prop.name}: ` : `${prop.name}=`;
   }
 }
 
@@ -149,7 +179,7 @@ export function flat(node: ValueNode): string {
     if (node.value && isContainer(node)) return node.value;
     return `${open}…${close}`;
   }
-  if (node.type === 'set' && props.length === 0) return 'set()';
+  if (node.type === 'set' && props.length === 0) return syntax === 'javascript' ? 'Set(0) {}' : 'set()';
   if (node.type === 'frozenset' && props.length === 0) return 'frozenset()';
   const items = children(node).map((p) => (isLoadNode(p) ? '…' : entryPrefix(node, p) + flat(p)));
   const body = items.join(', ');

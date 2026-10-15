@@ -33,7 +33,7 @@ USE_FORK = use_fork(os.environ, sys.platform)  # fork on Linux, a fresh interpre
 KILL_GRACE_S = 2.0
 # What a child's typed reply is called on the way out to the host.
 _REPLY_TYPE = {"evaluate.result": "evaluated", "complete.result": "completed", "exec.result": "executed"}
-CAPABILITIES = ["monitoring", "expand", "evaluate", "shadow", "source", "bindings", "libraryCode", "watch", "recordLocals", "profile", "snaps", "plugins", "partialTrace", "logpoints", "markers", "debug", "complete", "record", "module", "exec", "recordFrom"]
+CAPABILITIES = ["monitoring", "expand", "evaluate", "shadow", "source", "bindings", "libraryCode", "watch", "recordLocals", "profile", "snaps", "plugins", "partialTrace", "logpoints", "markers", "debug", "complete", "record", "module", "exec", "recordFrom", "definition"]
 
 
 class Writer:
@@ -382,6 +382,8 @@ class Runner:
             self.handle_source(req)
         elif kind == "bindings":
             self.handle_bindings(req)
+        elif kind == "definition":
+            self.handle_definition(req)
         elif kind == "debug":
             self.handle_debug(req)
         elif kind == "stop":
@@ -593,10 +595,30 @@ class Runner:
             return
         try:
             statements = statement_bindings(source)
+            reply: dict = {"type": "bindings", "id": req.get("id"), "statements": statements}
+            if req.get("identifiers"):
+                from .identifiers import source_identifiers
+
+                reply["identifiers"] = source_identifiers(source)
         except SyntaxError as exc:
             self.writer.send(msg_error(req.get("id"), "SyntaxError: %s" % exc))
             return
-        self.writer.send({"type": "bindings", "id": req.get("id"), "statements": statements})
+        self.writer.send(reply)
+
+    def handle_definition(self, req: dict) -> None:
+        """Where the name at ``offset`` of ``source`` (the file at ``path``) is defined, in project files: stateless, any time."""
+        from .definitions import definitions
+
+        source, path, offset = req.get("source"), req.get("path"), req.get("offset")
+        if not isinstance(source, str) or not isinstance(path, str) or not isinstance(offset, int):
+            self.writer.send(msg_error(req.get("id"), "definition needs source, path and offset"))
+            return
+        try:
+            locations = definitions(source, path, offset)
+        except SyntaxError as exc:
+            self.writer.send(msg_error(req.get("id"), "SyntaxError: %s" % exc))
+            return
+        self.writer.send({"type": "definition", "id": req.get("id"), "locations": locations})
 
     def handle_debug(self, req: dict) -> None:
         """Forward a debug control action (breakpoints, watches, pause, locals, continue, step) to the run in progress."""

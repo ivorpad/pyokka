@@ -57,12 +57,14 @@ function setup(answer = '{"pick": ["s53-189112"], "stops": {}}') {
   const posted: (TourPanel | null)[] = [];
   const calls: string[][] = [];
   let next: (argv: string[]) => TourDoc = () => fixture();
-  const run = vi.fn(async (_o: unknown, argv: string[]) => {
+  const pythons: string[] = [];
+  const run = vi.fn(async (o: { python: string }, argv: string[]) => {
+    pythons.push(o.python);
     calls.push(argv);
     return next(argv);
   });
   const host = new TourHost(context as never, '/rt', narrator as never, (_s, msg: HostToWebview) => msg.type === 'tour' && posted.push(msg.tour), run as never);
-  return { host, store, askModel, posted, calls, setNext: (f: typeof next) => (next = f) };
+  return { host, store, askModel, posted, calls, pythons, setNext: (f: typeof next) => (next = f) };
 }
 
 beforeEach(() => {

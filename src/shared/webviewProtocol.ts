@@ -16,7 +16,7 @@ export type { HttpTable, HttpTableRow } from './protocol';
  * `record: false` session. The two names are confusing and stay: renaming `'debugger'` would touch
  * every panel path for no user-visible gain.
  */
-export type ViewId = 'output' | 'debugger' | 'settings' | 'diagram' | 'diff' | 'variable' | 'run-diagram' | 'http' | 'debug';
+export type ViewId = 'output' | 'debugger' | 'settings' | 'diagram' | 'diff' | 'variable' | 'run-diagram' | 'http' | 'debug' | 'story';
 
 /** The HTTP view's table: the wire shape with a display path in every `location.file`. */
 export type HttpPanel = HttpTable;
@@ -67,6 +67,22 @@ export interface VariableView {
   /** null while the host computes, or when there is no run yet (`error` says so) */
   history: VariableHistory | null;
   error?: string;
+}
+
+/**
+ * The browser page's Code Story in the panel (VS Code opens it as an editor instead): the story
+ * document's rows and what is painted on them as of the Time Machine step. Lines are 1-based,
+ * columns 0-based and end-exclusive.
+ */
+export interface StoryPanel {
+  runId: string;
+  rows: string[];
+  /** rows that ran a source line: a click moves the Time Machine there, Ctrl/Cmd+click opens the source */
+  picks: number[];
+  /** the Time Machine step's columns; null while it is off */
+  current: { line: number; start: number; end: number } | null;
+  dim: { line: number; start: number; end: number }[];
+  values: { line: number; text: string; error: boolean }[];
 }
 
 /**
@@ -368,7 +384,7 @@ export interface ExceptionsPanel extends ExceptionReport {
 
 export type HostToWebview =
   | { type: 'init'; theme: 'dark' | 'light' | 'hc'; settings: PanelSettings; sessionName: string | null }
-  | { type: 'session'; name: string | null; running: boolean; durationMs?: number; runMode: PanelSettings['runMode']; settings?: PanelSettings; /** the last run was killed by the run timeout after this many ms */ timedOutMs?: number; /** the last run answered HTTP from a recording */ replayed?: boolean }
+  | { type: 'session'; name: string | null; /** the language values are spelled in (absent: python) */ language?: 'python' | 'javascript'; running: boolean; durationMs?: number; runMode: PanelSettings['runMode']; settings?: PanelSettings; /** the last run was killed by the run timeout after this many ms */ timedOutMs?: number; /** the last run answered HTTP from a recording */ replayed?: boolean }
   | { type: 'entries.reset' }
   | { type: 'entries.append'; entries: PanelEntry[] }
   | { type: 'entries.update'; entries: PanelEntry[] }
@@ -401,6 +417,8 @@ export type HostToWebview =
   | { type: 'exceptions'; report: ExceptionsPanel | null }
   /** the Variable pane's answer for a name (file paths are display paths); an empty name clears the pane */
   | { type: 'variable'; view: VariableView }
+  /** the browser page's Code Story (the `story` view); null clears it */
+  | { type: 'story'; story: StoryPanel | null }
   /** the Details pane's "why" tree: the query (tree null while it computes), then the answer; null clears it */
   | { type: 'why'; view: WhyView | null }
   /** the Execution Diagram view: null until a run finished; resent when a package is unrolled */
@@ -468,6 +486,8 @@ export type WebviewToHost =
   | { type: 'tour.recordLocals' }
   /** the Variable pane asks for a name's history (empty clears it); the host answers with `variable` */
   | { type: 'variable.query'; name: string }
+  /** a Code Story row was clicked (`open`: Ctrl/Cmd+click, show its source line) */
+  | { type: 'story.pick'; line: number; open?: boolean }
   /**
    * "Why" on an entry, a Variable pane row or a hover: the value `name` had after `step` (empty name: the statement at `step`);
    * the host answers with `why`. `logId` names the entry the query came from, when any: an entry is stamped when its statement

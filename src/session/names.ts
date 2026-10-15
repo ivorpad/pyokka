@@ -182,3 +182,45 @@ export function namesOf(lines: string[]): { targets: string[]; reads: string[] }
   }
   return { targets, reads };
 }
+
+/**
+ * A JS/TS statement's code without its comments (`//` to the end of the line, `/* ... *\/` across
+ * lines), joined by a single space; quotes and template literals are kept as written. The names
+ * come from the runtime's AST (`walk.names`), so only the label needs this.
+ */
+export function stripJsCode(lines: string[]): string {
+  const out: string[] = [];
+  let block = false;
+  let quote = '';
+  for (const line of lines) {
+    let keep = '';
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i]!;
+      if (block) {
+        if (c === '*' && line[i + 1] === '/') {
+          block = false;
+          i++;
+        }
+        continue;
+      }
+      if (quote) {
+        keep += c;
+        if (c === '\\') keep += line[++i] ?? '';
+        else if (c === quote) quote = '';
+        continue;
+      }
+      if (c === '/' && line[i + 1] === '/') break;
+      if (c === '/' && line[i + 1] === '*') {
+        block = true;
+        i++;
+        continue;
+      }
+      if (c === '"' || c === "'" || c === '`') quote = c;
+      keep += c;
+    }
+    // a plain string ends with its line; a template literal goes on
+    if (quote && quote !== '`') quote = '';
+    out.push(keep);
+  }
+  return out.join(' ');
+}

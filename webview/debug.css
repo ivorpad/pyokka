@@ -244,6 +244,11 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.pk-dbg-controls {
+  flex: none;
+  display: flex;
+  margin-left: auto;
+}
 .pk-dbg-chip {
   flex: none;
   padding: 0 6px;

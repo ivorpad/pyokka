@@ -13,6 +13,7 @@ from typing import Any, Callable
 
 from ..protocol import PROVENANCE_NODES
 from ..redact import redact
+from .coverage import render_coverage
 from .exceptions import render_exceptions
 from .graph import render_graph
 from .http import render_http
@@ -90,11 +91,16 @@ def render(command: str, result: dict, source: Any, args: Any) -> str:
         "walkthrough": render_walkthrough,
         "graph": render_graph,
         "exceptions": render_exceptions,
+        "coverage": render_coverage,
         "narrate": render_narrate,
         "history": render_history,
         "http": render_http,
         "diff": _render_diff,
         "tour": _render_tour,
+        "investigate": _render_workflow,
+        "learn": _render_workflow,
+        "pin": _render_workflow,
+        "verify": _render_workflow,
     }[command]
     lines.extend(fn(result, source, args))
     return "\n".join(redact(l) for l in lines) + "\n"
@@ -110,6 +116,12 @@ def _render_diff(result: dict, source: Any, args: Any) -> list[str]:
     from .diff import render_diff
 
     return render_diff(result, source, args)
+
+
+def _render_workflow(result: dict, source: Any, args: Any) -> list[str]:
+    from . import workflows
+
+    return getattr(workflows, "render_" + args.command)(result, source, args)
 
 
 def _block_lines(block_lines: list[dict], src_width: int) -> list[str]:
@@ -198,7 +210,7 @@ def render_stop(result: dict, source: Any, args: Any) -> list[str]:
     fin = result.get("finished")
     if isinstance(fin, dict):
         # `stepped` says how many of a `--count N` run's stops happened before the program ended
-        return render_debug_stop(result, source, args) if result.get("stepped") is not None else ["finished: exit %s, %s steps" % (fin.get("exitCode"), fin.get("stepCount"))]
+        return render_debug_stop(result, source, args) if result.get("stepped") is not None or fin.get("error") else ["finished: exit %s, %s steps" % (fin.get("exitCode"), fin.get("stepCount"))]
     if result.get("resumed") or result.get("requested") or is_debug_reply(result):
         return render_debug_stop(result, source, args)
     return render_context(result, source, args)
@@ -209,7 +221,9 @@ def render_stopped(result: dict, source: Any, args: Any) -> list[str]:
     if not result.get("stopped"):
         return ["nothing to stop: %s" % (result.get("hint") or "no debug run is in flight")]
     fin = result.get("finished") or {}
-    return ["stopped: exit %s, %s steps" % (fin.get("exitCode"), fin.get("stepCount"))]
+    from .render_debug import finished_error
+
+    return ["stopped: exit %s, %s steps" % (fin.get("exitCode"), fin.get("stepCount")), *finished_error(fin, source)]
 
 
 def _returned_text(value: Any) -> str:
@@ -299,6 +313,9 @@ def render_break(result: dict, source: Any, args: Any) -> list[str]:
             line = "  %s" % _loc(source, bp.get("file"), bp.get("line"))
         if bp.get("condition"):
             line += "  if %s" % _one_line(bp["condition"], 80)
+        if bp.get("logMessage") is not None:
+            out.append(line + "  log %s  (logpoint: never pauses)" % _one_line(bp["logMessage"], 160))
+            continue
         if bp.get("error"):
             line += "  (%s)" % _one_line(bp["error"], 80)
         elif bp.get("resolvedLine") is not None:
@@ -331,7 +348,11 @@ def render_watches(result: dict, source: Any, args: Any) -> list[str]:
 
 def render_locals(result: dict, source: Any, args: Any) -> list[str]:
     variables = [v for v in result.get("locals") or [] if isinstance(v, dict)]
-    return _locals_lines(variables, "") if variables else ["(no variables in this frame)"]
+    if not variables:
+        return ["(no variables in this frame)"]
+    if getattr(args, "names_only", False):
+        return ["%s: %s" % (v.get("name"), v.get("type") or "unknown") for v in variables]
+    return _locals_lines(variables, "")
 
 
 def render_values(result: dict, source: Any, args: Any) -> list[str]:

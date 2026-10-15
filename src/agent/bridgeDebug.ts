@@ -15,12 +15,12 @@ import type { Session } from '../session/session';
 import type { TimeMachine } from '../timeMachine/navigator';
 import type { SliceOptions } from '../session/contextSlice';
 import { decideMove, entryPause, mergeBreakpoints, type BreakpointSpec, type DebugBreakpointEcho, type LocalVar, type NavigatorMoveKind, type PausedInfo } from '../session/debugState';
-import { parseLaunch, type LaunchConfig } from '../debug/debugSessionState';
+import { parseLaunch, uncaughtError, type LaunchConfig } from '../debug/debugSessionState';
 import { clampCount, continueTo, continueUntil, execReply, stepCount, stepCountExtras, type StopRunner } from '../debug/debugExec';
-import { currentFunctionBreakpoints, currentSourceBreakpoints } from '../features/debugBreakpoints';
+import { clearEditorBreakpoints, currentFunctionBreakpoints, currentLogpoints, currentSourceBreakpoints } from '../features/debugBreakpoints';
 import { redact } from '../util/redact';
 import { BridgeError, int, sliceOptions, type Request } from './bridgeSupport';
-import { applyWatchRequest, breakpointReply, displayWatchItems, exceptionMode, localsReply, nodeText, outputTail, parseBreakItems, parseTo, pathContext, pausedReply, type BreakItem } from './bridgeDebugShapes';
+import { applyWatchRequest, breakpointReply, displayWatchItems, exceptionMode, localsOptions, localsReply, logpointReply, nodeText, outputTail, parseBreakItems, parseTo, pathContext, pausedReply, type BreakItem } from './bridgeDebugShapes';
 import { applyAt, removeFunctionBreakpoints } from './bridgeDebugReply';
 import { preRecordingSlice, recordHere } from './bridgeRecordFrom';
 
@@ -38,7 +38,8 @@ export type { BreakItem, PathContext } from './bridgeDebugShapes';
 
 export function finishedReply(session: Session): Record<string, unknown> {
   const fin = session.state.finished;
-  return { finished: { exitCode: fin?.exitCode ?? null, stepCount: fin?.stepCount ?? session.trace?.count ?? 0, durationMs: fin?.durationMs ?? 0 } };
+  const error = uncaughtError(session.state.errors);
+  return { finished: { exitCode: fin?.exitCode ?? null, stepCount: fin?.stepCount ?? session.trace?.count ?? 0, durationMs: fin?.durationMs ?? 0, ...(error ? { error } : {}) } };
 }
 
 /** `state.debug`: the debugger while a debug run exists, else null. */
@@ -122,7 +123,7 @@ export class BridgeDebug {
     try {
       return parseLaunch(raw, { workspaceRoot: session.workspaceRoot });
     } catch (err) {
-      throw new BridgeError(err instanceof Error ? err.message : String(err), 'send {type: "debug", launch: {program, args, cwd, env, python, record}}; every field is optional');
+      throw new BridgeError(err instanceof Error ? err.message : String(err), 'send {type: "debug", launch: {program, args, cwd, env, python, node, record}}; every field is optional (node for a .js/.ts program)');
     }
   }
 
@@ -256,7 +257,7 @@ export class BridgeDebug {
     const served = this.served(session, 'locals', req);
     if (served) return served;
     this.requirePaused(session, 'list the locals');
-    return { locals: localsReply(await session.debugLocals(), !!req.valueBag) };
+    return { locals: localsReply(await session.debugLocals(localsOptions(req)), !!req.valueBag) };
   }
 
   /**
@@ -295,10 +296,14 @@ export class BridgeDebug {
     const ctx = pathContext(session);
     const mode = exceptionMode(req.exceptions);
     if (mode) await session.setDebugExceptions(mode);
+    if (req.clear === true) {
+      clearEditorBreakpoints();
+      await session.setDebugBreakpoints([]);
+    }
     await applyAt(ctx, req, session.debug.breakpoints, (specs) => session.setDebugBreakpoints(specs));
     await removeFunctionBreakpoints(req, session.debug.breakpoints, (specs) => session.setDebugBreakpoints(specs));
     const source = (): vscode.SourceBreakpoint[] => vscode.debug.breakpoints.filter((b): b is vscode.SourceBreakpoint => b instanceof vscode.SourceBreakpoint);
-    const matches = (b: vscode.SourceBreakpoint, it: BreakItem, withCondition: boolean): boolean => b.location.uri.scheme === 'file' && b.location.uri.fsPath === it.path && b.location.range.start.line === it.line - 1 && (!withCondition || (b.condition ?? '') === (it.condition ?? ''));
+    const matches = (b: vscode.SourceBreakpoint, it: BreakItem, withCondition: boolean): boolean => b.location.uri.scheme === 'file' && b.location.uri.fsPath === it.path && b.location.range.start.line === it.line - 1 && (!withCondition || ((b.condition ?? '') === (it.condition ?? '') && (b.logMessage ?? '') === (it.logMessage ?? '')));
     const toAdd: BreakItem[] = [];
     const toRemove: vscode.SourceBreakpoint[] = [];
     if (Array.isArray(req.set)) {
@@ -306,7 +311,7 @@ export class BridgeDebug {
       await session.setDebugBreakpoints([]);
       toAdd.push(...parseBreakItems(ctx, req.set));
     }
-    if (Array.isArray(req.add)) for (const it of parseBreakItems(ctx, req.add)) if (!source().some((b) => matches(b, it, true)) && !toAdd.some((a) => a.path === it.path && a.line === it.line && (a.condition ?? '') === (it.condition ?? ''))) toAdd.push(it);
+    if (Array.isArray(req.add)) for (const it of parseBreakItems(ctx, req.add)) if (!source().some((b) => matches(b, it, true)) && !toAdd.some((a) => a.path === it.path && a.line === it.line && (a.condition ?? '') === (it.condition ?? '') && (a.logMessage ?? '') === (it.logMessage ?? ''))) toAdd.push(it);
     if (Array.isArray(req.remove)) {
       const items = parseBreakItems(ctx, req.remove);
       for (const b of source()) if (items.some((it) => matches(b, it, false)) && !toRemove.includes(b)) toRemove.push(b);
@@ -314,11 +319,11 @@ export class BridgeDebug {
       if (own.length !== session.debug.breakpoints.length) await session.setDebugBreakpoints(own);
     }
     if (toRemove.length) vscode.debug.removeBreakpoints(toRemove);
-    if (toAdd.length) vscode.debug.addBreakpoints(toAdd.map((it) => new vscode.SourceBreakpoint(new vscode.Location(vscode.Uri.file(it.path), new vscode.Position(it.line - 1, 0)), true, it.condition)));
+    if (toAdd.length) vscode.debug.addBreakpoints(toAdd.map((it) => new vscode.SourceBreakpoint(new vscode.Location(vscode.Uri.file(it.path), new vscode.Position(it.line - 1, 0)), true, it.condition, undefined, it.logMessage)));
     if (toRemove.length || toAdd.length) await this.settleBreakpoints(() => toAdd.every((it) => source().some((b) => matches(b, it, true))) && toRemove.every((b) => !source().includes(b)));
     let echo: DebugBreakpointEcho[] | undefined;
     if (session.debug.active && session.running) echo = await session.debugCtl.syncVsCodeBreakpoints()?.catch(() => undefined);
-    return { breakpoints: breakpointReply(ctx, mergeBreakpoints(currentSourceBreakpoints(), currentFunctionBreakpoints(), session.debug.breakpoints), echo), exceptions: session.debug.exceptions };
+    return { breakpoints: [...breakpointReply(ctx, mergeBreakpoints(currentSourceBreakpoints(), currentFunctionBreakpoints(), session.debug.breakpoints), echo), ...logpointReply(ctx, currentLogpoints())], exceptions: session.debug.exceptions };
   }
 
   async watches(session: Session, req: Request): Promise<Record<string, unknown>> {

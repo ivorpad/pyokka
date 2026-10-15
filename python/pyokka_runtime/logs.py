@@ -35,7 +35,7 @@ class LogMixin:
     def _limits_for(self, kind: str):
         return self.config.auto_expand if kind in _AUTO_EXPAND_KINDS else self.config.inline
 
-    def _bag(self, value: Any, runtime_key: str, hit: int, kind: str, context: str | None) -> dict:
+    def _bag(self, value: Any, runtime_key: str, hit: int, kind: str, context: str | None, function_source: bool = False) -> dict:
         limits = self._limits_for(kind)
         tree = self.expressions_to_evaluate.get(runtime_key)
         node = serialize(
@@ -47,6 +47,7 @@ class LogMixin:
             registry=self.registry,
             resolve_getters=self.config.resolve_getters,
             expression_root=context,
+            function_source=function_source,
         )
         budget = self.config.max_log_entry_size
         if budget and len(dumps(node)) > budget:
@@ -55,7 +56,7 @@ class LogMixin:
                 depth = max(0, depth - 1) if depth > 1 else 0
                 elements = max(8, elements // 4)
                 shrunk = type(limits)(depth, elements, min(limits.string_length, budget // 2))
-                node = serialize(value, shrunk, root_key=runtime_key, hit=hit, registry=self.registry, resolve_getters=self.config.resolve_getters, expression_root=context)
+                node = serialize(value, shrunk, root_key=runtime_key, hit=hit, registry=self.registry, resolve_getters=self.config.resolve_getters, expression_root=context, function_source=function_source)
                 if len(dumps(node)) <= budget or depth == 0:
                     break
         return {"data": node, "runtimeKey": runtime_key}

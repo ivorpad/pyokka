@@ -9,7 +9,7 @@
  * a column, and how many rows are not loaded yet.
  */
 import type { ValueNode, ValueProp } from '../src/shared/protocol';
-import { flat, isContainer, isInstance } from './format';
+import { flat, isContainer, isInstance, valueSyntax } from './format';
 
 export type ColumnKind = 'number' | 'string' | 'bool' | 'none' | 'mixed' | 'nested';
 
@@ -70,7 +70,7 @@ const isSeq = (n: ValueNode): boolean => n.type === 'list' || n.type === 'tuple'
 
 /** The text of one cell: scalars as the panel prints them, containers collapsed to their size. */
 export function cellText(node: ValueNode): string {
-  if (node.type === 'None') return 'None';
+  if (node.type === 'None') return valueSyntax() === 'javascript' ? (node.value === 'undefined' ? 'undefined' : 'null') : 'None';
   if (node.type === 'dict') return node.props ? (node.props.length ? `{${node.props.filter((p) => !isLoad(p)).length} keys}` : '{}') : (node.value ?? '{…}');
   if (isSeq(node) || node.type === 'set' || node.type === 'frozenset') {
     const n = node.props ? node.props.filter((p) => !isLoad(p)).length : node.length;
@@ -226,7 +226,7 @@ export function footerText(model: ValueTableModel): string {
   const f = model.footer;
   const parts = [f.loadedRows < f.rows ? `${f.rows} rows (${f.loadedRows} loaded)` : `${f.rows} rows`];
   for (const c of f.perColumn) {
-    if (c.none) parts.push(`${c.none} have ${c.label} None`);
+    if (c.none) parts.push(`${c.none} have ${c.label} ${valueSyntax() === 'javascript' ? 'null' : 'None'}`);
     if (c.empty) parts.push(`${c.empty} have an empty ${c.label}`);
     if (c.missing) parts.push(`${c.missing} lack ${c.label}`);
   }
@@ -249,7 +249,7 @@ export function sortRows(rows: ValueTableRow[], column: number, dir: 1 | -1): Va
     const cb = b.cells[column]!;
     let d = 0;
     if (ca.num !== undefined && cb.num !== undefined) d = ca.num - cb.num;
-    else if (ca.node?.type === 'bool' && cb.node?.type === 'bool') d = Number(ca.text === 'True') - Number(cb.text === 'True');
+    else if (ca.node?.type === 'bool' && cb.node?.type === 'bool') d = Number(/^true$/i.test(ca.text)) - Number(/^true$/i.test(cb.text));
     else d = ca.text.localeCompare(cb.text, undefined, { numeric: true });
     return d !== 0 ? d * dir : a.index - b.index;
   };

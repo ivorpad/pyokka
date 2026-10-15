@@ -12,7 +12,7 @@ export interface Token {
   text: string;
 }
 
-const KEYWORDS = new Set(['True', 'False', 'None', 'nan', 'inf']);
+const KEYWORDS = new Set(['True', 'False', 'None', 'nan', 'inf', 'true', 'false', 'null', 'undefined', 'NaN', 'Infinity']);
 const IDENT = /[A-Za-z_][A-Za-z0-9_]*/y;
 const NUMBER = /-?(?:0[xob][0-9a-fA-F_]+|\d[\d_]*\.?\d*(?:e[+-]?\d+)?j?|\.\d+)/y;
 

@@ -8,7 +8,7 @@
 import { useEffect, useImperativeHandle, useMemo, useRef, useState } from 'preact/hooks';
 import type { Ref } from 'preact';
 import type { ValueNode, WhyView } from '../src-shared';
-import { formatText, formatValue, type FormattedLine } from '../format';
+import { editorLanguage, formatText, formatValue, type FormattedLine } from '../format';
 import type { Entry, Theme } from '../model';
 import { monaco, monacoTheme, READONLY_OPTIONS } from '../monaco';
 import type { UiPrefs } from '../vscode';
@@ -152,7 +152,7 @@ export function Details(props: DetailsProps) {
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return;
-    const model = monaco.editor.createModel('', 'python');
+    const model = monaco.editor.createModel('', editorLanguage());
     const editor = monaco.editor.create(host, {
       ...READONLY_OPTIONS,
       model,

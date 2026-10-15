@@ -18,7 +18,7 @@ import { EXEC_CAPABILITY, EXEC_CAPABILITY_ERROR, RECORD_FROM_CAPABILITY, RECORD_
 import { log } from '../util/log';
 import { currentFunctionBreakpoints, currentSourceBreakpoints } from '../features/debugBreakpoints';
 import type { Session } from './session';
-import { blocksRun, freshDebugState, mergeBreakpoints, reduceDebugState, type BreakpointSpec, type BreakWatchSpec, type DebugBreakpointEcho, type DebugState, type ExceptionMode, type LocalVar, type PausedInfo, type StepKind } from './debugState';
+import { blocksRun, freshDebugState, mergeBreakpoints, reduceDebugState, type BreakpointSpec, type BreakWatchSpec, type DebugBreakpointEcho, type DebugState, type ExceptionMode, type LocalVar, type LocalsOptions, localsRequest, type PausedInfo, type StepKind } from './debugState';
 
 interface Waiter {
   resolve: (r: PausedInfo | 'finished') => void;
@@ -122,9 +122,9 @@ export class DebugController {
     await this.send({ action: 'pause' });
   }
 
-  async locals(opts: { frameId?: number } = {}): Promise<LocalVar[]> {
+  async locals(opts: LocalsOptions = {}): Promise<LocalVar[]> {
     this.requirePaused('list the locals');
-    const reply = await this.send({ action: 'locals', ...(opts.frameId ? { frameId: opts.frameId } : {}) });
+    const reply = await this.send({ action: 'locals', ...localsRequest(opts) });
     return (reply['locals'] as LocalVar[] | undefined) ?? [];
   }
 

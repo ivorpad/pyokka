@@ -27,6 +27,7 @@ that ends the run.
 
 from __future__ import annotations
 
+import os
 import sys
 import traceback
 from collections import OrderedDict
@@ -36,6 +37,7 @@ from typing import Any
 from .protocol import COV_ERROR_PATH, COV_ERROR_SOURCE, FLAG_ERROR, FLAG_UNWINDING
 
 TOOL_ID = 3
+_RUNTIME_DIR = os.path.dirname(os.path.abspath(__file__)) + os.sep
 _IGNORED = (StopIteration, StopAsyncIteration, GeneratorExit, SystemExit, KeyboardInterrupt)
 MAX_RECORDS = 500  # pending records; the oldest is folded into its group when exceeded
 MAX_HANDLED_EVENTS = 50  # caught-exception groups per run
@@ -82,6 +84,8 @@ class ErrorRecord:
 
 
 def _message(exc: BaseException) -> str:
+    if isinstance(exc, SyntaxError) and exc.msg and os.path.isabs(str(exc.filename or "")):
+        return str(exc.msg)  # the file and line go in the stack's `<module>` frame (`_compile_frame`), not the text
     try:
         return str(exc)
     except BaseException:  # noqa: BLE001
@@ -281,7 +285,18 @@ class ErrorMixin:
             out.append(entry)
             tb = tb.tb_next
         out.reverse()  # innermost first, like the live stack
-        return out
+        return self._compile_frame(exc, out)
+
+    def _compile_frame(self, exc: BaseException, stack: list[dict]) -> list[dict]:
+        """A module that did not compile has no frame of its own: one ``<module>`` frame at the file and
+        line the compiler named, in place of the import machinery and the runtime's loader."""
+        path = getattr(exc, "filename", None) if isinstance(exc, SyntaxError) else None
+        if not path or not os.path.isabs(str(path)) or (stack and stack[0].get("path") == path):
+            return stack
+        while stack and (str(stack[0].get("path", "")).startswith("<frozen ") or str(stack[0].get("path", "")).startswith(_RUNTIME_DIR)):
+            stack.pop(0)
+        info = self.files.get(path)
+        return [{"fileId": info.file_id if info else 0, "line": int(getattr(exc, "lineno", None) or 1), "col": 0, "function": "<module>", "path": path}, *stack]
 
     # -- folding caught exceptions --------------------------------------------------
     def _handled_at(self, h: Handler) -> dict:
@@ -366,6 +381,7 @@ class ErrorMixin:
                 self.error_states[rid] = COV_ERROR_PATH
         event = rec.event(handled=False)
         event["traceback"] = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))[-4000:]
+        self._add_hint(event, exc)
         self.emit(event)
         return event
 
@@ -382,8 +398,21 @@ class ErrorMixin:
         rec = ErrorRecord(exc, origin["fileId"], origin["rid"], self.step_count(), _message(exc), type(exc).__name__, stack)
         event = rec.event(handled=False)
         event["traceback"] = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))[-4000:]
+        self._add_hint(event, exc)
         self.emit(event)
         return event
+
+    def _add_hint(self, event: dict, exc: BaseException) -> None:
+        """``hint`` on the uncaught error when it says the run used the wrong interpreter (``hints.py``)."""
+        from .hints import venv_hint
+
+        paths = [sys.argv[0] if sys.argv else "", *[str(f.get("path") or "") for f in event.get("stack") or []]]
+        try:
+            hint = venv_hint(exc, paths)
+        except Exception:  # noqa: BLE001 - advice never breaks the report
+            hint = None
+        if hint:
+            event["hint"] = hint
 
     def report_snap_error(self, exc_or_text: Any, rid: int) -> None:
         if isinstance(exc_or_text, BaseException):

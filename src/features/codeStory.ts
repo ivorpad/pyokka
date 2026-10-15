@@ -141,7 +141,8 @@ export class CodeStory implements vscode.TextDocumentContentProvider, vscode.Def
     }
     const uri = this.uriFor(s);
     const doc = await vscode.workspace.openTextDocument(uri);
-    if (doc.languageId !== 'pyokka-story') await vscode.languages.setTextDocumentLanguage(doc, 'pyokka-story');
+    const storyLanguage = 'pyokka-story';
+    if (doc.languageId !== storyLanguage) await vscode.languages.setTextDocumentLanguage(doc, storyLanguage);
     const existing = vscode.window.visibleTextEditors.find((e) => e.document.uri.toString() === uri.toString());
     await vscode.window.showTextDocument(doc, { viewColumn: existing?.viewColumn ?? vscode.ViewColumn.Beside, preserveFocus: true, preview: false });
     this.highlightAll({ follow: true });
@@ -223,9 +224,9 @@ export class CodeStory implements vscode.TextDocumentContentProvider, vscode.Def
   private walkthroughLines(s: Session): string[] | undefined {
     const w = this.walkthroughFor(s);
     if (!w || w.moments.length === 0) return undefined;
-    const head = `# Walkthrough: ${w.total} moments over ${w.count} steps${w.shown < w.total ? ` (showing ${w.shown})` : ''}`;
+    const head = `Walkthrough: ${w.total} moments over ${w.count} steps${w.shown < w.total ? ` (showing ${w.shown})` : ''}`;
     // every row of the document is Python (D6), so the walkthrough reads as comments
-    return [head, ...renderWalkthroughLines(w, { values: false }).map((l) => (l.trimStart().startsWith('#') ? l : `#${l}`))];
+    return [`# ${head}`, ...renderWalkthroughLines(w, { values: false }).map((l) => (l.trimStart().startsWith('#') ? l : `#${l}`))];
   }
 
   /** What one block shows: the lines its steps started on (L1) and the columns those steps cover (L6). */
@@ -260,14 +261,15 @@ export class CodeStory implements vscode.TextDocumentContentProvider, vscode.Def
    */
   private scopeSpan(s: Session, block: StoryBlock, src: string[], firstStepOfLine: ReadonlyMap<number, number>): [number, number] | undefined {
     const scope = s.trace!.scope(block.scopeId);
-    if (!scope || scope.parent < 0) return undefined;
+    if (!scope) return undefined;
+    if (scope.parent < 0) return undefined;
     const loc = s.locate(scope.rid);
     if (!loc || loc.fileId !== block.fileId) return undefined;
     const body = s.files.get(block.fileId)?.functions.find((f) => f.rid === loc.localRid)?.bodyRange;
     const def = body ? Math.min(body[0], loc.range[0]) : loc.range[0];
     // without a body range, the last line the scope is known to have reached
     const last = Math.max(...firstStepOfLine.keys(), loc.range[2]);
-    return [scopeTop(src, def), Math.max(body ? body[2] : last, def)];
+    return [scopeTop(src, def, 'python'), Math.max(body ? body[2] : last, def)];
   }
 
   /* ---------- mapping ---------- */

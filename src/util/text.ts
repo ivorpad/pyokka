@@ -3,7 +3,8 @@
  * Columns are 0-based character offsets inside `line`.
  */
 
-const IDENT = /[A-Za-z0-9_]/;
+/** Identifier characters: Python's, plus JS's `$` (never part of a Python name, so harmless there). */
+const IDENT = /[A-Za-z0-9_$]/;
 
 export interface ColumnSpan {
   start: number;
@@ -59,6 +60,8 @@ export function identifierAt(line: string, col: number): ColumnSpan | undefined 
   while (s > 0 && IDENT.test(line[s - 1]!)) s--;
   while (e < line.length && IDENT.test(line[e]!)) e++;
   if (s === e) return undefined;
+  // a JS private name, `this.#count`: the `#` belongs to the name only right after a `.`
+  if (line[s - 1] === '#' && line[s - 2] === '.') s--;
   return { start: s, end: e, text: line.slice(s, e) };
 }
 
@@ -77,6 +80,8 @@ export function memberChainAt(line: string, col: number): ColumnSpan | undefined
     while (k >= 0 && (line[k] === ' ' || line[k] === '\t')) k--;
     if (k < 0 || line[k] !== '.') break;
     k--;
+    // JS optional chaining, `a?.b`: the `?` is part of the dot
+    if (line[k] === '?') k--;
     while (k >= 0 && (line[k] === ' ' || line[k] === '\t')) k--;
     if (k < 0) break;
     const c = line[k]!;
@@ -125,7 +130,8 @@ export function memberChainAt(line: string, col: number): ColumnSpan | undefined
 
 export function isBlankOrComment(line: string): boolean {
   const t = line.trim();
-  return t === '' || t.startsWith('#');
+  // `//` starts a JS comment; no Python line starts with it
+  return t === '' || t.startsWith('#') || t.startsWith('//');
 }
 
 export function truncateOneLine(text: string, max = 200): string {

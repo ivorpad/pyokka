@@ -19,6 +19,7 @@ interface Manifest {
     keybindings: { command: string; key: string; mac?: string; when?: string }[];
     views: Record<string, { id: string; when?: string }[]>;
     configurationDefaults: Record<string, Record<string, unknown>>;
+    grammars: { language?: string; injectTo?: string[]; path: string }[];
     configuration: { properties: Record<string, { type?: string; default?: unknown; enum?: string[]; enumDescriptions?: string[]; description?: string; markdownDescription?: string }> };
     debuggers: {
       type: string;
@@ -213,6 +214,24 @@ describe('package.json contributions', () => {
     for (const [cmd, title] of [['pyokka.showHttp', 'Show HTTP Requests'], ['pyokka.openHttpRecording', 'Open HTTP Recording']] as const) {
       expect(commands.find((c) => c.command === cmd)?.title, cmd).toBe(title);
       expect(palette.find((e) => e.command === cmd)?.when, cmd).toBe('pyokka.hasActiveSession');
+    }
+  });
+});
+
+describe('Pyokka is Python only', () => {
+  const JS = ['javascript', 'typescript', 'javascriptreact', 'typescriptreact'];
+  it('contributes nothing for JavaScript / TypeScript', () => {
+    // the one mention allowed is the guard below, which keeps Pyokka's keys out of JS/TS editors
+    const text = JSON.stringify(manifest.contributes).replace(/ && editorLangId != (java|type)script(react)?/g, '');
+    expect(text).not.toMatch(/javascript|typescript/i);
+    expect(text).not.toContain('pyokka-story-js');
+    expect(text).not.toContain('pyokka.nodePath');
+    for (const cmd of ['pyokka.newJavaScriptFile', 'pyokka.newTypeScriptFile', 'pyokka.selectNode']) expect(commands.find((c) => c.command === cmd), cmd).toBeUndefined();
+  });
+  it('keeps its keys off JavaScript / TypeScript editors, so an extension for those can bind the same ones', () => {
+    for (const k of keybindings) {
+      if (k.when?.includes('isActiveEditorRunningPyokka') || k.when?.includes('pyokka.traceBeingNavigated')) continue;
+      for (const lang of JS) expect(k.when, `${k.key} ${k.command}`).toContain(`editorLangId != ${lang}`);
     }
   });
 });

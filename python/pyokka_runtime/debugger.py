@@ -60,7 +60,7 @@ from . import dbgbreakpoints, dbgframes, secrets
 from .dbgexceptions import ExceptionPauseMixin
 from .record_from import RecordPauseMixin
 from .protocol import EXCEPTION_MODE_DEFAULT
-from .pure import eval_pure
+from .pure import compile_pure, eval_pure, run_pure
 from .serialize import expression_name, short_repr
 from .tracer import FOREIGN
 
@@ -76,8 +76,21 @@ class _Serving(threading.local):
     on = False
 
 
+def _compile_expression(text: str, filename: str) -> tuple[Any, str | None, str | None]:
+    """``(code, refused, error)`` of a condition or a watch: compiled for ``run_pure``, so it cannot change the
+    program; ``refused`` when the pure rule refuses it (``lst.append(1)``), ``error`` when it does not parse."""
+    try:
+        tree = ast.parse(text.strip(), filename, mode="eval")
+    except SyntaxError as exc:
+        return None, None, "SyntaxError: %s" % exc.msg
+    try:
+        return compile_pure(tree.body, filename), None, None
+    except ValueError as exc:
+        return None, "ValueError: %s" % exc, None
+
+
 class Breakpoint:
-    __slots__ = ("path", "line", "function", "condition", "code", "error", "rid", "file_id", "resolved_line")
+    __slots__ = ("path", "line", "function", "condition", "code", "refused", "error", "rid", "file_id", "resolved_line")
 
     def __init__(self, path: str, line: int, condition: str | None = None, function: str | None = None) -> None:
         self.path = path
@@ -85,15 +98,13 @@ class Breakpoint:
         self.function = (function or "").strip() or None  # `--at NAME`: resolved in `dbgbreakpoints`
         self.condition = (condition or "").strip() or None
         self.code: Any = None
+        self.refused: str | None = None  # the pure evaluator's refusal, reported at every hit
         self.error: str | None = None
         self.rid: int | None = None
         self.file_id: int | None = None
         self.resolved_line: int | None = None
         if self.condition:
-            try:
-                self.code = compile(self.condition, "<breakpoint %s:%d>" % (os.path.basename(path), self.line), "eval")
-            except SyntaxError as exc:
-                self.error = "SyntaxError: %s" % exc.msg
+            self.code, self.refused, self.error = _compile_expression(self.condition, "<breakpoint %s:%d>" % (os.path.basename(path), self.line))
 
     def to_json(self) -> dict:
         out: dict[str, Any] = {"path": self.path, "line": self.line}
@@ -111,7 +122,7 @@ class Breakpoint:
 class BreakWatch:
     """A watch that pauses the run: ``change`` when its text changes, ``true`` when it turns truthy."""
 
-    __slots__ = ("id", "exp", "mode", "code", "last", "error", "missing")
+    __slots__ = ("id", "exp", "mode", "code", "refused", "last", "error", "missing", "failed")
 
     def __init__(self, wid: str, exp: str, mode: str) -> None:
         self.id = wid
@@ -120,11 +131,8 @@ class BreakWatch:
         self.last: Any = None  # the last text (change) or truthiness (true) observed; None = never evaluated
         self.missing = False  # evaluated at least once while the expression had no value (a name not yet bound)
         self.error: str | None = None
-        try:
-            self.code = compile(exp, "<watch %s>" % wid, "eval")
-        except SyntaxError as exc:
-            self.code = None
-            self.error = "SyntaxError: %s" % exc.msg
+        self.failed: str | None = None  # the last evaluation error reported; the same one does not stop again
+        self.code, self.refused, self.error = _compile_expression(exp, "<watch %s>" % wid)
 
     def to_json(self) -> dict:
         out: dict[str, Any] = {"id": self.id, "exp": self.exp, "breakWhen": self.mode}
@@ -220,18 +228,37 @@ class Debugger(ExceptionPauseMixin, RecordPauseMixin):
             exp = str(spec.get("exp") or "").strip()
             if exp:
                 watches.append(BreakWatch(str(spec.get("id") or "w%d" % (len(watches) + 1)), exp, str(spec.get("breakWhen") or "change")))
-        self.watches = [w for w in watches if w.code is not None]
+        self.watches = [w for w in watches if w.code is not None or w.refused]
         self.rearm()
         return {"watches": [w.to_json() for w in watches]}
 
-    def _watch_fires(self, w: BreakWatch, frame: Any) -> str | None:
-        """The watch's text when it fires at this step, else None. A name not in scope is silent."""
+    def _watch_fires(self, w: BreakWatch, frame: Any) -> dict | None:
+        """``{text}`` when the watch fires at this step, ``{text, error}`` when it fails to evaluate, else None.
+
+        A name not bound yet is silent: a watch may be set before the name exists or read in another
+        frame, and its first value still counts. Any other failure stops once with the error, so a
+        watch that can never be evaluated says so instead of never firing; the same error again is silent.
+        """
         try:
-            value = eval(w.code, frame.f_globals, frame.f_locals)  # noqa: S307 - user watch expression
-        except BaseException:  # noqa: BLE001
+            if w.refused:
+                raise ValueError(w.refused[len("ValueError: "):])
+            value = run_pure(w.code, frame.f_globals, frame.f_locals)
+        except NameError:
             if w.last is None:
                 w.missing = True  # the name does not exist yet: its first value will count as a change
             return None
+        except Exception as exc:  # noqa: BLE001
+            message = ("%s: %s" % (type(exc).__name__, exc)).split("\n")[0]
+            if message == w.failed:
+                return None
+            w.failed = message
+            return {"text": "<evaluation failed>", "error": message}
+        w.failed = None
+        text = self._watch_text(w, value)
+        return None if text is None else {"text": text}
+
+    def _watch_text(self, w: BreakWatch, value: Any) -> str | None:
+        """The watch's text when its value fires it (a change, or turning true), else None."""
         if w.mode == "true":
             now = bool(value)
             fired = now and not w.last
@@ -293,10 +320,10 @@ class Debugger(ExceptionPauseMixin, RecordPauseMixin):
         if reason is None and self.watches:
             frame = sys._getframe(2)
             for w in self.watches:
-                text = self._watch_fires(w, frame)
-                if text is not None:
+                fired = self._watch_fires(w, frame)
+                if fired is not None:
                     reason = "watch"
-                    extra["watch"] = {"id": w.id, "exp": w.exp, "text": text}
+                    extra["watch"] = {"id": w.id, "exp": w.exp, **fired}
                     break
         if reason is not None:
             self._pause(n, rid, scope, sys._getframe(2), reason, extra)
@@ -340,10 +367,12 @@ class Debugger(ExceptionPauseMixin, RecordPauseMixin):
 
     @staticmethod
     def _condition_holds(bp: Breakpoint, frame: Any) -> tuple[bool, str | None]:
+        if bp.refused:
+            return True, bp.refused  # a condition that would change the program pauses and says why
         if bp.code is None:
             return True, None
         try:
-            return bool(eval(bp.code, frame.f_globals, frame.f_locals)), None  # noqa: S307 - user condition
+            return bool(run_pure(bp.code, frame.f_globals, frame.f_locals)), None
         except BaseException as exc:  # noqa: BLE001
             return True, "%s: %s" % (type(exc).__name__, exc)  # a broken condition pauses and says why
 
@@ -478,12 +507,42 @@ class Debugger(ExceptionPauseMixin, RecordPauseMixin):
         value = eval_pure(tree.body, frame.f_globals, frame.f_locals, "<pyokka-debug>")
         return {"text": secrets.current.mask_text(expression_name(expression), value, short_repr(value)), "valueBag": self.tracer._bag(value, self.value_key(), 1, "value", expression)}
 
-    def locals(self, frame: Any) -> list[dict]:
-        """The paused frame's variables, masked, each with a value bag `expand` can open."""
+    def locals(self, frame: Any, scope: str | None = None, names: list[str] | None = None, names_only: bool = False) -> list[dict]:
+        """The paused frame's variables, masked, each with a value bag `expand` can open.
+
+        ``scope``: None is the frame's ``f_locals`` (a closure's free variables included); ``local``
+        the function's own names (parameters, locals, cells); ``global`` the module-level values the
+        program bound (not the names its module had before it ran, nor functions, classes and
+        modules); ``all`` ``f_locals`` plus those globals. ``names`` keeps only those; ``names_only``
+        answers ``{name, type, text: ""}`` without reading values into text.
+        """
+        if scope not in (None, "local", "global", "all"):
+            raise ValueError("scope must be local, global or all, got %r" % scope)
         module_level = frame.f_code.co_name == "<module>"
+        pairs: list[tuple[str, Any]] = []
+        if scope != "global":
+            own = None if scope != "local" or module_level else set(frame.f_code.co_varnames) | set(frame.f_code.co_cellvars)
+            for name, val in list(frame.f_locals.items()):
+                if name.startswith("_pk_") or (module_level and (name.startswith("__") or isinstance(val, _MODULE_NOISE))):
+                    continue
+                if own is not None and name not in own:
+                    continue  # a free variable: the enclosing function's, not this one's
+                pairs.append((name, val))
+        if scope in ("global", "all") and not (module_level and scope == "all"):
+            startup = getattr(self.tracer, "startup_globals", frozenset()) if frame.f_globals.get("__name__") == "__main__" else frozenset()
+            seen = {n for n, _ in pairs}
+            for name, val in list(frame.f_globals.items()):
+                if name in seen or name in startup or name.startswith("__") or name.startswith("_pk_") or isinstance(val, _MODULE_NOISE):
+                    continue
+                pairs.append((name, val))
+        wanted = set(names) if names else None
         out = []
-        for name, val in list(frame.f_locals.items()):
-            if name.startswith("_pk_") or (module_level and (name.startswith("__") or isinstance(val, _MODULE_NOISE))):
+        for name, val in pairs:
+            if wanted is not None and name not in wanted:
                 continue
-            out.append({"name": name, "text": secrets.current.mask_text(name, val, short_repr(val)), "valueBag": self.tracer._bag(val, self.value_key(), 1, "value", name)})
+            if names_only:
+                out.append({"name": name, "type": type(val).__name__, "text": ""})
+                continue
+            # a function's source rides along for the page's hover (read here, at a pause, never per step)
+            out.append({"name": name, "text": secrets.current.mask_text(name, val, short_repr(val)), "valueBag": self.tracer._bag(val, self.value_key(), 1, "value", name, function_source=True)})
         return out

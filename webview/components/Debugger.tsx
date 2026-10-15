@@ -5,7 +5,7 @@
  * Time Machine's replay debug session fills (src/debug/replaySession.ts).
  */
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { flat, formatText } from '../format';
+import { editorLanguage, flat, formatText } from '../format';
 import type { CodePreview, Entry, Theme, WatchCompletions } from '../model';
 import { monaco } from '../monaco';
 import type { DebuggerState, TimelineModel, ValueNode } from '../src-shared';
@@ -275,7 +275,7 @@ export function CodePreviewPopup({ preview, x, y, theme }: { preview: CodePrevie
     const el = ref.current;
     if (!el) return;
     let cancelled = false;
-    void monaco.editor.colorize(preview.lines.join('\n'), 'python', { tabSize: 4 }).then((html) => {
+    void monaco.editor.colorize(preview.lines.join('\n'), editorLanguage(), { tabSize: 4 }).then((html) => {
       if (cancelled || !el) return;
       const code = el.querySelector('.pk-cp-code');
       if (code) code.innerHTML = html;

@@ -107,13 +107,36 @@ function VariableBody(props: VariablePaneProps) {
   return (
     <div class="pk-list pk-variable-list" role="list">
       {history.changes.map((c) => (
-        <ChangeRow key={`${c.step}:${c.name}`} change={c} showFileName={props.showFileName} onGoto={props.onGoto} onOpen={props.onOpen} onQuery={props.onQuery} onWhy={props.onWhy} />
+        history.pauses ? (
+          <PauseRow key={`${c.step}:${c.name}`} change={c} showFileName={props.showFileName} />
+        ) : (
+          <ChangeRow key={`${c.step}:${c.name}`} change={c} showFileName={props.showFileName} onGoto={props.onGoto} onOpen={props.onOpen} onQuery={props.onQuery} onWhy={props.onWhy} />
+        )
       ))}
       {history.truncated && (
         <p class="pk-caption pk-caption-sub pk-variable-hint">
           {history.total - history.changes.length} more changes; the CLI narrows them: <code>pyokka var --live {view.name} --file F</code>.
         </p>
       )}
+    </div>
+  );
+}
+
+/** A value at a live debugger pause (the browser page): no step to go to and no trace to ask Why. */
+function PauseRow({ change: c, showFileName }: { change: VariableChange; showFileName: boolean }) {
+  const where = `${showFileName ? c.file : c.file.split(/[\\/]/).pop()}:${c.line}`;
+  return (
+    <div class="pk-variable-change" role="listitem">
+      <div class="pk-row pk-variable-row" title={`The value at pause ${c.step} of the live debugger, ${c.file}:${c.line}`}>
+        <span class="pk-variable-step">pause {c.step}</span>
+        <span class="pk-variable-what">
+          <span class="pk-variable-name">{c.name}</span>
+          {' = '}
+          <Repr text={c.text ?? ''} />
+        </span>
+        <span class="pk-variable-fn">{c.function}</span>
+        <span class="pk-dim">{where}</span>
+      </div>
     </div>
   );
 }

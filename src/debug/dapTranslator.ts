@@ -382,6 +382,11 @@ export class DapTranslator {
       session.onResumed(() => this.onResumed()),
       session.onFinished((code) => this.onFinished(code)),
     );
+    // the program's prints in the Debug Console, where an F5 user looks for them
+    const output = session.onOutput?.((stream, text) => {
+      if (!this.terminated) this.event('output', { category: stream, output: text });
+    });
+    if (output) this.unsubscribe.push(output);
     if (session.replay) this.unsubscribe.push(session.replay.onChanged(() => this.stops.schedule()));
   }
 

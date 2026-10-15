@@ -7,7 +7,7 @@ import { baseName } from './parse'
 
 export const planPath = (programPath: string, finding: Finding) => {
   const dir = programPath.slice(0, programPath.lastIndexOf('/'))
-  const name = baseName(programPath).replace(/\.py$/, '')
+  const name = baseName(programPath).replace(/\.(py|[mc]?[jt]sx?)$/, '')
   return `${dir}/.pyokka/findings/${name}-${finding.kind.replace(/[^a-z0-9]+/gi, '-')}-${finding.where.replace(/[^a-z0-9]+/gi, '-')}.md`
 }
 

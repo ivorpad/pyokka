@@ -19,7 +19,7 @@ import { resolveSessionConfig } from '../config/settings';
 import { FileTable } from '../session/fileTable';
 import { appendOutput, OutputLog } from '../session/outputBuffer';
 import { currentFunctionBreakpoints, currentSourceBreakpoints } from '../features/debugBreakpoints';
-import { freshDebugState, mergeBreakpoints, reduceDebugState, type BreakpointSpec, type BreakWatchSpec, type DebugBreakpointEcho, type DebugState, type ExceptionMode, type LocalVar, type PausedInfo, type PausedThread, type StepKind } from '../session/debugState';
+import { freshDebugState, mergeBreakpoints, reduceDebugState, type BreakpointSpec, type BreakWatchSpec, type DebugBreakpointEcho, type DebugState, type ExceptionMode, type LocalVar, type LocalsOptions, localsRequest, type PausedInfo, type PausedThread, type StepKind } from '../session/debugState';
 import { debugRunRequest, launchName, type LaunchConfig } from './debugSessionState';
 import type { ExecResult } from './debugExec';
 import { StopWaiters } from './debugWaiters';
@@ -156,7 +156,8 @@ export class DebugSession extends EventEmitter<DebugSessionEvents> {
    * may be wrong (a venv, the Python extension's environment).
    */
   get resolvedLaunch(): LaunchConfig {
-    return this.interpreterPath ? { ...this.launch, python: this.interpreterPath } : this.launch;
+    if (!this.interpreterPath) return this.launch;
+    return { ...this.launch, python: this.interpreterPath };
   }
 
   /* ---------- lifecycle ---------- */
@@ -370,9 +371,9 @@ export class DebugSession extends EventEmitter<DebugSessionEvents> {
     await this.action({ action: 'pause' });
   }
 
-  async debugLocals(opts: { frameId?: number } = {}): Promise<LocalVar[]> {
+  async debugLocals(opts: LocalsOptions = {}): Promise<LocalVar[]> {
     this.requirePaused('list the locals');
-    const reply = await this.request({ action: 'locals', ...(opts.frameId ? { frameId: opts.frameId } : {}) });
+    const reply = await this.request({ action: 'locals', ...localsRequest(opts) });
     if (reply['modified'] === true) this.modified = true;
     return (reply['locals'] as LocalVar[] | undefined) ?? [];
   }

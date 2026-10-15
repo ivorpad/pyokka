@@ -83,7 +83,7 @@ export class MomentBuilder {
     if (!m) {
       const f = this.inputs.files.get(fid);
       const lines = this.inputs.readSource(fid) ?? [];
-      m = fileMap(lines, f ? f.statements.map((local) => f.ranges[local]!).filter(Boolean) : []);
+      m = fileMap(lines, f ? f.statements.map((local) => f.ranges[local]!).filter(Boolean) : [], f?.walk);
       this.maps.set(fid, m);
     }
     return m;
@@ -454,7 +454,9 @@ export class MomentBuilder {
       while (stack.length && !(stack[stack.length - 1]!._fid === fid && stack[stack.length - 1]!._line! <= line && line <= stack[stack.length - 1]!._end!)) stack.pop();
       if (!startsHere) continue;
       const map = this.map(fid);
-      const loop = map.loops.get(line);
+      const col = loc ? loc.range[1] : -1;
+      const loopAt = map.loops.get(line);
+      const loop = loopAt && (loopAt.col === undefined || loopAt.col === col) ? loopAt : undefined;
       if (loop) {
         const top = stack[stack.length - 1];
         if (top && top._line === line && top._fid === fid) top.count!++;
@@ -466,10 +468,10 @@ export class MomentBuilder {
         continue;
       }
       const dec = map.decisions.get(line);
-      if (!dec) continue;
+      if (!dec || (dec.col !== undefined && dec.col !== col)) continue;
       const nxt = this.nextInScope(i);
       const nline = nxt !== undefined && this.loc(nxt)[0] === fid ? this.loc(nxt)[1] : -1;
-      this.moments.push({ kind: 'decision', step: i, location: this.location(i), text: decisionText(dec, nline), values: this.tookValue(i, rid) });
+      this.moments.push({ kind: 'decision', step: i, location: this.location(i), text: decisionText(dec, nline, map.js), values: this.tookValue(i, rid) });
     }
     for (const m of this.moments) {
       if (!m._loop) continue;
@@ -545,11 +547,12 @@ export class MomentBuilder {
   }
 }
 
-export function decisionText(dec: Decision, nextLine: number): string {
+export function decisionText(dec: Decision, nextLine: number, js = false): string {
   if (dec.kind === 'match') {
     const arm = dec.arms.find((a) => a.body[0] <= nextLine && nextLine <= a.body[1]);
+    if (dec.keyword === 'switch') return `switch ${dec.text} took ${arm ? (arm.default ? 'default' : `case ${arm.text}`) : 'no case'}`;
     return `match ${dec.text} took ${arm ? `case ${arm.text}` : 'no case'}`;
   }
   const took = dec.body[0] <= nextLine && nextLine <= dec.body[1];
-  return `${dec.label} ${dec.text} took ${took ? 'True' : 'False'}`;
+  return `${dec.label} ${dec.text} took ${took ? (js ? 'true' : 'True') : js ? 'false' : 'False'}`;
 }

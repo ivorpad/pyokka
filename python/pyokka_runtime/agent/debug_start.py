@@ -68,7 +68,9 @@ def build_launch(*, program: str | None = None, module: str | None = None, args:
         launch["module"] = module
     launch["cwd"] = os.path.abspath(cwd) if cwd else (os.path.dirname(launch["program"]) if program else os.getcwd())
     if python:
-        launch["python"] = os.path.abspath(python)
+        from .interpreter import on_path
+
+        launch["python"] = on_path(python, "--python")
     if record_from:
         launch["record"] = True  # recording from a pause is a recording session that starts later
         launch["recordFrom"] = record_from
