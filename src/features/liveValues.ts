@@ -1,6 +1,6 @@
 /**
  * Show Value / Line Values / Line Timings / Copy Value / Clear, selection + auto-log toggles,
- * copy path/data, and the hover's links (copy, explore, show as diagram).
+ * copy path/data, and the hover's links (copy, see value, show as diagram).
  */
 import * as vscode from 'vscode';
 import type { LogEvent, Range4 } from '../shared/protocol';
@@ -232,6 +232,25 @@ export class LiveValues implements vscode.Disposable {
     this.panel.selectEntries(s, ids);
   }
 
+  /**
+   * "See value" on a hover over a recorded local: a recorded local is no entry, so it becomes a pinned
+   * one (the way a live or shadow value does) and the panel selects it, which shows it in DETAILS.
+   */
+  seeLocal(arg: unknown): void {
+    const key = pickString(arg, ['sessionKey']);
+    const s = key ? this.manager.getByKey(key) : this.manager.active();
+    const a = (arg && typeof arg === 'object' ? arg : {}) as { name?: unknown; text?: unknown; step?: unknown; fileId?: unknown; line?: unknown; scopeId?: unknown };
+    if (!s || typeof a.name !== 'string' || typeof a.text !== 'string' || typeof a.step !== 'number') return;
+    const logId = `local-${String(a.scopeId)}-${a.step}-${a.name}`;
+    let ev = s.state.entriesById.get(logId);
+    if (!ev) {
+      const fileId = typeof a.fileId === 'number' ? a.fileId : (s.mainFileId() ?? 1);
+      ev = { type: 'log', runId: s.state.runId, seq: 0, logId, kind: 'value', fileId, rid: 0, hit: 1, step: a.step, context: a.name, text: a.text, runtimeKey: '', liveLine: typeof a.line === 'number' ? a.line : undefined };
+      s.state.entriesById.set(logId, ev);
+    }
+    this.panel.selectEntries(s, [logId]);
+  }
+
   /** "Show as diagram" on a hover: select the entry and open the Diagram view on it. */
   async showDiagramForEntry(arg: unknown): Promise<void> {
     const found = await this.resolveHoverEntry(arg);
@@ -241,7 +260,7 @@ export class LiveValues implements vscode.Disposable {
   }
 
   /**
-   * The entry a hover link (Explore value / Show as diagram / Copy) points at. Entry ids are per
+   * The entry a hover link (See value / Show as diagram / Copy) points at. Entry ids are per
    * run, and a value evaluated for the hover (`live-N`, `shadow-…`) is registered only in the run
    * that was current when the hover was computed, so when the file re-ran before the click (On
    * Save re-runs on every save) the id resolves to nothing. The link also carries the expression,

@@ -8,7 +8,9 @@ exceptions report render in their own modules (``graph.py``, ``exceptions.py``).
 
 from __future__ import annotations
 
+import json
 import os
+import shlex
 from typing import Any, Callable
 
 from ..protocol import PROVENANCE_NODES
@@ -219,6 +221,8 @@ def render_stop(result: dict, source: Any, args: Any) -> list[str]:
 def render_debug_start(result: dict, source: Any, args: Any) -> list[str]:
     """``debug``: the first stop, then the name the commands after it take with ``--session``."""
     lines = render_stop(result, source, args)
+    if result.get("note"):  # route (a): the pause was already there (commands._already_paused)
+        lines.insert(0, "note: %s" % result["note"])
     session = result.get("session")
     if isinstance(session, dict) and (session.get("name") or session.get("descriptor")):
         import shlex
@@ -422,7 +426,7 @@ def render_var(result: dict, source: Any, args: Any) -> list[str]:
     out = [head]
     if not changes:
         hint = "no assignment of it ran" if result.get("recordedLocals", True) else "the run recorded no locals (saved with --no-locals?)"
-        out.append("nothing recorded for %s: %s; `find` searches values and source lines for the text" % (result.get("name"), hint))
+        out.append("nothing recorded for %s: %s; %s" % (result.get("name"), hint, _find_hint(source, str(result.get("name") or "NAME"))))
         return out
     for row in changes:
         where = "%s  %s" % (_loc(source, row.get("file"), row.get("line")), row.get("function") or "<module>")
@@ -598,8 +602,25 @@ def render_history(result: dict, source: Any, args: Any) -> list[str]:
     added = result.get("added")
     how = "wrote" if added is None or added == result["checkpoints"] else "added %d to" % added
     out.append("%s %s: %d checkpoints over %s%s" % (how, result["path"], result["checkpoints"], ", ".join(result["files"]) or "no file", ", %d with prose" % prosed if prosed else ""))
-    out.append("fill the prose, then render: node skills/pyokka/scripts/render-code-history.cjs %s %s" % (result["path"], os.path.splitext(result["path"])[0] + ".html"))
+    out.append("fill the prose, then render: node %s %s %s" % (_render_script(), result["path"], os.path.splitext(result["path"])[0] + ".html"))
     return out
+
+
+def _render_script() -> str:
+    """The page renderer by its absolute path in the checkout this package runs from, so it works from any cwd."""
+    script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "skills", "pyokka", "scripts", "render-code-history.cjs")
+    script = os.path.normpath(script)
+    return script if os.path.isfile(script) else "skills/pyokka/scripts/render-code-history.cjs (from the pyokka checkout)"
+
+
+def _find_hint(source: Any, name: str) -> str:
+    """`find` on this run in both forms: it searches values and source lines for the text."""
+    path = getattr(source, "path", None)
+    if isinstance(path, str) and os.path.isfile(path):
+        cli, mcp = shlex.quote(path), '"run": %s' % json.dumps(path)
+    else:
+        cli, mcp = "--live", '"live": true'
+    return "`pyokka find %s %s` searches values and source lines for the text (MCP: pyokka_map {\"action\": \"find\", %s, \"text\": %s})" % (cli, shlex.quote(name), mcp, json.dumps(name))
 
 
 __all__ = ["exec_error", "render", "render_context", "render_stop", "render_stopped", "render_state", "render_walkthrough", "MOVE_LABEL", "TEXT_MAX", "WALK_LINE"]

@@ -5,10 +5,12 @@ The actions' descriptions are the commands' own help text, read from the parser 
 
 from __future__ import annotations
 
+import re
+
 def _source_props() -> dict:
     return {
         "run": {"type": "string", "description": "path of a saved run.json (from pyokka_run); omit with live"},
-        "live": {"type": "boolean", "description": "read the open VS Code session instead of a saved run (setting pyokka.agentAccess)"},
+        "live": {"type": "boolean", "description": "read the open VS Code session instead of a saved run (setting pyokka.agentAccess): the session on `session`, else the one whose workspace holds the cwd, else the newest; errors with \"no live session\" when no window publishes one"},
         "session": {"type": "string", "description": "with live: the session's file name, when more than one window session is open"},
         "json": {"type": "boolean", "description": "the raw JSON shape instead of the text form"},
     }
@@ -22,13 +24,32 @@ DEBUG_ACTIONS = ("start", "continue", "pause", "stop", "restart", "break", "watc
 DEBUG_COMMAND = {"start": "debug"}
 
 
+#: CLI wording in the commands' help that reads differently as tool arguments
+_MCP_PHRASES = (
+    ("(needs --keep)", "(needs a run recorded with pyokka_run keep: true)"),
+    ("`run --keep`", "pyokka_run keep: true"),
+    (" A file or --module implies --live.", ""),
+    ("list them; FILE:LINE adds one", "list them; `add` FILE:LINEs adds them"),
+    ("; exit 1 when an expectation fails", ""),
+)
+
+
+def _mcp_words(text: str) -> str:
+    """A command's help in the tools' terms: arguments by name (`record_from`), no --live prefix (the tool says it)."""
+    if text.startswith("--live: "):
+        text = text[len("--live: "):]
+    for cli, mcp in _MCP_PHRASES:
+        text = text.replace(cli, mcp)
+    return re.sub(r"(?<![\w-])--([a-z][\w-]*)", lambda m: "`%s`" % m.group(1).replace("-", "_"), text)
+
+
 def _helps() -> dict[str, str]:
-    """Each command's one-line help, from the parser the CLI uses."""
+    """Each command's one-line help, from the parser the CLI uses, in the tools' terms."""
     from .shell import build_parser
 
     parser = build_parser()
     sub = parser._subparsers._group_actions[0]  # type: ignore[union-attr]
-    return {a.dest: (a.help or "") for a in sub._choices_actions}  # type: ignore[attr-defined]
+    return {a.dest: _mcp_words(a.help or "") for a in sub._choices_actions}  # type: ignore[attr-defined]
 
 
 def _action_list(actions: tuple[str, ...], helps: dict[str, str], rename: dict[str, str] | None = None) -> str:
@@ -47,7 +68,7 @@ def tool_definitions() -> list[dict]:
         {
             "name": "pyokka_run",
             "title": "Record a Python run",
-            "description": "Run a Python file under Pyokka's tracer and save the recording (run.json) that every other tool reads. Prints the interpreter it picked, the step count and the exit code; a program that raises is still recorded. Returns the run path to pass as `run`.",
+            "description": "Run a Python file under Pyokka's tracer and save the recording (run.json) that every other tool reads. Prints the interpreter it picked, the step count and the exit code; a program that raises is still recorded. Returns the run path to pass as `run`. The recording is a file on disk at `save` (default .pyokka/runs/<file name>.json next to the file); nothing opens in VS Code or a browser. Read it with pyokka_map {\"action\": \"walkthrough\", \"run\": PATH}; mode profile writes a .cpuprofile instead and prints its path.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -106,7 +127,7 @@ def tool_definitions() -> list[dict]:
         {
             "name": "pyokka_step",
             "title": "Time Machine",
-            "description": "The Time Machine: the code, values, call stack and available moves at one step of a run, or after a move from it. Without move or to, the context at `step` (or at the first step of `line`). Moves: into a call (lands in the callee with its arguments), over, out, back, back-over, back-out; `to` jumps. Live at a debug pause, into/over/out run the program to the next stop and `count` takes several steps.",
+            "description": "The Time Machine: the code, values, call stack and available moves at one step of a run, or after a move from it. Without move or to, the context at `step` (or at the first step of `line`). Moves: into a call (lands in the callee with its arguments), over, out, back, back-over, back-out; `to` jumps. `count` takes several steps at a live pause. With `live: true` (VS Code with pyokka.agentAccess, a session started by pyokka_debug {\"action\": \"start\", \"file\": FILE, \"at\": [NAME]}), into/over/out execute the real program in the VS Code window and print the next stop; live back, back-over, back-out and `to` need a recording (record: true). Without live every move reads the saved run and runs nothing.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -149,7 +170,7 @@ def tool_definitions() -> list[dict]:
         {
             "name": "pyokka_coverage",
             "title": "Coverage",
-            "description": helps.get("coverage", "") + ". Lines are statement lines; a line marked partial ran only in part (a branch arm or a short-circuit that never ran), raised is where an exception came from.",
+            "description": "Line coverage of a recorded run, returned as text in this reply (json: true for the JSON shape): per file the lines that ran, the ones that never ran and the partial ones; `file` also lists that file line by line with hit counts. Reads `run` (a run.json from pyokka_run) or, with live: true, the open VS Code session. Lines are statement lines; a line marked partial ran only in part (a branch arm or a short-circuit that never ran), raised is where an exception came from.",
             "inputSchema": {
                 "type": "object",
                 "properties": {**src, "file": {"type": "string", "description": "also list this file line by line with hit counts"}},
@@ -159,7 +180,7 @@ def tool_definitions() -> list[dict]:
         {
             "name": "pyokka_debug",
             "title": "Live debugger",
-            "description": "Drive Pyokka's debugger in VS Code (the extension must be installed; the window opens on start). Every action that runs the program returns the next stop the way pyokka_step prints one.\n" + _action_list(tuple(a for a in DEBUG_ACTIONS if a != "status"), helps, DEBUG_COMMAND) + "\n- status: the live session's state without moving it; with wait_seconds, first wait up to that long for the running program to pause (a breakpoint, or the person stepping in VS Code) or finish",
+            "description": "Drive Pyokka's debugger in a VS Code window (the ivor.pyokka extension must be installed and the setting pyokka.agentAccess on; start opens the file in that window and brings it to the front at the first stop, where the person sees the pause; every reply here is also returned as text). Every action that runs the program returns the next stop the way pyokka_step prints one.\n" + _action_list(tuple(a for a in DEBUG_ACTIONS if a != "status"), helps, DEBUG_COMMAND) + "\n- status: the live session's state without moving it; with wait_seconds, first wait up to that long for the running program to pause (a breakpoint, or the person stepping in VS Code) or finish",
             "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -202,7 +223,7 @@ def tool_definitions() -> list[dict]:
         {
             "name": "pyokka_history",
             "title": "Code-history data",
-            "description": helps.get("history", "") + ". Writes the JSON to `out`; every value in it comes from the run. Checkpoints: `at` steps or FILE:LINEs, one per change of each `var`, the provenance chain of each `why`, or the live pause.",
+            "description": helps.get("history", "") + ". Every value in it comes from the run. Writes a JSON file to `out` (required, no default) and returns text naming it. Nothing renders or opens it: the page is `node <repo>/skills/pyokka/scripts/render-code-history.cjs OUT OUT.html`, which the result prints. Checkpoints: `at` steps or FILE:LINEs, one per change of each `var`, the provenance chain of each `why`, or `pause` (needs `live: true` and a paused debug session). `append` adds to an existing history file and refuses any other file.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -227,11 +248,12 @@ def tool_definitions() -> list[dict]:
         {
             "name": "pyokka_narrate",
             "title": "Narrate a walkthrough",
-            "description": helps.get("narrate", "") + ". It runs a model command (claude -p, else codex exec) and writes the gloss into the run; dry_run prints the prompt instead.",
+            "description": helps.get("narrate", "") + ". It runs a local model CLI as a subprocess with that CLI's own login (no API key): `command` when given, else `claude -p`, else `codex exec` (each found on PATH or in ~/.local/bin, ~/.claude/local, /opt/homebrew/bin, /usr/local/bin), with prompt on stdin and answer on stdout, a 180 s limit, and redacted source and values sent to that model. It writes the gloss into run.json and returns 'N of M moments glossed by BACKEND, written to PATH'. dry_run returns the prompt as text and writes nothing. It reads a saved run only.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    **src,
+                    "run": {**src["run"], "description": "path of a saved run.json (from pyokka_run); the gloss is written into it"},
+                    "json": src["json"],
                     "command": {"type": "string", "description": "the model command: prompt on stdin, answer on stdout (default: claude -p, else codex exec)"},
                     "dry_run": {"type": "boolean", "description": "print the prompt instead of running the command"},
                 },
@@ -240,44 +262,45 @@ def tool_definitions() -> list[dict]:
         {
             "name": "pyokka_investigate",
             "title": "Investigate a value",
-            "description": helps.get("investigate", "") + ". The notes first say where the recording has gaps.",
-            "inputSchema": {"type": "object", "properties": {"run": src["run"], "json": src["json"], "value": {"type": "string", "description": "the name or attribute path to follow (scores, self.total); omit it to start at the run's first exception"}, "at": {"type": "integer", "description": "the step to explain (default: the first nan/inf/None value, else the last change)"}}, "required": ["run"]},
+            "description": "Follow one value through a saved run (or the open VS Code session with live: true) and return the answer as text in this reply (json: true for the raw shape); nothing opens in an editor or browser. Sections: notes on where the recording has gaps, the value's changes (var), why and origin at the selected step, the run's exceptions, and the lines that did not run.",
+            "inputSchema": {"type": "object", "properties": {**src, "value": {"type": "string", "description": "the name or attribute path to follow (scores, self.total); omit it to start at the run's first exception"}, "at": {"type": "integer", "description": "the step to explain (default: the first nan/inf/None value, else the last change)"}}},
             "annotations": read_only,
         },
         {
             "name": "pyokka_learn",
             "title": "Practice on a run",
-            "description": helps.get("learn", "") + ". Without reveal the values stay hidden.",
-            "inputSchema": {"type": "object", "properties": {"run": src["run"], "json": src["json"], "at": {"type": "integer", "description": "the checkpoint's step"}, "prediction": {"type": "string", "description": "what you expect the value to be"}, "reveal": {"type": "boolean", "description": "show the recorded value and whether the prediction matches"}}, "required": ["run"]},
+            "description": helps.get("learn", "") + ". Returns text in this reply only. Without `at` it lists the checkpoint steps. Call 1: {run, at, prediction} keeps the values hidden. Call 2: {run, at, prediction, reveal: true} shows the recorded values and whether they match. Send `prediction` again on call 2: nothing is stored between calls. `reveal` without `prediction` shows the values with no match.",
+            "inputSchema": {"type": "object", "properties": {**src, "at": {"type": "integer", "description": "the checkpoint's step"}, "prediction": {"type": "string", "description": "what you expect the value to be"}, "reveal": {"type": "boolean", "description": "show the recorded value and whether the prediction matches"}}},
             "annotations": read_only,
         },
         {
             "name": "pyokka_pin",
             "title": "Pin a baseline",
-            "description": helps.get("pin", ""),
-            "inputSchema": {"type": "object", "properties": {"run": src["run"], "json": src["json"], "out": {"type": "string", "description": "the new baseline file; an existing file is refused"}}, "required": ["run", "out"]},
+            "description": helps.get("pin", "") + ". Writes the copy to the file at `out` and returns text naming it; nothing runs or opens. Reads `run`, or with live: true the open VS Code session's recording.",
+            "inputSchema": {"type": "object", "properties": {**src, "out": {"type": "string", "description": "path of the new baseline file, relative to the server's working directory or absolute; its directory must exist; an existing file is refused"}}, "required": ["out"]},
             "annotations": {"readOnlyHint": False, "destructiveHint": False, "openWorldHint": False},
         },
         {
             "name": "pyokka_verify",
             "title": "Verify a fix",
-            "description": helps.get("verify", "") + ". A failed expectation is an error result with the same text.",
+            "description": helps.get("verify", "") + ". Returns the comparison and PASS/FAIL lines as text. rerun: true runs the baseline's file again with its saved interpreter, arguments and cwd (HTTP replayed only if the baseline recorded it with http record, otherwise real calls). out and test_out write new files and refuse existing ones. A failed expectation is an error result with the same text.",
             "inputSchema": {"type": "object", "properties": {
-                "run": src["run"], "json": src["json"],
+                **src,
+                "run": {**src["run"], "description": "path of the baseline run.json (from pyokka_run or pyokka_pin); omit with live"},
                 "after": {"type": "string", "description": "the run saved after the fix"},
-                "rerun": {"type": "boolean", "description": "run the baseline's file again instead (recorded HTTP is replayed)"},
+                "rerun": {"type": "boolean", "description": "run the baseline's file again with its saved interpreter, arguments and cwd; HTTP is replayed only if the baseline was recorded with http record"},
                 "out": {"type": "string", "description": "with rerun: save the new run here"},
                 "ignore": {"type": "array", "items": {"type": "string"}, "description": "names left out of the comparison"},
                 "expect": {"type": "array", "items": {"type": "string"}, "description": "NAME=VALUE final recorded values, as repr text: total=22"},
                 "test_out": {"type": "string", "description": "write a pytest file that reruns the file and checks the expectations"},
-            }, "required": ["run"]},
+            }},
             "annotations": {"readOnlyHint": False, "destructiveHint": False, "openWorldHint": True},
         },
         review_tool(),
         {
             "name": "pyokka_session",
             "title": "Where a run is",
-            "description": "Read where a run stands, as JSON, without moving anything. With `run`: a saved run's read position (`step`, default 0), its context and the gaps in the recording. With `live: true` or `session`: the open VS Code session, with the program's actual pause (`livePause`) kept apart from the Time Machine's position in the recording (`recordedSelection`), which can sit behind it, and the actions that apply now. With neither: the published sessions.",
+            "description": "Read where a run stands, as JSON, without moving anything. With `run`: a saved run's read position (`step`, default 0), its context and the gaps in the recording. With `live: true` or `session`: the open VS Code session, with the program's actual pause (`livePause`) kept apart from the Time Machine's position in the recording (`recordedSelection`), which can sit behind it, and the actions that apply now. With neither: the published sessions. Call it with no arguments before pyokka_debug or a review in VS Code: it says whether VS Code is ready (the `code` binary, the installed extension, `pyokka.agentAccess`) and lists the sessions VS Code publishes, where `kind: \"run\"` is a Time Machine recording you can step back in and `kind: \"debug\"` a forward-only debug pause. With none open it says why and the call that opens one.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -296,7 +319,7 @@ def tool_definitions() -> list[dict]:
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "run": src["run"],
+                    "run": {"type": "string", "description": "path of a saved run.json (from pyokka_run); reads saved runs only, no live session"},
                     "value": {"type": "string", "description": "a variable name, with equals"},
                     "equals": {"type": "string", "description": "the value's recorded text, as `var` prints it"},
                     "file": {"type": "string", "description": "with line: a file of the run (path suffix or basename)"},
@@ -310,12 +333,12 @@ def tool_definitions() -> list[dict]:
         {
             "name": "pyokka_save_investigation",
             "title": "Save investigation checkpoints",
-            "description": "Save a question and named steps of a saved run to a new JSON file at `path` (never overwritten). It keeps the run's path, relative to the file, and the sha256 of the run, so keep both files. Answers each checkpoint's context. Runs no code.",
+            "description": "Save a question and named steps of a saved run to a new JSON file at `path` (never overwritten). It keeps the run's path, relative to the file, and the sha256 of the run, so keep both files. Answers each checkpoint's context as JSON text in this reply. Runs no code.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "path": {"type": "string", "description": "the new investigation file"},
-                    "run": src["run"],
+                    "path": {"type": "string", "description": "the new investigation file; give an absolute path (a relative one resolves against the MCP server's working directory)"},
+                    "run": {"type": "string", "description": "path of a saved run.json (from pyokka_run); a live session cannot be saved, record one with pyokka_run first"},
                     "question": {"type": "string", "description": "what the investigation is about"},
                     "checkpoints": {"type": "array", "items": {"type": "object", "properties": {"name": {"type": "string"}, "step": {"type": "integer"}}, "required": ["name", "step"]}, "description": "1 to 20 named steps"},
                 },
@@ -326,14 +349,14 @@ def tool_definitions() -> list[dict]:
         {
             "name": "pyokka_open_investigation",
             "title": "Reopen an investigation",
-            "description": "Reopen an investigation file: its question and each checkpoint's context, after checking that the run's sha256 is still the one saved (a changed run is refused, since its steps may be other moments). Runs no code.",
-            "inputSchema": {"type": "object", "properties": {"path": {"type": "string", "description": "the investigation file"}}, "required": ["path"]},
+            "description": "Reopen an investigation file: its question and each checkpoint's context, after checking that the run's sha256 is still the one saved (a changed run is refused, since its steps may be other moments), as JSON text in this reply. Runs no code. The file stores its run's path relative to itself: keep the two files together, and after the run is re-recorded, save a new investigation over the new run.",
+            "inputSchema": {"type": "object", "properties": {"path": {"type": "string", "description": "the investigation file pyokka_save_investigation wrote (absolute; a relative path resolves against the server's working directory)"}}, "required": ["path"]},
             "annotations": read_only,
         },
         {
             "name": "pyokka_page",
             "title": "The browser page",
-            "description": "Drive Pyokka's browser page (docs/WEB.md; its bridge runs on node, else on the Node inside VS Code). open starts the page's bridge on `file` and returns its URL: the person opens it in exactly one browser tab. Every other action is one `pyokka web ctl` command sent to that tab, answered with the bridge's JSON: state, goto, step (next/into/over/out/back/backOver/backOut), line, say, clear, start, stop, run, eval, var, why, peek, watch, breakpoint, debug (op start/continue/step/pause/stop/state), story, profile, values (the live pause's values beside the source), definition (where the name at line/column is defined), and wait_pause for the person's next step (up to 25 s). close stops a page this server started, list names them. expect (source, runId, step, frame, file from state.context) refuses a command once the page has moved on.",
+            "description": "Drive Pyokka's browser page (docs/WEB.md; its bridge runs on node, else on the Node inside VS Code). open starts the page's bridge on `file` and returns its URL: the person opens it in exactly one browser tab. This tool opens no browser: hand the person the URL; until their tab is open, every other action fails with \"no page is open\". Say bubbles and the page's moves show only in that tab; the JSON comes back here. Every other action is one `pyokka web ctl` command sent to that tab, answered with the bridge's JSON: state, goto, step (next/into/over/out/back/backOver/backOut), line, say, clear, start, stop, run, eval, var, why, peek, watch, breakpoint, debug (op start/continue/step/pause/stop/state), story, profile, values (the live pause's values beside the source), definition (where the name at line/column is defined), and wait_pause for the person's next step (up to 25 s). close stops a page this server started, list names them. expect (source, runId, step, frame, file from state.context) refuses a command once the page has moved on.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -366,7 +389,7 @@ def tool_definitions() -> list[dict]:
         {
             "name": "pyokka_scratchpad",
             "title": "The page's Scratchpad",
-            "description": "Experiment beside the browser page's live debugger (open the page with pyokka_page, pause with breakpoint and debug start). op open copies the function around the paused line (or `line`) and the pause's values into the Scratchpad and runs it once: Inputs hold each value as a Python literal the runtime checked rebuilds exactly; a value a fresh process cannot rebuild (an object, a function, a cut string, a capped list) is listed in `unavailable` with the reason, and using it raises UnavailableValue. experiment does the same with your `code` (formatted, then run once). The experiment runs in a separate `python -I` with the source file's imports, functions, classes and assignments it names copied in (not its __main__ block), a 5 s limit and, on macOS, sandbox-exec denying all network (the result's sandbox says whether the network was denied). It shares no state or credentials with the paused program and never moves it. create starts one without a pause; update changes code, inputs, mocks, title or auto_run; run, restore (the copy as made), close, state. save adds a version, list names saved scratchpads, history lists one's versions (with `version`, that version's entry), load reopens a version without running it. say shows `text` in a bubble under `line` of the scratchpad's code for the person watching (empty text clears it). inputs: Python assignments, or {name: expression}; mocks: one Python dict, or {target: expression}, applied with unittest.mock (a value is the return value, an exception the side effect, a function the implementation). A run's result has values (name, line, repr), result, output, error, missing and mocks.",
+            "description": "Experiment beside the browser page's live debugger (open the page with pyokka_page, pause with breakpoint and debug start). op open copies the function around the paused line (or `line`) and the pause's values into the Scratchpad and runs it once: Inputs hold each value as a Python literal the runtime checked rebuilds exactly; a value a fresh process cannot rebuild (an object, a function, a cut string, a capped list) is listed in `unavailable` with the reason, and using it raises UnavailableValue. experiment does the same with your `code` (formatted, then run once). The experiment runs in a separate `python -I` with the source file's imports, functions, classes and assignments it names copied in (not its __main__ block), a 5 s limit and, on macOS, sandbox-exec denying all network (the result's sandbox says whether the network was denied). It shares no state or credentials with the paused program and never moves it. create starts one without a pause; update changes code, inputs, mocks, title or auto_run; run, restore (the copy as made), close, state. save adds a version, list names saved scratchpads, history lists one's versions (with `version`, that version's entry), load reopens a version without running it. say shows `text` in a bubble under `line` of the scratchpad's code for the person watching (empty text clears it). inputs: Python assignments, or {name: expression}; mocks: one Python dict, or {target: expression}, applied with unittest.mock (a value is the return value, an exception the side effect, a function the implementation). A run's result has values (name, line, repr), result, output, error, missing and mocks. Every op needs a page from pyokka_page open on `port` with its browser tab open (list and history need only the page server). Only open needs a pause. Results come back here as JSON. The Scratchpad pane and say's bubble show only in that browser tab (nothing is shown in chat); this tool opens no browser.",
             "inputSchema": {
                 "type": "object",
                 "properties": {

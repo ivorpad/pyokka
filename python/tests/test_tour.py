@@ -130,6 +130,27 @@ def test_a_tight_budget_keeps_the_best_of_every_chapter():
     assert all(n >= 3 for n in per.values()), per
 
 
+def test_forced_steps_survive_novelty_the_filters_and_the_budget():
+    run = saved("pageindex")
+    t = TourRun(run)
+    base = build_tour(run, budget=8000)
+    have = {c["step"] for c in base["candidates"]}
+    dropped = next(i for i in range(t.n) if i not in have and t.fid[i] >= 0 and t.user(t.fid[i]) and t.function(i) != "<module>")
+    doc = build_tour(run, budget=8000, force=[dropped, dropped])
+    forced = [c for c in doc["candidates"] if c["step"] == dropped]
+    assert len(forced) == 1 and forced[0]["forced"] is True and forced[0]["id"] == "s%d-%s" % (dropped, stable_key(t, dropped))
+    assert {"signal": "forced:stop", "reason": "a stop of the review"} in forced[0]["signals"]
+    assert doc["budget"]["forced"] == 1 and doc["budget"]["estimate"] <= 8000 * 1.3
+    existing = min(have)
+    doc = build_tour(run, budget=8000, force=[existing])
+    at = [c for c in doc["candidates"] if c["step"] == existing]
+    assert len(at) == 1 and at[0]["forced"] is True and len({s["signal"] for s in at[0]["signals"]}) > 1
+    assert "forced" not in base["candidates"][0] and base["budget"]["forced"] == 0
+    for bad in (t.n, -1):
+        with pytest.raises(AgentError, match="outside the run"):
+            build_tour(run, force=[bad])
+
+
 def test_small_run_is_its_walkthrough_in_one_chapter():
     doc = tour("lg_fake")
     assert doc["small"] is True

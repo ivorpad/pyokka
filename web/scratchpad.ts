@@ -181,7 +181,7 @@ export class Scratchpad {
     const d = this.host.debug;
     const paused = d.paused;
     const run = d.run;
-    if (!paused || !run) throw new Error('scratchpad open needs a live pause: set a breakpoint, debug start, then open');
+    if (!paused || !run) throw new Error('scratchpad open needs a live pause: pyokka_page {"action": "breakpoint", "line": N, "on": true}, then {"action": "debug", "op": "start"} (CLI: pyokka web ctl break N on, then pyokka web ctl debug start), then open again. create and experiment need no pause');
     for (let i = 0; i < 40 && (d.locals?.step !== paused.step || d.locals.frameId !== d.selectedFrame); i++) await new Promise((r) => setTimeout(r, 25));
     if (d.locals?.step !== paused.step || d.locals.frameId !== d.selectedFrame) throw new Error("the pause's values have not arrived; try again");
     const frameIndex = d.selectedFrame;

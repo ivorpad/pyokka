@@ -14,6 +14,7 @@ import { monaco, monacoTheme, READONLY_OPTIONS } from '../monaco';
 import type { UiPrefs } from '../vscode';
 import { shapeLabel, tableFor, type ValueTableModel } from '../valueTable';
 import { buildWhyDocument, type WhyLine } from '../why';
+import { formatRepr } from '../src-shared';
 import { IconButton, MenuButton, type MenuItem } from './ui';
 import { ValueTable } from './ValueTable';
 
@@ -109,7 +110,9 @@ function buildDocument(entries: Entry[], tabled: Map<string, { name: string; row
     } else if (e.valueBag) {
       for (const l of formatValue(e.valueBag.data, { rootName: rootNameOf(e) })) push(l.text, { kind: l.kind, entry: e, fmt: l });
     } else {
-      push(e.text, { kind: 'value', entry: e });
+      // a value without its tree (a recorded local shown by See value) prints its repr indented; printed text stays as printed
+      const lines = e.kind === 'value' || e.kind === 'autoLog' ? formatRepr(e.text, 80).split('\n') : [e.text];
+      for (const l of lines) push(l, { kind: 'value', entry: e });
     }
   });
   return { text: out.join('\n'), lines };

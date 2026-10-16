@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import shlex
 from typing import Any
 
 from ..protocol import MAX_LOCALS_ENTRIES
@@ -29,6 +30,14 @@ def saved(source: Any) -> SavedRun:
     raise AgentError("this command needs a recording", "save one with `pyokka run FILE --save run.json`, or use --live on a recording session")
 
 
+def _source_ref(run: SavedRun, args: Any = None) -> tuple[str, str]:
+    """How the caller names this recording: the CLI words and the MCP fields, with the real path."""
+    if getattr(run, "live", False):
+        return "--live", '"live": true'
+    path = os.path.abspath(str(getattr(args, "run", None) or run.path))
+    return path, '"run": %s' % json.dumps(path)
+
+
 def private_write(path: str, data: bytes) -> str:
     """Write ``data`` to a new file readable by its owner only; an existing file is refused."""
     target = os.path.abspath(path)
@@ -37,7 +46,7 @@ def private_write(path: str, data: bytes) -> str:
     except FileExistsError:
         raise AgentError("%s already exists" % target, "choose a new path; the existing file is kept as it is") from None
     except OSError as exc:
-        raise AgentError("cannot write %s: %s" % (target, exc.strerror or exc), "choose a path in a directory that exists and is writable") from None
+        raise AgentError("cannot write %s: %s" % (target, exc.strerror or exc), "choose a path in a directory that exists and is writable (%s is not)" % (os.path.dirname(target) or ".")) from None
     with os.fdopen(fd, "wb") as fh:
         fh.write(data)
     return target
@@ -115,6 +124,9 @@ def investigate_command(args: Any, source: Any) -> dict:
         step = observed
     elif selected:
         step = selected["step"]
+    elif name:
+        cli, mcp = _source_ref(run, args)
+        raise AgentError("nothing recorded for %s: no assignment of it ran" % name, 'check the spelling, or search the run: `pyokka find %s %s` (MCP: pyokka_map {"action": "find", %s, "text": %s}); drop the value to start at the first exception' % (cli, name, mcp, json.dumps(name)))
     else:
         step = run.errors[0].get("step") if run.errors else None
     result: dict[str, Any] = {
@@ -202,7 +214,7 @@ def _recorded(moment: dict, observed: dict, step: int) -> list[dict]:
         out.append({"name": "branch", "text": took.group(1), "step": step})
     if moment.get("kind") == "print" and text.startswith("prints "):
         out.append({"name": "printed", "text": text[len("prints "):], "step": step})
-    out.extend({"name": v.get("context"), "text": v.get("text"), "step": v.get("step")} for v in observed.get("values") or [] if v.get("step") in (step, step + 1))
+    out.extend({"name": v.get("context") or v.get("name") or "value", "text": v.get("text"), "step": v.get("step")} for v in observed.get("values") or [] if v.get("step") in (step, step + 1))
     return out
 
 
@@ -236,14 +248,20 @@ def learn_command(args: Any, source: Any) -> dict:
         checkpoints.append({"step": m["step"], "kind": m["kind"], "file": loc.get("file"), "line": line, "function": loc.get("function"), "source": lines[line - 1].strip() if 0 < line <= len(lines) else "", "prompt": PREDICT})
     result: dict[str, Any] = {"kind": "learning", "notes": notes, "coverage": _or_note(notes, "coverage", lambda: coverage_report(run)), "checkpoints": checkpoints}
     at = getattr(args, "at", None)
-    if at is None:
-        return result
-    step = run.check_step(int(at))
     prediction = getattr(args, "prediction", None)
+    steps = ", ".join("#%d" % c["step"] for c in checkpoints) or "none"
+    cli, mcp = _source_ref(run, args)
+    if at is None:
+        if prediction is not None or getattr(args, "reveal", False):
+            raise AgentError("--prediction and --reveal need --at STEP", 'pick a checkpoint step (%s): `pyokka learn %s --at STEP --prediction TEXT` (MCP: pyokka_learn {%s, "at": STEP, "prediction": "TEXT"})' % (steps, cli, mcp))
+        return result
+    if int(at) not in {m.get("step") for m in moments}:
+        raise AgentError("step %s is not a checkpoint" % at, "checkpoints: %s; list them with `pyokka learn %s` (MCP: pyokka_learn {%s})" % (steps, cli, mcp))
+    step = run.check_step(int(at))
     result["step"] = step
     result["prediction"] = prediction
     if not getattr(args, "reveal", False):
-        result["prompt"] = "Record your prediction, then add --reveal at this step to compare it with the run."
+        result["prompt"] = "Record your prediction, then add --reveal at this step to compare it with the run (MCP: call again with the same at and prediction plus \"reveal\": true)."
         return result
     observed = run.context(step=step)
     here = [m for m in moments if m.get("step") == step]
@@ -262,7 +280,7 @@ def render_learn(result: dict, source: Any, args: Any) -> list[str]:
     out = ["learn from this run"]
     out.extend("note: %s" % n for n in result["notes"])
     if result.get("step") is None:
-        out.append("checkpoints (%s): pick one with --at STEP --prediction TEXT, then add --reveal" % PREDICT[:-1].lower())
+        out.append("checkpoints (%s): pick one with --at STEP --prediction TEXT, then add --reveal (MCP: at, prediction, then reveal: true)" % PREDICT[:-1].lower())
         for c in result["checkpoints"]:
             out.append("  #%s %s  %s %s  %s" % (c["step"], c["kind"], _loc(source, c.get("file"), c.get("line")), c.get("function"), _one_line(c.get("source"), 100)))
         out.extend(_not_run_lines(result.get("coverage")))
@@ -414,6 +432,14 @@ def verify_command(args: Any, source: Any) -> dict:
         raise AgentError("--test-out needs at least one --expect NAME=VALUE", "the test checks the values you expect; review them first, e.g. --expect total=22")
     if getattr(args, "out", None) and not getattr(args, "rerun", False):
         raise AgentError("--out saves the rerun, so it goes with --rerun", "drop --out, or use --rerun")
+    test_out = getattr(args, "test_out", None)
+    if test_out and os.path.exists(test_out):
+        raise AgentError("%s already exists" % os.path.abspath(test_out), "choose a new path for --test-out; the existing file is kept as it is")
+    cli, mcp = _source_ref(before, args)
+    if getattr(args, "after", None) and not os.path.exists(args.after):
+        file = str(before.meta.get("file") or "FILE")
+        raise AgentError("no saved run at %s" % os.path.abspath(args.after), 'record it with `pyokka run %s --save %s`, or run the baseline\'s file again: `pyokka verify %s --rerun` (MCP: pyokka_verify {%s, "rerun": true})' % (file, os.path.abspath(args.after), cli, mcp))
+    rerun_notes: list[str] = []
     with tempfile.TemporaryDirectory(prefix="pyokka-verify-") as tmp:
         if getattr(args, "rerun", False):
             out = getattr(args, "out", None)
@@ -421,18 +447,24 @@ def verify_command(args: Any, source: Any) -> dict:
                 raise AgentError("%s already exists" % os.path.abspath(out), "choose a new path for --out")
             after = _rerun(before, out or os.path.join(tmp, "rerun.json"))
             label = os.path.abspath(out) if out else "rerun"
+            if (before.meta.get("config") or {}).get("http") not in ("record", "replay"):
+                rerun_notes = ["HTTP was not replayed: the baseline was not recorded with --http record, so any HTTP calls the rerun made were real."]
         else:
             after = SavedRun(args.after)
             label = args.after
         checks = [_check(after, e["name"], e["expected"]) for e in expectations]
         before_label = "--live" if getattr(before, "live", False) else str(getattr(args, "run", None) or before.path)
         comparison = diff_sides(Side("a", before_label, before), Side("b", label, after), limit=100, ignore=list(getattr(args, "ignore", None) or []))
-        notes = list(comparison["notes"]) + gap_notes(after)
+        notes = rerun_notes + list(comparison["notes"]) + gap_notes(after)
         result = {**comparison, "checks": checks, "notes": notes,
                   "verified": bool(checks) and all(c["passed"] for c in checks) and after.finished.get("exitCode") == 0,
                   "coverage": _or_note(notes, "coverage", lambda: coverage_report(after)), "exceptions": _or_note(notes, "exceptions", after.exceptions)}
     if not checks:
         result["verdict"] = _verdict_without_expectations(result)
+    elif not result["verified"]:
+        expects = " ".join("--expect %s" % shlex.quote("%s=%s" % (e["name"], e["expected"])) for e in expectations)
+        mcp_expects = json.dumps(["%s=%s" % (e["name"], e["expected"]) for e in expectations])
+        result["next"] = 'fix the code and check again with `pyokka verify %s --rerun %s` (MCP: pyokka_verify {%s, "rerun": true, "expect": %s}), or correct the expected value (the actual one is above)' % (cli, expects, mcp, mcp_expects)
     if getattr(args, "test_out", None):
         import pprint
 
@@ -441,7 +473,7 @@ def verify_command(args: Any, source: Any) -> dict:
         meta = before.meta
         spec = {"file": meta.get("file"), "argv": list(meta.get("argv") or []), "python": meta.get("executable"), "flags": _rerun_flags(meta), "expectations": expectations}
         text = TEST_TEMPLATE % {"name": os.path.basename(str(meta.get("file") or "the file")), "spec": pprint.pformat(spec, sort_dicts=False), "runtime": os.path.dirname(os.path.dirname(os.path.abspath(pyokka_runtime.__file__)))}
-        result["test"] = private_write(args.test_out, text.encode("utf-8"))
+        result["test"] = private_write(test_out, text.encode("utf-8"))
     return result
 
 
@@ -469,11 +501,11 @@ def render_verify(result: dict, source: Any, args: Any) -> list[str]:
         where = " at #%s" % c["step"] if c.get("step") is not None else ""
         out.append("%s %s = %s%s (expected %s)%s" % ("PASS" if c["passed"] else "FAIL", c["name"], _one_line(c["actual"], 80) if c["actual"] is not None else "(no recorded value)", where, _one_line(c["expected"], 80), "; " + c["reason"] if c.get("reason") else ""))
     if result.get("test"):
-        out.append("wrote %s: `python -m pytest %s` reruns the file and checks these values" % (result["test"], result["test"]))
+        out.append("wrote %s: `python -m pytest %s` reruns the file and checks these values%s" % (result["test"], result["test"], "" if result["verified"] else "; it fails until they hold"))
     if result.get("verdict"):
         out.append(str(result["verdict"]))
     else:
-        out.append("verified: the expected values hold for this input" if result["verified"] else "not verified")
+        out.append("verified: the expected values hold for this input" if result["verified"] else "not verified" + (": %s" % result["next"] if result.get("next") else ""))
     return out
 
 

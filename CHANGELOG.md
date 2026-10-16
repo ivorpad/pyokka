@@ -2,6 +2,114 @@
 
 ## Unreleased
 
+## 0.5.2
+
+- Hovering a value while the Time Machine replays a recording (a review stop, a step back) shows
+  Pyokka's hover instead of VS Code's debug hover: the value indented one group per line when it
+  does not fit (`src/shared/reprFormat.ts`), with **See value**, **Copy** and **Why**. The adapter
+  answers a `hover` evaluate over a recording with no value, which is what makes VS Code fall back
+  to the extension hover. See value (the old Explore value) opens the value in DETAILS; for a
+  recorded local, which is no entry, it pins one. DETAILS indents a value that has no tree.
+- Pyokka's debug inline values provider no longer names variables in the replay session (it skipped
+  `record: true` sessions only). The gold `name = value` text at line ends stays while Pylance or the
+  Python Debugger extension is installed: VS Code merges every provider's names and reads their
+  values off the replayed frame.
+- A recorded `ast` node prints its type and scalar fields (`Constant(value=None)`, `Name(id='x')`,
+  `FunctionDef(name='f')`) instead of `<ast.Constant object at 0x…>`; `reprs.type_of` reads the type
+  back. A `review try --title` reaches the page's Scratchpad, which showed every try as "Untitled
+  experiment".
+- The review method (the first section of `references/review.md`, which the MCP `review` prompt
+  serves, and the built-in prompt) is written on triggers: what the person says decides what the
+  agent does before it answers. Asked whether something is right, read the whole function and
+  `pyokka review try` it; asked where a value came from, `look` or `pyokka origin`; asked why,
+  blame and the PR text. Every command is written with its `pyokka` prefix. Measured on the shopkit
+  fixture with Sonnet, five runs per arm, the person asking "is this enough to know the price
+  parsing is right?" after stop 1: with the old text 0 of 5 runs ran a try and 3 of 5 called no
+  tool; with no text at all 0 of 5 and 5 of 5; with the new text as served, 5 of 5 ran a try and
+  read the function, at about twice the cost per answer.
+- The review method says how to write to the person, in chat and in a `--say`: one idea per
+  sentence of 20 words or fewer, active voice, present tense, the actor named, the imperative for
+  what they should do, one fixed word per thing (stop, step, value, try, finding, the person), no
+  -ing verb as a noun, no label with a colon, a list and never a table, the answer first and what is
+  unverified last. That is the structural half of ASD-STE100; the approved dictionary is not
+  applied. Scored as the share of a reply's sentences that pass every structural check, five
+  Sonnet runs on the shopkit fixture went from 65% (102 of 158 sentences) to 91% (124 of 136), with
+  tables, passive voice and -ing nouns the failures that disappeared.
+- The same writing rule, once, in SKILL.md ("How you write to the person"), and in the two prompts a
+  model reads on its own: the tour prompt (tour prose) and the narrate prompt (glosses, now also 20
+  words, active, the actor named). The show and explain references point at it.
+- `tour --prose` and `history --prose` check the prose against the sentence rules and warn, one line
+  per sentence that breaks one (over 20 words, a passive form, an -ing verb as a noun, a filler word,
+  a synonym for a fixed term, a bold label with a colon, a table row) and one line with the share of
+  sentences that pass. Style never fails a merge; the page is still written. `agent/prose.py`.
+- A fifth evidence kind on the code-history page, `try`: a sandbox run of code the agent wrote (a
+  review's `try`), with its code as the pseudo-file `tries/<id>.py` in the source panel, its inputs
+  and mocks, its result and output; no step number and no chain, since it is not a step of the
+  program's run. `codehistory.try_card`, the renderer, the template's tag and the evidence tables.
+- `pyokka tour RUN --at STEP` (repeatable) forces a candidate at that step: it survives the novelty
+  filter, the user-code filters and the budget, carries the `forced:stop` signal and `forced: true`,
+  and `budget.forced` counts them. A review passes its stops this way.
+- `review report --page [FILE]` and `--tour [FILE]`: the review as a code-history page and as a tour
+  of head.json, beside the review or at FILE, never inside the repository. The page has one
+  recorded-step checkpoint per stop shown or line asked, in conversation order, the say as its text,
+  the fact with base's value beside head's as its note, the `look`s that followed, a finding within
+  three lines as its tag, a `why` checkpoint for a value that changed, then the tries as `try` cards;
+  every prose field passes through the sentence rules and the warnings come back with the answer.
+  The tour forces the stops as candidates and uses the says as prose; a say the tour's check rejects
+  (a step number, a value from base) falls back to head's own value, then to a plain sentence, each
+  rejection a warning, and an intro of counts falls back to one sentence without them.
+
+## 0.5.1
+
+- The MCP tools can be used without the skill. A Codex session that called `pyokka_review` with no
+  skill loaded could not tell where the review would appear, got no readiness check before the
+  recordings, no exact next command, a fall-back to chat when it had asked for VS Code, and no `code`
+  binary; a review of all 19 tools found the same gaps nearly everywhere. Now every error names the
+  next step as the CLI command and as the MCP call (`pyokka debug FILE --record` (MCP: pyokka_debug
+  {"action": "start", "file": "FILE", "record": true})) with the caller's full paths; every
+  description says where its result lands (a file at `save`, the VS Code window, the browser tab,
+  text in the reply) and lists `live` only where the call accepts it; `run` together with `live`,
+  `diff` with `after: "live"`, `history pause` without live, narrate with live, verify with both
+  `after` and `rerun`, an unknown `http` and an unwritable `save` are refused instead of silently
+  doing something else. `pyokka_session` with no arguments is the readiness check: `ready`, a `vscode`
+  object (the `code` path, the extension version, `pyokka.agentAccess`, descriptors left by closed
+  windows), `recording` per session, and with none open a first note that says what is missing and
+  the start call. `review stop` and `ask` on `vscode` or `page` with nothing answering are refused
+  with the stop unshown and `next:` naming the start command; `review start --surface vscode` with no
+  session and no `code` is refused before recording, `page` on a taken port too. `code` is found in
+  `$PYOKKA_CODE`, PATH, the VS Code app bundles, `/usr/local/bin` and `/opt/homebrew/bin`, a failing
+  `--open-url` raises at once, and the extension is checked before the URI opens; narrate finds
+  claude and codex in `~/.local/bin`, `~/.claude/local`, `/opt/homebrew/bin` and `/usr/local/bin`.
+  `pyokka_seek` tells a misspelt name from a wrong `equals` format (`recordedTexts`) from a line that
+  never ran; investigate refuses a `value` the run never bound instead of rendering the first
+  exception as it; learn refuses `prediction` or `reveal` without `at` and a non-checkpoint `at`;
+  verify refuses an existing `test_out` before the rerun and ends a failure with the next command;
+  history refuses `pause` on a saved run and an `out` that would overwrite the run. The test suite can
+  no longer open the person's VS Code: the review tests' module-scoped fixture ran before the per-test
+  guards and launched it on a temp repo on every run; conftest's guard is now session-scoped.
+- `pyokka review start` opens the person's view. Until now it moved a session or page that was already
+  open on the entry and otherwise printed the stops in chat, so a review started by an agent showed
+  an empty editor. The default is a recording session of the entry in VS Code, run to its end with
+  the head recording's interpreter, arguments and cwd, and each stop moves its Time Machine.
+  `--surface page` serves `pyokka web` on `--port` and opens the tab instead; the review keeps the
+  server's pid and stops it at `report`, at the new `review close`, and when `start` runs again on the
+  same directory. `--surface chat` (or `$PYOKKA_REVIEW_SURFACE=chat`) opens nothing, and a review of
+  one `--test` stays in chat because VS Code records files. A view that will not open leaves the
+  review running in chat with a `view:` line that says why.
+- The skill was read against the Claude Opus 5.5, Claude Fable 5.1 and GPT-6 guides and not run on
+  them (`docs/design/skill-model-compat.md` has the sources and six checks to run by hand). GPT-6 is
+  "more sensitive to instructions contained in skills", and all three families stop early to ask or
+  to report, which the reader-turn modes need them to do only at the right turns. SKILL.md gains
+  "How a turn ends": run the next command instead of asking, end on the deliverable, and stop early
+  in four cases (`explain` and `review` while the person watches, two modes fit, something only the
+  person can supply, a change to something that is theirs). The person's explicit instruction beats
+  the skill. It also says what the program did comes from a command, `explain` messages are plain
+  sentences, "Read only that file up front" no longer contradicts the Read-next table, `AGENTS.md`
+  lists `review`, and `mcp.md` gives Codex's `tool_timeout_sec` (60 s by default).
+  `test_skill_coverage.py` fails on wording that asks a model to write out its reasoning (Claude 5
+  models may decline such a skill), on a SKILL.md over 500 lines or 15,000 characters and on a
+  description over 1,024.
+
 ## 0.5.0
 
 - The Debugger view opens on the frame. Paused at `pyokka debug demo.py --at rrf`, the panel

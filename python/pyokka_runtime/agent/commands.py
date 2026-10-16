@@ -183,7 +183,7 @@ def add_commands(sub: argparse._SubParsersAction) -> None:
     p.add_argument("--expect", action="append", default=[], metavar="NAME=VALUE", help="the final recorded value of NAME, as its repr text: total=22, name='Ada' (repeatable)")
     p.add_argument("--test-out", dest="test_out", metavar="PATH", help="write a pytest file that reruns the file and checks the --expect values; refuses to overwrite")
 
-    p = sub.add_parser("pin", help="copy a recording to a new private file to keep as a baseline; refuses to overwrite")
+    p = sub.add_parser("pin", help="copy a recording (a saved run, or the open session with --live) to a new owner-only file at --out and print its absolute path; a relative --out is resolved against the working directory (the MCP server's, over MCP); an existing file is refused and kept")
     run_arg(p)
     p.add_argument("--out", required=True, metavar="PATH", help="the new baseline file; an existing file is refused")
 
@@ -440,6 +440,32 @@ def _open_debug_start(args: Any) -> RunSource:
     return source
 
 
+#: the `debug` fields a session that is already paused cannot take: (attribute, CLI flag, MCP field)
+_START_ONLY = (("args", "--args", "args"), ("env", "--env", "env"), ("cwd", "--cwd", "cwd"), ("python", "--python", "python"), ("record", "--record", "record"), ("record_from", "--record-from", "record_from"), ("stop_on_entry", "--stop-on-entry", "stop_on_entry"), ("library_code", "--library-code", "library_code"), ("test", "--test", "test"))
+
+
+def _already_paused(args: Any, result: dict) -> None:
+    """Route (a) of 3.10: the file's debug session was paused already, so this start printed that pause and started nothing.
+
+    Says so in ``result["note"]`` with the fields that were not applied; refuses when a recording
+    was asked for and the paused session has none, since its answer would lack what was asked.
+    """
+    from .render_debug import is_debug_reply
+
+    skipped = [(flag, field) for attr, flag, field in _START_ONLY if getattr(args, attr, None)]
+    target = getattr(args, "program", None) or ("-m %s" % args.module if getattr(args, "module", None) else "the file")
+    again = "stop it with `pyokka stop --live` (MCP: pyokka_debug {\"action\": \"stop\"}), then start again to apply them"
+    asked_record = getattr(args, "record", False) or getattr(args, "record_from", None)
+    if asked_record and is_debug_reply(result):
+        raise AgentError("a debug session on %s is already paused and is not recording; %s was not applied" % (target, "--record-from (MCP: record_from)" if getattr(args, "record_from", None) else "--record (MCP: record)"), again)
+    if not is_debug_reply(result):
+        skipped = [s for s in skipped if s[1] != "record"]  # a recording session already records
+    note = "a debug session on %s was already paused: this is that pause, nothing was started" % target
+    if skipped:
+        note += "; not applied: %s; %s" % (", ".join("%s (MCP: %s)" % s for s in skipped), again)
+    result["note"] = note
+
+
 def started_session(args: Any, source: Any) -> dict | None:
     """What the commands after `debug` pass as `--session`: the file it started (the test file for
     `--test`, whose session is otherwise named `-m pytest`), `-m MODULE`, else the descriptor's own
@@ -468,7 +494,7 @@ def _file_hint(args: Any) -> str | None:
     return file if isinstance(file, str) else None
 
 
-NO_DEBUG_HINT = "start one with `pyokka debug FILE --at NAME` (or `--module M`); it opens the session and prints the first stop"
+NO_DEBUG_HINT = "start one with `pyokka debug FILE --at NAME` (or `--module M`; MCP: pyokka_debug {\"action\": \"start\", \"file\": \"FILE\", \"at\": [\"NAME\"]}); it opens VS Code on the file and prints the first stop"
 
 
 def _idle_recording(args: Any, descriptor: dict, source: Any) -> bool:
@@ -568,13 +594,20 @@ def open_source(args: Any) -> RunSource:
         try:
             picked = pick_session(sessions, session=getattr(args, "session", None), file_hint=_file_hint(args), prefer=prefer)
         except AgentError as exc:
-            if args.command not in DEBUG_COMMANDS or exc.message != NO_SESSION:
+            # no descriptor at all (a `--session` name then rides in the message), or none on the cwd
+            if exc.message != NO_SESSION and sessions:
+                raise
+            if args.command == "step" and _move_kind(args) in ("into", "over", "out"):
+                # a forward move executes the program: it needs a debug session, and starting the
+                # last launch again would run code nobody asked for, so it only says how to start one
+                raise AgentError(exc.message, NO_DEBUG_HINT) from None
+            if args.command not in DEBUG_COMMANDS:
                 raise
             # a debugger verb with nothing to drive: start the last launch again, or say how to start one
             relaunched = _relaunch(args, sessions)
             if relaunched is not None:
                 return relaunched
-            raise AgentError(NO_SESSION, NO_DEBUG_HINT) from None
+            raise AgentError(exc.message, NO_DEBUG_HINT) from None
         source = LiveRun(picked)
         if _idle_recording(args, picked, source):
             # the debug session ended and only a recording of some file is left: it would answer
@@ -769,6 +802,8 @@ def _run_command(args: Any, source: RunSource) -> dict:
             f, l = parse_line(spec, "break")
             source.breakpoints(add=[{"file": f, "line": l}])  # type: ignore[attr-defined]
         result = source.debug(stop_on_entry=args.stop_on_entry, launch=launch)  # type: ignore[attr-defined]
+        if getattr(args, "_route", None) == "debug" and not getattr(args, "_relaunched", None) and isinstance(result, dict):
+            _already_paused(args, result)
         # a cold start paused behind the terminal: bring the window up at the stop, once
         paused = result.get("paused") if isinstance(result, dict) else None
         if getattr(args, "_route", None) in ("uri", "run") and isinstance(paused, dict) and not getattr(args, "no_focus", False):

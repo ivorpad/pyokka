@@ -243,3 +243,65 @@ def test_debug_words_without_vs_code():
 
 def test_default_save_path(tmp_path: Path):
     assert mcp.default_save(str(tmp_path / "a" / "demo.py")) == str(tmp_path / "a" / ".pyokka" / "runs" / "demo.json")
+
+
+def test_run_and_live_together_are_refused():
+    for args in ({"run": "r.json", "live": True}, {"run": "r.json", "session": "s1"}):
+        with pytest.raises(mcp.ToolError, match="not both"):
+            mcp.words_coverage(args)
+    with pytest.raises(mcp.ToolError, match="not both"):
+        mcp.words_map({"action": "walkthrough", "run": "r.json", "live": True})
+    with pytest.raises(mcp.ToolError, match="not both"):
+        mcp.words_map({"action": "diff", "before": "b.json", "after": "a.json", "live": True})
+    with pytest.raises(mcp.ToolError) as exc:
+        mcp.words_map({"action": "diff", "before": "b.json", "after": "live"})
+    assert '"live": true' in exc.value.hint and '"before": "b.json"' in exc.value.hint
+
+
+def test_history_pause_needs_live_and_narrate_refuses_live():
+    with pytest.raises(mcp.ToolError) as exc:
+        mcp.words_history({"run": "r.json", "out": "h.json", "pause": True})
+    assert "live: true" in exc.value.message and "pyokka_debug" in exc.value.hint
+    assert "--pause" in mcp.words_history({"live": True, "out": "h.json", "pause": True})
+    with pytest.raises(mcp.ToolError) as exc:
+        mcp.words_narrate({"live": True})
+    assert "pyokka_run" in exc.value.hint and "pyokka_narrate" in exc.value.hint
+
+
+def test_verify_refuses_after_with_rerun():
+    with pytest.raises(mcp.ToolError, match="not both"):
+        mcp.words_verify({"run": "b.json", "after": "a.json", "rerun": True})
+
+
+def test_run_checks_http_python_and_save_before_recording(tmp_path: Path, monkeypatch):
+    prog = tmp_path / "p.py"
+    prog.write_text("x = 1\n")
+    from pyokka_runtime.agent import save as save_mod
+
+    def no_run(*args, **kwargs):
+        raise AssertionError("recorded before the arguments were checked")
+
+    monkeypatch.setattr(save_mod, "save_run", no_run)
+    with pytest.raises(mcp.ToolError, match="unknown http"):
+        mcp.call_run({"file": str(prog), "http": "bogus"})
+    with pytest.raises(mcp.ToolError) as exc:
+        mcp.call_run({"file": str(prog), "python": "no-such-python-xyz"})
+    assert "--python" not in exc.value.message + exc.value.hint and '"python":' in exc.value.hint
+    with pytest.raises(mcp.ToolError) as exc:
+        mcp.call_run({"file": str(prog), "save": "/dev/null/x/run.json"})
+    assert exc.value.message.startswith("cannot write /dev/null/x/run.json") and "`save`" in exc.value.hint
+
+
+def test_run_prints_the_profile_path_and_a_release_call_that_works(tmp_path: Path, monkeypatch):
+    prog = tmp_path / "p.py"
+    prog.write_text("x = 1\n")
+    save = tmp_path / "out" / "run.json"
+    from pyokka_runtime.agent import save as save_mod
+
+    monkeypatch.setattr(save_mod, "save_run", lambda *a, **k: {"profile": {"path": str(tmp_path / "p.cpuprofile")}, "keep": {"socket": "s"}})
+    text_, is_error = mcp.call_run({"file": str(prog), "save": str(save), "mode": "profile", "keep": True})
+    assert not is_error
+    assert "profile: %s" % (tmp_path / "p.cpuprofile") in text_
+    assert 'pyokka_value {"action": "release", "run": %s}' % json.dumps(str(save)) in text_
+    words = mcp.words_value({"action": "release", "run": str(save)})
+    build_parser().parse_args(words)

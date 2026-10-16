@@ -22,7 +22,9 @@ From a checkout without the extension:
 ```
 
 Codex's `~/.codex/config.toml`: `[mcp_servers.pyokka]` with `command = "/Users/YOU/.local/bin/pyokka"`
-(TOML does not expand `~`), `args = ["mcp"]`.
+(TOML does not expand `~`), `args = ["mcp"]`. Codex waits `startup_timeout_sec` (10 by default) for
+the server to start and `tool_timeout_sec` (60 by default) for each tool call; set `tool_timeout_sec`
+past the longest `timeout_ms` or `wait_seconds` you pass.
 
 Registered in mcporter, an agent with a shell reads the tools a piece at a time:
 `mcporter list pyokka --brief` (one signature per tool, about 3 KB; the listing without `--brief`
@@ -46,21 +48,33 @@ the same name (`--auto-log` is `auto_log`):
 | `pyokka_coverage` | `coverage` | `run`, `file` |
 | `pyokka_debug` | the live debugger. `debug FILE --at NAME --args ...` is `start` with `file`, `at: [NAME]`, `args: [...]`; `continue`, `pause`, `stop`, `restart`, `break`, `watches`, `locals`, `exec` and `record` with `--live` are that `action`; `state --live` after the person steps in VS Code is `status` | `action`; start: `file`, `module`, `args`, `cwd`, `env`, `python`, `at`, `record`, `record_from`, `library_code`, `stop_on_entry`, `no_focus`, `configuration`, `test`; continue: `until`, `to`, `no_wait`; break: `add`, `at`, `when`, `remove`, `on_exception`; watches: `add`, `remove`, `break_when`; locals: `frame`, `scope`, `names_only`, `names`; exec: `source`, `frame`; status: `wait_seconds` (VS Code with `pyokka.agentAccess`) |
 | `pyokka_history` | `history` | `run` or `live`, `out`, `at`, `var`, `why` (`[{step, name}]`), `pause`, `prose`, `pad`, `limit`, `lang`, `scope`, `append`, `value_chars` |
-| `pyokka_narrate` | `narrate` | `run`, `command`, `dry_run` |
-| `pyokka_investigate` | `investigate R --value NAME` | `run`, `value`, `at` |
-| `pyokka_learn` | `learn R --at N --reveal` | `run`, `at`, `prediction`, `reveal` |
-| `pyokka_pin` | `pin R --out P` | `run`, `out` |
-| `pyokka_verify` | `verify R --after R2 --expect N=V` (a failed expectation is an error result) | `run`, `after` or `rerun` (+ `out`), `expect`, `ignore`, `test_out` |
-| `pyokka_session` | no command: where a run stands, as JSON | `run` (+ `step`), or `live`/`session` for the open session (its live pause and the Time Machine's position, kept apart), or nothing to list the sessions |
+| `pyokka_narrate` | `narrate`: writes the gloss into the saved run | `run` (a saved run.json), `command`, `dry_run` |
+| `pyokka_investigate` | `investigate R --value NAME` | `run` or `live` (+ `session`), `value`, `at` |
+| `pyokka_learn` | `learn R --at N --reveal`: call once with `at` and `prediction`, then again with the same `prediction` and `reveal: true` | `run` or `live` (+ `session`), `at`, `prediction`, `reveal` |
+| `pyokka_pin` | `pin R --out P` | `run` or `live` (+ `session`), `out` |
+| `pyokka_verify` | `verify R --after R2 --expect N=V` (a failed expectation is an error result; `rerun` runs the program again) | `run` or `live` (+ `session`), `after` or `rerun` (+ `out`), `expect`, `ignore`, `test_out` |
+| `pyokka_session` | no command: where a run stands, as JSON | `run` (+ `step`), or `live`/`session` for the open session (its live pause and the Time Machine's position, kept apart), or nothing to list the sessions, each with `recording` (true: a Time Machine run you can step back in), plus `ready` (a session is open) and `vscode`: `code` (the launcher path or null), `extension` (installed ivor.pyokka version or null), `agentAccess` (from user settings.json, null when unset), `closedSessions` (descriptors left by closed windows); with none open, the first note says what is missing and gives the start call |
 | `pyokka_seek` | no command: the first or last step where a name took a value, or a line ran, as JSON | `run`, then `value` + `equals` or `file` + `line`, `occurrence` |
 | `pyokka_save_investigation` | no command: a question and named steps of a run, saved to a new file with the run's sha256 | `path`, `run`, `question`, `checkpoints` (`[{name, step}]`) |
 | `pyokka_open_investigation` | no command: the saved checkpoints' contexts, refused when the run changed | `path` |
 | `pyokka_page` | `pyokka web FILE` and `pyokka web ctl ...`: the browser page | `action` (`open`, `close`, `list`, then any ctl command: `state`, `goto`, `step`, `line`, `say`, `clear`, `start`, `stop`, `run`, `eval`, `var`, `why`, `peek`, `watch`, `breakpoint`, `debug`, `story`, `profile`, `wait_pause`, `values`, `definition`), `port`, `file`, `python`, `no_watch`, `cwd` (open: the project root), `step`, `kind`, `line`, `say`, `text`, `expression`, `name`, `remove`, `on`, `condition`, `op`, `column`, `after`, `timeout_ms`, `expect` |
 | `pyokka_scratchpad` | `pyokka web ctl scratchpad ...`: the page's Scratchpad, an experiment seeded from the live pause in a separate `python -I` | `op` (`open`, `experiment`, `create`, `state`, `update`, `run`, `restore`, `close`, `save`, `list`, `load`, `history`, `say`), `port`, `id`, `title`, `version`, `line`, `code`, `inputs`, `mocks`, `auto_run`, `text` (`say`: a bubble under `line` of the scratchpad's code, empty clears it), `expect` |
-| `pyokka_review` | `review start`, `stop`, `ask`, `skip`, `look`, `try`, `finding add`, `fix`, `report`, `state`: a change reviewed as a guided debug session ([review.md](review.md)) | `action` (`start`, `stop`, `ask`, `skip`, `look`, `try`, `finding`, `fix`, `report`, `state`), then the CLI's flags by name. start: `base`, `repo`, `entry`, `test`, `pr`, `python`, `dir`, `args`; stop: `n`, `say`, `go_on` (required for the stop after a shown one, once the person said next), `surface`, `port`, `session`; ask: `line` (`FILE:LINE`), `say`; skip: `n`, `why`; look: `expr`, `step`; try: `code` (the Python text itself), `expr`, `inputs`, `mocks`, `edge`, `title`, `port`; finding: `file`, `line`, `severity`, `title`, `step`, `repro`, `expect`, `fix`; fix: `patch`, `tests`; report: `out`; every action: `dir`, `json`. The schema requires `say` for `stop` and `ask`, `step` and `repro` for `finding` |
+| `pyokka_review` | `review start`, `stop`, `ask`, `skip`, `look`, `try`, `finding add`, `fix`, `report`, `state`: a change reviewed as a guided debug session ([review.md](review.md)) | `action` (`start`, `stop`, `ask`, `skip`, `look`, `try`, `finding`, `fix`, `report`, `state`, `close`), then the CLI's flags by name. start: `base`, `repo`, `entry`, `test`, `pr`, `python`, `dir`, `args`, `surface` (`vscode` is the default and records the entry in the editor, needing `pyokka.agentAccess` on and the `code` command, and an explicit `vscode` with neither a live session nor `code` is refused before recording; `page` serves the browser page and is refused before recording when `port` is taken; `chat`), `port`; stop: `n`, `say`, `go_on` (required for the stop after a shown one, once the person said next), `surface` (`vscode` or `page` is refused when nothing answers and `next:` names what starts one; `auto`, the default, takes what answers and says chat, not moved, when none does), `port`, `session`; ask: `line` (`FILE:LINE`), `say`; skip: `n`, `why`; look: `expr`, `step`; try: `code` (the Python text itself), `expr`, `inputs`, `mocks`, `edge`, `title`, `port`; finding: `file`, `line`, `severity`, `title`, `step`, `repro`, `expect`, `fix`; fix: `patch`, `tests`; report: `out`, `page` (a path, or true for DIR/page.json: the review as a code-history page), `tour` (a path, or true for DIR/tour.json: the review as a tour of head.json); every action: `dir`, `json`. The schema requires `say` for `stop` and `ask`, `step` and `repro` for `finding` |
 
 The tools over a run take `json` (`true` for the `--json` shape) and `live` (`true`, plus `session`)
-for the open VS Code session instead of `run`; `pyokka_debug` is always live. A result is the command's own text; a command's `error:`
+for the open VS Code session instead of `run`; `pyokka_debug` is always live. `pyokka_narrate`,
+`pyokka_seek` and `pyokka_save_investigation` read a saved run: record one with `pyokka_run` first.
+Call `pyokka_session` with no arguments before `pyokka_debug` or a review in VS Code: it lists the
+sessions VS Code publishes, `kind: "run"` for a recording you can step back in, `kind: "debug"` for
+a forward-only pause.
+
+Each tool's description says where its result lands. Most answer as text in the reply.
+`pyokka_run`, `pyokka_history`, `pyokka_pin`, `pyokka_verify` (`out`, `test_out`) and
+`pyokka_save_investigation` write files; `pyokka_history` writes JSON and the page is a separate
+`node` render step its result prints. `pyokka_debug` and a live `pyokka_step` move run the program
+in the VS Code window, where the person sees the pause. `pyokka_page` and `pyokka_scratchpad` drive a
+browser tab: hand the person the URL from `open`, since the tool opens no browser, and their bubbles
+show only in that tab. A result is the command's own text; a command's `error:`
 and its hint come back as `isError`, so the method in `SKILL.md` and `pyokka-cli.md` applies
 unchanged: record, map with the walkthrough, step into, ask why.
 
@@ -78,8 +92,9 @@ the state with `paused after waiting N s` or `still running after N s`.
 - **State lives outside the server.** Each `mcporter call` starts its own `pyokka mcp` process.
   The debug session lives in VS Code, a kept runner in its own process and a recording in its
   `run.json`, so the next call finds them.
-- **Hints name CLI commands.** An error comes back as the CLI's `error:` line and hint. Translate
-  the hint's command through the table.
+- **Hints give both forms.** An error comes back as the CLI's `error:` line and a hint that names
+  the next step as the CLI command and as the MCP call, e.g. `pyokka debug FILE --record` (MCP:
+  pyokka_debug {"action": "start", "file": "FILE", "record": true}). Send the MCP call as given.
 
 The server also answers `prompts/list` with one prompt, `review`, and serves it on `prompts/get`:
 the method of [review.md](review.md)'s first section, about fifteen lines. In Claude Code it is

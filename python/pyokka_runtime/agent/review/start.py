@@ -21,6 +21,7 @@ from ..coverage import coverage_report
 from ..diff import Side, diff_sides
 from ..source import AgentError, SavedRun
 from .render import plan_lines
+from .view import close_previous, code_found, open_view, start_hints, wanted
 from .state import NO_REVIEW_HEADER, START, STATE_FILE, Refusal, Review, default_dir, git, inside, now, result, set_current, tree_hash
 
 OURS = ("base", "fixed", "tries", STATE_FILE, "base.json", "head.json", "fixed.json", "report.md")
@@ -49,6 +50,8 @@ def start(f: dict) -> dict:
     pr_text, pr_from = _pr_text(repo, f.get("pr"), base)
     argv = [str(x) for x in (f.get("args") or [])]
     interp = _interpreter(os.path.join(repo, rel), f.get("python"))
+    close_previous(directory)
+    _check_view(f, repo, rel)
     _prepare(directory)
     base_dir = os.path.join(directory, "base")
     _materialise(repo, base, base_dir)
@@ -99,12 +102,55 @@ def start(f: dict) -> dict:
     review = Review(directory, data)
     review.save()
     set_current(directory)
+    view, view_lines = open_view(data, f)
+    data["view"] = view
+    review.save()
     paragraph = summary_paragraph(summary, diff_json, exc_a, exc_b)
-    lines = ["%s: %s → %s, entry %s%s, review directory %s" % (os.path.basename(repo), base[:7], head[:7], rel, (" (test %s)" % test) if test else "", directory), paragraph, *notes, *plan_lines(review)]
+    lines = ["%s: %s → %s, entry %s%s, review directory %s" % (os.path.basename(repo), base[:7], head[:7], rel, (" (test %s)" % test) if test else "", directory), paragraph, *notes, *view_lines, *plan_lines(review)]
     return result(review, lines, plan=review.plan, summary=data["summary"], dir=directory)
 
 
 # -- the pieces ------------------------------------------------------------------------------------------------------
+
+def _check_vscode(repo: str, rel: str) -> None:
+    """Surface vscode with no live Pyokka session and no ``code`` command is refused: nothing could open the recording."""
+    from ..live import list_sessions
+
+    if list_sessions():
+        return
+    try:
+        from ..debug_start import code_command
+
+        if code_command():
+            return
+    except Exception:  # noqa: BLE001  not found, or a debug_start without it
+        pass
+    vs, page = start_hints(os.path.join(repo, rel), repo)
+    raise _refuse("surface vscode needs VS Code: no live Pyokka session answers and the code command was not found (%s)" % code_found(),
+                  ["VS Code needs the pyokka.agentAccess setting on; start a session yourself with %s" % vs, "or show the stops on the page: %s" % page],
+                  "review start --base REF --surface page, or --surface chat")
+
+
+def _check_view(f: dict, repo: str = "", rel: str = "") -> None:
+    """What the asked view needs, checked before the two recordings: surface vscode a VS Code to reach (a live
+    Pyokka session, or the ``code`` command to launch one), surface page a free port."""
+    if str(f.get("surface") or "") == "vscode" and not f.get("test"):
+        _check_vscode(repo, rel)
+        return
+    if wanted(f) != "page":
+        return
+    from ..web import DEFAULT_PORT, listening
+
+    port = int(f.get("port") or os.environ.get("PYOKKA_PORT") or DEFAULT_PORT)
+    try:
+        taken = listening(port)
+    except AgentError:
+        return  # a sandbox that blocks the probe: open_page reports what it finds
+    if taken:
+        raise _refuse("surface page needs a free port and %d is taken, most likely by another page" % port,
+                      ["`pyokka web ctl --port %d state` (MCP: pyokka_page {\"action\": \"state\", \"port\": %d}) shows what it serves" % (port, port)],
+                      "review start --base REF --surface page --port N with a free N, or --surface vscode")
+
 
 def _repo(given: Any) -> str:
     repo = os.path.abspath(os.path.expanduser(str(given))) if given else os.getcwd()

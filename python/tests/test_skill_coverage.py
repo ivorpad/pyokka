@@ -4,7 +4,8 @@ Every command with each of its flags in that command's own synopsis, the MCP too
 arguments and actions, the band's keys and tool actions, and every ``PYOKKA_`` variable a user
 or agent can set. A flag added without a line in the skill fails here. The frontmatter must load
 under a strict YAML parser, and the skill must start only when the user asks, in Claude Code and
-in Codex.
+in Codex. SKILL.md keeps inside the published size limits, says how a turn ends, and no file asks a
+model to write out its reasoning.
 
 A synopsis is a line of a reference that starts ``pyokka VERB`` (``$ `` allowed before it), with
 its continuation lines indented eight spaces or more under it, or a bold inline span
@@ -141,3 +142,34 @@ def test_skill_md_maps_every_mcp_tool():
     """SKILL.md's table is where an agent picks a tool; a tool missing from it is one it never calls."""
     skill = (SKILL / "SKILL.md").read_text(encoding="utf-8")
     assert [t["name"] for t in tool_definitions() if "`%s`" % t["name"] not in skill] == []
+
+
+#: wording that asks a model to write out its reasoning; Claude Opus 5, Opus 5.5 and Fable 5.1 may decline it (`reasoning_extraction`)
+ASKS_FOR_REASONING = re.compile(
+    r"think (it )?(through )?step[- ]by[- ]step|think out loud|(show|write out|spell out|explain) your (reasoning|thinking|work)|chain[- ]of[- ]thought",
+    re.I,
+)
+
+
+def test_the_skill_never_asks_a_model_to_write_out_its_reasoning():
+    """Anthropic's Claude 5 prompting pages: a skill that does may be declined with `reasoning_extraction`."""
+    asks = [(p.name, m.group(0)) for p in [SKILL / "SKILL.md", *REFS] for m in ASKS_FOR_REASONING.finditer(p.read_text(encoding="utf-8"))]
+    assert asks == []
+
+
+def test_skill_md_stays_inside_the_published_limits():
+    """The Agent Skills spec caps a description at 1,024 characters and Anthropic asks for a body under 500 lines.
+
+    Claude Code keeps only the first 5,000 tokens of an invoked skill after compaction; 15,000 characters
+    is that at three characters a token, so SKILL.md, which holds the turn rules, stays under it."""
+    text = (SKILL / "SKILL.md").read_text(encoding="utf-8")
+    m = re.search(r"^description: '(.*)'$", text.split("\n---")[0], re.M)
+    assert m, "the description is one single-quoted line; update this test if it changes shape"
+    assert len(m.group(1).replace("''", "'")) <= 1024
+    assert len(text.splitlines()) < 500
+    assert len(text) < 15_000
+
+
+def test_skill_md_says_how_a_turn_ends():
+    """The turn rules sit in SKILL.md, the one file of the skill that Claude Code re-attaches after compaction."""
+    assert "\n## How a turn ends\n" in (SKILL / "SKILL.md").read_text(encoding="utf-8")

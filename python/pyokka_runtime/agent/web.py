@@ -56,6 +56,14 @@ def port_of(args: list[str], env: dict | None = None) -> int:
 
 
 VSCODE_APPS = ("/Applications/Visual Studio Code.app", os.path.expanduser("~/Applications/Visual Studio Code.app"))
+#: where the ``code`` launcher sits when it is not on PATH: inside each app above, then where VS Code's
+#: "Install code command in PATH" and Homebrew put it (a GUI-launched MCP host's PATH lacks both)
+CODE_BIN_DIRS = ("/usr/local/bin", "/opt/homebrew/bin")
+
+
+def code_launchers() -> list[str]:
+    """The ``code`` launchers to try after ``$PYOKKA_CODE`` and PATH, in order; read at call time."""
+    return [os.path.join(app, "Contents", "Resources", "app", "bin", "code") for app in VSCODE_APPS] + [os.path.join(d, "code") for d in CODE_BIN_DIRS]
 NO_NODE = ("the page's bridge runs under node, and neither node on PATH nor VS Code's own Node was found", "install Node.js 20 or newer (https://nodejs.org), or put its bin directory on PATH")
 
 

@@ -60,6 +60,10 @@ def run(fields: dict) -> dict:
             from .findings import finding
 
             return finding(review, fields)
+        if action == "close":
+            from .agenda import close
+
+            return close(review, fields)
         if action in ("skip", "look", "state"):
             from .agenda import look, skip, state
 
@@ -210,6 +214,35 @@ def move_view(review: Review, stop_: dict, say: str, f: dict) -> dict:
         return {"surface": surface, "moved": False, "note": "%s: %s" % (type(exc).__name__, exc)}
 
 
+def unavailable(asked: str, move: dict) -> bool:
+    """An asked ``vscode`` or ``page`` with nothing there to move: no session on the entry, no page with one tab on it."""
+    if asked == "vscode":
+        return move.get("available") is False or move.get("surface") == "chat"
+    return asked == "page" and move.get("available") is False
+
+
+def refuse_unavailable(review: Review, asked: str, move: dict, again: str) -> Refusal:
+    """The refusal of a stop or ask whose asked surface has nothing to move: the stop stays unshown and ``next:`` starts the surface."""
+    from .view import data_hints
+
+    vs, page = data_hints(review.data)
+    why = str(move.get("note") or "nothing answers").split("; ")[0]
+    return review.refuse("surface %s is not available, so nothing was shown: %s" % (asked, why),
+                         ["the person is not watching this stop; it is still unshown",
+                          "to explain it in the conversation instead, pass surface chat (auto takes the first view that answers)"],
+                         "%s; then %s" % (vs if asked == "vscode" else page, again))
+
+
+def data_hints_vs(review: Review) -> str:
+    from .view import data_hints
+
+    return data_hints(review.data)[0]
+
+
+def _fell_to_chat(f: dict, move: dict) -> bool:
+    return str(f.get("surface") or "auto") == "auto" and move.get("surface") == "chat" and not move.get("moved")
+
+
 def _move_line(move: dict) -> str:
     note = str(move.get("note") or "")
     return "view: %s%s%s" % (move.get("surface"), " moved" if move.get("moved") else " (not moved)", (": " + note) if note else "")
@@ -257,6 +290,9 @@ def stop(review: Review, f: dict) -> dict:
     nxt = "review stop %d --say TEXT%s" % (n, " --go-on" if waiting is not None else "")
     say = _validated_say(review, f, values, stop_fact(s), step, nxt)
     move = move_view(review, s, say, f)
+    asked = str(f.get("surface") or "auto")
+    if unavailable(asked, move):
+        raise refuse_unavailable(review, asked, move, "%s --surface %s" % (nxt, asked))
     said = review.data.setdefault("said", [])
     for entry in said:
         if isinstance(entry, dict) and entry.get("n") == waiting:
@@ -267,6 +303,8 @@ def stop(review: Review, f: dict) -> dict:
     review.save()
     remaining = review.remaining()
     then = ("review stop %d --say TEXT --go-on" % remaining[0]) if remaining else review.after_stops()
+    if _fell_to_chat(f, move):
+        then = "%s; the person saw this stop only in chat, so explain it in your message. To show the next one in VS Code first run %s" % (then, data_hints_vs(review))
     lines = ["stop %d/%d  %s  %s  %s  %s" % (n, len(review.stops), s.get("kind"), where(s), _one_line(fact_text(s.get("fact")), 120), steps_text(s)), *_context_lines(run_, step), "say: %s" % say, _move_line(move)]
     return result(review, lines, "%s; when they say next, %s" % (WAIT, then), stop=s, step=step, say=say, moved=move, values=[{"name": k, "text": v} for k, v in values])
 
@@ -302,6 +340,9 @@ def ask(review: Review, f: dict) -> dict:
     values = values_at(run_, step)
     say = _validated_say(review, f, values, None, step, "review ask %s --say TEXT" % spec)
     move = move_view(review, s, say, f)
+    asked = str(f.get("surface") or "auto")
+    if unavailable(asked, move):
+        raise refuse_unavailable(review, asked, move, "review ask %s --say TEXT --surface %s" % (spec, asked))
     review.asked.append({"file": s["file"], "line": line, "step": step, "say": say, "surface": move.get("surface"), "at": now()})
     review.note("ask", file=s["file"], line=line, step=step, say=say)
     review.save()
@@ -309,7 +350,10 @@ def ask(review: Review, f: dict) -> dict:
     if not exact:
         lines.append("line %d never ran as a statement of its own; the stop is the statement around it, line %s" % (line, at["line"]))
     lines += [*_context_lines(run_, step), "say: %s" % say, _move_line(move)]
-    return result(review, lines, WAIT, stop=s, step=step, say=say, moved=move, values=[{"name": k, "text": v} for k, v in values])
+    then = WAIT
+    if _fell_to_chat(f, move):
+        then = "%s; they saw this only in chat, so answer in your message. To show the next one in VS Code first run %s" % (WAIT, data_hints_vs(review))
+    return result(review, lines, then, stop=s, step=step, say=say, moved=move, values=[{"name": k, "text": v} for k, v in values])
 
 
 def _function_at(source: str, line: int) -> str | None:
@@ -357,14 +401,14 @@ def _read(review: Review, path: Any, flag: str) -> str:
         raise review.refuse("cannot read %s %s: %s" % (flag, p, exc.strerror or exc), next_command="review try --code FILE") from None
 
 
-def run_try(code: str, inputs: str | None, mocks: str | None, repo: str, port: int) -> dict:
+def run_try(code: str, inputs: str | None, mocks: str | None, repo: str, port: int, title: str | None = None) -> dict:
     """``tryrun.run_try`` (A2); a failure of the runner itself is the try's ``error``, so the try is still kept."""
     try:
         runner = import_module(".tryrun", __package__).run_try
     except ImportError:
         raise AgentError("no tryrun module in this build", "the Scratchpad runner is part of review mode; update pyokka") from None
     try:
-        out = runner(code, inputs, mocks, repo, port)
+        out = runner(code, inputs, mocks, repo, port, title=title)  # the title names the experiment on the page
     except AgentError:
         raise
     except Exception as exc:  # noqa: BLE001
@@ -396,7 +440,7 @@ def try_(review: Review, f: dict) -> dict:
     edge_item = next((e for e in edges if str(e.get("id")) == edge), None) if edge else None
     if edge and edge_item is None:
         raise review.refuse("no edge candidate %s in the plan" % edge, [edge_line(e) for e in edges] or ["the plan has no edge candidates"], "review try --expr EXPR")
-    outcome = run_try(code, inputs, mocks, review.repo, _port(f))
+    outcome = run_try(code, inputs, mocks, review.repo, _port(f), title=f.get("title") or None)
     tid = next_id(review.tries, "t")
     entry = {"id": tid, "title": f.get("title") or None, "code": code, "inputs": inputs, "mocks": mocks, "edge": edge, "result": outcome.get("result"), "values": outcome.get("values") or [], "output": outcome.get("output"), "error": outcome.get("error"), "surface": outcome.get("surface") or "headless", "at": now()}
     os.makedirs(review.path("tries"), exist_ok=True)

@@ -79,6 +79,8 @@ def _source_words(a: dict, *, positional: bool = True) -> tuple[list[str], list[
     pos: list[str] = []
     if a.get("json"):
         opts.append("--json")
+    if a.get("run") and (a.get("live") or a.get("session")):
+        raise ToolError("give `run` or `live: true`, not both", "run reads the saved %s; live reads the open VS Code session" % a["run"])
     if a.get("live") or a.get("session"):
         opts.append("--live")
         if a.get("session"):
@@ -114,6 +116,11 @@ def words_map(a: dict) -> list[str]:
         raise ToolError("unknown action %r" % action, "one of " + ", ".join(MAP_ACTIONS))
     if action == "diff":
         before = _need(a, "before", "diff", '{"action": "diff", "before": "before.json", "after": "after.json"}')
+        live = a.get("live") or a.get("session")
+        if a.get("after") == "live":
+            raise ToolError("`after` is a run.json path", 'for the open session pass live: true instead: {"action": "diff", "before": %s, "live": true}' % json.dumps(str(before)))
+        if a.get("after") and live:
+            raise ToolError("give `after` or `live: true`, not both", "after reads the saved %s; live reads the open VS Code session" % a["after"])
         words = ["diff"]
         if a.get("json"):
             words.append("--json")
@@ -297,6 +304,8 @@ def words_history(a: dict) -> list[str]:
     for w in why:
         words += ["--why", str(w["step"]), str(w["name"])]
     if a.get("pause"):
+        if not (a.get("live") or a.get("session")):
+            raise ToolError("`pause` reads a live debug pause; it needs `live: true`", 'e.g. {"live": true, "pause": true, "out": "history.json"}; pause first with pyokka_debug {"action": "break", ...} then {"action": "continue"}')
         words.append("--pause")
     for flag in ("prose", "pad", "limit", "lang", "value_chars"):
         _opt(words, a, flag, "--" + flag.replace("_", "-"))
@@ -308,6 +317,8 @@ def words_history(a: dict) -> list[str]:
 
 
 def words_narrate(a: dict) -> list[str]:
+    if a.get("live") or a.get("session"):
+        raise ToolError("pyokka_narrate writes into a saved run; live is not accepted", 'save one with pyokka_run {"file": "FILE", "save": "run.json"}, then pyokka_narrate {"run": "run.json"}')
     opts, pos = _source_words(a)
     words = ["narrate", *opts]
     _opt(words, a, "command", "--command")
@@ -341,6 +352,8 @@ def words_pin(a: dict) -> list[str]:
 def words_verify(a: dict) -> list[str]:
     opts, pos = _source_words(a)
     words = ["verify", *opts]
+    if a.get("after") and a.get("rerun"):
+        raise ToolError("give `after` or `rerun: true`, not both", '{"run": "before.json", "rerun": true, "expect": ["total=22"]}')
     if not a.get("after") and not a.get("rerun"):
         raise ToolError("verify needs `after` (a run saved after the fix) or `rerun: true`", '{"run": "before.json", "after": "after.json", "expect": ["total=22"]}')
     _opt(words, a, "after", "--after")
@@ -396,11 +409,16 @@ def call_run(a: dict) -> tuple[str, bool]:
     mode = str(a.get("mode") or "normal")
     if mode not in ("normal", "snaps", "profile"):
         raise ToolError("unknown mode %r" % mode, "one of normal, snaps, profile")
+    http = str(a.get("http") or "off")
+    if http not in ("off", "record", "replay"):
+        raise ToolError("unknown http %r" % http, "one of off, record, replay")
     cwd = str(a["cwd"]) if a.get("cwd") else None
     if cwd and not os.path.isdir(cwd):
         raise ToolError("no directory %s" % os.path.abspath(cwd), "give an existing directory, relative to %s or absolute" % os.getcwd())
-    interp = probe(choose(file, a.get("python") or None))
-    os.makedirs(os.path.dirname(os.path.abspath(save)) or ".", exist_ok=True)
+    try:
+        interp = probe(choose(file, a.get("python") or None))
+    except AgentError as exc:
+        raise ToolError(exc.message.replace("--python", "`python`"), "pass `python`, the interpreter's path, e.g. %s" % json.dumps({"file": os.path.abspath(file), "python": ".venv/bin/python"})) from None
     lines = [interp.line()]
     recording = {
         "maxTraceSteps": int(max_steps) if max_steps is not None else None,
@@ -409,21 +427,27 @@ def call_run(a: dict) -> tuple[str, bool]:
         "maxValueChars": a.get("max_value_chars"),
     }
     try:
+        os.makedirs(os.path.dirname(os.path.abspath(save)) or ".", exist_ok=True)
+    except OSError as exc:
+        raise ToolError("cannot write %s: %s" % (os.path.abspath(save), exc.strerror or exc), "give `save` a writable path, e.g. %s" % json.dumps({"file": os.path.abspath(file), "save": default_save(file)})) from None
+    try:
         meta = save_run(
             file, save,
             library_code=bool(a.get("library_code")), keep=bool(a.get("keep")), record_locals=not a.get("no_locals"), auto_log=bool(a.get("auto_log")),
-            timeout_ms=int(a.get("timeout_ms") or 0), argv=[str(x) for x in a.get("args") or []], http=str(a.get("http") or "off"),
+            timeout_ms=int(a.get("timeout_ms") or 0), argv=[str(x) for x in a.get("args") or []], http=http,
             progress=lines.append, recording=recording, python=interp, cwd=cwd, mode=mode, test=str(a["test"]) if a.get("test") else None,
         )
     except (RuntimeError, OSError) as exc:
         raise ToolError(str(exc)) from None
     lines.append("run: %s" % os.path.abspath(save))
     if meta.get("profile"):
+        profile = meta["profile"].get("path") if isinstance(meta["profile"], dict) else meta["profile"]
+        lines.append("profile: %s" % os.path.abspath(str(profile)))
         lines.append("next: open the .cpuprofile in VS Code; a profile run has no steps to map")
     else:
         lines.append("next: pyokka_map {\"action\": \"walkthrough\", \"run\": %s}" % json.dumps(os.path.abspath(save)))
     if meta.get("keep"):
-        lines.append("the runner is kept for eval/expand; pyokka_value {\"action\": \"release\"} shuts it down")
+        lines.append("the runner is kept for eval/expand; pyokka_value {\"action\": \"release\", \"run\": %s} shuts it down" % json.dumps(os.path.abspath(save)))
     from ..redact import redact
 
     return "\n".join(redact(l) for l in lines) + "\n", False

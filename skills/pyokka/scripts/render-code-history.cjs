@@ -10,7 +10,7 @@ const path = require('node:path');
 const { createRequire } = require('node:module');
 const { pathToFileURL } = require('node:url');
 
-const KINDS = ['recorded step', 'live pause', 'static source', 'gloss'];
+const KINDS = ['recorded step', 'live pause', 'static source', 'gloss', 'try'];
 // Highlighting happens here, not in the browser: the page has to open with no network, and a
 // theme's own tokenizer is worth more than a regex that guesses at Python.
 const DEFAULT_THEME = 'github-dark-dimmed';
@@ -182,6 +182,8 @@ function validate(data) {
     if (!step.verify.startsWith('pyokka ')) fail('verify must be the pyokka command that reproduces these values');
     if (step.kind === 'static source' && step.values) fail('a static-source checkpoint has no observed values; say so rather than showing some');
     if (step.kind === 'live pause' && step.chain && step.chain.length) fail('a live pause records nothing behind it, so it has no provenance chain');
+    if (step.kind === 'try' && step.step !== null) fail('a try is a sandbox run, not a step of the program; it has no step number');
+    if (step.kind === 'try' && step.chain && step.chain.length) fail('a try is a sandbox run, not a step of the program; it has no provenance chain');
     const lines = Object.hasOwn(data.files, step.file) ? data.files[step.file] : null;
     if (!Array.isArray(lines) || !lines.every(line => typeof line === 'string')) fail('source must be an array of lines');
     if (![step.start, step.end, step.focus].every(Number.isInteger)

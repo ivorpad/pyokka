@@ -89,12 +89,15 @@ node <skill>/scripts/render-tour.cjs tour.merged.json tour.html [--title "How rr
    candidates with their signals and values. Step or `why` into a candidate when its values
    leave the point unclear.
 2. Write `tour.prose.json` by following [tour-prompt.md](tour-prompt.md) as if it were addressed
-   to you: the same picks, lengths, number rules and JSON shape. To have a model write it
+   to you: the same picks, lengths, number rules, sentence rules (SKILL.md, "How you write to the
+   person") and JSON shape. To have a model write it
    instead, send that file's text, a blank line, and the compact `tour.json` as one prompt (for
    example `claude -p --output-format json --tools ""` with the prompt on stdin), and save the
    JSON object it replies with.
 3. Run `tour --prose` with the same `--goal` and `--budget` you built the tour with. Exit 0
-   prints the accepted stops and any warnings. Exit 2 lists each problem on its own line, naming
+   prints the accepted stops and any warnings, among them one line per sentence that breaks the
+   sentence rules (SKILL.md, "How you write to the person": over 20 words, passive, a label with a
+   colon, a table) and the share of sentences that pass; reword those too. Exit 2 lists each problem on its own line, naming
    the stop or chapter and the field. Fix every listed line once, by rewording or by dropping
    the claim (a model gets its previous reply and the list, as the prompt's "Retry" section
    says), and run it again. When the second check still fails, tell the user which lines failed.
@@ -130,8 +133,10 @@ name. `--why STEP NAME` is the provenance chain. `--live --pause` turns the curr
 a checkpoint without moving it; for several pauses, run it at each with `--append` and the same
 `--out`, and the same `--session`. Checkpoints appear in the order you wrote the flags.
 
-The prose file fills `heading`, `summary`, `subtitle`, and `title`, `text`, `note` per checkpoint.
-It may not set anything the run produced; the command fails if it tries. Render as soon as the last
+The prose file fills `heading`, `summary`, `subtitle`, and `title`, `text`, `note` per checkpoint,
+written as SKILL.md's "How you write to the person" says: short active sentences, the actor named,
+one word per thing; `history --prose` warns about each sentence that breaks those rules. It may not
+set anything the run produced; the command fails if it tries. Render as soon as the last
 checkpoint is written. The renderer needs only Node: Handlebars and Shiki ship with this skill.
 
 The data contract, the four evidence kinds, how to render and check the page:
@@ -145,6 +150,8 @@ A reader has to tell what kind of claim each card makes:
 - **live pause**: the program is stopped here now; nothing behind it was recorded, so no chain.
 - **static source**: nobody ran this. Source the explanation needs, with no values.
 - **gloss**: a sentence a model wrote, from `narrate`. Not an observation.
+- **try**: a sandbox run of code the agent wrote during a review, with its inputs and result. Not an
+  observation of the program's run; its code is the card's source.
 
 Repeated inspections at one pause are one pause. A value is shown as of a step; a later value is a
 later checkpoint, not a correction. A branch that went both ways says so (`took False x2, True

@@ -237,7 +237,7 @@ async function peek(host: PageHost, link: Link, name: string): Promise<unknown> 
   const d = host.debug;
   const pause = d.paused;
   const run = d.run;
-  if (!pause || !run) throw new Error('peek needs a live pause: debug start, then peek NAME');
+  if (!pause || !run) throw new Error('peek needs a live pause: pyokka_page {"action": "breakpoint", "line": N, "on": true}, then {"action": "debug", "op": "start"} (CLI: pyokka web ctl break N on, then pyokka web ctl debug start), then {"action": "peek", "name": NAME} (CLI: pyokka web ctl peek NAME)');
   const [binding, ...path] = name.trim().split('.');
   if (!binding) throw new Error('peek needs a NAME');
   for (let i = 0; i < 20 && (d.locals?.step !== pause.step || d.locals.frameId !== d.selectedFrame); i++) await new Promise((r) => setTimeout(r, 25));

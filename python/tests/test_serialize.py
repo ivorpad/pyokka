@@ -11,6 +11,7 @@ from decimal import Decimal
 from pathlib import Path
 
 from pyokka_runtime.protocol import LogLimitSet
+from pyokka_runtime.agent.reprs import type_of
 from pyokka_runtime.serialize import Registry, serialize, short_repr
 
 LIMITS = LogLimitSet(5, 50, 100)
@@ -196,3 +197,14 @@ def test_node_is_json_serialisable():
             self.t = (1,)
 
     json.dumps(serialize(Weird(), LIMITS))
+
+
+def test_ast_nodes_print_their_type_and_scalar_fields():
+    import ast
+
+    constant = ast.parse("x = None").body[0].value
+    assert short_repr(constant) == "Constant(value=None)"
+    assert type_of(short_repr(constant)) == "Constant"
+    assert short_repr(ast.parse("x = None")) == "Module()"
+    assert short_repr(ast.parse("def f(a): pass").body[0]) == "FunctionDef(name='f')"
+    assert serialize(constant, LIMITS)["value"] == "Constant(value=None)"

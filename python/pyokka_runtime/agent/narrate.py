@@ -52,15 +52,46 @@ class Backend:
     cwd: str | None = None
 
 
+#: where claude, then codex, usually live when they are not on PATH (a GUI-launched MCP host gets /usr/bin:/bin)
+BACKEND_DIRS = {
+    "claude": ("~/.local/bin", "~/.claude/local", "/opt/homebrew/bin", "/usr/local/bin"),
+    "codex": ("~/.local/bin", "/opt/homebrew/bin", "/usr/local/bin"),
+}
+
+def command_hint(run_path: str = "RUN") -> str:
+    """How to name the model command yourself, in CLI and MCP form."""
+    return (
+        "pass the full path of a command that reads the prompt on stdin and prints a JSON object {id: sentence}: "
+        '`pyokka narrate %s --command "/path/to/claude -p"` (MCP: pyokka_narrate {"run": %s, "command": "/path/to/claude -p"})' % (run_path, json.dumps(run_path))
+    )
+
+
+def backend_paths(name: str) -> list[str]:
+    """The fallback paths of `name`, expanded at call time."""
+    return [os.path.join(os.path.expanduser(d), name) for d in BACKEND_DIRS.get(name, ())]
+
+
+def _find(name: str, which: Any) -> str | None:
+    """``name`` when it is on PATH, else the first executable fallback path, else ``None``."""
+    if which(name):
+        return name
+    for path in backend_paths(name):
+        if os.path.isfile(path) and os.access(path, os.X_OK):
+            return path
+    return None
+
+
 def resolve_backend(command: str | None = None, *, which: Any = shutil.which) -> Backend | None:
-    """The command to run: the explicit one, else ``claude``, else ``codex``; ``None`` when neither exists."""
+    """The command to run: the explicit one, else ``claude``, else ``codex`` (PATH, then BACKEND_DIRS); ``None`` when neither exists."""
     if command and command.strip():
         return Backend("custom", shlex.split(command))
-    if which("claude"):
-        return Backend("claude", ["claude", *CLAUDE_ARGS])
-    if which("codex"):
+    claude = _find("claude", which)
+    if claude:
+        return Backend("claude", [claude, *CLAUDE_ARGS])
+    codex = _find("codex", which)
+    if codex:
         out = os.path.join(tempfile.mkdtemp(prefix="pyokka-narrate-"), "last-message.md")
-        return Backend("codex", ["codex", *CODEX_ARGS, out, "-"], output_file=out)
+        return Backend("codex", [codex, *CODEX_ARGS, out, "-"], output_file=out)
     return None
 
 
@@ -70,7 +101,7 @@ def run_backend(backend: Backend, prompt: str, *, timeout: float = TIMEOUT_S, ru
     try:
         proc = run(backend.argv, input=prompt, capture_output=True, text=True, timeout=timeout, cwd=cwd)
     except FileNotFoundError:
-        raise NarrationError("%s is not on the PATH" % backend.argv[0], "install it, or set pyokka.explain.command / --command to a command that reads the prompt on stdin") from None
+        raise NarrationError("%s is not on the PATH" % backend.argv[0], "install it, or " + command_hint()) from None
     except subprocess.TimeoutExpired:
         raise NarrationError("%s took longer than %d s" % (backend.argv[0], int(timeout)), "try again, or a faster model in --command") from None
     if proc.returncode != 0:
@@ -220,7 +251,8 @@ def narrate_saved(run: "SavedRun", *, command: str | None = None, dry_run: bool 
         return {"prompt": prompt, "moments": len(ids)}
     backend = backend or resolve_backend(command)
     if backend is None:
-        raise AgentError("no narration backend: neither claude nor codex is on the PATH", "install one, or pass --command 'your-model-cli' (prompt on stdin, JSON on stdout)")
+        tried = backend_paths("claude") + backend_paths("codex")
+        raise AgentError("no narration backend: neither claude nor codex is on the PATH or at %s" % ", ".join(tried), "install claude or codex, or " + command_hint(run.path))
     try:
         glosses = parse_glosses(run_backend(backend, prompt), ids)
     except NarrationError as exc:

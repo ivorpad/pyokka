@@ -22,6 +22,15 @@ def call_status(a: dict, run_words: Callable[[list[str]], tuple[str, bool]], too
     seconds = 0 if raw is None or raw == "" else int(raw)
     if seconds < 0 or seconds > MAX_WAIT_S:
         raise tool_error("wait_seconds must be 0 to %d, got %d" % (MAX_WAIT_S, seconds))
+    from .live import list_sessions
+
+    if not list_sessions():
+        # status reads a debug session, so the next step is starting one, not a saved run
+        from .commands import NO_DEBUG_HINT
+        from .sessions import NO_SESSION
+        from .source import AgentError
+
+        raise AgentError("%s for %s" % (NO_SESSION, a["session"]) if a.get("session") else NO_SESSION, NO_DEBUG_HINT)
     session = ["--session=%s" % a["session"]] if a.get("session") else []
     words = ["state", "--live", *session, *(["--json"] if a.get("json") else [])]
     if not seconds:

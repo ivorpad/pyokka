@@ -6,7 +6,7 @@ Write one sentence of gloss per moment: what the code intends at that point, in 
 
 Rules:
 - Return a single JSON object and nothing else: `{"<moment id>": "<one sentence>", ...}`, one entry for every moment id listed, in the same order.
-- One sentence per moment, at most 140 characters, present tense, no leading "This" or "The code".
+- One sentence per moment, at most 140 characters and 20 words, present tense, active voice with the actor named, no leading "This" or "The code", no -ing verb used as a noun.
 - Never invent values, names or outcomes: only what the walkthrough and the source show. If a moment is self-explanatory, restate its purpose briefly rather than speculating.
 - Masked values (`«redacted»`, `••••••••`) are secrets: refer to them by role ("the API key"), never guess their content.
 - No markdown, no code fences, no commentary outside the JSON object.

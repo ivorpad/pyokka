@@ -29,6 +29,9 @@ the reason says so; otherwise it is the earliest link that already carries the f
 from __future__ import annotations
 
 import ast
+import json
+import os
+import shlex
 from typing import TYPE_CHECKING, Any
 
 from ..reprs import UNKNOWN, parse, path_text, project, text_of, type_of, type_of_value
@@ -54,6 +57,13 @@ def _error_at(run: "SavedRun", step: int) -> dict | None:
     return best
 
 
+def _locals_again(run: "SavedRun") -> str:
+    """Record the run again with locals (the default; ``--no-locals`` turned them off), with its real paths."""
+    file = os.path.abspath(str(run.meta.get("file") or "FILE"))
+    save = os.path.abspath(str(getattr(run, "path", None) or "run.json"))
+    return "save the run again with locals, which `pyokka run` records unless --no-locals is given: `pyokka run %s --save %s` (MCP: pyokka_run {\"file\": %s, \"save\": %s}, without no_locals)" % (shlex.quote(file), shlex.quote(save), json.dumps(file), json.dumps(save))
+
+
 def origin(run: "SavedRun", step: int, expr: str = "", depth: int = ORIGIN_DEPTH) -> dict:
     """The chain from the value at ``step`` back to where it was made (``docs/design/origin.md``)."""
     b = OriginBuilder(run, depth)
@@ -65,7 +75,7 @@ def origin(run: "SavedRun", step: int, expr: str = "", depth: int = ORIGIN_DEPTH
         need = need_from_error(out["error"]["type"], out["error"]["message"])
     if not run.locals_entries:
         out["end"] = "this run recorded no locals, so values cannot be followed back"
-        out["hint"] = "save the run again with locals: `pyokka run FILE --save run.json --record-locals`"
+        out["hint"] = _locals_again(run)
         return out
     picked: dict | None = None
     if expr.strip():

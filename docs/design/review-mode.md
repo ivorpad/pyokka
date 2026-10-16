@@ -120,7 +120,23 @@ there when given, record `fixed/ENTRY` to `DIR/fixed.json`, print the test resul
 summary head → fixed, and for each finding whose `--expect` is a `NAME=VALUE`, PASS or FAIL as
 `verify` prints them.
 
-### `report [--out FILE]`
+### `report [--out FILE] [--page [FILE]]`
+
+`--page` (2026-10-16): the review as a code-history page, `history.json` for the skill's
+`render-code-history.cjs`, written at FILE or `DIR/page.json` and refused inside the repository.
+One recorded-step checkpoint of head.json per stop shown or line asked, in conversation order, plus a
+`why` checkpoint for a stop whose fact names a value; the say is the card's text, the fact with base's
+value beside head's starts its note, the `look`s that followed it finish the note, a finding within
+three lines sets its tag; the tries follow as `try` cards (a fifth evidence kind: a sandbox run with
+its code as the pseudo-file `tries/<id>.py`). The sentence rules run over every field and come back
+as warnings.
+
+`--tour` (2026-10-16): the review as a tour of head.json for `render-tour.cjs`, written at FILE or
+`DIR/tour.json`. `build_tour(force=<the steps of the stops shown and lines asked>)` guarantees a
+candidate per stop (`pyokka tour --at STEP`); the says are the prose, `pick` in run order, the title
+the stop's kind and function. `apply_prose` checks the says as it checks a model's prose; a rejected
+say falls back to base's value beside head's, then to nothing, each rejection a warning.
+
 
 Refuse when the repo's `tree_hash` differs from `start` (the review no longer describes the tree),
 when a finding lacks a reproduction, or when a reproduction no longer reproduces (re-run each try or

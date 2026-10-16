@@ -22,10 +22,11 @@ from typing import Any
 from ..redact import redact
 from .checkpoint import Facts, card_value_chars, flat, flatten_chain, slug, source_window, stack_text, values_text
 from .save import file_hash, read_text, sha256_text
+from .prose import prose_warnings
 from .source import AgentError
 
 WINDOW_MAX = 40
-KINDS = ("recorded step", "live pause", "static source", "gloss")
+KINDS = ("recorded step", "live pause", "static source", "gloss", "try")
 OUTPUT_LINES = 12
 SHA_PREFIX = 14
 PROSE_TOP = ("title", "eyebrow", "heading", "subtitle", "summary", "historyLabel", "scope", "footer", "reportHref", "reportLabel")
@@ -132,7 +133,8 @@ class Builder:
         self.ids.add("%s-%d" % (cid, n))
         return "%s-%d" % (cid, n)
 
-    def blank(self, cid: str, kind: str, tag: str) -> dict:
+    @staticmethod
+    def blank(cid: str, kind: str, tag: str) -> dict:
         return {
             "id": cid, "kind": kind, "tag": tag, "step": None,
             "title": "", "text": "", "note": "",
@@ -218,7 +220,7 @@ class Builder:
         slice_ = self.source.context(scope=self.scope)
         paused = slice_.get("paused") if isinstance(slice_.get("paused"), dict) else None
         if not paused:
-            raise AgentError("no debug pause to capture", "pause one first: `pyokka break --live FILE:LINE` then `pyokka continue --live`")
+            raise AgentError("no debug pause to capture", 'pause one first: `pyokka break --live FILE:LINE` then `pyokka continue --live` (MCP: pyokka_debug {"action": "break", "at": ["FILE:LINE"]} then {"action": "continue"})')
         from .live import stop_reason
 
         modified = bool(slice_.get("modified"))
@@ -237,8 +239,45 @@ class Builder:
         return [card]
 
 
+def try_card(data: dict, t: dict, verify: str) -> dict:
+    """A checkpoint of kind ``try`` for a review's sandbox run ``t`` (``{id, title, code, inputs, mocks, result,
+    values, output, error, edge}``), whose code becomes the pseudo-file ``tries/<id>.py`` in ``data["files"]``.
+
+    A try is not a step of the program's run: ``step`` is None and it has no chain. ``values`` opens with
+    ``result = …`` and then holds one ``name = text`` per value the try recorded; ``output`` is what it
+    printed, or ``error: …`` when it raised. Prose (``title``, ``text``, ``note``) is left empty to fill."""
+    tid = str(t.get("id") or "try")
+    lines: list[str] = []
+    for key in ("inputs", "mocks"):
+        text = t.get(key)
+        if text:
+            lines.append("# %s:" % key)
+            lines.extend("# " + line for line in str(text).rstrip("\n").split("\n"))
+    lines.extend(str(t.get("code") or "").rstrip("\n").split("\n"))
+    if lines == [""]:
+        lines = ["# (no code)"]
+    key = "tries/%s.py" % tid
+    data.setdefault("files", {})[key] = lines
+    values = ["result = %s" % ("None" if t.get("result") is None else t["result"])]
+    for v in t.get("values") or []:
+        if isinstance(v, dict) and v.get("name") != "result" and v.get("text", v.get("repr")) is not None:
+            values.append("%s = %s" % (v.get("name"), v.get("text", v.get("repr"))))
+    output = str(t.get("output") or "")
+    if t.get("error"):
+        output = (output + "\n" if output else "") + "error: %s" % t["error"]
+    tag = "try %s" % tid + ((" · edge %s" % t["edge"]) if t.get("edge") else "")
+    card = Builder.blank(tid, "try", tag)
+    card.update(file=key, start=1, end=len(lines), focus=1, bright=list(range(1, len(lines) + 1)), values=redact("\n".join(values)), output=redact(output), verify=verify)
+    return card
+
+
 def build(source: Any, selectors: list, *, run_label: str, pad: int = 2, limit: int = 20, lang: str = "en", scope: bool = False, value_chars: int | None = None) -> dict:
     """The whole document. ``selectors`` is ``[(kind, value)]`` in the order they were written."""
+    if any(kind == "pause" for kind, _ in selectors) and not run_label.startswith("--live"):
+        raise AgentError(
+            "--pause reads a live debug pause, and %s is a saved run" % run_label,
+            'pause the program in VS Code, then `pyokka history --live --pause --out history.json` (MCP: pyokka_history {"live": true, "pause": true, "out": "history.json"}); pause it with pyokka_debug {"action": "break", "at": ["FILE:LINE"]} then {"action": "continue"}',
+        )
     state = source.state()
     stale = [os.path.basename(str(p)) for p in state.get("staleFiles") or []]
     if state.get("stale"):
@@ -305,6 +344,10 @@ def meta_of(source: Any, state: dict, run_label: str, truncated: list) -> dict:
 
 def write_history(source: Any, args: Any, run_label: str) -> dict:
     """The command: build, merge the prose, write the file, report what a reader can check."""
+    path = os.path.abspath(str(args.out))
+    if os.path.exists(path) and not getattr(args, "append", False) and (path == os.path.abspath(str(getattr(source, "path", "") or "")) or not is_history(path)):
+        what = "the run this page reads" if path == os.path.abspath(str(getattr(source, "path", "") or "")) else "not a code-history page"
+        raise AgentError("%s exists and is %s" % (path, what), "pick another --out, e.g. %s.history.json; the existing file is kept as it is" % os.path.splitext(path)[0])
     data = build(
         source,
         list(getattr(args, "checkpoints", None) or []),
@@ -324,8 +367,9 @@ def write_history(source: Any, args: Any, run_label: str) -> dict:
             raise AgentError('cannot read the prose file %s: %s' % (args.prose, exc), 'a JSON object: {"heading": "...", "steps": {"step-55": {"title": "..."}}}') from None
         merge_prose(data, prose)
         prosed = sum(1 for card in data["steps"] if card["title"] or card["text"] or card["note"])
+        fields = [(k, data.get(k, "")) for k in ("heading", "subtitle", "summary")] + [("%s.%s" % (card["id"], f), card.get(f, "")) for card in data["steps"] for f in ("text", "note")]
+        data.setdefault("_warnings", []).extend(prose_warnings(fields))  # style warns, never fails the page
     warnings = data.pop("_warnings", [])
-    path = os.path.abspath(str(args.out))
     os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
     added = len(data["steps"])
     if getattr(args, "append", False) and os.path.exists(path):
@@ -341,6 +385,16 @@ def write_history(source: Any, args: Any, run_label: str) -> dict:
         "truncated": data["meta"]["truncated"],
         "warnings": warnings,
     }
+
+
+def is_history(path: str) -> bool:
+    """Whether ``path`` holds a code-history page: a JSON object with a ``steps`` list."""
+    try:
+        with open(path, "r", encoding="utf-8") as fh:
+            old = json.load(fh)
+    except (OSError, ValueError):
+        return False
+    return isinstance(old, dict) and isinstance(old.get("steps"), list)
 
 
 def append_to(path: str, data: dict) -> dict:

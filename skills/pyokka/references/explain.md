@@ -84,7 +84,8 @@ Every message has the same three parts:
    inline in the editor, so name them: you are both looking at the same number. Explain from that
    reply in the same message. Moving and then saying you will look at the code is the failure:
    the reply already shows it, so read nothing again before you speak.
-2. **Say**, in two to five sentences: what the values on this line are; what they mean for
+2. **Say**, in two to five sentences (SKILL.md, "How you write to the person": 20 words or
+   fewer each, active, the actor named): what the values on this line are; what they mean for
    the thing being understood; what this line hands to the next one.
 3. **Stop.** Their reply decides the move:
    - a question: answer it at this line, without moving. `why --live STEP NAME` for where
@@ -158,6 +159,8 @@ Not here: component trees, file trees, diffs, HTML decks. One file, nothing chan
 ## Words
 
 - Short. They are reading the editor, not you.
+- Plain sentences. No headings, bullets or tables in a message unless the Visuals section calls
+  for one.
 - Behaviour before the term: "adds 1/(60+rank) for each list the document appears in",
   then "that is reciprocal rank fusion".
 - Values over adjectives: `scores['C'] = 0.032522`, not "a high score". Round to what

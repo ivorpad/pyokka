@@ -172,3 +172,61 @@ def run(tmp_path):
         return run_source(source, tmp_path, **kw)
 
     return _run
+
+
+def _shipped_code_lists() -> tuple:
+    from pyokka_runtime.agent import web
+
+    return web.VSCODE_APPS, web.CODE_BIN_DIRS
+
+
+#: read at collection, before any test patches them
+_SHIPPED_CODE_LISTS = _shipped_code_lists()
+
+
+@pytest.fixture(autouse=True, scope="session")
+def _no_vscode(tmp_path_factory):
+    """No test launches the person's VS Code, module-scoped fixtures included: no app bundle or bin dir is searched,
+    PYOKKA_CODE is a stub that exits 1, `review start` stays in chat, and open_url refuses any launcher outside
+    pytest's temp dirs. Session-scoped so a module fixture built before the function fixtures cannot slip past it.
+    A test that wants a working stub sets PYOKKA_CODE itself; its monkeypatch runs after this one and wins."""
+    import os
+
+    from pyokka_runtime.agent import debug_start, web
+    from pyokka_runtime.agent.source import AgentError
+
+    mp = pytest.MonkeyPatch()
+    mp.setattr(web, "VSCODE_APPS", ())
+    mp.setattr(web, "CODE_BIN_DIRS", ())
+    stub = tmp_path_factory.mktemp("no-vscode") / "code"
+    stub.write_text("#!/bin/sh\nexit 1\n", encoding="utf-8")
+    stub.chmod(0o755)
+    mp.setenv("PYOKKA_CODE", str(stub))
+    mp.setenv("PYOKKA_REVIEW_SURFACE", "chat")
+    real_open_url = debug_start.open_url
+    allowed = os.path.realpath(str(tmp_path_factory.getbasetemp())) + os.sep
+
+    def guarded_open_url(uri: str, command: str | None = None) -> None:
+        launcher = command or debug_start.code_command()
+        if not os.path.realpath(launcher).startswith(allowed) and launcher not in ("/bin/false", "/usr/bin/false", "/usr/bin/true"):
+            raise AgentError("tests never launch VS Code", "set PYOKKA_CODE to a stub script under tmp_path")
+        real_open_url(uri, launcher)
+
+    mp.setattr(debug_start, "open_url", guarded_open_url)
+    yield
+    mp.undo()
+
+
+@pytest.fixture
+def real_code_lists(monkeypatch):
+    """web.VSCODE_APPS and web.CODE_BIN_DIRS as shipped, for a test that checks the lists themselves (it must launch nothing)."""
+    from pyokka_runtime.agent import web
+
+    monkeypatch.setattr(web, "VSCODE_APPS", _SHIPPED_CODE_LISTS[0])
+    monkeypatch.setattr(web, "CODE_BIN_DIRS", _SHIPPED_CODE_LISTS[1])
+
+
+@pytest.fixture(autouse=True)
+def _review_opens_nothing(monkeypatch):
+    """`review start` opens VS Code by default; the suite's reviews stay in chat unless a test asks for a surface."""
+    monkeypatch.setenv("PYOKKA_REVIEW_SURFACE", "chat")

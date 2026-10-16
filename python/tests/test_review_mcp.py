@@ -8,16 +8,41 @@ from __future__ import annotations
 
 import io
 import json
+import socket
 from contextlib import redirect_stderr, redirect_stdout
 
 from pyokka_runtime.__main__ import main
 from pyokka_runtime.agent.mcp import call_tool, handle
 from pyokka_runtime.agent.mcp_tools import tool_definitions
+from pyokka_runtime.agent.review import start as review_start
+from pyokka_runtime.agent.review import surfaces as real_surfaces
 from pyokka_runtime.agent.review import tool as review_tool
-from pyokka_runtime.agent.review.state import ACTIONS, Review
+from pyokka_runtime.agent.review import view as review_view
+from pyokka_runtime.agent.review.state import ACTIONS, Refusal, Review
 from tests.test_review_actions import fakes, fresh, shop, started  # noqa: F401  pytest fixtures
 
-FIELDS = ("action", "base", "repo", "entry", "test", "pr", "python", "dir", "args", "n", "say", "go_on", "why", "surface", "port", "session", "line", "code", "expr", "inputs", "mocks", "edge", "title", "file", "severity", "step", "repro", "expect", "fix", "patch", "tests", "out", "json")
+import pytest
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _never_launch_vscode():
+    """Module scope, so it is in place before the module-scoped ``started`` runs its ``start``: conftest's guards
+    are function-scoped and come too late for it. A start in this file opens no editor and no page."""
+    from pyokka_runtime.agent import debug_start
+    from pyokka_runtime.agent.source import AgentError
+
+    def refuse(*_a, **_k):
+        raise AgentError("tests never launch VS Code")
+
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setenv("PYOKKA_REVIEW_SURFACE", "chat")
+        mp.setenv("PYOKKA_CODE", "/usr/bin/false")
+        mp.setattr(review_view, "open_vscode", refuse)
+        mp.setattr(debug_start, "open_url", refuse)
+        mp.setattr(debug_start, "open_debug_session", refuse)
+        yield
+
+FIELDS = ("action", "base", "repo", "entry", "test", "pr", "python", "dir", "args", "n", "say", "go_on", "why", "surface", "port", "session", "line", "code", "expr", "inputs", "mocks", "edge", "title", "file", "severity", "step", "repro", "expect", "fix", "patch", "tests", "out", "page", "tour", "json")
 
 
 def cli(*args: object) -> tuple[int, str, str]:
@@ -110,3 +135,110 @@ def test_prompts_list_and_get(tmp_path, monkeypatch):
     assert text == review_tool.BUILTIN_PROMPT and 8 <= len(text.strip().split("\n")) <= 20
     for word in ("start --base REF", "stop N --say TEXT", "ask FILE:LINE", "try --expr EXPR", "finding add", "fix --patch", "report", "next:"):
         assert word in text, word
+
+
+# -- surfaces: an asked view that is not there is refused, auto says it fell to chat --------------------------------------
+
+NO_SESSION = {"surface": "chat", "moved": False, "available": False, "note": "no live VS Code session on main.py; start one on the entry"}
+
+
+def test_an_asked_view_with_nothing_answering_is_refused_and_the_stop_stays_unshown(started, tmp_path, fakes):
+    r = fresh(started, tmp_path)
+    step = Review.load(str(r.dir)).stop(1)["step_b"]
+    entry = "%s/main.py" % r.repo
+    fakes.answer = NO_SESSION
+    res = call_tool("pyokka_review", {"action": "stop", "n": 1, "say": "the raise is at step %d" % step, "surface": "vscode", "dir": str(r.dir)})
+    text = res["content"][0]["text"]
+    assert res["isError"] is True and "stops 0/2 shown" in text.split("\n")[0]
+    assert "refused: surface vscode is not available, so nothing was shown: no live VS Code session on main.py" in text
+    nxt = text.rstrip("\n").split("\n")[-1]
+    assert nxt.startswith("next: pyokka debug %s --record --cwd %s (MCP: pyokka_debug {\"action\": \"start\", \"file\": \"%s\", \"record\": true, \"cwd\": \"%s\"})" % (entry, r.repo, entry, r.repo))
+    assert "pyokka.agentAccess" in nxt and "the code command (" in nxt and nxt.endswith("then review stop 1 --say TEXT --surface vscode")
+    review = Review.load(str(r.dir))
+    assert review.waiting is None and 1 in review.remaining() and not review.data["said"]
+    # the page: refused the same way, and an ask leaves no trace
+    fakes.answer = {"surface": "page", "moved": False, "available": False, "note": "no Pyokka page answers on 127.0.0.1:4790"}
+    res = call_tool("pyokka_review", {"action": "ask", "line": "shopkit/discounts.py:16", "say": "rate starts at 0.0", "surface": "page", "port": 4790, "dir": str(r.dir)})
+    text = res["content"][0]["text"]
+    assert res["isError"] is True and "refused: surface page is not available, so nothing was shown: no Pyokka page answers on 127.0.0.1:4790" in text
+    assert 'pyokka web %s --cwd %s (MCP: pyokka_page {"action": "open"' % (entry, r.repo) in text and text.rstrip("\n").endswith("then review ask shopkit/discounts.py:16 --say TEXT --surface page")
+    assert not Review.load(str(r.dir)).asked
+
+
+def test_a_view_that_answered_but_missed_the_stop_is_shown_and_auto_says_it_fell_to_chat(started, tmp_path, fakes):
+    r = fresh(started, tmp_path)
+    step = Review.load(str(r.dir)).stop(1)["step_b"]
+    # the session was there and the program ended first: its own note says what reaches the stop, no refusal
+    fakes.answer = {"surface": "vscode-debug", "moved": False, "note": "the program ended (exit 0) without reaching pricing.py:12"}
+    res = call_tool("pyokka_review", {"action": "stop", "n": 1, "say": "the raise is at step %d" % step, "surface": "vscode", "dir": str(r.dir)})
+    assert res["isError"] is False and "stops 1/2 shown" in res["content"][0]["text"]
+    # auto with nothing answering shows the stop in chat, and next: says so and what starts VS Code
+    fakes.answer = None
+    res = call_tool("pyokka_review", {"action": "stop", "n": 2, "say": "unit_price = '1,249.00'", "dir": str(r.dir), "go_on": True})
+    nxt = res["content"][0]["text"].rstrip("\n").split("\n")[-1]
+    assert res["isError"] is False and "the person saw this stop only in chat" in nxt and "MCP: pyokka_debug" in nxt
+    res = call_tool("pyokka_review", {"action": "ask", "line": "shopkit/discounts.py:16", "say": "rate starts at 0.0 and only a spend above a threshold raises it", "dir": str(r.dir)})
+    nxt = res["content"][0]["text"].rstrip("\n").split("\n")[-1]
+    assert res["isError"] is False and nxt.startswith("next: wait for the person; they saw this only in chat") and "MCP: pyokka_debug" in nxt
+    # surface chat is the agent's choice: next: stays plain
+    r2 = fresh(started, tmp_path, "chat")
+    res = call_tool("pyokka_review", {"action": "stop", "n": 1, "say": "the raise is at step %d" % step, "surface": "chat", "dir": str(r2.dir)})
+    assert "only in chat" not in res["content"][0]["text"]
+
+
+def test_the_notes_and_the_start_lines_name_both_forms():
+    head = {"meta": {"file": "/w/demo.py", "workspaceRoot": "/w"}}
+    note = real_surfaces.no_session_note(None, head)
+    assert note.startswith('no live VS Code session on demo.py; start one on the entry: pyokka debug /w/demo.py --record --cwd /w (MCP: pyokka_debug {"action": "start", "file": "/w/demo.py", "record": true, "cwd": "/w"})')
+    assert "pyokka.agentAccess" in note and note.endswith("then stop again with the same n")
+    vs, page = review_view.start_hints("/w/demo.py", "/w")
+    assert page == 'pyokka web /w/demo.py --cwd /w (MCP: pyokka_page {"action": "open", "file": "/w/demo.py", "cwd": "/w"}), then open its URL in one browser tab'
+    state, lines = review_view.open_view({"repo": "/w", "entry": "demo.py"}, {"surface": "chat"})
+    assert state == {"kind": "chat"} and "pyokka debug /w/demo.py --record --cwd /w (MCP: pyokka_debug" in lines[0] and "pyokka web /w/demo.py --cwd /w (MCP: pyokka_page" in lines[0]
+    tool = next(t for t in tool_definitions() if t["name"] == "pyokka_review")
+    assert "refused when nothing answers" in tool["inputSchema"]["properties"]["surface"]["description"] and "pyokka.agentAccess" in tool["inputSchema"]["properties"]["surface"]["description"]
+    assert "surface vscode or page with nothing answering is refused" in tool["description"]
+
+
+def test_start_on_a_taken_port_is_refused_before_recording(shop, tmp_path, monkeypatch):
+    monkeypatch.setenv("PYOKKA_HOME", str(tmp_path / "home"))
+    taken = socket.socket()
+    taken.bind(("127.0.0.1", 0))
+    taken.listen(1)
+    port = taken.getsockname()[1]
+    called = []
+    monkeypatch.setattr(review_start, "_record", lambda *a, **k: called.append(a))
+    try:
+        res = call_tool("pyokka_review", {"action": "start", "base": shop.base, "repo": str(shop.repo), "dir": str(tmp_path / "review"), "surface": "page", "port": port})
+    finally:
+        taken.close()
+    text = res["content"][0]["text"]
+    assert res["isError"] is True and "refused: surface page needs a free port and %d is taken" % port in text and not called
+    assert text.rstrip("\n").endswith("next: review start --base REF --surface page --port N with a free N, or --surface vscode")
+    review_start._check_view({"surface": "chat", "port": port})  # chat and vscode need no port
+    try:
+        review_start._check_view({"surface": "page", "port": port})
+    except Refusal as exc:
+        raise AssertionError("the port is free again: %s" % exc.why) from None
+
+
+def test_start_with_surface_vscode_and_no_vscode_to_reach_is_refused_before_recording(shop, tmp_path, monkeypatch):
+    from pyokka_runtime.agent import debug_start, live
+    from pyokka_runtime.agent.source import AgentError
+
+    monkeypatch.setenv("PYOKKA_HOME", str(tmp_path / "home"))
+    monkeypatch.setattr(live, "SESSIONS_ENV", "PYOKKA_TEST_NO_SESSIONS")
+    monkeypatch.setenv("PYOKKA_TEST_NO_SESSIONS", str(tmp_path / "no-sessions"))
+
+    def missing():
+        raise AgentError("no code command")
+
+    monkeypatch.setattr(debug_start, "code_command", missing)
+    called = []
+    monkeypatch.setattr(review_start, "_record", lambda *a, **k: called.append(a))
+    res = call_tool("pyokka_review", {"action": "start", "base": shop.base, "repo": str(shop.repo), "dir": str(tmp_path / "review"), "surface": "vscode"})
+    text = res["content"][0]["text"]
+    assert res["isError"] is True and not called
+    assert "refused: surface vscode needs VS Code: no live Pyokka session answers and the code command was not found" in text
+    assert "pyokka debug %s/main.py --record --cwd %s (MCP: pyokka_debug" % (shop.repo, shop.repo) in text and "pyokka.agentAccess" in text
+    assert text.rstrip("\n").endswith("next: review start --base REF --surface page, or --surface chat")
