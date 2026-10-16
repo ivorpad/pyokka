@@ -82,14 +82,36 @@ def _describe(d: dict) -> str:
     return "%s %s (pid %s, %s) %s" % (descriptor_kind(d), d.get("displayName") or os.path.basename(str(d.get("file"))), d.get("pid"), display_path(str(d.get("file")), str(d.get("workspace") or "")), d.get("descriptor") or "")
 
 
+def _launch_files(d: dict) -> list[str]:
+    """The test file a module launch runs, from its arguments: ``debug FILE --test NAME`` launches
+    ``-m pytest /abs/FILE::NAME`` (or ``/abs/FILE -k NAME``, or ``-m unittest stem.NAME`` in FILE's
+    directory), and the descriptor's name is then ``-m pytest``, which no one types."""
+    launch = d.get("launch") if isinstance(d.get("launch"), dict) else {}
+    module = launch.get("module")
+    if not module:
+        return []
+    cwd = str(launch.get("cwd") or "")
+    out = []
+    for arg in launch.get("args") or []:
+        part = str(arg).split("::", 1)[0]
+        if part.endswith(".py"):
+            out.append(os.path.normpath(os.path.join(cwd, part)))
+        elif module == "unittest" and part and not part.startswith("-"):
+            out.append(os.path.join(cwd, part.split(".", 1)[0] + ".py"))
+    return out
+
+
 def _file_matches(d: dict, name: str) -> bool:
     file = str(d.get("file") or "")
     if not name:
         return False
     if name == d.get("displayName") or name == os.path.basename(file) or file.endswith(os.sep + name):
         return True
+    tests = _launch_files(d)
+    if any(name == os.path.basename(t) or t.endswith(os.sep + name) for t in tests):
+        return True
     if os.sep in name or name.startswith("."):
-        return os.path.abspath(name) == file
+        return os.path.abspath(name) in (file, *tests)
     return False
 
 

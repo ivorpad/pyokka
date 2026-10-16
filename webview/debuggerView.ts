@@ -1,9 +1,11 @@
 /**
  * Pure helpers of the Debugger view (docs/design/debugger-product.md, 5.1): the header sentence,
- * the frame labels, the breakpoint rows and the output tail. No DOM, so vitest covers them
+ * the Frame section's rows (the variables tree, the call stack with its library folds), the
+ * breakpoint rows and the watch rows. No DOM, so vitest covers them
  * (test/unit/webview/debuggerView.test.tsx).
  */
-import type { DebugSessionBreakpoint, DebugSessionFrame, DebugSessionPanel, DebugSessionWatch } from './src-shared';
+import { flat, nodeChildren } from './format';
+import type { DebugSessionBreakpoint, DebugSessionFrame, DebugSessionPanel, DebugSessionWatch, ValueNode } from './src-shared';
 
 /** `Paused at app.py:42 · breakpoint`, `Running…`, `The program ended.` */
 export function debugHeaderLine(state: DebugSessionPanel): string {
@@ -29,6 +31,123 @@ export function reasonIcon(state: DebugSessionPanel): string {
     default:
       return 'debug-breakpoint';
   }
+}
+
+/* ---------- the Frame section: the call stack ---------- */
+
+/** One row of the call stack: a frame of the program, or the line a run of library frames folds into. */
+export interface StackRow {
+  key: string;
+  /** a frame the user can click, or a fold of consecutive library frames */
+  kind: 'frame' | 'library';
+  frame?: DebugSessionFrame;
+  /** the folded frames, innermost first */
+  frames?: DebugSessionFrame[];
+  current: boolean;
+}
+
+/** How many consecutive library frames fold into one row. */
+export const FOLD_FROM = 2;
+
+/**
+ * The call stack as the section shows it: the program's own frames, and two or more consecutive
+ * library frames folded into one row (`3 frames in library code`) that opens on click. A library
+ * frame's file is not in the run, so the runtime sends no path for it: the row names the function
+ * and its line and says `library code` rather than inventing a file.
+ */
+export function stackRows(stack: readonly DebugSessionFrame[], selectedFrame: number, expanded: ReadonlySet<number> = new Set()): StackRow[] {
+  const rows: StackRow[] = [];
+  for (let i = 0; i < stack.length; ) {
+    const frame = stack[i]!;
+    if (!frame.library) {
+      rows.push({ key: `f${frame.frameId}`, kind: 'frame', frame, current: frame.frameId === selectedFrame });
+      i += 1;
+      continue;
+    }
+    const run: DebugSessionFrame[] = [];
+    while (i < stack.length && stack[i]!.library) run.push(stack[i++]!);
+    const holdsSelected = run.some((f) => f.frameId === selectedFrame);
+    if (run.length < FOLD_FROM || expanded.has(run[0]!.frameId) || holdsSelected) {
+      for (const f of run) rows.push({ key: `f${f.frameId}`, kind: 'frame', frame: f, current: f.frameId === selectedFrame });
+    } else {
+      rows.push({ key: `lib${run[0]!.frameId}`, kind: 'library', frames: run, current: false });
+    }
+  }
+  return rows;
+}
+
+/** `3 frames in library code`, `1 frame in library code`. */
+export function libraryFoldLabel(frames: readonly DebugSessionFrame[]): string {
+  return `${frames.length} ${frames.length === 1 ? 'frame' : 'frames'} in library code`;
+}
+
+/** A frame's two halves: the function, and where it is. A library frame has no file to name. */
+export function frameParts(frame: DebugSessionFrame): { name: string; where: string } {
+  if (frame.library) return { name: frame.name, where: `line ${frame.line} · library code` };
+  return { name: frame.name, where: `${frame.file}:${frame.line}` };
+}
+
+/* ---------- the Frame section: the variables tree ---------- */
+
+/** One row of the variables tree: a local, or a member of one that is open. */
+export interface FrameRow {
+  /** stable across state pushes: the local's name, then the member's query path under it */
+  key: string;
+  depth: number;
+  name: string;
+  /** the type label; '' when the repr already opens with it, or the value is a scalar */
+  type: string;
+  text: string;
+  node?: ValueNode;
+  /** the row can open: it has members, or members the runtime has not sent yet */
+  expandable: boolean;
+  open: boolean;
+  /** opening this row asks the runtime (`debug.expand`): none of its members is loaded */
+  needsLoad: boolean;
+  /** the `…` row of a capped container: more elements the runtime has not sent */
+  more: boolean;
+  /** the local the row belongs to, named in the expand request */
+  local: string;
+}
+
+const SCALAR_TYPES = new Set(['number', 'str', 'string', 'bool', 'boolean', 'None', 'bytes']);
+
+/** `request  RankRequest  RankRequest(rankings=…)` said it twice: the repr already names the type. */
+function typeLabel(type: string, text: string): string {
+  if (!type || SCALAR_TYPES.has(type) || text.startsWith(`${type}(`) || text.startsWith(`${type} `)) return '';
+  return type;
+}
+
+/** The value has members to show, sent already or not. */
+function canOpen(node: ValueNode | undefined): boolean {
+  return !!node && (!!node.props?.length || !!node.expandable || !!node.cappedProps || !!node.cappedElements);
+}
+
+/**
+ * The variables tree as rows, depth first, following `open` (row keys). A local's row carries the
+ * runtime's own repr; a member's row its `value`, or the one-line form the Details pane prints
+ * (`flat`), so a dict or a dataclass opens here the way it does there. A member whose bag the
+ * runtime has not sent (`expandable` without `props`) is a row that loads on click; a capped
+ * container ends in a `…` row that loads the rest.
+ */
+export function frameRows(locals: readonly DebugSessionPanel['locals'][number][], open: ReadonlySet<string>): FrameRow[] {
+  const out: FrameRow[] = [];
+  const visit = (local: string, key: string, name: string, text: string, node: ValueNode | undefined, depth: number): void => {
+    const expandable = canOpen(node);
+    const loaded = !!node?.props;
+    const isOpen = expandable && loaded && open.has(key);
+    out.push({ key, depth, name, type: typeLabel(node?.type ?? '', text), text, node, expandable, open: isOpen, needsLoad: expandable && !loaded, more: false, local });
+    if (!isOpen || !node) return;
+    for (const p of nodeChildren(node)) {
+      if (p.loadActionNode) {
+        out.push({ key: `${key}\n…`, depth: depth + 1, name: '…', type: '', text: 'more elements not loaded', node: p, expandable: false, open: false, needsLoad: true, more: true, local });
+        continue;
+      }
+      visit(local, `${key}\n${JSON.stringify(p.queryPath)}`, p.keyRepr ?? p.name, p.value ?? flat(p), p, depth + 1);
+    }
+  };
+  for (const l of locals) visit(l.name, l.name, l.name, l.text, l.valueBag?.data, 0);
+  return out;
 }
 
 /** A break-when watch's badge, `undefined` for a displayed one. */

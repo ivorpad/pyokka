@@ -5,6 +5,18 @@ exception, then waits. You step, read the frame, run a statement in it, continue
 recorded and nothing re-runs: the program you are looking at is the one the user's window is
 running.
 
+Contents:
+
+- [Starting](#starting)
+- [The loop](#the-loop)
+- [What a stop shows, and what it leaves out](#what-a-stop-shows-and-what-it-leaves-out)
+- [Moving and reading](#moving-and-reading)
+- [Writing to the frame](#writing-to-the-frame)
+- [Recording, when you need the past](#recording-when-you-need-the-past)
+- [Servers](#servers)
+- [Limits](#limits)
+- [A live pause on the page](#a-live-pause-on-the-page)
+
 Two things before the first command.
 
 **The window answers only with `pyokka.agentAccess` on.** With it off, a cold `pyokka debug FILE`

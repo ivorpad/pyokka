@@ -100,6 +100,8 @@ def _prepare(parser: LineParser, words: list[str], json_mode: bool) -> Any:
         raise AgentError("watch streams every stop until Ctrl-C, so it would block the shell", "run `pyokka watch --live` in another terminal")
     if line_args.command == "shell":
         raise AgentError("the shell is already running", LINE_HINT)
+    if line_args.command == "review":
+        raise AgentError("review keeps its own state and reads no live session", "run it one-shot: `pyokka review ACTION ...`")
     line_args.live = True  # a --live on the line is accepted and ignored: every line is live
     if json_mode:
         line_args.json = True

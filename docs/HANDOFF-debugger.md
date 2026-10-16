@@ -7,6 +7,67 @@ example project's `.env`; runs of `agent.py` cost tokens, use `examples/demo.py`
 fixtures or scratches under `$TMPDIR/`). The wire contract is `docs/PROTOCOL.md`
 ("debug" request, `debug.paused` / `debug.resumed` events, runtime notes).
 
+## Status (2026-10-16): the initial view is wherever the values are
+
+Seen that day in the user's window, paused at a function-entry breakpoint (`pyokka debug demo.py
+--at rrf`): the panel opened on the Debugger view, which showed WATCHES, BREAKPOINTS and OUTPUT
+and not one variable; the frame's dicts were in VS Code's Variables view only. The 2026-10-01
+decision in `docs/HANDOFF.md` ("the panel draws no stack, no locals and no step buttons") put
+them there on purpose, and it is reversed for the Debugger view: the panel is where a Pyokka
+user reads a stop, and a view of a pause that has no values in it is a view of nothing. Three
+pieces, built on branch `review-mode`:
+
+- **The FRAME section** (`webview/components/DebugFrame.tsx`, the rows in `webview/debuggerView.ts`
+  `frameRows` / `stackRows`) leads the Debugger view at a pause: the selected frame's variables as
+  a tree, then CALL STACK (a click selects the frame, as the side bar does: `debug.selectFrame`,
+  which the host already served), then the step controls (Continue, Step Over / Into / Out,
+  Restart, Stop over `debug.control`, whose seven actions the host already had for the Running
+  header). WATCHES, BREAKPOINTS and OUTPUT follow. The tree is the `ValueNode` data the DAP
+  Variables provider serves: members the runtime sent open in place; a member it cut
+  (`expandable` without `props`, the `…` of a capped container) loads through a new
+  `debug.expand {name, valueId, queryPath}` message, which `DebuggerViewHost` answers with the
+  run's `expand`, splices into the locals it caches for the pause (`src/shared/valueNodes.ts`,
+  `spliceNode`, moved out of `webview/format.ts` so the host can use it) and resends, so an open
+  row survives every later push. A row's text is the runtime's repr for a local and `flat()` (the
+  Details pane's one-line form) for a member, so a dict or a dataclass opens here as it does there.
+  The state carries `localsPending` while the frame is being read, so the section says so rather
+  than "no variables"; the selected frame is per pause (`frameOf`), so a new stop reads the top
+  frame as the Call Stack view does. Rendered to pixels by `scripts/preview-debugger-view.mjs`
+  (`?open=scores,best` on the page opens rows; the fixture in `test/visual/debuggerPreview.tsx`
+  has a dict, a dataclass, an int and a dict the runtime cut).
+- **The view rule** (`src/debug/debugViewRule.ts`, `initialDebugView`): a plain session opens the
+  Debugger view, a session that records (`record`, or `recordFrom`, which implies it) opens the
+  Time Machine with the Details pane on the current step; `pyokka.showOutputOnStart` stays the
+  switch. Two routes apply it, because a recording launch never enters `DebugSessionManager`
+  (`dapAdapter.resolve` routes `record: true` to a run-all `Session` in debug mode): `extension.ts`
+  on the registry's `sessionStarted`, and `views/debugPanel.ts` on the first pause of each
+  recording run, which shows the Time Machine view and selects the current step's entries
+  (`currentStepEntries`: the ones stamped with the step, else the latest recorded before it, since
+  the frontier statement has not run). A `recordFrom` pause before its first recorded statement
+  has nothing to select and no trace for the Time Machine to attach to (`navigator.onDebugPaused`
+  returns early); the Time Machine view appears once a step is recorded. Not covered end to end:
+  the recording route in a live window.
+- **The watches bug**: `pyokka watches --live --add rankings --add k --add scores` printed the
+  values and the panel's rows said `no value at this stop` for all three. The bridge's `watches`
+  (`src/agent/bridgeDebugReply.ts`) adds displayed watches on the `DebugSession` itself and
+  evaluates them for its own reply only; `DebuggerViewHost` evaluated displayed watches in
+  `fetchLocals` (at a pause) and in its own `debug.watch.add`, so a `changed` event only resent a
+  state whose rows had no value, until the next stop. The host now evaluates, on every `changed`,
+  the displayed watches that have no value for the current pause and frame (`refreshMissing`;
+  values and in-flight evaluations are kept per pause step and frame, so the `changed` that
+  precedes `paused` and the `paused` itself ask once), drops them on `resumed` (the rows say `at
+  the next pause` while the program runs), and keeps no value for an expression the frame cannot
+  evaluate (`scores`, assigned later in the body): that row keeps `no value at this stop`, instead
+  of the `not evaluable here` it used to invent. Values are keyed by expression too, since the
+  bridge's `--set` reuses ids.
+
+Tests: `test/unit/webview/debuggerView.test.tsx` (the section's order, a dict and a dataclass
+opening, the pending and library-frame texts, `frameRows`, `stackRows`),
+`test/unit/debuggerViewHost.test.ts` (the host over a real `DebugSessionManager` and a fake
+runner: locals at a pause, a watch added on the session valued at that pause and once per stop,
+`debug.expand` kept across pushes, a clicked frame), `test/unit/debugViewRule.test.ts`. The
+stale line in `docs/HANDOFF.md`'s decisions is left for the owner of that file.
+
 ## Status (2026-09-15, round 3): the Debugger as its own product
 
 The design of this round is `docs/design/debugger-product.md` (2205 lines, written by a

@@ -8,6 +8,7 @@ import type { Link, PageHost } from './pageHost';
 import { renderValueNode } from '../src/views/valueText';
 import type { ValueNode } from '../src/shared/protocol';
 import { SCRATCH_OPS, type ScratchCommand } from './scratchpadProtocol';
+import { withBlock } from './agentBlock';
 
 /** pages with a command in progress: a second one is refused rather than raced against the first */
 const pending = new WeakSet<PageHost>();
@@ -21,7 +22,7 @@ export async function runAgentCommand(host: PageHost, link: Link, cmd: AgentComm
   if (cmd.action === 'waitPause') {
     // outside the one-at-a-time rule: it waits for a step another command or the person takes
     const event = await host.debug.waitForPause(cmd.after, cmd.timeoutMs);
-    return { ...event, ...(event.changed ? { state: debugSummary(host) } : {}) };
+    return { ...event, ...(event.changed ? { state: await withBlock(host, debugSummary(host) as Record<string, unknown>, 'live') } : {}) };
   }
   if (pending.has(host)) throw new Error('a command is still pending; wait for its result');
   pending.add(host);
@@ -51,7 +52,7 @@ async function executeCommand(host: PageHost, link: Link, cmd: AgentCommand): Pr
   checkExpectation(host, cmd);
   switch (cmd.action) {
     case 'state':
-      return host.state();
+      return withBlock(host, host.state());
     case 'goto':
       if (!host.nav.active) host.start({ step: cmd.step });
       else host.goto(cmd.step);
@@ -88,7 +89,7 @@ async function executeCommand(host: PageHost, link: Link, cmd: AgentCommand): Pr
       return host.state();
     case 'start':
       host.start();
-      return host.state();
+      return withBlock(host, host.state());
     case 'stop':
       host.stop();
       return host.state();
@@ -224,7 +225,7 @@ async function debugCommand(host: PageHost, cmd: Extract<AgentCommand, { action:
   for (let i = 0; i < 20 && localsPending(); i++) await new Promise((r) => setTimeout(r, 25));
   if (localsPending()) throw new Error('the pause\'s locals have not arrived; read debug state again');
   if (cmd.say !== undefined && d.paused?.line) host.say(cmd.say, d.paused.line);
-  return debugSummary(host);
+  return withBlock(host, debugSummary(host) as Record<string, unknown>, 'live');
 }
 
 /**
@@ -273,10 +274,10 @@ export function debugSummary(host: PageHost): unknown {
   return { context, runId: s.id, running: s.running, paused: s.paused, reason: s.reasonText, location: s.location, stack: s.stack.map((f) => ({ name: f.name, file: f.file, line: f.line })), locals: s.locals.map((v) => ({ name: v.name, text: v.text })), output: s.output.map((c) => c.text).join('').slice(-2000), ...ended };
 }
 
-function afterMove(host: PageHost, say: string | undefined): PageState {
+function afterMove(host: PageHost, say: string | undefined): Promise<PageState> {
   if (say !== undefined) host.say(say);
   else if (host.narration) host.say(null);
-  return host.state();
+  return withBlock(host, host.state());
 }
 
 /* ---------- WebMCP ---------- */
@@ -359,7 +360,7 @@ export function webMcpTools(host: PageHost, link: Link): WebMcpTool[] {
     };
   };
   return [
-    tool('pyokka_state', 'Time Machine state', READ, 'Where the Time Machine is in the recorded run: file, line, function, the source line, variables, call stack, logged values, output and errors. context names the surface commands act on: the live debugger while it has a run (run, step, frame, file, line, locals), else the recording.', {}, [], () => ({ action: 'state' })),
+    tool('pyokka_state', 'Time Machine state', READ, 'Where the Time Machine is in the recorded run: file, line, function, the source line, the enclosing function\'s code (block, the current line marked), variables, call stack, logged values, output and errors. context names the surface commands act on: the live debugger while it has a run (run, step, frame, file, line, locals), else the recording.', {}, [], () => ({ action: 'state' })),
     tool('pyokka_goto', 'Go to step', VALUES, 'Move the Time Machine to a recorded step (0-based) and show it in the code pane.', { step: { type: 'integer', minimum: 0 }, say: SAY }, ['step'], (i) => ({ action: 'goto', step: Number(i['step']), ...(typeof i['say'] === 'string' ? { say: i['say'] } : {}) })),
     tool('pyokka_step', 'Step', VALUES, 'Step the Time Machine like a debugger, forwards or backwards: next (exactly one recorded event), into, over, out, back, backOver, backOut.', { kind: { type: 'string', enum: ['next', 'into', 'over', 'out', 'back', 'backOver', 'backOut'] }, say: SAY }, ['kind'], (i) => ({ action: 'step', kind: String(i['kind']) as Extract<AgentCommand, { action: 'step' }>['kind'], ...(typeof i['say'] === 'string' ? { say: i['say'] } : {}) })),
     tool('pyokka_line', 'Run to line', VALUES, 'Move the Time Machine to the next time a line of the shown file runs.', { line: { type: 'integer', minimum: 1 }, say: SAY }, ['line'], (i) => ({ action: 'line', line: Number(i['line']), ...(typeof i['say'] === 'string' ? { say: i['say'] } : {}) })),
@@ -372,7 +373,7 @@ export function webMcpTools(host: PageHost, link: Link): WebMcpTool[] {
     tool('pyokka_breakpoint', 'Breakpoint', {}, 'Set, clear or toggle a breakpoint on a line of the file for the live debugger.', { line: { type: 'integer', minimum: 1 }, on: { type: 'boolean' }, condition: { type: 'string' } }, ['line'], (i) => ({ action: 'breakpoint', line: Number(i['line']), ...(typeof i['on'] === 'boolean' ? { on: i['on'] } : {}), ...(typeof i['condition'] === 'string' ? { condition: i['condition'] } : {}) })),
     tool('pyokka_story', 'Code Story', VALUES, 'Open the Code Story of the recorded run (every pass through a scope, in execution order) in the right panel; returns its text and the row of the Time Machine step.', {}, [], () => ({ action: 'story' })),
     tool('pyokka_profile', 'Profile', RERUN, 'Run the file once under the runtime profiler and show the hottest functions (self and total ms) in the code pane.', {}, [], () => ({ action: 'profile' })),
-    tool('pyokka_debug', 'Live debugger', VALUES, 'Drive the live debugger (a real run, nothing recorded): start (pauses at the first statement), continue, step (into/over/out), pause, stop, state. Returns where it paused, the stack and the variables.', { op: { type: 'string', enum: ['start', 'continue', 'step', 'pause', 'stop', 'state'] }, kind: { type: 'string', enum: ['into', 'over', 'out'] }, say: SAY }, ['op'], (i) => ({ action: 'debug', op: String(i['op']) as Extract<AgentCommand, { action: 'debug' }>['op'], ...(typeof i['kind'] === 'string' ? { kind: i['kind'] as 'into' | 'over' | 'out' } : {}), ...(typeof i['say'] === 'string' ? { say: i['say'] } : {}) })),
+    tool('pyokka_debug', 'Live debugger', VALUES, 'Drive the live debugger (a real run, nothing recorded): start (pauses at the first statement), continue, step (into/over/out), pause, stop, state. Returns where it paused, the paused function\'s code (block, the paused line marked), the stack and the variables.', { op: { type: 'string', enum: ['start', 'continue', 'step', 'pause', 'stop', 'state'] }, kind: { type: 'string', enum: ['into', 'over', 'out'] }, say: SAY }, ['op'], (i) => ({ action: 'debug', op: String(i['op']) as Extract<AgentCommand, { action: 'debug' }>['op'], ...(typeof i['kind'] === 'string' ? { kind: i['kind'] as 'into' | 'over' | 'out' } : {}), ...(typeof i['say'] === 'string' ? { say: i['say'] } : {}) })),
     tool(
       'pyokka_scratchpad',
       'Scratchpad',

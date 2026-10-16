@@ -1,10 +1,14 @@
 import { defineConfig } from '@vscode/test-cli';
 import { mkdtempSync } from 'node:fs';
+import { keepTestWindowMinimized } from './test/e2e/minimized.mjs';
 
 // A fresh PYOKKA_HOME per run: sessions, the relaunch memory, recent files and the library cache
 // of the test window never meet the user's ~/.pyokka or another e2e run. Short and under /tmp so
 // the session sockets inside it stay well under the 104-byte sun_path limit of macOS.
 const PYOKKA_HOME = mkdtempSync('/tmp/pk-e2e-');
+
+// The test window stays minimized for the whole run (test/e2e/minimized.mjs).
+keepTestWindowMinimized();
 
 // Note: @vscode/test-electron always passes --disable-workspace-trust, so the
 // untrusted-workspace gate (pyokka.untrustedWorkspaceBehavior) cannot be exercised

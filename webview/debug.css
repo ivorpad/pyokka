@@ -538,10 +538,42 @@ span.pk-dbg-twist {
   color: var(--vscode-editorLineNumber-activeForeground, var(--pk-fg));
 }
 
-/* ---------- locals ---------- */
+/* ---------- the frame: variables, call stack, step controls ---------- */
 
 .pk-dbg-member .pk-dbg-name {
   color: var(--vscode-debugTokenExpression-name, var(--pk-fg));
+}
+/* the `…` row of a capped container: more elements the runtime has not sent */
+.pk-dbg-row.pk-dbg-more {
+  color: var(--pk-dim);
+  font-style: italic;
+  cursor: pointer;
+}
+/* the call stack's heading inside the frame section: smaller than a pane header, dimmer */
+.pk-dbg-subhead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 22px;
+  margin-top: 4px;
+  padding: 0 8px;
+  color: var(--pk-dim);
+}
+.pk-dbg-subhead .pk-dbg-title {
+  font-size: 10px;
+}
+/* the step controls under the stack: always visible, unlike the hover-only header actions */
+.pk-frame-controls {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 26px;
+  margin-top: 2px;
+  padding: 0 6px;
+  border-top: 1px solid var(--pk-border);
+}
+.pk-frame-controls .pk-icon-btn {
+  padding: 2px 3px;
 }
 
 /* ---------- watches ---------- */

@@ -1,9 +1,10 @@
 /**
  * The Debugger view (docs/design/debugger-product.md, 5.1): one live `record: false` session.
- * Where it is paused and why, the watches, the breakpoints, where an exception pauses, and the
- * program's output as it arrives. No timeline and no step numbers: nothing is recorded. The call
- * stack, the paused frame's variables and the step controls are VS Code's Run and Debug side bar
- * and debug toolbar, over the same debug session; the panel does not repeat them.
+ * Where it is paused and why, then at a pause the FRAME section first (DebugFrame.tsx: the paused
+ * frame's variables as a tree, the call stack, the step controls), then the watches, the
+ * breakpoints, where an exception pauses, and the program's output as it arrives. No timeline and
+ * no step numbers: nothing is recorded. The initial view is wherever the values are
+ * (docs/HANDOFF-debugger.md, 2026-10-16), which for this session is the frame.
  *
  * It is built to read like VS Code's own Run and Debug sections: 22px rows with a hover
  * background, section headers as pane headers with a count and hover actions, the interface font
@@ -13,17 +14,19 @@
  * There is no exec box: the Debug Console is where code runs, and this output pane is read-only.
  *
  * While the program runs the sections are ordered by what is live (5.6): output first and given the
- * free space, because a watch has no value until a stop, and because output is the only thing that
- * changes for however long the program takes. At a stop the order goes back to watches, output. The activity row above the pane answers
- * the question a spinner cannot — whether a program that has printed nothing for twenty seconds is
- * still working — out of what the host already knows: elapsed, bytes, and when the last byte came.
+ * free space, because there is no frame, a watch has no value until a stop, and output is the only
+ * thing that changes for however long the program takes. At a stop the order goes back to frame,
+ * watches, breakpoints, output. The activity row above the pane answers the question a spinner
+ * cannot — whether a program that has printed nothing for twenty seconds is still working — out of
+ * what the host already knows: elapsed, bytes, and when the last byte came.
  */
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { breakpointRows, launchSummary, reasonIcon, watchArg, watchBadge, watchValue, type WatchMode } from '../debuggerView';
 import { activity, buildRows, duration, rowsText, size, visibleRows, type OutputRow } from '../outputLines';
 import type { SgrStyle } from '../ansi';
-import type { DebugSessionPanel, ViewId } from '../src-shared';
+import type { DebugSessionPanel, ValueNode, ViewId } from '../src-shared';
 import { copyText } from '../vscode';
+import { FrameSection, SectionHead, type DebugControl } from './DebugFrame';
 import { Icon, IconButton, Repr } from './ui';
 
 export interface DebugSessionViewProps {
@@ -34,23 +37,17 @@ export interface DebugSessionViewProps {
   onBreakpointRemove: (file: string, line?: number, fn?: string) => void;
   onExceptions: (mode: 'off' | 'uncaught' | 'raised') => void;
   onView?: (view: ViewId) => void;
-  /** Pause, Restart and Stop in the Running header */
-  onControl?: (action: 'pause' | 'restart' | 'stop') => void;
+  /** the Frame section's step controls at a pause; Pause, Restart and Stop in the Running header */
+  onControl?: (action: DebugControl) => void;
+  /** a frame clicked in the Frame section's call stack: the host reveals it and scopes the locals to it */
+  onSelectFrame?: (frameId: number) => void;
+  /** a member of a local the runtime has not sent yet: the host expands it and resends the state */
+  onExpand?: (local: string, node: ValueNode) => void;
+  /** variables tree rows open from the start (the visual harness and the tests) */
+  initiallyOpen?: readonly string[];
 }
 
-/** A pane header: the title, a count when it helps, and actions that appear on hover. */
-function SectionHead({ title, count, note, actions }: { title: string; count?: number; note?: string; actions?: preact.ComponentChildren }) {
-  return (
-    <div class="pk-dbg-head">
-      <span class="pk-dbg-title">{title}</span>
-      {note ? <span class="pk-dbg-note">{note}</span> : null}
-      {count !== undefined && count > 0 ? <span class="pk-dbg-count">{count}</span> : null}
-      {actions ? <span class="pk-dbg-head-actions">{actions}</span> : null}
-    </div>
-  );
-}
-
-export function DebugSessionView({ state, onOpen, onWatchAdd, onWatchRemove, onBreakpointRemove, onExceptions, onView, onControl }: DebugSessionViewProps) {
+export function DebugSessionView({ state, onOpen, onWatchAdd, onWatchRemove, onBreakpointRemove, onExceptions, onView, onControl, onSelectFrame, onExpand, initiallyOpen }: DebugSessionViewProps) {
   const [watchText, setWatchText] = useState('');
   const [watchMode, setWatchMode] = useState<WatchMode>('display');
   const [adding, setAdding] = useState(false);
@@ -136,6 +133,8 @@ export function DebugSessionView({ state, onOpen, onWatchAdd, onWatchRemove, onB
        */}
       <div class={`pk-debug-cols${live ? ' running' : ''}`}>
         <div class="pk-debug-col pk-debug-context">
+      {paused && <FrameSection state={state} onControl={onControl} onSelectFrame={onSelectFrame} onExpand={onExpand} initiallyOpen={initiallyOpen} />}
+
       <section class="pk-dbg-section pk-debug-watches">
         <SectionHead
           title="WATCHES"

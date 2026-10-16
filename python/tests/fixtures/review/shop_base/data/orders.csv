@@ -1,0 +1,10 @@
+customer,tier,sku,qty,unit_price
+Ana,gold,KB-01,2,
+Ana,gold,MS-07,1,
+Ben,silver,MON-27,1,"1,249.00"
+Ben,silver,CBL-02,3,
+Caro,,KB-01,1,
+Dani,gold,HUB-04,2,
+Eli,,DSK-10,1,
+Fay,silver,CHR-05,3,
+Fay,silver,LMP-03,2,

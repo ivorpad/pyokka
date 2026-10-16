@@ -10,12 +10,25 @@ pause, the MCP server), and exits 2; `pyokka --help` (or `-h`) prints the same a
 `pyokka VERB --help` lists that command's flags. [Every command](#every-command) has one synopsis
 per verb.
 
-Contents: [Recording a run](#recording-a-run) · [Mapping](#mapping-a-run-you-do-not-know) ·
-[Stepping](#stepping) · [Following a value](#following-a-value) ·
-[Comparing two runs](#comparing-two-runs-after-an-edit) ·
-[Reports](#reports-exceptions-http-graph) · [Tours](#tours-of-a-large-run) · [The page](#the-page) ·
-[Shapes](#the-shapes-worth-knowing) · [Live only](#live-only) · [Every command](#every-command) ·
-[Environment](#environment)
+Contents:
+
+- [Recording a run](#recording-a-run)
+- [Mapping a run you do not know](#mapping-a-run-you-do-not-know)
+- [Stepping](#stepping)
+- [Following a value](#following-a-value)
+- [Comparing two runs after an edit](#comparing-two-runs-after-an-edit)
+- [Investigating one value](#investigating-one-value)
+- [Practicing on a run](#practicing-on-a-run)
+- [Baselines and fix checks](#baselines-and-fix-checks)
+- [Reviewing a change](#reviewing-a-change)
+- [Reports: exceptions, HTTP, graph](#reports-exceptions-http-graph)
+- [Tours of a large run](#tours-of-a-large-run)
+- [The page](#the-page)
+- [The shapes worth knowing](#the-shapes-worth-knowing)
+- [The browser page](#the-browser-page)
+- [Live only](#live-only)
+- [Every command](#every-command)
+- [Environment](#environment)
 
 ## Recording a run
 
@@ -234,8 +247,9 @@ calls and containers, as one chain. Use it on an exception's step (`exceptions R
 when `why` stops at a parameter. Without `EXPR` it takes the value the exception is about: the
 odd-typed operand of a `TypeError`, the dict of a `KeyError`, the name that is `None` in an
 `AttributeError`, the short sequence of an `IndexError`. At a step with no exception, give
-`EXPR` (a name or a subscript of one, `items[0]["price"]`); without it the statement's reads are
-listed. `--depth` caps the links (default 20, at most 60).
+`EXPR` (a name, a subscript or an attribute path: `items[0]["price"]`, `lines[0].unit_price`,
+`self.total`; a dataclass field is read from its repr, and a value cut at `maxValueChars` says so);
+without it the statement's reads are listed. `--depth` caps the links (default 20, at most 60).
 
 ```sh
 pyokka origin run.json 64
@@ -428,13 +442,20 @@ pyokka verify baseline.json --rerun --expect total=22 --test-out test_cart_regre
 # verified: the expected values hold for this input
 ```
 
+Without `--expect` the last line is still a verdict: `PASS: no expectations given; the after run has
+no behaviour difference from the baseline` when no statement differs and the exit codes match, else
+`no expectations given; the runs differ in N statements (see above); pass --expect NAME=VALUE for a
+verdict` (a zero-difference pair whose exit codes differ gets its own line).
+
 The exit status is 0 when every expectation passes on a run that exited 0, and 1 when one fails.
 An expectation passes only on a complete recording: an after run cut at its step cap, started
 with `--record-from`, without a `run.finished` event, past the locals limit, with the value cut
 at `--max-value-chars`, or whose last change was made in place (`(same object)` in `var`) gets
 `FAIL` with the reason. Record the after run again without that limit. With no `--expect`,
-`verify` prints the comparison and `not verified`, since a diff alone does not say the fix is
-right.
+`verify` prints the comparison and ends with a verdict line all the same: `PASS: no expectations
+given; the after run has no behaviour difference from the baseline` when nothing differs, else `no
+expectations given; the runs differ in N statements`, exit 0, which points at the real verdict:
+name the value the fix is about with `--expect NAME=VALUE`.
 
 `--test-out PATH` writes a pytest file for the reviewed expectations. It reruns the file through
 the Pyokka runtime with the interpreter that recorded the baseline and checks each value, so
@@ -442,6 +463,139 @@ the Pyokka runtime with the interpreter that recorded the baseline and checks ea
 
 JSON: the `diff` shape plus `checks: [{name, expected, actual, step, passed, reason?}], verified,
 coverage, exceptions, test?`.
+
+## Reviewing a change
+
+**`review`** reviews a change as a guided debug session, the sequence owned by the tool
+([review.md](review.md) is the method). `start` records the base and head trees and plans the
+stops; `stop` moves the person's view and prints the stop; `try` reproduces in the Scratchpad's
+sandbox; `finding add` refuses without a step and a reproduction; `fix` tries a patch on a copy;
+`report` re-runs every reproduction before it prints. Every result's first line is the header,
+`review <id> · <phase> · stops K/N shown · findings F · tries T`, and its last is `next:` with
+one command. A refusal has the same two lines around `refused: <why>` and its detail lines
+(`isError` through MCP).
+
+```
+pyokka review start --base REF [--repo DIR] [--entry FILE | --test NODEID] [--pr FILE] [--python P] [--dir DIR] [-- ARGS]
+pyokka review stop N --say TEXT [--go-on] [--surface auto|page|vscode|chat] [--port P] [--session NAME]
+pyokka review ask FILE:LINE --say TEXT
+pyokka review skip N --why TEXT
+pyokka review look --expr EXPR [--step N]
+pyokka review try --code FILE | --expr EXPR [--inputs FILE] [--mocks FILE] [--edge E3] [--title T] [--port P]
+pyokka review finding add --file F --line L --severity blocker|major|minor --title T --step N --repro ID|CMD [--expect TEXT] --fix TEXT
+pyokka review fix --patch FILE.diff [--tests CMD]
+pyokka review report [--out FILE]
+pyokka review state
+```
+
+- `start` resolves REF in the repo (the current directory unless `--repo`), materialises the base
+  tree in `DIR/base`, records head through the entry (`main.py` at the repo root when it exists,
+  else `--entry` or `--test`, as `pyokka run ENTRY --cwd REPO --save DIR/head.json` would) and base
+  the same way, then compares: `diff` of the two runs, `exceptions` of both, `coverage` of head on
+  the added lines, and the PR text (`--pr FILE`, default `pr.md` or the commit messages base..head)
+  for the functions and files it names. The plan: stops, one per statement in rank order, each
+  `{n, kind, file, line, function, fact, step_a, step_b}` with `kind` one of `raise`, `type`,
+  `sign`, `none`, `print`, `value`; the changed lines no run reached; edge candidates `E1..En` from
+  the added lines (comparison boundaries, missing keys, except paths with their fallback, new
+  parameters, empty loops, zero divisors, slice bounds, orderings, attributes no class in the
+  project defines) with what to try. It refuses a dirty worktree only when `--entry` is
+  uncommitted. `--dir DIR` is the review directory, default
+  `$PYOKKA_HOME/reviews/<repo-name>-<base7>/` (`review.json`, `base/`, `base.json`, `head.json`,
+  `tries/`, `fixed/`, `report.md`); every later action takes `--dir` too, else the review `start`
+  last wrote, named in `$PYOKKA_HOME/reviews/current`. Nothing is written inside the repository.
+- `stop N` refuses with no plan (`next: review start`), an N outside it (the plan prints; `ask
+  FILE:LINE` is for an unplanned line), an empty `--say`, or a `--say` that names none of the stop's
+  values: the text has to contain the rendered text of one of the stop's locals at `step_b` (quotes
+  optional, whitespace ignored), the fact's `a` or `b` text, or the step number, and the refusal
+  lists them. Then it moves the view, `--surface auto` taking the first that answers: a page whose
+  file is the entry (`--port`, default `$PYOKKA_PORT` or 4777) gets `goto step_b` with the text; a
+  live debug session in VS Code gets `break FILE:LINE --when COND` then `continue`, COND from up to
+  two locals of the stop whose text is a literal; a live recording session gets `step --live --to
+  step_b`, sessions on the entry only unless `--session` names one; in chat nothing moves, and the
+  view line of a stop with no page and no session names the command that opens one. It prints the
+  stop as `context head.json step_b` does, then the
+  text, and `next:` is the first unshown stop, else `finding add`. `ask FILE:LINE` is the same at
+  the first head step on that line, recorded under `asked`.
+- One stop per call. The stop after a shown one is refused until it carries `--go-on`, which you
+  pass only after the person said next; `ask`, `try` and `look` never need it, and a shown stop's
+  `next:` is `wait for the person`.
+- `skip N --why TEXT` sets agenda item N aside with the person's reason; `state` lists shown, skipped
+  and remaining.
+- `look --expr EXPR [--step N]` answers "what is X here" from the values recorded at the current or
+  the given step, without moving anything.
+- `try` runs `--code FILE` or `--expr EXPR` in the Scratchpad's sandbox, a separate `python -I` with
+  the head tree on `sys.path`, network denied on macOS, 5 s; as the page's Scratchpad experiment
+  when a page is open on the entry, headless otherwise. It stores `DIR/tries/<id>.json` (code,
+  inputs, mocks, result, output, error, the edge id) and prints them with the id; `--edge E3` marks
+  that candidate tried.
+- `finding add` refuses without `--step` or `--repro`. `--step` has to be a step of `head.json` in
+  file F (basename match) within 3 lines of L or in the same function; `--repro` is a try id, or a
+  shell command run from the repo root whose output has to contain `--expect`, required for a
+  command.
+- `fix` applies the diff to `DIR/fixed`, a fresh copy of head (refused when a hunk fails), runs
+  `--tests CMD` there, records `fixed/ENTRY` to `DIR/fixed.json` and prints the test result, the
+  `diff` summary head → fixed, and PASS or FAIL for each finding whose `--expect` is a
+  `NAME=VALUE`, as `verify` prints them.
+- `report` refuses when the repo's tree differs from `start`, when a finding lacks a reproduction, It opens with "What we looked at together": the stops shown and asked in order, each with its say, then the
+  stops not looked at.
+  or when one no longer reproduces (every try and command is run again). It prints markdown: what
+  the change does in behaviour, findings by severity (file:line, step, values, how reproduced, fix,
+  fix status), stops shown and asked, edges tried and skipped, unreached lines not tried, what was
+  not verified, and writes it to `--out` or `DIR/report.md`. `state` is the header, the plan with
+  shown stops marked, findings, tries and `next:`.
+
+The shop fixture of the tests (`python/tests/fixtures/review/`), base `63650f1`, as a review of it
+goes. The header and `next:` lines are the contract's; the rest is abridged or illustrative:
+
+```sh
+pyokka review start --base 63650f1 --repo /work/shop
+# review shop-63650f1 · stops · stops 0/2 shown · findings 0 · tries 0
+# ... base 360 steps, head 435, exit 0 on both; 7 statements edited, 31 added, 4 removed, 35 did
+#     something different; a TypeError raised and caught only in head; unit_price float → str ...
+# stops (2):
+#   1. raise  shopkit/pricing.py:12 subtotal  TypeError: unsupported operand type(s) for +: 'int' and 'str' (caught, 1×)  a –  b#197
+#   2. type  shopkit/orders.py:30 parse_orders  unit_price: float → str (1249.0 → '1,249.00')  a#116  b#120
+# unreached changed lines (1):
+#   shopkit/discounts.py:8 changed line never ran  return settings.platinum_rate
+# edge candidates (2):
+#   E1 [boundary] shopkit/discounts.py:16 spend_tier_rate: `spend > threshold`: call spend_tier_rate with spend equal to threshold, and just above and below it; ...
+#   E2 [attribute] shopkit/discounts.py:8 loyalty_rate: `settings.platinum_rate`: ...
+# next: review stop 1 --say TEXT
+pyokka review stop 1 --say "the subtotal goes wrong here"
+# review shop-63650f1 · stops · stops 0/2 shown · findings 0 · tries 0
+# refused: --say names none of stop 1's values
+#     lines = [Line(sku='MON-27', qty=1, unit_price='1,249.00'), Line(sku='CBL-02', qty=3, unit_price=7.5)]
+#     TypeError: unsupported operand type(s) for +: 'int' and 'str'
+#     step 197
+# next: review stop 1 --say TEXT
+pyokka review stop 1 --say "line_total gives 1 * '1,249.00', the text itself; sum() starts at 0 and 0 + '1,249.00' raises TypeError. Line 13 catches it and line 15 returns 0.0: Ben's order is worth nothing."
+# review shop-63650f1 · stops · stops 1/2 shown · findings 0 · tries 0
+# step 197/435  shopkit/pricing.py:12  subtotal [error]
+# stack: subtotal shopkit/pricing.py:12 #197 ← build_invoice shopkit/invoices.py:21 #194 ← main main.py:16 #157 ← <module> main.py:21 #48
+# ... the block, calls:, values: and errors: as `context head.json 197` prints them ...
+# say: line_total gives 1 * '1,249.00', the text itself; ...
+# next: review stop 2 --say TEXT
+# ... stop 2 at shopkit/orders.py:30, its --say naming '1,249.00' ...
+pyokka review try --code /tmp/rv/t1.py --title "the export's quoted price"   # from shopkit.money import parse_money; print(parse_money('"1,249.00"'))
+# review shop-63650f1 · findings · stops 2/2 shown · findings 0 · tries 1
+#   t1  the export's quoted price  surface: headless
+#     output: 1,249.00
+# next: review finding add --file F --line L --severity blocker|major|minor --title T --step N --repro ID|CMD --fix TEXT
+pyokka review finding add --file shopkit/money.py --line 14 --severity blocker \
+  --title "parse_money keeps a thousands separator as text" --step 124 --repro t1 \
+  --fix "t = t.replace(',', '') before the match"
+# review shop-63650f1 · findings · stops 2/2 shown · findings 1 · tries 1
+#   f1 blocker  shopkit/money.py:14  parse_money keeps a thousands separator as text  step #124 parse_money
+#      reproduced: try t1
+#      fix: t = t.replace(',', '') before the match
+# next: review fix --patch FILE.diff
+# ... a try at the 500.0 boundary (--edge E1), finding f2 with a command repro and its --expect ...
+pyokka review report
+# review shop-63650f1 · findings · stops 2/2 shown · findings 2 · tries 2
+# refused: finding f2's reproduction no longer reproduces: `python3 -m unittest tests.test_discounts -v`
+#     printed nothing containing 'rate 0.0 for 500.0'
+# next: review fix --patch FILE.diff
+```
 
 ## Reports: exceptions, HTTP, graph
 
@@ -568,7 +722,7 @@ for.
 ## The browser page
 
 ```
-pyokka web FILE [--port N] [--open] [--no-watch] [--python PATH]
+pyokka web FILE [--port N] [--cwd DIR] [--open] [--no-watch] [--python PATH]
 pyokka web ctl [--port N] state | step over | debug start | eval EXPR | ...
 ```
 
@@ -582,14 +736,36 @@ the pause's values in a separate `python -I`, `scratchpad say TEXT --line N` for
 `pyokka web -h` lists every command. Exactly one tab may
 be open per page. docs/WEB.md is the full reference.
 
-The file's folder is the run's workspace root and working directory. Files outside it are library
-code: the Time Machine and the page's debugger skip them unless the panel's Settings > Step Into
-Library Code is on (next run; every installed package is instrumented too). `debug start` waits
-10 s for its first stop; a slower one answers `debug start reached neither a pause nor the end in
-10 s` while the run goes on: `debug state` says whether it is still running, and `wait-pause`
-(a cursor N, read before you send the request that pauses it) then `wait-pause --after N --timeout
-25000` waits for the pause. `--say TEXT` on a move puts the explanation in a bubble under the new line and a move without
-it clears the bubble; `say TEXT --line N` sets one without moving.
+When the person works in the page, drive that page with `pyokka web ctl --port PORT` or
+`pyokka_page`. `pyokka debug` and `pyokka_debug` drive VS Code, another window.
+
+- `state` first. `pages: 0` or `no page is open` means no tab is connected to that server: ask
+  them to open or reload `http://127.0.0.1:PORT/`. Do not open a browser yourself or start a
+  second server on another port; one tab per server.
+- To show another file, stop their server and start `pyokka web FILE --port PORT` on the same
+  port. The tab reconnects with the breakpoints it had, shown in its gutter, and they still decide
+  where `debug start` stops; `break LINE off` removes one in the main file.
+- The file's folder is the run's root and working directory. Code outside the root is library
+  code, which the Time Machine and the page's debugger neither stop in nor step into, so a
+  launcher in `/tmp` makes the whole project library code. `pyokka web FILE --cwd DIR` (`cwd` on
+  `pyokka_page` open) makes a DIR that holds the file both root and working directory (a DIR
+  elsewhere moves only the working directory): `pyokka web tests/test_routes.py --cwd .` from the
+  project root lets a test step into the code it calls. An older `pyokka web` answers `unexpected
+  argument --cwd`; then open a file whose folder holds the code, or ask the person: a launcher at
+  the project root that you delete afterwards, or Step Into Library Code ticked in the panel's
+  Settings (the gear), which takes effect on the next run and instruments every installed package.
+- `debug start` goes to the first breakpoint that can hit, else to the first statement, and
+  waits 10 s for it. A server or a slow test answers `debug start reached neither a pause nor the
+  end in 10 s` and keeps running; `debug state` says whether it still is. Read `wait-pause` (it
+  prints a cursor N), send the request that reaches the breakpoint if it is a server, then
+  `wait-pause --after N --timeout 25000`.
+- Explanations go on the page, in the bubble under the line, not in chat: `--say TEXT` on a move,
+  or `say TEXT --line N` once you have read the values the move returned. A recording move without
+  `--say` clears the bubble and a `debug` move leaves the old one. `state` shows it as `narration`.
+  Each reply carries the enclosing function as `block`, the current line marked `current`:
+  explain from it in the same message as the move. A reply without `block` comes from an older
+  page, which sends only the line's text as `code` and no code after a `debug` move; there, read
+  the function once before you step into it.
 
 ## Live only
 
@@ -648,6 +824,17 @@ pyokka tour RUN [--goal NAME|FILE:LINE] [--budget TOKENS] [--prose PATH] [--out 
 pyokka narrate RUN [--command CMD] [--dry-run]
 pyokka history RUN --out PATH [--at STEP|FILE:LINE]... [--var NAME]... [--why STEP NAME]...
         [--pause] [--prose PATH] [--pad N] [--limit K] [--lang L] [--scope] [--append] [--value-chars N]
+pyokka review start --base REF [--repo DIR] [--entry FILE | --test NODEID] [--pr FILE] [--python P] [--dir DIR] [-- ARGS]
+pyokka review stop N --say TEXT [--go-on] [--surface auto|page|vscode|chat] [--port P] [--session NAME]
+pyokka review ask FILE:LINE --say TEXT
+pyokka review skip N --why TEXT
+pyokka review look --expr EXPR [--step N]
+pyokka review try --code FILE | --expr EXPR [--inputs FILE] [--mocks FILE] [--edge E3] [--title T] [--port P]
+pyokka review finding add --file F --line L --severity blocker|major|minor --title T --step N --repro ID|CMD
+        [--expect TEXT] --fix TEXT
+pyokka review fix --patch FILE.diff [--tests CMD]
+pyokka review report [--out FILE]
+pyokka review state
 pyokka watch --live
 pyokka shell --live
 pyokka debug FILE [--at FILE:LINE|NAME]... [--module M] [--cwd DIR] [--env K=V]... [--python PATH]

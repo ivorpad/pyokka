@@ -432,7 +432,7 @@ def verify_command(args: Any, source: Any) -> dict:
                   "verified": bool(checks) and all(c["passed"] for c in checks) and after.finished.get("exitCode") == 0,
                   "coverage": _or_note(notes, "coverage", lambda: coverage_report(after)), "exceptions": _or_note(notes, "exceptions", after.exceptions)}
     if not checks:
-        notes.append("No --expect values given, so this comparison does not declare the fix correct.")
+        result["verdict"] = _verdict_without_expectations(result)
     if getattr(args, "test_out", None):
         import pprint
 
@@ -445,6 +445,21 @@ def verify_command(args: Any, source: Any) -> dict:
     return result
 
 
+def _verdict_without_expectations(result: dict) -> str:
+    """The last line of a ``verify`` without ``--expect``: still a verdict, so a reader never has to infer one from the diff.
+
+    A run that behaved like the baseline is a PASS; one that differs says in how many statements and
+    how to get a verdict on a value. The exit code stays 0 either way: only a failed expectation fails.
+    """
+    a, b = result["a"], result["b"]
+    total = int(result.get("total") or 0)
+    if not total and a.get("exitCode") == b.get("exitCode"):
+        return "PASS: no expectations given; the after run has no behaviour difference from the baseline"
+    if not total:
+        return "no expectations given; the runs end with different exit codes (%s → %s); pass --expect NAME=VALUE for a verdict" % (a.get("exitCode"), b.get("exitCode"))
+    return "no expectations given; the runs differ in %d statement%s (see above); pass --expect NAME=VALUE for a verdict" % (total, "" if total == 1 else "s")
+
+
 def render_verify(result: dict, source: Any, args: Any) -> list[str]:
     from .diff import render_diff
     from .render import _one_line
@@ -455,7 +470,10 @@ def render_verify(result: dict, source: Any, args: Any) -> list[str]:
         out.append("%s %s = %s%s (expected %s)%s" % ("PASS" if c["passed"] else "FAIL", c["name"], _one_line(c["actual"], 80) if c["actual"] is not None else "(no recorded value)", where, _one_line(c["expected"], 80), "; " + c["reason"] if c.get("reason") else ""))
     if result.get("test"):
         out.append("wrote %s: `python -m pytest %s` reruns the file and checks these values" % (result["test"], result["test"]))
-    out.append("verified: the expected values hold for this input" if result["verified"] else "not verified")
+    if result.get("verdict"):
+        out.append(str(result["verdict"]))
+    else:
+        out.append("verified: the expected values hold for this input" if result["verified"] else "not verified")
     return out
 
 

@@ -348,6 +348,8 @@ export function App() {
               onExceptions={(mode) => post({ type: 'debug.exceptions', mode })}
               onView={(v) => setView(v)}
               onControl={(action) => post({ type: 'debug.control', action })}
+              onSelectFrame={(index) => post({ type: 'debug.selectFrame', index })}
+              onExpand={(name, node) => post({ type: 'debug.expand', name, valueId: node.id, queryPath: node.queryPath })}
             />
           ) : state.view === 'story' ? (
             <StoryPane story={state.story} onPick={(line, open) => post({ type: 'story.pick', line, ...(open ? { open: true } : {}) })} onClose={() => setView(debuggerActive ? 'debugger' : 'output')} />

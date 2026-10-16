@@ -136,7 +136,7 @@ def test_unknown_protocol_version_gets_the_newest():
 def test_tools_list_has_the_eight_tools_with_schemas(session):
     replies, _, _ = session
     tools = {t["name"]: t for t in replies[2]["result"]["tools"]}
-    assert set(tools) == {"pyokka_run", "pyokka_map", "pyokka_step", "pyokka_value", "pyokka_coverage", "pyokka_debug", "pyokka_history", "pyokka_narrate", "pyokka_session", "pyokka_seek", "pyokka_save_investigation", "pyokka_open_investigation", "pyokka_investigate", "pyokka_learn", "pyokka_pin", "pyokka_verify", "pyokka_page", "pyokka_scratchpad"}
+    assert set(tools) == {"pyokka_run", "pyokka_map", "pyokka_step", "pyokka_value", "pyokka_coverage", "pyokka_debug", "pyokka_history", "pyokka_narrate", "pyokka_session", "pyokka_seek", "pyokka_save_investigation", "pyokka_open_investigation", "pyokka_investigate", "pyokka_learn", "pyokka_pin", "pyokka_verify", "pyokka_page", "pyokka_scratchpad", "pyokka_review"}
     for t in tools.values():
         assert t["description"]
         assert t["inputSchema"]["type"] == "object"

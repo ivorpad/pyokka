@@ -28,7 +28,7 @@ def _one_line(text: Any, limit: int = 160) -> str:
 
 
 RECORDING_STARTED = "; recording starts here, step 0"
-NOT_RECORDING_YET = "not recording yet: the recording starts at the --record-from pause; `record --live` starts it here"
+NOT_RECORDING_YET = "not recording yet: nothing before this pause was kept; `record --live` records from here (a `--record-from` run starts by itself at its pause)"
 
 
 def recording_suffix(paused: Any) -> str:

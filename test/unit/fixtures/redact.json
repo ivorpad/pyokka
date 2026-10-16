@@ -92,6 +92,14 @@
     [
       "MY_SERVICE_TOKEN=supersecretvalue",
       "MY_SERVICE_TOKEN=«redacted»"
+    ],
+    [
+      "if not self._small_node_tokens:\n    return []",
+      "if not self._small_node_tokens:\n    return []"
+    ],
+    [
+      "x = 1\napi_key = 'supersecretvalue'",
+      "x = 1\napi_key = '«redacted»'"
     ]
   ]
 }

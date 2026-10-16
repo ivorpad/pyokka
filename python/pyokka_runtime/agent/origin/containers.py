@@ -10,7 +10,7 @@ from __future__ import annotations
 import ast
 from typing import Any
 
-from ..reprs import path_text
+from ..reprs import Attr, path_text
 
 _APPENDERS = ("append", "add", "appendleft", "insert")
 
@@ -46,7 +46,15 @@ class ContainerMixin:
     def element_search(self, path: list, before: int, carried: str | None) -> None:
         """The container the value sat in is not followed further back: find the statement that put a value with this key and text into one."""
         key = next((k for k in reversed(path) if isinstance(k, str)), None)
-        tail = path[path.index(key) + 1:] if key is not None else []
+        if key is not None:
+            tail = path[path.index(key) + 1:]
+        else:
+            # an element by index: the part after the last index (a field of it, `[1].unit_price`) is matched on the inserted value
+            indices = [i for i, k in enumerate(path) if not isinstance(k, Attr)]
+            if not indices:
+                self.end = "the value is %s of an object the recording does not follow further" % path_text("…", path)
+                return
+            tail = path[indices[-1] + 1:]
         if carried is None:
             self.end = "the value sits at %s in a container the recording does not follow further" % path_text("…", path)
             return

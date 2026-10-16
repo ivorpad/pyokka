@@ -69,7 +69,7 @@ def render(command: str, result: dict, source: Any, args: Any) -> str:
         "steps": render_steps,
         "step": render_stop,
         "context": render_context,
-        "debug": render_stop,
+        "debug": render_debug_start,
         "continue": render_stop,
         "pause": render_stop,
         "restart": render_stop,
@@ -214,6 +214,19 @@ def render_stop(result: dict, source: Any, args: Any) -> list[str]:
     if result.get("resumed") or result.get("requested") or is_debug_reply(result):
         return render_debug_stop(result, source, args)
     return render_context(result, source, args)
+
+
+def render_debug_start(result: dict, source: Any, args: Any) -> list[str]:
+    """``debug``: the first stop, then the name the commands after it take with ``--session``."""
+    lines = render_stop(result, source, args)
+    session = result.get("session")
+    if isinstance(session, dict) and (session.get("name") or session.get("descriptor")):
+        import shlex
+
+        name, exact = session.get("name"), session.get("descriptor")
+        head = "pass --session %s to the commands that follow" % shlex.quote(str(name)) if name else "pass --session %s to the commands that follow" % shlex.quote(str(exact))
+        lines.append("session: %s%s" % (head, " (exactly this one: --session %s)" % shlex.quote(str(exact)) if name and exact else ""))
+    return lines
 
 
 def render_stopped(result: dict, source: Any, args: Any) -> list[str]:

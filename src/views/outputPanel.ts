@@ -47,7 +47,7 @@ export class OutputPanel implements vscode.WebviewViewProvider, TimeMachineSink,
   private readonly http = new HttpPaneHost((s, msg) => this.post(s, msg));
   /** the Details pane's "why" tree for the bound session, recomputed after every run until the pane closes it */
   private readonly why = new WhyPaneHost((s, msg) => this.post(s, msg));
-  private readonly debug = new DebugPanelHost((s, msg) => this.post(s, msg), (s) => this.pushDebugger(s));
+  private readonly debug = new DebugPanelHost((s, msg) => this.post(s, msg), (s) => this.pushDebugger(s), (view) => this.showView(view));
   /** the Debugger view: one live `record: false` session, independent of the bound run-all session */
   private debugView: DebuggerViewHost | undefined;
   /** observers of everything posted, for the e2e suite; empty in a real window */
@@ -472,6 +472,7 @@ export class OutputPanel implements vscode.WebviewViewProvider, TimeMachineSink,
       case 'debug.breakpoint.remove':
       case 'debug.exceptions':
       case 'debug.control':
+      case 'debug.expand':
         await this.debugView?.handle(msg);
         return;
       case 'openLocation':

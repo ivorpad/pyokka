@@ -103,6 +103,7 @@ esbuild.mjs` and a bridge restart, a tab with no unsaved edits reloads itself on
 | Option | |
 |---|---|
 | `--port N` | default 4777 (`PYOKKA_PORT`) |
+| `--cwd DIR` | run the file in DIR, and make DIR the project root when it holds the file, so the debugger stops and steps in the project's own modules (by default the file's folder is both, and code outside it is library code) |
 | `--runtime python` | the default: `python3 -m pyokka_runtime serve` from `dist/python` |
 | `--runtime "CMD ARGS"` | another command that runs the runtime and speaks the protocol on stdio, started in the file's directory (`PYOKKA_RUNTIME`), such as `uv run python -m pyokka_runtime serve` |
 | `--python PATH` | the interpreter for the Python runtime, 3.12+ (`PYOKKA_PYTHON`, default `python3`) |
@@ -122,7 +123,8 @@ through the three. A window narrower than 760px stacks the code over the panel.
 
 An agent (Claude Code, Codex, a script) drives the open page and reads back where it is. Every
 command answers with the page's state: the step, file, line and function, the source line, the
-variables of the current frame as of the step, the call stack, the values logged so far, the
+enclosing function's code (`block`, the current line marked `current`; a live pause's comes from
+the debugger), the variables of the current frame as of the step, the call stack, the values logged so far, the
 output and the errors.
 
 ```
@@ -159,6 +161,8 @@ without it clears the previous bubble. The same commands are the HTTP API the CL
 `GET /api/state`, and `POST /api/command` with a JSON body such as
 `{"action": "step", "kind": "over", "say": "..."}` (see `AgentCommand` in
 `web/bridgeProtocol.ts`). A command needs a page open; without one the API answers 409.
+`ctl` (and MCP's `pyokka_page`) tells a closed port (`no Pyokka page is served`) from a connection
+the system refused, which is what a sandbox without network access does to a page that is open.
 
 ### Control checks
 

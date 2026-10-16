@@ -1,2 +1,5 @@
+interface:
+  display_name: "Pyokka"
+  short_description: "Debug, explain, review or show what Python code does, with a recording or a live debugger the person watches"
 policy:
   allow_implicit_invocation: false

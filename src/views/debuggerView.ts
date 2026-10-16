@@ -9,7 +9,13 @@
  * per tick and re-`redact()`ed text the view already had). The full `debug.session` stays the
  * initial sync and the recovery path: the view asks for one with `debug.output.resync` whenever a
  * delta does not start at the offset it holds. A frame click scopes locals and eval to that frame:
- * the host reveals it, re-reads `debugLocals({frameId})` and resends the state.
+ * the host reveals it, re-reads `debugLocals({frameId})` and resends the state. A member of a
+ * local the runtime has not sent (`debug.expand`) is loaded here and spliced into the cached
+ * locals, so every later state carries it and the view's open rows survive the next push.
+ *
+ * Displayed watches are evaluated at the pause they are read at, whoever added them: the view's
+ * `+`, or the bridge's `watches --add` on the session itself, which used to show `no value at this
+ * stop` until the next pause because only the view's own add evaluated.
  */
 import * as vscode from 'vscode';
 import * as path from 'node:path';
@@ -18,22 +24,53 @@ import type { DebugSessionManager } from '../debug/debugSessionManager';
 import { launchLine } from '../debug/debugSessionState';
 import { exceptionText, type ExceptionMode, type LocalVar } from '../session/debugState';
 import { currentFunctionBreakpoints, currentSourceBreakpoints } from '../features/debugBreakpoints';
+import { spliceNode } from '../shared/valueNodes';
 import type { DebugSessionBreakpoint, DebugSessionFrame, DebugSessionPanel, DebugSessionWatch, HostToWebview, WebviewToHost } from '../shared/webviewProtocol';
 import { redact } from '../util/redact';
 import { log } from '../util/log';
 
-export type DebugViewMessage = Extract<WebviewToHost, { type: 'debug.selectFrame' | 'debug.watch.add' | 'debug.watch.edit' | 'debug.watch.remove' | 'debug.breakpoint.remove' | 'debug.exceptions' | 'debug.control' | 'debug.output.resync' }>;
+export type DebugViewMessage = Extract<WebviewToHost, { type: 'debug.selectFrame' | 'debug.watch.add' | 'debug.watch.edit' | 'debug.watch.remove' | 'debug.breakpoint.remove' | 'debug.exceptions' | 'debug.control' | 'debug.output.resync' | 'debug.expand' }>;
 
 /** The output pane is resent at most this often while the program prints. */
 const OUTPUT_THROTTLE_MS = 100;
 
+/** A displayed watch's value at the current pause: the expression it was read for, and its text when it had one. */
+interface WatchValue {
+  exp: string;
+  text?: string;
+}
+
+/** Per-watch entries that belong to one pause step in one frame; another step or frame starts a new bucket. */
+interface Bucket<T> {
+  step: number;
+  frameId: number;
+  byId: Map<string, T>;
+}
+
+/** The bucket for this step and frame, started fresh when the stored one is another's. */
+function bucket<T>(store: Map<string, Bucket<T>>, id: string, step: number, frameId: number): Map<string, T> {
+  const cur = store.get(id);
+  if (cur && cur.step === step && cur.frameId === frameId) return cur.byId;
+  const byId = new Map<string, T>();
+  store.set(id, { step, frameId, byId });
+  return byId;
+}
+
+/** The bucket for this step and frame when there is one; nothing is started. */
+function current<T>(store: Map<string, Bucket<T>>, id: string, step: number, frameId: number): Map<string, T> | undefined {
+  const cur = store.get(id);
+  return cur && cur.step === step && cur.frameId === frameId ? cur.byId : undefined;
+}
+
 export class DebuggerViewHost {
-  /** the frame the view is scoped to, per session */
-  private readonly selected = new Map<string, number>();
+  /** the frame the view is scoped to, per session, for one pause step: a new stop reads the top frame, as the Call Stack view does */
+  private readonly selected = new Map<string, { step: number; frameId: number }>();
   /** the locals of the selected frame, per session, valid for the pause step they were read at */
   private readonly locals = new Map<string, { step: number; frameId: number; locals: LocalVar[] }>();
-  /** the value of each displayed watch at the current pause, per session (the list is the session's) */
-  private readonly values = new Map<string, Map<string, { text?: string; error?: string }>>();
+  /** the value of each displayed watch, per session, read at one pause step in one frame (the list is the session's) */
+  private readonly values = new Map<string, Bucket<WatchValue>>();
+  /** the evaluations in flight, same key, so three `changed` events (or `changed` right before `paused`) do not ask twice */
+  private readonly pending = new Map<string, Bucket<Promise<void>>>();
   private readonly detach: (() => void)[] = [];
   private throttle: NodeJS.Timeout | undefined;
   private counter = 0;
@@ -68,16 +105,29 @@ export class DebuggerViewHost {
     ds.on('output', () => this.scheduleOutput());
     ds.on('paused', (info) => void this.fetchLocals(ds, info.step));
     ds.on('resumed', () => {
+      // the values belonged to that stop; while the program runs the rows say `at the next pause`
       this.locals.delete(ds.id);
+      this.values.delete(ds.id);
+      this.pending.delete(ds.id);
       this.push();
     });
+    // a displayed watch added on the session itself (the bridge's `watches --add`): its value at this pause
+    ds.on('changed', () => void this.refreshMissing(ds));
     ds.once('ended', () => {
       this.selected.delete(ds.id);
       this.locals.delete(ds.id);
       this.values.delete(ds.id);
+      this.pending.delete(ds.id);
       this.sentSeq.delete(ds.id);
       this.sentOpen.delete(ds.id);
     });
+  }
+
+  /** The frame the view is scoped to at the current pause: the one clicked at this stop, else the top one. */
+  private frameOf(ds: DebugSession): number {
+    const s = this.selected.get(ds.id);
+    const p = ds.debug.paused;
+    return s && p && s.step === p.step ? s.frameId : 0;
   }
 
   /** Send the view's state (null when no debug session exists). */
@@ -125,8 +175,9 @@ export class DebuggerViewHost {
     const d = ds.debug;
     const p = d.paused;
     const root = ds.workspaceRoot;
-    const selectedFrame = this.selected.get(ds.id) ?? 0;
+    const selectedFrame = this.frameOf(ds);
     const cached = this.locals.get(ds.id);
+    const localsRead = !!cached && !!p && cached.step === p.step && cached.frameId === selectedFrame;
     return {
       id: ds.id,
       displayName: ds.displayName,
@@ -142,8 +193,9 @@ export class DebuggerViewHost {
       ...(p?.thread ? { thread: p.thread } : {}),
       stack: p ? frames(ds, root) : [],
       selectedFrame,
-      locals: cached && p && cached.step === p.step && cached.frameId === selectedFrame ? cached.locals.map((v) => ({ name: v.name, text: redact(v.text), ...(v.valueBag ? { valueBag: v.valueBag } : {}) })) : [],
-      watches: watches(ds, this.values.get(ds.id)),
+      locals: localsRead ? cached.locals.map((v) => ({ name: v.name, text: redact(v.text), ...(v.valueBag ? { valueBag: v.valueBag } : {}) })) : [],
+      ...(p && !localsRead ? { localsPending: true } : {}),
+      watches: watches(ds, p ? current(this.values, ds.id, p.step, selectedFrame) : undefined),
       output: ds.outputLog.all(),
       outputOpen: ds.outputLog.openLine(),
       outputSeq: ds.outputLog.seq,
@@ -164,13 +216,20 @@ export class DebuggerViewHost {
     try {
       switch (msg.type) {
         case 'debug.selectFrame': {
-          this.selected.set(ds.id, msg.index);
-          const frame = ds.debug.paused?.stack[msg.index];
+          const p = ds.debug.paused;
+          if (!p) return;
+          this.selected.set(ds.id, { step: p.step, frameId: msg.index });
+          // the locals and the watches of that frame follow; until then the state says they are being read
+          this.push();
+          const frame = p.stack[msg.index];
           const file = frame?.fileId !== undefined ? ds.pathForFileId(frame.fileId) : undefined;
           if (file && frame?.line) await reveal(file, frame.line);
           await this.fetchLocals(ds, ds.debug.paused?.step ?? -1);
           return;
         }
+        case 'debug.expand':
+          await this.expandLocal(ds, msg.name, msg.valueId, msg.queryPath);
+          return;
         case 'debug.watch.add': {
           if (msg.breakWhen) await ds.setDebugWatches([...ds.debug.watches, { id: `w${++this.counter}`, exp: msg.exp, breakWhen: msg.breakWhen }]);
           else {
@@ -183,8 +242,8 @@ export class DebuggerViewHost {
         case 'debug.watch.edit': {
           const row = ds.displayWatches.find((w) => w.id === msg.id);
           if (row) {
+            // the value kept is the old expression's, so the refresh reads this one
             row.exp = msg.exp;
-            this.values.get(ds.id)?.delete(msg.id);
             await this.refreshDisplayed(ds);
           } else {
             await ds.setDebugWatches(ds.debug.watches.map((w) => (w.id === msg.id ? { ...w, exp: msg.exp } : w)));
@@ -194,7 +253,7 @@ export class DebuggerViewHost {
         }
         case 'debug.watch.remove': {
           ds.removeDisplayWatch(msg.id);
-          this.values.get(ds.id)?.delete(msg.id);
+          this.values.get(ds.id)?.byId.delete(msg.id);
           if (ds.debug.watches.some((w) => w.id === msg.id)) await ds.setDebugWatches(ds.debug.watches.filter((w) => w.id !== msg.id));
           this.push();
           return;
@@ -247,12 +306,13 @@ export class DebuggerViewHost {
   }
 
   private async fetchLocals(ds: DebugSession, step: number): Promise<void> {
-    const frameId = this.selected.get(ds.id) ?? 0;
+    const frameId = this.frameOf(ds);
     if (step < 0) return;
     try {
       const locals = await ds.debugLocals({ frameId });
-      if (ds.debug.paused?.step !== step) return; // the program moved on meanwhile
-      this.locals.set(ds.id, { step, frameId, locals });
+      if (ds.debug.paused?.step !== step || this.frameOf(ds) !== frameId) return; // the program or the reader moved on meanwhile
+      // a copy: `debug.expand` writes loaded members into this list
+      this.locals.set(ds.id, { step, frameId, locals: [...locals] });
       await this.refreshDisplayed(ds);
       this.push();
     } catch (err) {
@@ -260,16 +320,78 @@ export class DebuggerViewHost {
     }
   }
 
-  /** Evaluate every displayed watch in the selected frame; the values are keyed by watch id. */
-  private async refreshDisplayed(ds: DebugSession): Promise<void> {
-    if (!ds.displayWatches.length || !ds.debug.paused) return;
-    const frameId = this.selected.get(ds.id) ?? 0;
-    const values = this.values.get(ds.id) ?? new Map<string, { text?: string; error?: string }>();
-    this.values.set(ds.id, values);
-    for (const w of ds.displayWatches) {
-      const r = await ds.evaluate(w.exp, { frameId });
-      values.set(w.id, r ? { text: r.text } : { error: 'not evaluable here' });
+  /**
+   * A member of the local `name` that the runtime has not sent: `expand` it in the paused run and
+   * keep it in the cached locals, so the state sent from now on carries it (the view's open rows
+   * survive the next push). The state is resent whatever happened, which also ends the view's
+   * loading twist when nothing came back.
+   */
+  private async expandLocal(ds: DebugSession, name: string, valueId: string, queryPath: string[]): Promise<void> {
+    const cached = this.locals.get(ds.id);
+    const p = ds.debug.paused;
+    const i = cached?.locals.findIndex((l) => l.name === name) ?? -1;
+    const local = cached?.locals[i];
+    if (!cached || !p || cached.step !== p.step || !local?.valueBag) return;
+    try {
+      const node = await ds.expand(valueId, queryPath);
+      if (node && ds.debug.paused?.step === p.step && this.locals.get(ds.id) === cached) {
+        cached.locals[i] = { ...local, valueBag: { ...local.valueBag, data: spliceNode(local.valueBag.data, node) } };
+      }
+    } finally {
+      this.push();
     }
+  }
+
+  /**
+   * The displayed watches that have no value for this pause (or were read for another expression:
+   * the bridge's `--set` reuses ids): evaluate them and resend the state. A no-op when every row
+   * has its value, which is what every other `changed` event finds.
+   */
+  private async refreshMissing(ds: DebugSession): Promise<void> {
+    const p = ds.debug.paused;
+    if (!p) return;
+    const frameId = this.frameOf(ds);
+    const values = current(this.values, ds.id, p.step, frameId);
+    const pending = current(this.pending, ds.id, p.step, frameId);
+    if (!ds.displayWatches.some((w) => values?.get(w.id)?.exp !== w.exp && !pending?.has(w.id))) return;
+    await this.refreshDisplayed(ds);
+    this.push();
+  }
+
+  /**
+   * Evaluate every displayed watch that has no value yet, in the selected frame, and wait for the
+   * ones already being evaluated; the values are keyed by watch id. A watch with no value at this
+   * pause (a name not bound yet, a call the pure rule refuses) keeps none, and the row says `no
+   * value at this stop`, which is the truth, rather than an error text the runtime never sent.
+   * A value is dropped when the program or the selected frame moved on while it was being read.
+   */
+  private refreshDisplayed(ds: DebugSession): Promise<void> {
+    const p = ds.debug.paused;
+    if (!ds.displayWatches.length || !p) return Promise.resolve();
+    const step = p.step;
+    const frameId = this.frameOf(ds);
+    const values = bucket(this.values, ds.id, step, frameId);
+    const pending = bucket(this.pending, ds.id, step, frameId);
+    const waits: Promise<void>[] = [];
+    for (const w of ds.displayWatches) {
+      if (values.get(w.id)?.exp === w.exp) continue;
+      let job = pending.get(w.id);
+      if (!job) {
+        const run = ds
+          .evaluate(w.exp, { frameId })
+          .then((r) => {
+            if (ds.debug.paused?.step !== step || this.frameOf(ds) !== frameId) return;
+            values.set(w.id, r ? { exp: w.exp, text: r.text } : { exp: w.exp });
+          })
+          .finally(() => {
+            if (pending.get(w.id) === run) pending.delete(w.id);
+          });
+        pending.set(w.id, run);
+        job = run;
+      }
+      waits.push(job);
+    }
+    return Promise.all(waits).then(() => undefined);
   }
 }
 
@@ -330,10 +452,10 @@ function frames(ds: DebugSession, root: string): DebugSessionFrame[] {
   });
 }
 
-function watches(ds: DebugSession, values: Map<string, { text?: string; error?: string }> | undefined): DebugSessionWatch[] {
+function watches(ds: DebugSession, values: Map<string, WatchValue> | undefined): DebugSessionWatch[] {
   const out: DebugSessionWatch[] = ds.displayWatches.map((w) => {
     const v = values?.get(w.id);
-    return { id: w.id, exp: w.exp, kind: 'display' as const, ...(v?.error ? { error: v.error } : v?.text !== undefined ? { text: redact(v.text) } : {}) };
+    return { id: w.id, exp: w.exp, kind: 'display' as const, ...(v?.exp === w.exp && v.text !== undefined ? { text: redact(v.text) } : {}) };
   });
   for (const w of ds.debug.watches) out.push({ id: w.id, exp: w.exp, kind: 'breakWhen', breakWhen: w.breakWhen });
   return out;

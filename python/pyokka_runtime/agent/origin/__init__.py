@@ -31,7 +31,8 @@ from __future__ import annotations
 import ast
 from typing import TYPE_CHECKING, Any
 
-from ..reprs import parse, path_text, project, text_of, type_of, type_of_value
+from ..reprs import UNKNOWN, parse, path_text, project, text_of, type_of, type_of_value
+from .exprs import explain_missing
 from .need import Need, need_from_error
 from .walk import ORIGIN_DEPTH, ORIGIN_MAX_DEPTH, OriginBuilder
 
@@ -74,11 +75,13 @@ def origin(run: "SavedRun", step: int, expr: str = "", depth: int = ORIGIN_DEPTH
             tree = None
         node = b.stmt(step)
         comp = b.comprehension_targets(node) if node is not None else {}
-        hits = b.evaluate(tree, step, comp) if isinstance(tree, (ast.Name, ast.Subscript)) else []
+        hits = b.evaluate(tree, step, comp) if isinstance(tree, (ast.Name, ast.Subscript, ast.Attribute)) else []
+        # a part the recording does not show (an object's attribute, a key past a cut) is no value to start from
+        hits = [h for h in hits if h[2] is not UNKNOWN]
         if need is not None and need.kind == "type":
             hits = [h for h in hits if type_of_value(h[2]) == need.bad] or hits
         if not hits:
-            out["end"] = "%s has no recorded value at #%d; give a name or a subscript of one (items[0][\"price\"])" % (expr.strip(), step)
+            out["end"] = explain_missing(b, tree, expr.strip(), step)
             out["reads"] = [r for r in b.history.reads_for(step) if type_of(r.get("text")) != "function" and not str(r.get("text", "")).startswith("<class ")]
             return out
         base, path, value = hits[0]

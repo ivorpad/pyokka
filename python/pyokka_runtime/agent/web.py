@@ -5,11 +5,12 @@ beside ``<ext>/dist/python`` in an installed extension, ``<repo>/dist/web`` afte
 in a checkout. It runs under ``node``, else under the Node inside VS Code (its Electron binary with
 ``ELECTRON_RUN_AS_NODE=1``, as VS Code's own ``code`` command runs); every argument goes to the bridge:
 
-    pyokka web FILE [--port N] [--open] [--no-watch] [--verbose] [--python PATH]
+    pyokka web FILE [--port N] [--cwd DIR] [--open] [--no-watch] [--verbose] [--python PATH]
     pyokka web ctl [--port N] state | step over --say TEXT | debug start | ...
 
 The bridge prints its own JSON; this module adds only the errors an agent hits before the bridge
-can answer: no build, no ``node``, a taken port, nothing served on the port.
+can answer: no build, no ``node``, a taken port, nothing served on the port, and a sandbox that
+blocks the connection (which would otherwise look like nothing served).
 """
 
 from __future__ import annotations
@@ -101,10 +102,18 @@ def node_command(env: dict | None = None) -> tuple[str, dict[str, str]]:
     raise AgentError(*NO_NODE)
 
 
+BLOCKED = "the connection to 127.0.0.1:%d was refused by the system (%s), not by a server: a sandbox without network access blocks it, whether or not a page is open"
+BLOCKED_HINT = "run this outside the sandbox (in Codex, with network access); inside it every port looks closed"
+
+
 def listening(port: int, timeout: float = 1.0) -> bool:
+    """Whether something answers on 127.0.0.1:``port``. A connection the system itself refuses
+    (``PermissionError``: a sandbox without network access) raises instead, since "no page" would be a guess."""
     try:
         with socket.create_connection(("127.0.0.1", port), timeout=timeout):
             return True
+    except PermissionError as exc:
+        raise AgentError(BLOCKED % (port, exc.strerror or "Operation not permitted"), BLOCKED_HINT) from None
     except OSError:
         return False
 

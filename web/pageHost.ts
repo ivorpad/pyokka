@@ -1017,7 +1017,13 @@ export class PageHost {
     const have = this.sourceOf(fileId);
     if (have !== undefined) return Promise.resolve(have.split(/\r?\n/));
     const path = this.run?.files.get(fileId)?.path;
-    if (!path) return Promise.resolve(undefined);
+    return path ? this.fetchPath(path) : Promise.resolve(undefined);
+  }
+
+  /** The lines of a file a run instrumented, by path: the copy the page has, else the bridge's (undefined after 5 s). */
+  fetchPath(path: string): Promise<string[] | undefined> {
+    const have = this.sources.get(path);
+    if (have !== undefined) return Promise.resolve(have.split(/\r?\n/));
     return new Promise((resolve) => {
       const list = this.sourceWaiters.get(path) ?? [];
       const t = setTimeout(() => resolve(undefined), 5000);

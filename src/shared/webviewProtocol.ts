@@ -220,7 +220,10 @@ export interface DebugSessionPanel {
   thread?: { name: string; ident: number };
   stack: DebugSessionFrame[];
   selectedFrame: number;
+  /** the selected frame's variables; the Frame section's tree, with members loaded through `debug.expand` kept in them */
   locals: { name: string; text: string; valueBag?: ValueBag }[];
+  /** paused, and the frame's variables are still being read: the section says so instead of "no variables" */
+  localsPending?: boolean;
   watches: DebugSessionWatch[];
   /** the committed tail the host keeps (64 KB) as tagged chunks; afterwards only deltas */
   output: DebugOutputChunk[];
@@ -462,8 +465,10 @@ export type WebviewToHost =
   | { type: 'debug.exceptions'; mode: 'off' | 'uncaught' | 'raised' }
   /** the view missed bytes (a gap, or a run it did not see start): send the whole window again */
   | { type: 'debug.output.resync' }
-  /** next to the title-bar commands, so the view works when the title bar overflows */
+  /** the Frame section's step controls at a pause, and Pause / Restart / Stop in the Running header */
   | { type: 'debug.control'; action: 'continue' | 'pause' | 'stepOver' | 'stepInto' | 'stepOut' | 'restart' | 'stop' }
+  /** a member of the local `name` the runtime has not sent yet: `expand` it in the paused run; the next `debug.session` carries it */
+  | { type: 'debug.expand'; name: string; valueId: string; queryPath: string[] }
   | { type: 'watch.remove'; id: string }
   | { type: 'watch.refresh'; id: string }
   | { type: 'watch.add'; exp: string }

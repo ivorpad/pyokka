@@ -7,7 +7,8 @@
  *
  *   node scripts/preview-debugger-view.mjs     # build, write the pages, screenshot each state
  *
- * The state is the page's `?state=` (`paused`, `running`, `exception`).
+ * The state is the page's `?state=` (`paused`, `running`, `exception`); `?open=scores,best` opens
+ * those rows of the Frame section's variables tree, which is internal state the host never sends.
  */
 import { render } from 'preact';
 import { DebugSessionView } from '../../webview/components/DebuggerView';
@@ -39,6 +40,24 @@ const REQUEST = bag(
   ]),
 );
 
+/** The RRF pause the Frame section was built for: a dict of scores, a dataclass, an int, and a list cut by the runtime. */
+const SCORES = bag(
+  node('dict', "{'doc-a': 0.0312, 'doc-b': 0.0164, 'doc-c': 0.0161}", [
+    { name: 'doc-a', n: node('number', '0.0312') },
+    { name: 'doc-b', n: node('number', '0.0164') },
+    { name: 'doc-c', n: node('number', '0.0161') },
+  ]),
+);
+const BEST = bag(
+  node('Candidate', "Candidate(doc='doc-a', score=0.0312, sources=['bm25', 'dense'])", [
+    { name: 'doc', n: node('str', "'doc-a'") },
+    { name: 'score', n: node('number', '0.0312') },
+    { name: 'sources', n: node('list', undefined, [{ name: '0', n: node('str', "'bm25'") }, { name: '1', n: node('str', "'dense'") }]) },
+  ]),
+);
+/** a dict the runtime cut at this depth: `expandable` with no members sent, so opening it asks the runtime */
+const INDEX = bag(node('dict', '{…}', undefined, { expandable: true, length: 1200 }));
+
 /** (a) paused at the breakpoint, exactly the session of the screenshot: `-m api.main`. */
 export const PAUSED: DebugSessionPanel = {
   id: 'debug-1',
@@ -60,8 +79,19 @@ export const PAUSED: DebugSessionPanel = {
     { frameId: 3, name: '_bootstrap', file: 'threading.py', line: 1044, library: true },
   ],
   selectedFrame: 0,
-  locals: [{ name: 'request', text: 'RankRequest(rankings=[[3, 1, 2], [1, 3]], k=60, weights=None)', valueBag: REQUEST }],
-  watches: [{ id: 'w1', exp: 'len(request.rankings)', kind: 'breakWhen', breakWhen: 'true' }],
+  locals: [
+    { name: 'request', text: 'RankRequest(rankings=[[3, 1, 2], [1, 3]], k=60, weights=None)', valueBag: REQUEST },
+    { name: 'scores', text: "{'doc-a': 0.0312, 'doc-b': 0.0164, 'doc-c': 0.0161}", valueBag: SCORES },
+    { name: 'best', text: "Candidate(doc='doc-a', score=0.0312, sources=['bm25', 'dense'])", valueBag: BEST },
+    { name: 'k', text: '60', valueBag: bag(node('number', '60')) },
+    { name: 'index', text: '{…}', valueBag: INDEX },
+  ],
+  watches: [
+    { id: 'd1', exp: 'rankings', kind: 'display', text: '[[3, 1, 2], [1, 3]]' },
+    { id: 'd2', exp: 'k', kind: 'display', text: '60' },
+    { id: 'd3', exp: 'fused', kind: 'display' },
+    { id: 'w1', exp: 'len(request.rankings)', kind: 'breakWhen', breakWhen: 'true' },
+  ],
   output: [],
   outputOpen: null,
   outputSeq: 0,
@@ -139,10 +169,11 @@ export const STATES: Record<string, DebugSessionPanel> = { paused: PAUSED, runni
 
 const query = new URLSearchParams(location.search);
 const which = query.get('state') ?? 'paused';
+const open = (query.get('open') ?? '').split(',').filter(Boolean);
 const root = document.getElementById('root');
 if (root) {
   render(
-    <DebugSessionView state={STATES[which] ?? PAUSED} onOpen={noop} onWatchAdd={noop} onWatchRemove={noop} onBreakpointRemove={noop} onExceptions={noop} />,
+    <DebugSessionView state={STATES[which] ?? PAUSED} onOpen={noop} onWatchAdd={noop} onWatchRemove={noop} onBreakpointRemove={noop} onExceptions={noop} onControl={noop} onSelectFrame={noop} onExpand={noop} initiallyOpen={open} />,
     root,
   );
   // `?add=1` opens the watch add row, which is internal state: the page clicks the header's `+`

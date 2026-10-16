@@ -44,6 +44,7 @@ import { registerDebugUriHandler, handleDebugUri } from './debug/debugUri';
 import { registerDebugInlineValues } from './debug/debugInlineValues';
 import { resetDebugContext } from './debug/debugContext';
 import { parseLaunch } from './debug/debugSessionState';
+import { initialDebugView } from './debug/debugViewRule';
 import { DebugStatusBar } from './views/debugStatusBar';
 import { setting } from './config/settings';
 import { Narrator } from './features/narrator';
@@ -112,14 +113,17 @@ export function activate(context: vscode.ExtensionContext): PyokkaApi {
   const statusBar = new StatusBar(mgr);
   const debugStatusBar = new DebugStatusBar(debugSessions);
   panel.setDebugSessions(debugSessions);
-  // a debug session brings the panel to the Debugger view, under the setting a run-all start obeys
-  // (outputPanel.ts does the same for a run). Every route lands here: F5 and the commands through
-  // the DAP adapter, the URI handler, and both bridge sockets all create the session in the
-  // registry. Only a new session, never a restart and never a pause: the caret stays where it is.
+  // a debug session brings the panel to wherever its values are (debugViewRule.ts: the Debugger
+  // view's Frame section for a plain session; a recording run is a run-all session and
+  // views/debugPanel.ts brings it to the Time Machine at its first pause), under the setting a
+  // run-all start obeys (outputPanel.ts does the same for a run). Every route lands here: F5 and
+  // the commands through the DAP adapter, the URI handler, and both bridge sockets all create the
+  // session in the registry. Only a new session, never a restart and never a pause: the caret
+  // stays where it is.
   debugSessions.on('sessionStarted', (ds) => {
     if (!setting<boolean>('showOutputOnStart', true, vscode.Uri.file(ds.launch.program ?? ds.launch.cwd))) return;
     // one macrotask later, after the context keys set just above have reached VS Code
-    setTimeout(() => panel.showView('debug'), 0);
+    setTimeout(() => panel.showView(initialDebugView(ds.launch)), 0);
   });
   // the first HTTP recording in a workspace: offer once to keep .pyokka/replay/ out of git
   const replayGitignore = offerReplayGitignore(mgr, context);
