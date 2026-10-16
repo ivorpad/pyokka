@@ -4,7 +4,9 @@
 the same interpreter, arguments and cwd as the head recording, so ``stop`` moves its Time Machine to
 the step ``head.json`` names. ``--surface page`` serves the browser page instead (a ``pyokka web``
 process the review started, so the review stops it) and ``--surface chat`` opens nothing. A review of
-one test has no recording session in VS Code, so it stays in chat and says so.
+one test has no view at all: ``pyokka debug FILE --record`` and ``pyokka web FILE`` run the test file as
+a program, which is another run than the test's (its imports and definitions, not the test), so the
+review stays in chat and says so, and no hint of this module names either command for it.
 
 Nothing here raises: a view that would not open is reported in ``start``'s answer and the review goes
 on in chat. What was opened is kept in the review state under ``view``; ``report`` and ``close`` stop
@@ -17,6 +19,7 @@ from __future__ import annotations
 
 import json
 import os
+import shlex
 import signal
 import subprocess
 import sys
@@ -45,18 +48,29 @@ def code_found() -> str:
     return ("found at %s" % path) if path else ("not found; on a Mac it ships at %s" % MAC_CODE)
 
 
-def start_hints(entry: str, root: str) -> tuple[str, str]:
-    """The commands that open a view on the entry, each as the CLI and the MCP call: a VS Code recording session and the page."""
-    vs = {"action": "start", "file": entry, "record": True, "cwd": root}
+def one_test_note(test: Any) -> str:
+    """Why a review of one test has no view: the two commands that open one run the file, not the test."""
+    return ("a review of one test (%s) has no recording session in VS Code and no page: pyokka debug and pyokka web run the test file as a program, "
+            "another run than the test's (its imports and definitions, not the test), so its stops print in the conversation" % test)
+
+
+def start_hints(entry: str, root: str, argv: Any = None, test: Any = None) -> tuple[str, str]:
+    """The commands that open a view on the entry, each as the CLI and the MCP call: a VS Code recording session and the page,
+    run with the review's arguments. For a review of one test both are the reason there is none: neither command runs a test."""
+    if test:
+        return one_test_note(test), one_test_note(test)
+    args = [str(a) for a in (argv or [])]
+    vs = {"action": "start", "file": entry, "record": True, "cwd": root, **({"args": args} if args else {})}
     page = {"action": "open", "file": entry, "cwd": root}
-    return ("pyokka debug %s --record --cwd %s (MCP: pyokka_debug %s), let it finish; VS Code needs the pyokka.agentAccess setting on and the code command (%s)" % (entry, root, json.dumps(vs), code_found()),
+    with_args = (" --args " + shlex.join(args)) if args else ""
+    return ("pyokka debug %s --record --cwd %s%s (MCP: pyokka_debug %s), let it finish; VS Code needs the pyokka.agentAccess setting on and the code command (%s)" % (entry, root, with_args, json.dumps(vs), code_found()),
             "pyokka web %s --cwd %s (MCP: pyokka_page %s), then open its URL in one browser tab" % (entry, root, json.dumps(page)))
 
 
 def data_hints(data: dict) -> tuple[str, str]:
-    """``start_hints`` for a review's state: the entry under the repository, run from the repository."""
+    """``start_hints`` for a review's state: the entry under the repository, run from the repository with the review's arguments."""
     repo = str(data.get("repo") or "REPO")
-    return start_hints(os.path.join(repo, str(data.get("entry") or "ENTRY")), repo)
+    return start_hints(os.path.join(repo, str(data.get("entry") or "ENTRY")), repo, data.get("argv"), data.get("test"))
 
 
 def wanted(f: dict) -> str:
@@ -68,10 +82,11 @@ def wanted(f: dict) -> str:
 def open_view(data: dict, f: dict) -> tuple[dict, list[str]]:
     """``(view, lines)``: what ``start`` opened, for the state, and the lines that tell the person (and the agent) where to look."""
     kind = wanted(f)
+    if data.get("test"):
+        note = one_test_note(data["test"])
+        return {"kind": "chat", "why": "test"}, ["view: chat. %s%s; your text is the review." % (note[0].upper(), note[1:])]
     if kind == "chat":
         return {"kind": "chat"}, ["view: chat. Stops print in the conversation and move no editor or page; your text is the review. To show them later: %s; or %s." % data_hints(data)]
-    if kind == "vscode" and data.get("test"):
-        return {"kind": "chat", "why": "test"}, ["view: chat. A review of one test has no recording session in VS Code, so its stops print in the conversation."]
     return _open(kind, data, f)
 
 
@@ -213,4 +228,4 @@ def close_previous(directory: str) -> None:
         close_view(old)
 
 
-__all__ = ["close_previous", "close_view", "code_found", "data_hints", "open_view", "start_hints", "wanted"]
+__all__ = ["close_previous", "close_view", "code_found", "data_hints", "one_test_note", "open_view", "start_hints", "wanted"]

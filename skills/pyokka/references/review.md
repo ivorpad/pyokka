@@ -70,8 +70,11 @@ Pyokka session and no `code` command is refused before recording. `--surface pag
 `--port` and opens the browser tab; `start` checks the port before it records and refuses a taken
 one. The review stops that server at `report` or `review close` (the VS Code recording stays).
 `--surface chat`, or `$PYOKKA_REVIEW_SURFACE=chat`, opens nothing. A review of one `--test` stays in
-chat, since VS Code records files. When a view did not open, the `view:` line says why and names
-both commands that open one.
+chat whatever surface was asked: `pyokka debug FILE --record` and `pyokka web FILE` run the test file
+as a program, which is another run than the test's (its imports and definitions, not the test), so
+no view can show its steps and no hint names either command for it; a `stop --surface vscode` or
+`page` on it is refused with `next:` the same stop in chat. When a view did not open, the `view:`
+line says why and, for an entry, names both commands that open one.
 
 For `stop` and `ask`, `--surface auto`, the default, takes the first that answers; `--port P` (default `$PYOKKA_PORT`,
 else 4777) names the page, `--session NAME` the VS Code session. The page, open on the review's
@@ -84,8 +87,10 @@ Only a session on the review's entry counts (`--session NAME` names another).
 `--surface vscode` or `--surface page` with nothing answering is refused: the stop stays unshown,
 `--go-on` is not spent, and `next:` names the command that starts the view and the same stop to run
 after it. To start VS Code yourself run `pyokka debug ENTRY --record --cwd REPO` (MCP: `pyokka_debug`
-`{"action": "start", "file": ENTRY, "record": true, "cwd": REPO}`) and let it finish; the stops then
-move its Time Machine in any order. For the page run `pyokka web ENTRY --cwd REPO` (MCP:
+`{"action": "start", "file": ENTRY, "record": true, "cwd": REPO}`, with the review's `--args` when it
+had any) and let it finish; the stops then move its Time Machine in any order. A recording session on
+the entry whose step count is not the head recording's is another run (other arguments or cwd, a
+changed file) and is refused the same way, never moved: the review's step numbers mean nothing in it. For the page run `pyokka web ENTRY --cwd REPO` (MCP:
 `pyokka_page` `{"action": "open", "file": ENTRY, "cwd": REPO}`) and have the person open its URL in
 one browser tab. A debug session without `--record` runs forward only, so a stop behind the pause
 ends the program and the view line says what reaches it. `auto` with nothing answering shows the

@@ -48,10 +48,48 @@ def test_surface_defaults_to_vscode_and_reads_the_environment(monkeypatch):
 
 def test_chat_opens_nothing_and_a_test_review_stays_in_chat(tmp_path, monkeypatch):
     monkeypatch.setattr(view, "open_vscode", lambda data: pytest.fail("opened VS Code"))
+    monkeypatch.setattr(view, "open_page", lambda data, port: pytest.fail("opened the page"))
     state, lines = view.open_view(data_for(tmp_path), {"surface": "chat"})
     assert state == {"kind": "chat"} and lines[0].startswith("view: chat")
-    state, lines = view.open_view(data_for(tmp_path, test="test_x"), {"surface": "vscode"})
-    assert state["why"] == "test" and "no recording session" in lines[0]
+    # a review of one test: whatever surface was asked, chat, and the reason names no command that runs the file
+    for surface in ("vscode", "auto", "page", "chat"):
+        state, lines = view.open_view(data_for(tmp_path, test="tests/test_x.py::test_x"), {"surface": surface})
+        assert state["why"] == "test" and lines[0].startswith("view: chat. A review of one test (tests/test_x.py::test_x) has no recording session in VS Code and no page")
+        assert "another run than the test's" in lines[0] and "--record" not in lines[0] and "--cwd" not in lines[0] and "MCP:" not in lines[0]
+
+
+def test_the_start_hints_carry_the_reviews_arguments_and_name_no_file_run_for_a_test(monkeypatch):
+    monkeypatch.setattr(view, "code_found", lambda: "found at /usr/bin/code")
+    vs, page = view.start_hints("/w/demo.py", "/w", ["--fast", "3"])
+    assert vs.startswith('pyokka debug /w/demo.py --record --cwd /w --args --fast 3 (MCP: pyokka_debug {"action": "start", "file": "/w/demo.py", "record": true, "cwd": "/w", "args": ["--fast", "3"]})')
+    assert page == 'pyokka web /w/demo.py --cwd /w (MCP: pyokka_page {"action": "open", "file": "/w/demo.py", "cwd": "/w"}), then open its URL in one browser tab'
+    vs, _ = view.start_hints("/w/demo.py", "/w")
+    assert "--args" not in vs and '"args"' not in vs
+    assert view.data_hints({"repo": "/w", "entry": "demo.py", "argv": ["-v"]})[0].startswith("pyokka debug /w/demo.py --record --cwd /w --args -v (MCP:")
+    # the field case: a stop on a review of one test must never be told to record the test file, which runs its imports and definitions, not the test
+    note = view.one_test_note("tests/test_x.py::test_x")
+    assert view.start_hints("/w/tests/test_x.py", "/w", [], "tests/test_x.py::test_x") == (note, note)
+    assert view.data_hints({"repo": "/w", "entry": "tests/test_x.py", "test": "tests/test_x.py::test_x"}) == (note, note)
+    assert note.startswith("a review of one test (tests/test_x.py::test_x) has no recording session in VS Code and no page") and "--record" not in note and "--cwd" not in note and "MCP:" not in note
+
+
+def test_start_checks_no_view_for_a_review_of_one_test(monkeypatch):
+    import socket
+
+    taken = socket.socket()
+    taken.bind(("127.0.0.1", 0))
+    taken.listen(1)
+    port = taken.getsockname()[1]
+    try:
+        monkeypatch.setenv("PYOKKA_CODE", "/usr/bin/false")
+        # the same asks on an entry review are refused before recording: the port is taken, and vscode has nothing to reach
+        with pytest.raises(Exception) as info:
+            start_mod._check_view({"surface": "page", "port": port})
+        assert "surface page needs a free port" in str(getattr(info.value, "why", info.value))
+        assert start_mod._check_view({"surface": "page", "port": port, "test": "tests/test_x.py::test_x"}) is None
+        assert start_mod._check_view({"surface": "vscode", "test": "tests/test_x.py::test_x"}) is None
+    finally:
+        taken.close()
 
 
 def test_vscode_records_the_entry_the_way_head_was_recorded_and_runs_it_to_its_end(tmp_path, monkeypatch):

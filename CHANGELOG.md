@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+## 0.5.3
+
+- A review of one `--test` is never told to record the test file. `stop --surface vscode` on it was
+  refused with `next: pyokka debug tests/test_x.py --record`, which runs the file as a program (its
+  imports and definitions, not the test); an agent that followed it recorded 217 steps against the
+  review's 507 and the next stops moved that Time Machine to the review's step numbers until one
+  fell out of range. Now a test review stays in chat whatever surface is asked, at `start` and at
+  every `stop` and `ask`: no session or page is probed for it, an asked `vscode` or `page` is
+  refused with `next:` the same stop in chat, and no hint names a file run. The `pyokka_review`
+  description, its `surface` and `test` fields, `review.md`, `mcp.md` and `pyokka-cli.md` say so.
+- A VS Code recording on the entry whose step count is not the head recording's is another run
+  (other arguments or cwd, a changed file) and is refused before it is moved, with the command that
+  records the review's run; the start hints now carry the review's `--args`. A head recording that
+  was cut at the step cap is not compared.
+
 ## 0.5.2
 
 - Hovering a value while the Time Machine replays a recording (a review stop, a step back) shows
