@@ -127,7 +127,7 @@ work there. `--live` and `debug` need a VS Code window with the extension.
 
 ## MCP
 
-`pyokka mcp` serves the commands as 18 MCP tools ([the list](#mcp-tools)) over stdin/stdout.
+`pyokka mcp` serves the commands as 19 MCP tools ([the list](#mcp-tools)) over stdin/stdout.
 Register the script by its full path, which works whatever PATH the client starts with:
 
 ```sh
@@ -155,21 +155,36 @@ extension, so link it from a clone:
 
 ```sh
 git clone https://github.com/ivorpad/pyokka ~/pyokka
-mkdir -p ~/.claude/skills ~/.codex/skills
+mkdir -p ~/.claude/skills ~/.agents/skills
 ln -s ~/pyokka/skills/pyokka ~/.claude/skills/pyokka   # Claude Code
-ln -s ~/pyokka/skills/pyokka ~/.codex/skills/pyokka    # Codex
+ln -s ~/pyokka/skills/pyokka ~/.agents/skills/pyokka    # Codex (its documented user location; older Codex read ~/.codex/skills)
 ```
 
-It loads only when asked by name: `/pyokka debug`, `/pyokka explain` or `/pyokka show`
-(`$pyokka ...` in Codex). With no mode it picks one from the request.
+For one project only, link it inside the repository instead: `.claude/skills/pyokka` for Claude
+Code, `.agents/skills/pyokka` for Codex.
+
+It loads only when asked by name: `/pyokka debug`, `/pyokka explain`, `/pyokka show` or
+`/pyokka review` (`$pyokka ...` in Codex). With no mode it picks one from the request.
 
 | mode | what it does |
 |---|---|
 | `debug` | pauses a running program at a function or line, steps it, reads or sets the frame; answers in chat |
 | `explain` | walks a person through a run in their editor, one line and a few sentences per message |
 | `show` | investigates a recording or a pause and hands over a code-history page |
+| `review` | reviews a change as a guided debug session: records base and head, plans the stops, moves the person's view to each one, refuses a finding without a reproduction |
 
 It finds the `pyokka` command by itself. Its code-history pages need Node.
+
+`review` is the mode for a pull request or a diff. `pyokka review start --base REF` records the base
+and head trees through the entry file, compares the two runs and plans the stops: the steps where
+behaviour changed, the changed lines no run reached, the edge cases worth trying. `review stop N
+--say TEXT` moves the person's view (the browser page, a VS Code session, or chat) to a stop and
+refuses an explanation that names none of its values; `review try` reproduces a claim in the
+Scratchpad's sandbox; `review finding add` refuses a finding without a step and a reproduction;
+`review fix --patch` tries the fix on a copy; `review report` re-runs every reproduction before it
+prints. Nothing is written inside the repository: the review lives under `$PYOKKA_HOME/reviews/`.
+Over MCP the same actions are the `pyokka_review` tool, and the server offers the method as the
+`review` prompt (`/mcp__pyokka__review` in Claude Code).
 
 ## In Claude Code
 
@@ -205,9 +220,10 @@ pause's values and runs your edits of it. It runs on `node` 20+ from PATH, else 
 VS Code. `--port N` moves it, `--no-run` opens it without running the file, and
 `pyokka web ctl ...` drives it from a terminal. [docs/WEB.md](docs/WEB.md) is the reference.
 
-The file's folder is the run's root and working directory. Code outside that folder counts as
-library code, which the debugger does not enter unless the panel's Settings > Step Into Library
-Code is on, so start the page on a file inside your project.
+The file's folder is the run's root and working directory, and `--cwd DIR` makes a DIR that holds
+the file both: `pyokka web tests/test_routes.py --cwd .` treats the whole project as yours. Code
+outside the root counts as library code, which the debugger does not enter unless the panel's
+Settings > Step Into Library Code is on.
 
 ## Use
 
@@ -332,7 +348,8 @@ pyokka record --live                  record from the current pause on, in a run
 pyokka exec --live SOURCE [--frame N]   run a statement in the paused frame: an assignment, a call, an import, a block; the program sees it when it continues
 pyokka shell --live [--session NAME] [--json]   one command per stdin line over one connection: the one-shot words without --live, each result as the one-shot prints it
 pyokka history RUN [--at STEP|F:L] [--var NAME] [--why STEP NAME] [--pause] --out PATH [--prose PATH] [--pad N] [--limit K] [--append]   the data behind a code-history page: the source each checkpoint needs, the values as of it, and the command that reproduces them
-pyokka web FILE [--port N] [--open] [--no-run] [--python PATH]   the browser page; `pyokka web ctl COMMAND` drives it, `pyokka web -h` lists the commands
+pyokka web FILE [--port N] [--cwd DIR] [--open] [--no-run] [--python PATH]   the browser page; `pyokka web ctl COMMAND` drives it, `pyokka web -h` lists the commands
+pyokka review start --base REF [--repo DIR] [--entry FILE | --test NODEID] [--pr FILE] [--dir DIR]   review a change as a guided debug session; then review stop N --say TEXT, ask, try, finding add, fix, report, state
 pyokka mcp                            the commands as MCP tools, on stdin/stdout
 ```
 
@@ -355,6 +372,7 @@ pyokka mcp                            the commands as MCP tools, on stdin/stdout
 | `pyokka_session`, `pyokka_seek` | where a saved run or the open session stands, and the step where a value or a line first or last happened, as JSON |
 | `pyokka_save_investigation`, `pyokka_open_investigation` | a question and named steps of a run kept in a file, reopened only while the run's sha256 is unchanged |
 | `pyokka_page`, `pyokka_scratchpad` | the browser page: open it, then every `pyokka web ctl` command and the Scratchpad |
+| `pyokka_review` | a change reviewed as a guided debug session: `start`, `stop`, `ask`, `try`, `finding`, `fix`, `report`, `state`; the server also serves the method as the `review` prompt |
 
 ## Settings
 

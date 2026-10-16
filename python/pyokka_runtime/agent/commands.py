@@ -104,7 +104,7 @@ def add_commands(sub: argparse._SubParsersAction) -> None:
     p = sub.add_parser("origin", help="where a bad value was made: the chain of steps from the failing statement back across calls and containers, its root marked")
     run_arg(p)
     p.add_argument("step", nargs="?", metavar="STEP", help="the step of the failing statement, e.g. an exception's step (omit with --live: the Time Machine's step)")
-    p.add_argument("name", nargs="?", metavar="EXPR", help="the value to follow: a name or a subscript of one (items[0][\"price\"]); omit it to take the value the exception at STEP is about")
+    p.add_argument("name", nargs="?", metavar="EXPR", help="the value to follow: a name, or a subscript or attribute of one (items[0][\"price\"], lines[0].unit_price, a dataclass field its repr prints); omit it to take the value the exception at STEP is about")
     p.add_argument("--depth", type=int, default=ORIGIN_DEPTH, metavar="N", help="at most this many links (default %d, at most %d)" % (ORIGIN_DEPTH, ORIGIN_MAX_DEPTH))
 
     p = sub.add_parser("eval", help="evaluate a pure expression against the finished run: names, attributes, operators and calls that cannot change it, never a function of the program (needs --keep)")
@@ -282,8 +282,12 @@ def add_commands(sub: argparse._SubParsersAction) -> None:
     p.add_argument("--append", action="store_true", help="add these checkpoints to the page at --out instead of replacing it, for a second live pause")
     p.add_argument("--value-chars", type=int, default=None, metavar="N", help="characters of one value on a card (default: what the run kept, its --max-value-chars, 200 when it does not say; 0 shows every value whole)")
 
+    from .review.parser import add_review_parser
 
-COMMANDS = ("story", "steps", "step", "context", "values", "find", "var", "why", "origin", "eval", "expand", "release", "state", "watch", "shell", "walkthrough", "graph", "exceptions", "coverage", "narrate", "http", "history", "diff", "tour", "investigate", "learn", "pin", "verify", *DEBUG_COMMANDS)
+    add_review_parser(sub)  # `review`: no RUN, its own state directory (review/actions.py)
+
+
+COMMANDS = ("story", "steps", "step", "context", "values", "find", "var", "why", "origin", "eval", "expand", "release", "state", "watch", "shell", "walkthrough", "graph", "exceptions", "coverage", "narrate", "http", "history", "diff", "tour", "investigate", "learn", "pin", "verify", "review", *DEBUG_COMMANDS)
 
 
 def parse_line(spec: str, flag: str = "--line") -> tuple[str, int]:
@@ -436,6 +440,21 @@ def _open_debug_start(args: Any) -> RunSource:
     return source
 
 
+def started_session(args: Any, source: Any) -> dict | None:
+    """What the commands after `debug` pass as `--session`: the file it started (the test file for
+    `--test`, whose session is otherwise named `-m pytest`), `-m MODULE`, else the descriptor's own
+    name; with the descriptor's path when the CLI holds the debug session's own descriptor."""
+    from .live import descriptor_kind
+
+    descriptor = getattr(source, "descriptor", None)
+    debug = descriptor if isinstance(descriptor, dict) and descriptor_kind(descriptor) == "debug" else None
+    program, module = getattr(args, "program", None), getattr(args, "module", None)
+    name = os.path.basename(program) if program else ("-m %s" % module if module else (debug or {}).get("displayName"))
+    exact = (debug or {}).get("descriptor")
+    out = {k: v for k, v in (("name", name), ("descriptor", exact)) if v}
+    return out or None
+
+
 def _file_hint(args: Any) -> str | None:
     """The file the command names (`--line F:L`, story `--file F`): it picks the live session."""
     if getattr(args, "command", None) == "debug":
@@ -573,6 +592,10 @@ def open_source(args: Any) -> RunSource:
 def dispatch(args: Any, out: Any = None) -> int:
     out = out or sys.stdout
     err = sys.stderr
+    if args.command == "review":  # no RUN and no --live: the review keeps its own state
+        from .review.actions import review_dispatch
+
+        return review_dispatch(args, out, err)
     try:
         source = open_source(args)
         try:
@@ -754,6 +777,10 @@ def _run_command(args: Any, source: RunSource) -> dict:
             focus_editor(str(paused.get("file") or ""), paused.get("line") or 0)
         if getattr(args, "_relaunched", None) and isinstance(result, dict):
             result["relaunched"] = args._relaunched
+        if isinstance(result, dict) and not isinstance(result.get("finished"), dict):
+            session = started_session(args, source)
+            if session:
+                result["session"] = session
         return result
     if cmd == "continue":
         to = parse_line(args.to, "continue --to") if getattr(args, "to", None) else None

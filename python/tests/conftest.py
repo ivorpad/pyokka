@@ -15,6 +15,8 @@ from pyokka_runtime.protocol import decode_steps
 
 ROOT = Path(__file__).resolve().parents[2]
 DEMO = ROOT / "examples" / "demo.py"
+# the review fixtures are two copies of one project, each with a `tests` package: pytest must not collect them as tests
+collect_ignore = ["fixtures/review/shop_base", "fixtures/review/shop_head"]
 
 
 @dataclass

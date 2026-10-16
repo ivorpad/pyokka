@@ -9,11 +9,11 @@ import * as fs from 'node:fs';
 import type { DebugSession } from '../debug/debugSession';
 import { AT_UNREADABLE, finishedSlice, readOutput, stopSlice } from '../debug/debugSessionState';
 import { execReply, type StopRunner } from '../debug/debugExec';
-import { functionBreakpoint, mergeBreakpoints, type BreakpointSpec, type LocalVar, type PausedInfo } from '../session/debugState';
+import { functionBreakpoint, mergeBreakpoints, type BreakpointSpec, type DebugBreakpointEcho, type LocalVar, type PausedInfo } from '../session/debugState';
 import { clearEditorBreakpoints, currentFunctionBreakpoints, currentLogpoints, currentSourceBreakpoints } from '../features/debugBreakpoints';
 import { redact } from '../util/redact';
 import { BridgeError, int, type Request } from './bridgeSupport';
-import { applyWatchRequest, breakpointReply, displayWatchItems, exceptionMode, localsReply, logpointReply, parseAtItem, parseBreakItems, pausedReply, resolveFile, type BreakItem, type PathContext } from './bridgeDebugShapes';
+import { applyWatchRequest, breakpointReply, displayWatchItems, exceptionMode, localsReply, logpointReply, parseAtItem, parseBreakItems, pausedReply, removalMatches, removesLines, resolveFile, type BreakItem, type PathContext } from './bridgeDebugShapes';
 
 /** A stop reply waits for the program: as long as it runs, within reason. */
 export const STOP_TIMEOUT_MS = 600_000;
@@ -155,7 +155,9 @@ export async function breakpoints(ds: DebugSession, req: Request): Promise<Recor
   }
   await applyAt(ctx, req, ds.debug.breakpoints, (specs) => ds.setDebugBreakpoints(specs));
   await removeFunctionBreakpoints(req, ds.debug.breakpoints, (specs) => ds.setDebugBreakpoints(specs));
-  await applyGutter(ctx, req);
+  // a removal may name the line the runtime resolved a breakpoint to; the echo pairs it with the gutter's line
+  const landed = removesLines(req.remove) ? await ds.syncVsCodeBreakpoints()?.catch(() => undefined) : undefined;
+  await applyGutter(ctx, req, landed);
   const echo = await ds.syncVsCodeBreakpoints()?.catch(() => undefined);
   return { breakpoints: [...breakpointReply(ctx, mergeBreakpoints(currentSourceBreakpoints(), currentFunctionBreakpoints(), ds.debug.breakpoints), echo ?? (ds.debug.paused?.breakpoint ? [ds.debug.paused.breakpoint] : undefined)), ...logpointReply(ctx, currentLogpoints())], exceptions: ds.debug.exceptions };
 }
@@ -204,8 +206,11 @@ export async function removeFunctionBreakpoints(req: Request, own: readonly Brea
 /** VS Code confirms a breakpoint change asynchronously; the reply waits for the list to show it. */
 const BREAKPOINT_SETTLE_MS = 1_500;
 
-/** `set` / `add` / `remove` applied to VS Code's breakpoint list; shared by both sockets. */
-export async function applyGutter(ctx: PathContext, req: Request): Promise<void> {
+/**
+ * `set` / `add` / `remove` applied to VS Code's breakpoint list; shared by both sockets. `echo` is
+ * the runtime's current list, so a `remove` by the line a breakpoint resolved to finds it.
+ */
+export async function applyGutter(ctx: PathContext, req: Request, echo?: readonly DebugBreakpointEcho[]): Promise<void> {
   const source = (): vscode.SourceBreakpoint[] => vscode.debug.breakpoints.filter((b): b is vscode.SourceBreakpoint => b instanceof vscode.SourceBreakpoint);
   const matches = (b: vscode.SourceBreakpoint, it: BreakItem, withCondition: boolean): boolean =>
     b.location.uri.scheme === 'file' && b.location.uri.fsPath === it.path && b.location.range.start.line === it.line - 1 && (!withCondition || ((b.condition ?? '') === (it.condition ?? '') && (b.logMessage ?? '') === (it.logMessage ?? '')));
@@ -218,7 +223,7 @@ export async function applyGutter(ctx: PathContext, req: Request): Promise<void>
   if (Array.isArray(req.add)) for (const it of parseBreakItems(ctx, req.add)) if (!source().some((b) => matches(b, it, true)) && !toAdd.some((a) => a.path === it.path && a.line === it.line && (a.condition ?? '') === (it.condition ?? '') && (a.logMessage ?? '') === (it.logMessage ?? ''))) toAdd.push(it);
   if (Array.isArray(req.remove)) {
     const items = parseBreakItems(ctx, req.remove);
-    for (const b of source()) if (items.some((it) => matches(b, it, false)) && !toRemove.includes(b)) toRemove.push(b);
+    for (const b of source()) if (b.location.uri.scheme === 'file' && items.some((it) => removalMatches({ path: b.location.uri.fsPath, line: b.location.range.start.line + 1 }, it, echo)) && !toRemove.includes(b)) toRemove.push(b);
   }
   if (toRemove.length) vscode.debug.removeBreakpoints(toRemove);
   if (toAdd.length) vscode.debug.addBreakpoints(toAdd.map((it) => new vscode.SourceBreakpoint(new vscode.Location(vscode.Uri.file(it.path), new vscode.Position(it.line - 1, 0)), true, it.condition, undefined, it.logMessage)));

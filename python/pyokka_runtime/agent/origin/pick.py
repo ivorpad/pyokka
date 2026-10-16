@@ -5,7 +5,7 @@ from __future__ import annotations
 import ast
 from typing import Any
 
-from ..reprs import UNKNOWN, parse, path_text, project, text_of, type_of, type_of_value
+from ..reprs import UNKNOWN, Attr, parse, path_text, project, text_of, type_of, type_of_value
 from .need import Need
 
 
@@ -39,6 +39,10 @@ class PickMixin:
             if k is UNKNOWN:
                 return []
             return [(b, p + [k], project(v, [k])) for b, p, v in self.evaluate(node.value, step, comp, depth + 1)]
+        if isinstance(node, ast.Attribute):
+            # a field of an object whose repr prints it (a dataclass); UNKNOWN for the rest, which the caller skips
+            key = Attr(node.attr)
+            return [(b, p + [key], project(v, [key])) for b, p, v in self.evaluate(node.value, step, comp, depth + 1)]
         return []
 
     def pick(self, step: int, need: Need | None, error_type: str) -> dict | None:
@@ -51,8 +55,8 @@ class PickMixin:
         for n in ast.walk(node):
             if isinstance(n, ast.comprehension):
                 continue
-            if need.kind == "type" and isinstance(n, (ast.Name, ast.Subscript)):
-                if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Store):
+            if need.kind == "type" and isinstance(n, (ast.Name, ast.Subscript, ast.Attribute)):
+                if isinstance(n, (ast.Name, ast.Attribute)) and isinstance(n.ctx, ast.Store):
                     continue
                 for base, path, value in self.evaluate(n, step, comp):
                     if value is UNKNOWN:

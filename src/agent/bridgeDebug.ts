@@ -20,7 +20,7 @@ import { clampCount, continueTo, continueUntil, execReply, stepCount, stepCountE
 import { clearEditorBreakpoints, currentFunctionBreakpoints, currentLogpoints, currentSourceBreakpoints } from '../features/debugBreakpoints';
 import { redact } from '../util/redact';
 import { BridgeError, int, sliceOptions, type Request } from './bridgeSupport';
-import { applyWatchRequest, breakpointReply, displayWatchItems, exceptionMode, localsOptions, localsReply, logpointReply, nodeText, outputTail, parseBreakItems, parseTo, pathContext, pausedReply, type BreakItem } from './bridgeDebugShapes';
+import { applyWatchRequest, breakpointReply, displayWatchItems, exceptionMode, localsOptions, localsReply, logpointReply, nodeText, outputTail, parseBreakItems, parseTo, pathContext, pausedReply, removalMatches, removesLines, type BreakItem } from './bridgeDebugShapes';
 import { applyAt, removeFunctionBreakpoints } from './bridgeDebugReply';
 import { preRecordingSlice, recordHere } from './bridgeRecordFrom';
 
@@ -33,7 +33,7 @@ export const STOP_TIMEOUT_MS = 600_000;
 const BREAKPOINT_SETTLE_MS = 1_500;
 
 /** The reply shapes, split out so this file stays about the handlers (bridgeDebugShapes.ts). */
-export { OUTPUT_TAIL, applyWatchRequest, breakpointReply, displayFile, displayWatchItems, exceptionMode, localsReply, nextWatchId, nodeText, outputTail, parseBreakItems, pathContext, pausedReply, resolveFile } from './bridgeDebugShapes';
+export { OUTPUT_TAIL, applyWatchRequest, breakpointReply, displayFile, displayWatchItems, exceptionMode, localsReply, nextWatchId, nodeText, outputTail, parseBreakItems, pathContext, pausedReply, removalMatches, removesLines, resolveFile } from './bridgeDebugShapes';
 export type { BreakItem, PathContext } from './bridgeDebugShapes';
 
 export function finishedReply(session: Session): Record<string, unknown> {
@@ -314,8 +314,13 @@ export class BridgeDebug {
     if (Array.isArray(req.add)) for (const it of parseBreakItems(ctx, req.add)) if (!source().some((b) => matches(b, it, true)) && !toAdd.some((a) => a.path === it.path && a.line === it.line && (a.condition ?? '') === (it.condition ?? '') && (a.logMessage ?? '') === (it.logMessage ?? ''))) toAdd.push(it);
     if (Array.isArray(req.remove)) {
       const items = parseBreakItems(ctx, req.remove);
-      for (const b of source()) if (items.some((it) => matches(b, it, false)) && !toRemove.includes(b)) toRemove.push(b);
-      const own = session.debug.breakpoints.filter((bp) => !items.some((it) => it.path === bp.path && it.line === bp.line));
+      // a removal may name the line the runtime resolved a breakpoint to; the echo pairs it with the gutter's line
+      const landed = session.debug.active && session.running && removesLines(req.remove) ? await session.debugCtl.syncVsCodeBreakpoints()?.catch(() => undefined) : undefined;
+      for (const b of source()) if (b.location.uri.scheme === 'file' && items.some((it) => removalMatches({ path: b.location.uri.fsPath, line: b.location.range.start.line + 1 }, it, landed)) && !toRemove.includes(b)) toRemove.push(b);
+      const own = session.debug.breakpoints.filter((bp) => {
+        const p = bp.path, l = bp.line;
+        return p === undefined || l === undefined || !items.some((it) => removalMatches({ path: p, line: l }, it, landed));
+      });
       if (own.length !== session.debug.breakpoints.length) await session.setDebugBreakpoints(own);
     }
     if (toRemove.length) vscode.debug.removeBreakpoints(toRemove);

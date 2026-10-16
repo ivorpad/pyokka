@@ -112,6 +112,25 @@ def test_verify_passes_on_the_fix_and_fails_without_it(runs: dict[str, Path], tm
     assert "FAIL total = 14" in text and "not verified" in text
 
 
+def test_verify_without_expect_still_gives_a_verdict(runs: dict[str, Path], tmp_path: Path):
+    # the same program again: nothing differs, and the last line says PASS rather than leaving the reader to infer it
+    same = record(PORT / "cart_unfixed.py", runs["app"], tmp_path / "same.json")
+    code, text = pyokka("verify", runs["before"], "--after", same)
+    assert code == 0
+    assert text.rstrip().endswith("PASS: no expectations given; the after run has no behaviour difference from the baseline")
+    assert "not verified" not in text and "No --expect values given" not in text
+    # the fix: the runs differ, so no PASS, a count and the way to a real verdict; the exit code stays 0 (only a failed --expect is 1)
+    fixed = record(PORT / "cart_fixed.py", runs["app"], tmp_path / "fixed.json")
+    code, result = pyokka_json("verify", runs["before"], "--after", fixed)
+    assert code == 0 and not result["verified"] and result["total"] >= 1
+    assert result["verdict"] == "no expectations given; the runs differ in %d statements (see above); pass --expect NAME=VALUE for a verdict" % result["total"]
+    _, text = pyokka("verify", runs["before"], "--after", fixed)
+    assert text.rstrip().endswith(result["verdict"]) and "did something different" in text
+    # with an expectation the verdict is the expectation's, as before
+    _, checked = pyokka_json("verify", runs["before"], "--after", fixed, "--expect", "total=22")
+    assert checked["verified"] and "verdict" not in checked
+
+
 def test_verify_refuses_an_incomplete_recording(runs: dict[str, Path], tmp_path: Path):
     cut = record(PORT / "cart_fixed.py", runs["app"], tmp_path / "cut.json", "--max-steps", "6")
     code, result = pyokka_json("verify", runs["before"], "--after", cut, "--expect", "total=22")

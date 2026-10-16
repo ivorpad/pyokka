@@ -8,8 +8,10 @@ from typing import TYPE_CHECKING, Any
 from ..history import History
 from ..moments import MomentBuilder
 from ..provenance import callee_name
-from ..reprs import UNKNOWN, parse, path_text, project, text_of, type_of
+from ..reprs import UNKNOWN, Attr, parse, path_text, project, text_of, type_of
+from .attrs import AttrMixin
 from .containers import ContainerMixin
+from .nodes import is_literal, is_mutation, names_in, raw_string
 from .pick import PickMixin
 from .root import RootMixin
 
@@ -21,52 +23,7 @@ ORIGIN_MAX_DEPTH = 60
 MUTATIONS_SKIPPED_MAX = 10_000
 
 
-def _is_mutation(node: ast.stmt, name: str) -> bool:
-    """``name[k] = v``, ``name.x = v``, ``name[k] += v`` or ``name.append(v)``: the statement changes ``name`` in place."""
-    targets: list[ast.expr] = []
-    if isinstance(node, ast.Assign):
-        targets = list(node.targets)
-    elif isinstance(node, (ast.AugAssign, ast.AnnAssign)):
-        targets = [node.target]
-    elif isinstance(node, ast.Expr) and isinstance(node.value, ast.Call) and isinstance(node.value.func, ast.Attribute):
-        targets = [node.value.func]
-    for t in targets:
-        if isinstance(t, (ast.Subscript, ast.Attribute)) and _base_name(t) == name:
-            return True
-    return False
-
-
-def _base_name(node: ast.expr) -> str | None:
-    while isinstance(node, (ast.Subscript, ast.Attribute)):
-        node = node.value
-    return node.id if isinstance(node, ast.Name) else None
-
-
-def _names_in(node: ast.AST) -> list[str]:
-    out: list[str] = []
-    for n in ast.walk(node):
-        if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Load) and n.id not in out:
-            out.append(n.id)
-    return out
-
-
-def _is_literal(node: ast.expr) -> bool:
-    try:
-        ast.literal_eval(node)
-        return True
-    except (ValueError, SyntaxError, TypeError, MemoryError, RecursionError):
-        return isinstance(node, ast.JoinedStr)
-
-
-def _raw_string(text: str | None) -> str | None:
-    """The characters of a recorded ``str`` text, for finding it in source."""
-    if type_of(text) != "str":
-        return None
-    value = parse(text)
-    return value if isinstance(value, str) and value else None
-
-
-class OriginBuilder(ContainerMixin, PickMixin, RootMixin):
+class OriginBuilder(AttrMixin, ContainerMixin, PickMixin, RootMixin):
     def __init__(self, run: "SavedRun", depth: int = ORIGIN_DEPTH) -> None:
         self.run = run
         self.trace = run.trace
@@ -137,9 +94,15 @@ class OriginBuilder(ContainerMixin, PickMixin, RootMixin):
     def callee_scopes(self, site: int, name: str) -> list[dict]:
         out = []
         for s in self.scopes_by_site.get(site, ()):
-            sname = str(s["name"]).rsplit(".", 1)[-1]
-            if sname == name or (sname == "__init__" and name[:1].isupper()):
+            qual = str(s["name"])
+            sname = qual.rsplit(".", 1)[-1]
+            if sname == name:
                 out.append(s)
+            elif sname == "__init__" and name[:1].isupper():
+                # a constructor: `Cart(...)` enters `Cart.__init__`, and a `def __init__` found in a `class` statement belongs to that class only
+                owner = self.init_owner(s)
+                if owner is None or owner == name:
+                    out.append(s)
         return out
 
     # -- links --------------------------------------------------------------------------------------------
@@ -205,19 +168,22 @@ class OriginBuilder(ContainerMixin, PickMixin, RootMixin):
             return
         if isinstance(node, (ast.For, ast.AsyncFor)):
             if path:
-                self.element_search(path, step, carried)
+                if not self.loop_element(node, name, path, made, carried):
+                    self.element_search(path, step, carried)
                 return
             if self.add(made, expr, text, "element", note="loop variable over %s" % self.seg(made, node.iter)) is None:
                 return
             self.follow_expr(node.iter, [], made, None)
             return
-        if node is not None and _is_mutation(node, name):
+        if node is not None and is_mutation(node, name):
             self.mutation(node, name, path, made, text, carried)
+            return
+        if node is not None and self.observed_in_place(node, name, path, made, text, carried):
             return
         if isinstance(node, (ast.Assign, ast.AnnAssign)) and node.value is not None:
             targets = node.targets if isinstance(node, ast.Assign) else [node.target]
             whole_target = any(isinstance(t, ast.Name) and t.id == name for t in targets)
-            if _is_literal(node.value) and whole_target:
+            if is_literal(node.value) and whole_target:
                 self.literal(made, expr, text, node.value, path)
                 return
             if self.add(made, expr, text, "assigned", _sib=(name, self.trace.rid(made), made)) is None:
@@ -242,6 +208,8 @@ class OriginBuilder(ContainerMixin, PickMixin, RootMixin):
 
     def mutation(self, node: ast.stmt, name: str, path: list, made: int, text: str | None, carried: str | None) -> None:
         """``name`` was changed in place at ``made``. With a path whose first key the statement sets, that is the element's link."""
+        if path and self.attribute_mutation(node, name, path, made, text):
+            return
         if path and isinstance(node, ast.Assign):
             for t in node.targets:
                 if isinstance(t, ast.Subscript) and isinstance(t.value, ast.Name) and t.value.id == name:
@@ -265,7 +233,7 @@ class OriginBuilder(ContainerMixin, PickMixin, RootMixin):
                 break
             prev = int(before["step"])
             prev_node = self.stmt(prev)
-            if prev_node is None or not _is_mutation(prev_node, name):
+            if prev_node is None or not is_mutation(prev_node, name):
                 if skipped:
                     self.links[-1]["note"] += "; %d earlier change%s in place not shown" % (skipped, "" if skipped == 1 else "s")
                 self.follow_name(name, [], at, None)
@@ -283,6 +251,9 @@ class OriginBuilder(ContainerMixin, PickMixin, RootMixin):
             self.end = "%s was called from code the recording does not show" % fname
             return
         calls = [c for c in ast.walk(site_node) if isinstance(c, ast.Call) and (callee_name(self.seg(site, c)) == fname or (fname == "__init__" and callee_name(self.seg(site, c))[:1].isupper()))]
+        owner = self.init_owner(scope) if fname == "__init__" else None
+        if owner:
+            calls = [c for c in calls if callee_name(self.seg(site, c)) == owner] or calls  # `Shop("x", [Cart(...)])`: the call of this __init__'s class
         if not calls:
             self.add(made, path_text(param, path), text, "argument", note="parameter of %s; the call at #%d does not name it (a callback)" % (fname, site))
             self.end = "%s was called back by code the recording does not show, from #%d" % (fname, site)
@@ -315,10 +286,13 @@ class OriginBuilder(ContainerMixin, PickMixin, RootMixin):
         if param not in positional:
             return None
         i = positional.index(param)
-        if isinstance(call.func, ast.Attribute) and positional and positional[0] in ("self", "cls"):
-            if i == 0:
-                return call.func.value
-            i -= 1
+        if positional and positional[0] in ("self", "cls"):
+            # a method call binds `self` to the receiver; a constructor call (`Cart(owner, lines)` entering `__init__`) binds it to the new object
+            method = isinstance(call.func, ast.Attribute)
+            if method or fn.name == "__init__":
+                if i == 0:
+                    return call.func.value if method else None
+                i -= 1
         args = call.args
         if any(isinstance(x, ast.Starred) for x in args[: i + 1]):
             return None
@@ -358,8 +332,8 @@ class OriginBuilder(ContainerMixin, PickMixin, RootMixin):
         if isinstance(node, (ast.Subscript, ast.Attribute)):
             keys: list = []
             cur: ast.expr = node
-            while isinstance(cur, ast.Subscript):
-                k = self.key_of(cur.slice, step)
+            while isinstance(cur, (ast.Subscript, ast.Attribute)):
+                k = Attr(cur.attr) if isinstance(cur, ast.Attribute) else self.key_of(cur.slice, step)
                 if k is UNKNOWN:
                     break
                 keys.insert(0, k)
@@ -367,7 +341,13 @@ class OriginBuilder(ContainerMixin, PickMixin, RootMixin):
             if isinstance(cur, ast.Name):
                 self.follow_name(cur.id, keys + path, step, carried)
                 return
+            if isinstance(cur, ast.Call) and keys and isinstance(keys[0], Attr):
+                self.follow_expr(cur, keys + path, step, carried)  # `Line(...).unit_price`: into the constructor
+                return
             self.computed(node, step, carried)
+            return
+        if isinstance(node, ast.Call) and path and isinstance(path[0], Attr):
+            self.into_constructor(node, path, step, carried, scope)
             return
         if isinstance(node, ast.Call):
             name = callee_name(self.seg(step, node))
@@ -402,7 +382,7 @@ class OriginBuilder(ContainerMixin, PickMixin, RootMixin):
         if isinstance(node, (ast.List, ast.Tuple)) and path and isinstance(path[0], int) and -len(node.elts) <= path[0] < len(node.elts):
             self.follow_expr(node.elts[path[0]], path[1:], step, carried)
             return
-        if _is_literal(node):
+        if is_literal(node):
             self.literal(step, self.seg(step, node), carried, node, path)
             return
         self.computed(node, step, carried)
@@ -415,9 +395,12 @@ class OriginBuilder(ContainerMixin, PickMixin, RootMixin):
         if isinstance(node, ast.Constant) and not path:
             return repr(node.value)
         if isinstance(node, ast.Call):
-            for s in self.callee_scopes(step, callee_name(self.seg(step, node))):
+            scopes = self.callee_scopes(step, callee_name(self.seg(step, node)))
+            for s in scopes:
                 if s.get("returned") is not None:
                     return text_of(project(parse(s["returned"]), path)) if path else s["returned"]
+            if not scopes:
+                return self.constructor_text(node, path, step)  # `Line(sku, qty, price)` carrying `.unit_price`
         return None
 
     def returned(self, scope: dict, path: list, carried: str | None) -> None:
@@ -450,7 +433,7 @@ class OriginBuilder(ContainerMixin, PickMixin, RootMixin):
             self.end = "%s gave None at #%d: the None is the call's own result (list.sort and other in-place methods return None)" % (self.seg(step, node), step)
             return
         inputs = []
-        for n in _names_in(node):
+        for n in names_in(node):
             found = self.value(n, step)
             if found.get("step") is None or type_of(found.get("text")) in ("function", "type") or str(found.get("text", "")).startswith("<class "):
                 continue
@@ -460,7 +443,7 @@ class OriginBuilder(ContainerMixin, PickMixin, RootMixin):
             self.why_next = "the one input of %s" % self.seg(step, node)
             self.follow_name(inputs[0][0], [], step, None)
             return
-        raw = _raw_string(carried)
+        raw = raw_string(carried)
         if raw is not None:
             holding = [(n, f) for n, f in inputs if raw in str(f.get("text", ""))]
             if len(holding) == 1:
@@ -482,7 +465,7 @@ class OriginBuilder(ContainerMixin, PickMixin, RootMixin):
         start, end = getattr(node, "lineno", 0), getattr(node, "end_lineno", 0) or 0
         if end > start:
             for link in reversed(self.links):
-                raw = _raw_string(link.get("text"))
+                raw = raw_string(link.get("text"))
                 if raw is None or "\n" in raw:
                     continue
                 hits = [i for i in range(start, end + 1) if 0 < i <= len(lines) and raw in lines[i - 1]]

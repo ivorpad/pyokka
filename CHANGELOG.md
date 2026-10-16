@@ -2,6 +2,128 @@
 
 ## Unreleased
 
+## 0.5.0
+
+- The Debugger view opens on the frame. Paused at `pyokka debug demo.py --at rrf`, the panel
+  showed watches, breakpoints and output and not one variable, the frame's dicts being in VS
+  Code's side bar only. A FRAME section now leads the view at a pause: the selected frame's
+  variables as a tree (a dict opens to its keys, a dataclass to its fields; a member the runtime
+  cut loads on click), the call stack (a click selects the frame), and Continue, Step Over, Step
+  Into, Step Out, Restart and Stop; watches, breakpoints and output follow. The rule behind it: a
+  debug session opens the panel wherever its values are, the Debugger view for a plain session,
+  the Time Machine with Details on the current step for one that records (`--record`,
+  `--record-from`); `pyokka.showOutputOnStart` still says whether the panel comes up at all. A
+  watch added at a pause from the CLI (`pyokka watches --live --add k`) showed `no value at this
+  stop` until the next stop, because only the view's own `+` evaluated; every displayed watch is
+  now read at the pause it was added at, and one the frame cannot evaluate keeps that text rather
+  than `not evaluable here` (`docs/HANDOFF-debugger.md`, 2026-10-16).
+- The README is what Pyokka is, how to install and set it up, and every command: 412 lines, from
+  1,745. It says where the `pyokka` command comes from (the extension writes `~/.local/bin/pyokka`
+  once `pyokka.agentAccess` is on), how to put it on PATH, and registers Claude Code, Codex and
+  mcporter by that full path, which works without the PATH edit. The feature write-ups moved as
+  they were to `docs/GUIDE.md`. The skill registers mcporter by the same path, and its listing
+  sizes are current (18 signatures, about 3 KB).
+- The skill covers the browser page, after an agent on another machine lost a session to it: check
+  `~/.local/bin/pyokka` before registering MCP, stay on the person's page and port, the file's
+  folder is the run's root (a launcher in `/tmp` makes the project library code), `debug start`
+  waits 10 s, every move carries `--say` so the explanation lands in the page's bubble, and a
+  sandbox without network access reports no page on 127.0.0.1. `explain` runs on the page too.
+- `--session test_routes.py` (and `pyokka_debug`'s `session`) finds a session started with
+  `pyokka debug tests/test_routes.py --test NAME`. That launch runs `-m pytest`, so `-m pytest` was
+  the session's only name and the test file answered `no live session` while the session sat
+  paused. The file a pytest or unittest launch names in its arguments now matches by name, by a
+  path ending in it or by its absolute path (`python/pyokka_runtime/agent/sessions.py`). The skill
+  takes the name from `state --live`, and says breakpoints from an earlier `--at` still pause.
+- The skill's `explain` explains from a move's reply in the same message: an agent stepped, then
+  said it would look at the code the reply already held. On the browser page the reply holds one
+  line of code after a recording move and none after a `debug` move, so the skill reads the
+  function before stepping into it there. A `debug` move leaves the old bubble rather than
+  clearing it, as the skill had said.
+- The browser page's agent replies carry the enclosing function's code as `block`, the current
+  line marked, as the CLI's stops do. A recording move's reply had only the line's text (`code`)
+  and a `debug` move's none, so an agent read the file again before it could explain the stop.
+  `ctl state`, every move, `debug` and `wait-pause` answer with it; a pause in a file other than
+  the main one reads that file from the bridge first. `stopBlock` moved to `src/debug/stopBlock.ts`
+  (no Node imports) so the page can build a live pause's block; `web/agentBlock.ts` builds both.
+  The skill explains from `block`, and reads the function first only when a reply has none.
+- The skill's `explain` no longer says text between tool calls may go unread (Claude Code and
+  Codex show it): asked for several stops at once, an agent explains each stop before it moves on.
+  Sonnet 5.5 runs against the page's recording, its debugger and `pyokka_step`, five stops each:
+  with the 0.4.0 skill, `debug step` on the page got 0 or 1 explanations out of 5 (no bubbles);
+  with this one, 5 of 5, each citing a value from the reply. No run reread the file or said it
+  would look before explaining. Through `pyokka_debug` in a VS Code window, both skills explained
+  every turn of five, in English and Spanish.
+- The redactor no longer reaches across a line break for a value. `if not self._small_node_tokens:`
+  followed by `return []` became `«redacted» []` in a saved run's copy of the source, because the
+  `key: value` rule let the value start on the next line. Key, separator and value now have to
+  share a line, in `python/pyokka_runtime/redact.py` and `src/util/redact.ts` alike.
+- `pyokka web FILE --cwd DIR` (and `cwd` on MCP's `pyokka_page` open) runs the file in DIR and makes
+  DIR the project root when it holds the file, the rule of `pyokka run --cwd`. The page used the
+  file's own folder, so a test in `tests/` or a launcher in `/tmp` made the rest of the project
+  library code, which the debugger neither stopped nor stepped in. Open accepts files under the
+  root, and the page lists the file's imports from it.
+- A connection to the page that the system refuses (a sandbox without network access) says so.
+  `pyokka web ctl` and MCP's `pyokka_page` printed `no Pyokka page is served on 127.0.0.1:4777`,
+  and `node server.js ctl` `fetch failed`, while the page was open; an agent read that and started
+  a second page on another port.
+- A live stop without a recording no longer says `the recording starts at the --record-from pause`
+  when no `--record-from` was given: it says nothing before the pause was kept and that `record
+  --live` records from there.
+- `pyokka debug` ends its first stop with the name the commands after it take: `session: pass
+  --session test_routes.py to the commands that follow (exactly this one: --session
+  ~/.pyokka/sessions/41-2.json)`, and `--json` carries it as `session`. A `--test` start is named
+  by its test file.
+- Review mode: `pyokka review` and the `pyokka_review` MCP tool review a change as a guided debug
+  session whose sequence the tool owns. `start --base REF` materialises the base tree, records base
+  and head through the entry file (or one test), compares the runs (`diff`, `exceptions`,
+  `coverage`, the PR text) and plans the stops: ranked anomalies with a head step (a raise, a type,
+  a sign, a None, a print, a value), the changed lines no run reached, and edge candidates from the
+  added lines with what to try. `stop N --say TEXT` moves the person's view (the page by `goto`, a
+  VS Code debug session by a breakpoint and `continue`, a recording session by the Time Machine,
+  chat by printing the stop) and refuses a text that names none of the stop's values. One stop
+  per call: the next `stop` after a shown one needs `--go-on`, passed only after the person said
+  next; `skip N --why` sets an agenda item aside and `look --expr` answers "what is X here" from
+  the recorded values without moving anything; `ask
+  FILE:LINE` is the person's question; `try` reproduces in the Scratchpad's sandbox, on the page
+  when one is open on the entry; `finding add` refuses without a head step and a reproduction (a
+  try id, or a command with `--expect`), except on a line that never ran in head, where a try is
+  the evidence; `fix --patch` applies a diff to a copy of head and runs the
+  tests there; `report` re-runs every reproduction and refuses when one fails, a finding has none,
+  or the tree changed since `start`, and opens with "What we looked at together": the stops, asks,
+  skips and looks in order with what was said, then the agenda items not looked at. Every result opens with `review <id> · <phase> · stops K/N
+  shown · findings F · tries T` and ends with `next:` and one command. The review lives in
+  `$PYOKKA_HOME/reviews/<repo-name>-<base7>/`; nothing is written inside the repository. The server
+  answers `prompts/list` with the `review` prompt (`/mcp__pyokka__review` in Claude Code), the
+  method from the skill's new `references/review.md`, and the skill has a `review` mode. The mode
+  follows a smoke test of a text-only method on a nine-module shop package: agents recorded a
+  repro script without `--cwd`, so the project counted as library code, and read `verify` without
+  a verdict. `try` runs in the sandbox with the project on its path, and the entry below adds the
+  verdict. A stop that finds no page and no session on the entry says which command opens one, and
+  a session on another file is never moved: the mode's first VS Code run read "no live VS Code
+  session; nothing to move" and went on in chat while the person watched an empty editor.
+- `pyokka verify` without `--expect` ends with a verdict line instead of the comparison alone:
+  `PASS: no expectations given; the after run has no behaviour difference from the baseline` when
+  nothing differs, else `no expectations given; the runs differ in N statements` and the `--expect
+  NAME=VALUE` that gets a real one (exit 0; only a failed `--expect` is 1). A reviewing agent read
+  the diff, found no verdict and fell back to the test suite.
+- `pyokka break --live --remove FILE:LINE` removes a breakpoint by the line that was asked for when
+  VS Code resolved it to another line. An agent set `pricing.py:13`, an `except` line, which landed
+  on the `return` at line 15; `--remove pricing.py:13` found nothing and it listed and worked around
+  it.
+- `pyokka origin RUN STEP EXPR` accepts an attribute path (`lines[0].unit_price`) when the recorder
+  kept the attribute. It took names and subscripts only, and refused the dataclass field that held
+  the bad value.
+- The skill's `SKILL.md` is the method and the mode table, 116 lines from 305: setup, the live
+  sessions and the band moved to `references/setup.md`, `sessions.md` and `band.md`, the two long
+  references open with a table of contents, and `agents/openai.yaml` carries Codex's `interface`
+  block. Codex reads skills from `~/.agents/skills` (`.agents/skills` in a repository), so the
+  README's Codex step links the skill there.
+- The e2e suite keeps its VS Code window minimized for the whole run (`test/e2e/minimized.mjs`,
+  called from the `.vscode-test*.mjs` configs): the window opened over the person's work and took
+  the focus back whenever a CLI test opened a `vscode://` URI. System Events minimizes it again
+  within a second; `PYOKKA_UI_PASS=1`, which photographs the screen, is the one run that keeps it
+  up.
+
 ## 0.4.0
 
 - The README covers the browser page (`pyokka web`), the 18 MCP tools, the investigation

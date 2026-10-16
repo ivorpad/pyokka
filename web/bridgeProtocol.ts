@@ -7,6 +7,7 @@
  */
 import type { DebugBreakpointSpec, DebugExceptionMode, HostRequest, RunConfig, RunEvent, RunnerMessage, WatchRequest } from '../src/shared/protocol';
 import type { TourDoc } from '../src/session/tourTypes';
+import type { SliceBlock } from '../src/session/contextSlice';
 import type { ProfileSummary } from './profileSummary';
 import type { ScratchCommand } from './scratchpadProtocol';
 
@@ -209,6 +210,12 @@ export interface PageState {
   location: { file: string; line: number; function: string } | null;
   /** the source line at `location` */
   code: string | null;
+  /**
+   * On an agent command's reply: the enclosing function's code at `location` (or the live pause),
+   * the current line marked `current`, each recorded line with the step it ran at; `capped` with
+   * `totalLines` when a long function was cut. Absent when the file cannot be read.
+   */
+  block?: SliceBlock;
   /** recorded variable changes at `step` (record locals is on in the browser) */
   locals: { name: string; text: string }[];
   /** the call stack at `step`, innermost first */

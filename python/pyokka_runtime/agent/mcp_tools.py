@@ -37,6 +37,8 @@ def _action_list(actions: tuple[str, ...], helps: dict[str, str], rename: dict[s
 
 
 def tool_definitions() -> list[dict]:
+    from .review.tool import tool_definition as review_tool
+
     helps = _helps()
     src = _source_props()
     line_prop = {"type": "string", "description": "FILE:LINE, e.g. demo.py:57 (path suffix or basename)"}
@@ -271,6 +273,7 @@ def tool_definitions() -> list[dict]:
             }, "required": ["run"]},
             "annotations": {"readOnlyHint": False, "destructiveHint": False, "openWorldHint": True},
         },
+        review_tool(),
         {
             "name": "pyokka_session",
             "title": "Where a run is",
@@ -339,6 +342,7 @@ def tool_definitions() -> list[dict]:
                     "file": {"type": "string", "description": "open: the absolute path of the Python file; line: a file of the run"},
                     "python": {"type": "string", "description": "open: the interpreter the page runs the file with"},
                     "no_watch": {"type": "boolean", "description": "open: do not rerun the file when it changes on disk"},
+                    "cwd": {"type": "string", "description": "open: the run's working directory, and its project root when it holds `file`, so the debugger stops and steps in the project's own modules (without it the file's folder is the root, and code outside it is library code)"},
                     "step": {"type": "integer", "description": "goto: the recorded step; say, why: the step it is about"},
                     "kind": {"type": "string", "description": "step: next, into, over, out, back, backOver, backOut; debug step: into, over, out"},
                     "line": {"type": "integer", "description": "line: run to this line; say: put the bubble here; breakpoint: the line"},

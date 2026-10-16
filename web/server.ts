@@ -5,7 +5,7 @@
  * requests from the page, and lets an agent drive the page over HTTP (`/api/state`,
  * `/api/command`, the `ctl` subcommand).
  *
- *   node dist/web/server.js FILE [--port 4777] [--runtime python|"CMD ARGS"] [--python PATH] [--open] [--no-run] [--no-watch]
+ *   node dist/web/server.js FILE [--port 4777] [--cwd DIR] [--runtime python|"CMD ARGS"] [--python PATH] [--open] [--no-run] [--no-watch]
  *   node dist/web/server.js ctl state | goto N | step next|into|over|out|back|backOver|backOut | line N | say TEXT [--line N] | clear | run | eval EXPR
  *
  * Binds 127.0.0.1 only. A WebSocket or API call whose Origin or Host is not this server's is
@@ -50,6 +50,8 @@ export interface ServerOptions {
   explainCommand?: string;
   /** where View Recent Files is kept (`recent.json`); `~/.pyokka` by default, '' keeps it in memory */
   stateDir?: string;
+  /** `--cwd DIR`: the run's working directory, and its workspace root when it holds the file */
+  cwd?: string;
 }
 
 const LANGUAGES: Record<string, string> = { '.py': 'python', '.js': 'javascript', '.mjs': 'javascript', '.cjs': 'javascript', '.jsx': 'javascript', '.ts': 'typescript', '.mts': 'typescript', '.cts': 'typescript', '.tsx': 'typescript' };
@@ -65,6 +67,27 @@ export function splitCommand(line: string): string[] {
   let m: RegExpExecArray | null;
   while ((m = re.exec(line))) out.push(m[1] ?? m[2] ?? m[3] ?? '');
   return out;
+}
+
+/**
+ * The run's workspace root and working directory: the file's folder, or `--cwd DIR`. DIR is also
+ * the root when it holds the file (a project root, so the project's own modules are user code that
+ * the debugger stops and steps in); a DIR elsewhere moves only the working directory. The rule of
+ * `pyokka run --cwd` (python/pyokka_runtime/agent/save.py, `run_dirs`).
+ */
+export function runDirs(file: string, cwd?: string): { root: string; cwd: string } {
+  const here = path.dirname(file);
+  if (!cwd) return { root: here, cwd: here };
+  const dir = path.resolve(cwd);
+  const real = (p: string): string => {
+    try {
+      return fs.realpathSync(p);
+    } catch {
+      return path.resolve(p);
+    }
+  };
+  const inside = real(file).startsWith(real(dir).replace(/[\\/]+$/, '') + path.sep);
+  return { root: inside ? dir : here, cwd: dir };
 }
 
 /** The command the bridge spawns for `--runtime`, and the directory it starts in. */
@@ -221,12 +244,12 @@ export class BridgeServer {
     this.events = [];
     this.broadcast({ type: 'run.begin', runId, content: text, reason });
     log(`run ${runId} of ${this.file.displayName} (${reason})`);
-    const dir = path.dirname(this.file.path);
+    const dirs = runDirs(this.file.path, this.opts.cwd);
     const request: Omit<RunRequest, 'type' | 'id'> = {
       runId,
       file: { path: this.file.path, displayName: this.file.displayName, content: text },
-      workspaceRoot: dir,
-      cwd: dir,
+      workspaceRoot: dirs.root,
+      cwd: dirs.cwd,
       argv: [],
       env: {},
       projectFiles: [],
@@ -288,13 +311,13 @@ export class BridgeServer {
     const text = content ?? this.buffer ?? this.file.content;
     this.debugRun = { runId, content: text, events: [] };
     this.broadcast({ type: 'debug.begin', runId, content: text });
-    const dir = path.dirname(this.file.path);
+    const dirs = runDirs(this.file.path, this.opts.cwd);
     const base = runConfig(this.configPatch);
     const request: Omit<RunRequest, 'type' | 'id'> = {
       runId,
       file: { path: this.file.path, displayName: this.file.displayName, content: text },
-      workspaceRoot: dir,
-      cwd: dir,
+      workspaceRoot: dirs.root,
+      cwd: dirs.cwd,
       argv: [],
       env: {},
       projectFiles: [],
@@ -330,7 +353,7 @@ export class BridgeServer {
     const cmd = runtimeCommand(this.opts);
     const runner = new RunnerClient({ command: cmd.command, args: cmd.args, cwd: cmd.cwd, env: cmd.env, version: '1', log: (line) => log(`profile: ${line}`) });
     const runId = `p-${++this.runCounter}`;
-    const dir = path.dirname(this.file.path);
+    const dirs = runDirs(this.file.path, this.opts.cwd);
     const text = content ?? this.buffer ?? this.file.content;
     let result: BridgeProfile;
     try {
@@ -343,8 +366,8 @@ export class BridgeServer {
       await runner.run({
         runId,
         file: { path: this.file.path, displayName: this.file.displayName, content: text },
-        workspaceRoot: dir,
-        cwd: dir,
+        workspaceRoot: dirs.root,
+        cwd: dirs.cwd,
         argv: [],
         env: {},
         projectFiles: [],
@@ -397,10 +420,10 @@ export class BridgeServer {
     return this.recent.filter((r) => this.mayOpen(r.path) === null);
   }
 
-  /** null when `file` may become the main file: it exists, is of the runtime's language, and is the start file's directory or below. */
+  /** null when `file` may become the main file: it exists, is of the runtime's language, and is under the run's root (the start file's directory, or `--cwd`). */
   private mayOpen(file: string): string | null {
     const full = path.resolve(file);
-    const root = path.dirname(this.rootFile) + path.sep;
+    const root = runDirs(this.rootFile, this.opts.cwd).root + path.sep;
     if (!full.startsWith(root)) return `${file} is outside ${root}`;
     if (languageFor(full) !== languageFor(this.rootFile)) return `${path.basename(full)} is not ${languageFor(this.rootFile)}, the runtime this bridge runs`;
     if (!fs.existsSync(full) || !fs.statSync(full).isFile()) return `no such file: ${file}`;
@@ -524,7 +547,7 @@ export class BridgeServer {
     const key = `${main.path}\0${main.content}`;
     let files = this.imports.get(key);
     if (!files) {
-      files = await listImports(this.opts, main.path);
+      files = await listImports(this.opts, main.path, runDirs(main.path, this.opts.cwd).root);
       this.imports.clear();
       this.imports.set(key, files);
       log(`imports of ${main.displayName}: ${files.length ? files.map((f) => path.relative(path.dirname(main.path), f)).join(', ') : 'none'}`);
@@ -905,10 +928,10 @@ export function runConfig(patch: ConfigPatch): RunConfig {
  * stdlib `ast` and import resolution, site-packages left out). Empty for a runtime that is not
  * `... serve` or does not know `_imports`.
  */
-export function listImports(opts: Pick<ServerOptions, 'runtime' | 'python' | 'distDir' | 'file'>, file: string): Promise<string[]> {
+export function listImports(opts: Pick<ServerOptions, 'runtime' | 'python' | 'distDir' | 'file'>, file: string, root = path.dirname(file)): Promise<string[]> {
   const cmd = runtimeCommand(opts);
   if (cmd.args[cmd.args.length - 1] !== 'serve') return Promise.resolve([]);
-  const args = [...cmd.args.slice(0, -1), '_imports', file, '--root', path.dirname(file)];
+  const args = [...cmd.args.slice(0, -1), '_imports', file, '--root', root];
   return new Promise((resolve) => {
     execFile(cmd.command, args, { cwd: cmd.cwd, env: { ...process.env, ...cmd.env }, timeout: 15_000, maxBuffer: 4_000_000 }, (err, stdout) => {
       if (err) {
@@ -995,7 +1018,7 @@ function loadRecent(file: string | undefined): RecentFile[] {
 /* ---------- command line ---------- */
 
 const USAGE = `usage:
-  pyokka-web FILE [--port N] [--runtime python|"CMD ARGS"] [--python PATH] [--open] [--no-run] [--no-watch] [--verbose]
+  pyokka-web FILE [--port N] [--cwd DIR] [--runtime python|"CMD ARGS"] [--python PATH] [--open] [--no-run] [--no-watch] [--verbose]
   pyokka-web ctl [--port N] state | goto STEP | step next|into|over|out|back|backOver|backOut | line N
                  | say TEXT [--line N] [--step N] | clear | start | stop | run | eval EXPR | peek NAME[.KEY...]
                  | var NAME | why NAME [--step N] | watch EXPR [--remove]
@@ -1005,6 +1028,8 @@ const USAGE = `usage:
                  | scratchpad open|experiment|create|state|update|run|restore|close|save|list|load|history
                      [--id ID] [--version N] [--title NAME] [--line N] [--code FILE] [--inputs FILE] [--mocks FILE]
                      [--auto-run true|false] [--data FILE] | scratchpad say [TEXT] [--line N]
+  --cwd DIR runs FILE in DIR, and makes DIR the project root when it holds FILE: code under DIR is
+  the project's, which the debugger stops and steps in (outside the root is library code).
   Step and debug commands take --say TEXT to show a narration bubble at the new position.
   scratchpad open copies the function around the paused line (or --line) with the pause's values as
   Inputs and runs it in a separate python -I (network denied on macOS); experiment does the same with
@@ -1158,12 +1183,25 @@ async function ctl(args: string[]): Promise<number> {
   }
   const command = parseCtl(args);
   const base = `http://127.0.0.1:${port}`;
-  const res = command.action === 'state'
-    ? await fetch(`${base}/api/state`)
-    : await fetch(`${base}/api/command`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(command) });
+  let res: Response;
+  try {
+    res = command.action === 'state'
+      ? await fetch(`${base}/api/state`)
+      : await fetch(`${base}/api/command`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(command) });
+  } catch (err) {
+    throw new Error(ctlConnectError(err, port));
+  }
   const body = await res.text();
   process.stdout.write(formatJson(body) + '\n');
   return ctlExitCode(command, res.ok, body);
+}
+
+/** What a failed connection means: nothing served, or a sandbox that blocked it (which looks the same from inside). Exported for tests. */
+export function ctlConnectError(err: unknown, port: number): string {
+  const code = (err as { cause?: { code?: string } } | undefined)?.cause?.code;
+  if (code === 'EPERM' || code === 'EACCES') return `the connection to 127.0.0.1:${port} was refused by the system (${code}), not by a server: a sandbox without network access blocks it, whether or not a page is open; run this outside the sandbox`;
+  if (code === 'ECONNREFUSED') return `no Pyokka page is served on 127.0.0.1:${port}: start one with \`pyokka web FILE\`, or pass the --port it was started with`;
+  return err instanceof Error ? err.message : String(err);
 }
 
 function formatJson(text: string): string {
@@ -1205,6 +1243,7 @@ export async function main(argv: string[]): Promise<number> {
     if (a === '--port') opts.port = Number(argv[++i]);
     else if (a === '--runtime') opts.runtime = argv[++i] ?? '';
     else if (a === '--python') opts.python = argv[++i] ?? opts.python;
+    else if (a === '--cwd') opts.cwd = argv[++i] ?? '';
     else if (a === '--open') opts.open = true;
     else if (a === '--no-watch') opts.watch = false;
     else if (a === '--no-run') opts.initialRun = false;
@@ -1222,6 +1261,11 @@ export async function main(argv: string[]): Promise<number> {
     process.stderr.write(`${opts.file ? `no such file: ${opts.file}` : 'name a file to run'}\n${USAGE}\n`);
     return 2;
   }
+  if (opts.cwd !== undefined && (!opts.cwd || !fs.existsSync(opts.cwd) || !fs.statSync(opts.cwd).isDirectory())) {
+    process.stderr.write(`--cwd needs a directory${opts.cwd ? `: no such directory ${opts.cwd}` : ''}\n${USAGE}\n`);
+    return 2;
+  }
+  if (opts.cwd) opts.cwd = path.resolve(opts.cwd);
   if (!opts.runtime) {
     const lang = languageFor(opts.file);
     if (lang !== 'python') {

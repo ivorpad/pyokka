@@ -81,6 +81,23 @@ export function parseBreakItems(ctx: PathContext, items: unknown, exists?: (p: s
 }
 
 /**
+ * Whether a `remove` item names a gutter breakpoint: by the line it sits on, or by the line the
+ * runtime resolved it to. A breakpoint asked for on a blank, comment or `except` line pauses at the
+ * next statement and the listing shows both (`pricing.py:13  -> resolved line 15`), so either
+ * number removes it. The echo pairs the two; without one (no run in flight) only the gutter line counts.
+ */
+export function removalMatches(gutter: { path: string; line: number }, it: BreakItem, echo: readonly DebugBreakpointEcho[] | undefined): boolean {
+  if (gutter.path !== it.path) return false;
+  if (gutter.line === it.line) return true;
+  return !!echo?.some((e) => e.function === undefined && e.path === gutter.path && e.line === gutter.line && e.resolvedLine === it.line);
+}
+
+/** Whether a request's `remove` names any `FILE:LINE` (as against a function breakpoint's name). */
+export function removesLines(remove: unknown): boolean {
+  return Array.isArray(remove) && remove.some((it) => !!it && typeof it === 'object' && int((it as Record<string, unknown>).line) !== undefined);
+}
+
+/**
  * The `breakpoints` reply: every breakpoint the run knows, annotated from the runtime's echo when
  * there is one. A function breakpoint (`--at NAME`) carries `function` and learns its `file` and
  * `line` from the echo, because the runtime is what resolves the name.

@@ -15,7 +15,7 @@ Three rules:
 
 ## Running the CLI
 
-Find `pyokka` as SKILL.md says. `--live` addresses the open VS Code session (`pyokka.agentAccess`
+Find `pyokka` as [setup.md](setup.md) says. `--live` addresses the open VS Code session (`pyokka.agentAccess`
 on, and the file has run); `pyokka state --live` prints the file, the step count and where the
 Time Machine is.
 
@@ -26,19 +26,25 @@ on a line puts their Time Machine there.
 Reads never move the editor: `state`, `walkthrough`, `graph`, `context N`, `values`,
 `var`, `why`. Only `step` moves it, so `state --live` is how you check that a session exists.
 
-In Claude Code, call the `band` tool with `{"action": "show"}` before the first stop (SKILL.md,
-"In Claude Code: the band"). The band then shows each stop's line, values and stack above the
+In Claude Code, call the `band` tool with `{"action": "show"}` before the first stop
+([band.md](band.md)). The band then shows each stop's line, values and stack above the
 person's prompt, and the person can move with `/pk n`, `/pk b`, `/pk i`, `/pk o`. Pass
 `--session NAME` on every command, and read where they went with `context --live` when they moved
 on their own. Call it with `{"action": "hide"}` when the walk ends.
 
-On the browser page (`pyokka web`; SKILL.md, "On the browser page"), `pyokka web ctl` moves the
-page (`step over`, `line N`, `goto N`, `debug step over` at a live pause; `pyokka_page` takes the
-same with `say`). The **Say** of each message goes in the page's bubble under the line, not in
+On the browser page (`pyokka web`; [pyokka-cli.md](pyokka-cli.md#the-browser-page), "The browser
+page"), `pyokka web ctl` moves the page (`step over`, `line N`, `goto N`, `debug step over` at a
+live pause; `pyokka_page` takes the same with `say`). The **Say** of each message goes in the
+page's bubble under the line, not in
 chat: put it on the move with `--say TEXT` when the map already gave you the values, or move, read
-the values in the reply, then `say TEXT --line N`. A move without `--say` clears the bubble, so
-every stop gets one. Answer a question with `say` at the same line, without moving. In chat, one
-line per stop is enough. Check `narration` in the state once, after the first stop.
+the values in the reply, then `say TEXT --line N`. A recording move without `--say` clears the
+bubble and a `debug` move leaves the old one in place, so every stop gets one. Answer a question
+with `say` at the same line, without moving. In chat, one line per stop is enough. Check
+`narration` in the state once, after the first stop. Each reply carries the enclosing function as
+`block` (the current line marked `current`, a recorded line with the step it ran at) beside
+`location`, `locals` and `stack`, so explain the stop from it. An older page sends no `block`, only
+the line's text as `code` and nothing after a `debug` move: there, read the function once before
+you step into it.
 
 ## 1. Map, for yourself
 
@@ -75,7 +81,9 @@ Every message has the same three parts:
    callee's `in` values appear), `--over` past a call that is not the point, `--out` back
    to the caller with the result. The reply prints the location, the stack, the block with
    `#steps`, `values:` and `moves:`. Translate it into a few sentences of your own. The user sees the same values
-   inline in the editor, so name them: you are both looking at the same number.
+   inline in the editor, so name them: you are both looking at the same number. Explain from that
+   reply in the same message. Moving and then saying you will look at the code is the failure:
+   the reply already shows it, so read nothing again before you speak.
 2. **Say**, in two to five sentences: what the values on this line are; what they mean for
    the thing being understood; what this line hands to the next one.
 3. **Stop.** Their reply decides the move:
@@ -88,8 +96,10 @@ Every message has the same three parts:
    - "into", "back", "out": that move.
    - "skip to the sort", "show me the result": `--to` there.
 
-One move per message. Two `step`s in one message flash past, and text between tool calls
-may go unread.
+One move per message. Two `step`s in one message flash past. When the person asks for several
+stops at once ("walk me through it", "keep going"), explain each stop before you move on from
+it, and never save the explaining for the end. A move that only gets you to the stop (`--to`,
+then `--into`) needs no words of its own.
 
 A stretch of the RRF demo, as it should read:
 

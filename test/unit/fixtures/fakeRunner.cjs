@@ -11,6 +11,8 @@ rl.on('line', (line) => {
       send({ type: 'ready', id: msg.id, pythonVersion: '3.12.0', executable: '/fake/python', platform: 'fake', capabilities: ['fork'] });
       break;
     case 'run': {
+      // PKW_FAKE_DIRS: write the run's workspace root and working directory there, for the --cwd tests
+      if (process.env.PKW_FAKE_DIRS) require('node:fs').writeFileSync(process.env.PKW_FAKE_DIRS, JSON.stringify({ workspaceRoot: msg.workspaceRoot, cwd: msg.cwd }));
       send({ type: 'ok', id: msg.id });
       send({ type: 'run.started', runId: msg.runId, seq: 1, pid: 42 });
       // FAKE_IMPORT: the run also instrumented this imported file

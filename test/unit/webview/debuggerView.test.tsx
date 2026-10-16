@@ -2,13 +2,35 @@
 import { describe, expect, it } from 'vitest';
 import { render } from 'preact-render-to-string';
 import { DebugSessionView } from '../../../webview/components/DebuggerView';
-import { breakpointLabel, breakpointRows, debugHeaderLine, frameLabel, launchSummary, watchArg, watchLabel, watchValue } from '../../../webview/debuggerView';
+import { breakpointLabel, breakpointRows, debugHeaderLine, frameLabel, frameRows, launchSummary, stackRows, watchArg, watchLabel, watchValue } from '../../../webview/debuggerView';
 import { Rail } from '../../../webview/components/Chrome';
 import type { DebugSessionPanel } from '../../../src/shared/webviewProtocol';
+import type { ValueBag, ValueNode } from '../../../src/shared/protocol';
 
 const noop = () => undefined;
 
 const icons = (html: string): string[] => [...html.matchAll(/codicon-([a-z-]+)/g)].map((m) => m[1]!).filter((n) => !n.startsWith('modifier'));
+
+/** a value node the way the runtime sends one: members as props, each with its own query path */
+function node(type: string, value: string | undefined, props?: { name: string; n: ValueNode }[], extra: Partial<ValueNode> = {}): ValueNode {
+  const out: ValueNode = { type, id: `${type}-${value ?? 'x'}`, queryPath: [], ...extra };
+  if (value !== undefined) out.value = value;
+  if (props) {
+    out.props = props.map((p) => ({ ...p.n, name: p.name, queryPath: [...out.queryPath, p.name], expressionPath: p.name }));
+    out.length = props.length;
+  }
+  return out;
+}
+const bag = (data: ValueNode): ValueBag => ({ data, runtimeKey: data.id });
+
+/** the locals of the RRF pause the task came from: a dict of lists, a dataclass, an int */
+const SCORES = node('dict', "{'d1': 0.0312, 'd2': 0.0164}", [{ name: 'd1', n: node('number', '0.0312') }, { name: 'd2', n: node('number', '0.0164') }]);
+const CANDIDATE = node('Candidate', "Candidate(doc='d1', score=0.5)", [{ name: 'doc', n: node('str', "'d1'") }, { name: 'score', n: node('number', '0.5') }]);
+const RRF_LOCALS: DebugSessionPanel['locals'] = [
+  { name: 'scores', text: "{'d1': 0.0312, 'd2': 0.0164}", valueBag: bag(SCORES) },
+  { name: 'best', text: "Candidate(doc='d1', score=0.5)", valueBag: bag(CANDIDATE) },
+  { name: 'k', text: '60', valueBag: bag(node('number', '60')) },
+];
 
 const PAUSED: DebugSessionPanel = {
   id: 'debug-2',
@@ -49,8 +71,8 @@ const PAUSED: DebugSessionPanel = {
   exception: null,
 };
 
-const view = (over: Partial<DebugSessionPanel> = {}): string =>
-  render(<DebugSessionView state={{ ...PAUSED, ...over }} onOpen={noop} onWatchAdd={noop} onWatchRemove={noop} onBreakpointRemove={noop} onExceptions={noop} />);
+const view = (over: Partial<DebugSessionPanel> = {}, open?: string[]): string =>
+  render(<DebugSessionView state={{ ...PAUSED, ...over }} onOpen={noop} onWatchAdd={noop} onWatchRemove={noop} onBreakpointRemove={noop} onExceptions={noop} onControl={noop} onSelectFrame={noop} onExpand={noop} initiallyOpen={open} />);
 
 describe('DebugSessionView, paused with a stack', () => {
   it('says where it stopped and why, with the launch and the thread', () => {
@@ -69,14 +91,54 @@ describe('DebugSessionView, paused with a stack', () => {
     expect(html).not.toContain('Values were changed');
   });
 
-  it('leaves the call stack, the variables of the paused frame and the step controls to VS Code', () => {
+  it('opens on the frame: its variables, then the call stack, then the step controls, and only then the watches', () => {
     const html = view();
-    // the Run and Debug side bar and the debug toolbar show this moment of the same debug session
-    expect(html).not.toContain('CALL STACK');
-    expect(html).not.toContain('LOCALS');
-    expect(html).not.toContain('>do_GET<');
-    expect(html).not.toContain('pk-dbg-name">payload');
-    for (const icon of ['debug-continue', 'debug-pause', 'debug-step-over', 'debug-step-into', 'debug-step-out', 'debug-restart', 'debug-stop']) expect(icons(html)).not.toContain(icon);
+    // the initial view is wherever the values are: the paused frame's variables lead the view
+    expect(html).toContain('pk-dbg-title">FRAME');
+    expect(html).toContain('pk-dbg-note">app.py:42');
+    expect(html).toContain('pk-dbg-name">payload');
+    expect(html.indexOf('FRAME')).toBeLessThan(html.indexOf('WATCHES'));
+    expect(html.indexOf('pk-dbg-name">payload')).toBeLessThan(html.indexOf('CALL STACK'));
+    // the stack: the current frame marked, the library frame told apart, a frame is a button
+    expect(html).toContain('pk-dbg-row cur');
+    expect(html).toContain('>do_GET<');
+    expect(html).toContain('>&lt;module><');
+    expect(html).toContain('line 427 · library code');
+    expect(html).toContain('class="pk-dbg-rowbtn pk-frame-btn"');
+    expect(html.indexOf('CALL STACK')).toBeLessThan(html.indexOf('pk-frame-controls'));
+    // the controls, in the debug toolbar's order, under the stack and above the watches
+    const controls = icons(html.slice(html.indexOf('pk-frame-controls'), html.indexOf('WATCHES')));
+    expect(controls).toEqual(['debug-continue', 'debug-step-over', 'debug-step-into', 'debug-step-out', 'debug-restart', 'debug-stop']);
+    // no frame while the program runs: nothing to show, and the Running header has Pause, Restart and Stop
+    const running = view({ paused: false, location: '', reasonText: 'running', stack: [], locals: [] });
+    expect(running).not.toContain('FRAME');
+    expect(running).not.toContain('pk-frame-controls');
+  });
+
+  it('opens a dict to its keys and a dataclass to its fields, the way the Details pane does', () => {
+    const closed = view({ locals: RRF_LOCALS });
+    // closed: one row per local, a twist on the ones with members, the type where the repr does not say it
+    expect(closed).toContain('aria-label="Expand scores"');
+    expect(closed).toContain('aria-label="Expand best"');
+    expect(closed).not.toContain('aria-label="Expand k"');
+    expect(closed).toContain('pk-dbg-type">dict<');
+    expect(closed).not.toContain('pk-dbg-type">Candidate<');
+    expect(closed).not.toContain('pk-dbg-member');
+    const open = view({ locals: RRF_LOCALS }, ['scores', 'best']);
+    // open: the members indented under their local, keys and fields by name, values rendered
+    expect(open).toContain('aria-label="Collapse scores"');
+    const members = [...open.matchAll(/pk-dbg-row pk-dbg-member[^>]*>.*?pk-dbg-name">([^<]+)</g)].map((m) => m[1]);
+    expect(members).toEqual(['d1', 'd2', 'doc', 'score']);
+    expect(open).toContain('padding-left:22px');
+    expect(open.indexOf('pk-dbg-name">d1')).toBeLessThan(open.indexOf('pk-dbg-name">best'));
+    expect(open).toContain('0.0312');
+    expect(open.indexOf('FRAME')).toBeLessThan(open.indexOf('WATCHES'));
+  });
+
+  it('says the frame is being read, or that a library frame has no variables', () => {
+    expect(view({ locals: [], localsPending: true })).toContain('reading the frame…');
+    expect(view({ locals: [] })).toContain('no variables in this frame');
+    expect(view({ locals: [], selectedFrame: 1 })).toContain('no variables: library frame');
   });
 
   it('gives every section a pane header with a count, hover actions and one row-actions column', () => {
@@ -297,6 +359,52 @@ describe('the view helpers', () => {
     expect(watchArg('display')).toBeUndefined();
     expect(watchArg('true')).toBe('true');
     expect(watchArg('change')).toBe('change');
+  });
+});
+
+describe('frameRows', () => {
+  it('lists closed locals as one row each, and an open one with its members under it', () => {
+    const closed = frameRows(RRF_LOCALS, new Set());
+    expect(closed.map((r) => [r.name, r.depth, r.expandable, r.type])).toEqual([
+      ['scores', 0, true, 'dict'],
+      ['best', 0, true, ''],
+      ['k', 0, false, ''],
+    ]);
+    const open = frameRows(RRF_LOCALS, new Set(['scores']));
+    expect(open.map((r) => `${'  '.repeat(r.depth)}${r.name} = ${r.text}`)).toEqual(['scores = {\'d1\': 0.0312, \'d2\': 0.0164}', '  d1 = 0.0312', '  d2 = 0.0164', "best = Candidate(doc='d1', score=0.5)", 'k = 60']);
+    // a member's key is its local and its query path, so it is the same row across state pushes
+    expect(open[1]!.key).toBe('scores\n["d1"]');
+    expect(open[1]!.local).toBe('scores');
+  });
+
+  it('asks the runtime for members it has not sent, and for the rest of a capped container', () => {
+    // `expandable` without `props`: the bag was cut at this depth; opening it is an expand request, not a toggle
+    const deep = node('dict', '{…}', undefined, { expandable: true, length: 40 });
+    const rows = frameRows([{ name: 'index', text: '{…}', valueBag: bag(deep) }], new Set(['index']));
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ expandable: true, needsLoad: true, open: false });
+    // a capped list ends in a `…` row that loads more
+    const capped = node('list', undefined, [{ name: '0', n: node('number', '1') }], { cappedElements: true, length: 500 });
+    const more = frameRows([{ name: 'items', text: '[1, …]', valueBag: bag(capped) }], new Set(['items']));
+    expect(more.map((r) => r.name)).toEqual(['items', '0', '…']);
+    expect(more[2]).toMatchObject({ more: true, needsLoad: true, depth: 1, local: 'items' });
+    // once loaded (the host spliced the reply in), the same key opens to the members
+    const loaded = { ...deep, props: [{ ...node('number', '1'), name: 'a', queryPath: ['a'] }] };
+    expect(frameRows([{ name: 'index', text: '{…}', valueBag: bag(loaded) }], new Set(['index'])).map((r) => r.name)).toEqual(['index', 'a']);
+  });
+});
+
+describe('stackRows', () => {
+  it('folds two or more consecutive library frames and opens them on request', () => {
+    const stack = [
+      { frameId: 0, name: 'rank', file: 'api/main.py', line: 52 },
+      { frameId: 1, name: 'run', file: '', line: 1100, library: true },
+      { frameId: 2, name: '_bootstrap_inner', file: '', line: 1082, library: true },
+    ];
+    expect(stackRows(stack, 0).map((r) => r.kind)).toEqual(['frame', 'library']);
+    expect(stackRows(stack, 0, new Set([1])).map((r) => r.kind)).toEqual(['frame', 'frame', 'frame']);
+    // the selected frame is never hidden in a fold
+    expect(stackRows(stack, 2).map((r) => r.current)).toEqual([false, false, true]);
   });
 });
 

@@ -151,6 +151,9 @@ def _open(a: dict) -> tuple[str, bool]:
     file = os.path.abspath(_need(_str(a, "file"), "open", "file", '{"action": "open", "file": "/abs/path/demo.py"}'))
     if not os.path.isfile(file):
         raise AgentError("no file %s" % file, "give the absolute path of a Python file")
+    cwd = os.path.abspath(str(a["cwd"])) if _str(a, "cwd") else None
+    if cwd and not os.path.isdir(cwd):
+        raise AgentError("no directory %s" % cwd, "cwd is the project folder the run starts in, given as an absolute path")
     port = _port(a)
     if listening(port):
         raise AgentError("port %d is taken, most likely by another page" % port, '{"action": "state", "port": %d} names its file; pass another port' % port)
@@ -160,6 +163,8 @@ def _open(a: dict) -> tuple[str, bool]:
         argv.append("--no-watch")
     if _str(a, "python"):
         argv += ["--python", str(a["python"])]
+    if cwd:
+        argv += ["--cwd", cwd]
     from ..home import pyokka_home
 
     log = os.path.join(pyokka_home(), "page-%d.log" % port)

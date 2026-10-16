@@ -18,7 +18,8 @@ const TOKEN_RES: RegExp[] = [
 const BEARER_RE = /\b(Bearer\s+)(?!«)[A-Za-z0-9._~+/=-]+/g;
 
 // key=value, key: value, 'key': 'value', key='value' where the key name contains a secret word; an
-// unquoted value ends at `&` so a URL's `?api_key=…&v=1` keeps its other query parameters
+// unquoted value ends at `&` so a URL's `?api_key=…&v=1` keeps its other query parameters. Key,
+// separator and value sit on one line: `if not self._small_node_tokens:` keeps the next line's `return`.
 const KEY_WORDS = 'api_key|apikey|secret|token|password|passwd|authorization';
 // The lookbehind after the quote is what keeps this linear, and must stay in step with
 // python/pyokka_runtime/redact.py, which explains it. Without it the leading `[A-Za-z0-9_.-]*`
@@ -26,7 +27,7 @@ const KEY_WORDS = 'api_key|apikey|secret|token|password|passwd|authorization';
 // each one: O(n²), seconds for a line of a few tens of KB. It rules out only starts that could
 // never have won, because a match inside a run always has an equivalent where the run begins.
 const KEY_VALUE_RE = new RegExp(
-  `(["']?)(?<![A-Za-z0-9_.-])([A-Za-z0-9_.-]*(?:${KEY_WORDS})[A-Za-z0-9_.-]*)\\1(\\s*[:=]\\s*)(?:(["'])((?:\\\\.|(?!\\4).)*)\\4|((?:Bearer\\s+)?)([^\\s,;()\\[\\]{}'"&]+))`,
+  `(["']?)(?<![A-Za-z0-9_.-])([A-Za-z0-9_.-]*(?:${KEY_WORDS})[A-Za-z0-9_.-]*)\\1([ \\t]*[:=][ \\t]*)(?:(["'])((?:\\\\.|(?!\\4).)*)\\4|((?:Bearer\\s+)?)([^\\s,;()\\[\\]{}'"&]+))`,
   'gi',
 );
 

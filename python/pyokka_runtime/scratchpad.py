@@ -338,7 +338,7 @@ def run(request: dict) -> dict:
         return {"values": [], "output": "", "error": {"type": "SyntaxError", "message": "%s, line %s: %s" % (where, exc.lineno, exc.msg), "stage": "code", "line": exc.lineno}, "sandbox": sandbox}
     payload = json.dumps({"file": os.path.abspath(file), "code": code, "inputs": inputs, "mocks": mocks, "unavailable": unavailable, "dependencies": deps}).encode("utf-8")
     read_fd, write_fd = os.pipe()
-    argv = [python, "-I", CHILD, "--result-fd", str(write_fd)]
+    argv = [python, "-I", "-B", CHILD, "--result-fd", str(write_fd)]  # -B: an experiment leaves no bytecode in the project it imports
     if sandbox["network"] == "denied":
         argv = [SANDBOX_EXEC, "-p", SANDBOX_PROFILE, *argv]
     env = {"PATH": os.environ.get("PATH", "/usr/bin:/bin"), "LANG": os.environ.get("LANG", "en_US.UTF-8")}

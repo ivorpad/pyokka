@@ -18,7 +18,8 @@ _KEY_WORDS = r"api_key|apikey|secret|token|password|passwd|authorization"
 _MIN_VALUE_LEN = 6
 
 # key=value, key: value, 'key': 'value', key='value' (quotes stay, the value goes); an unquoted value
-# ends at `&` so `?api_key=…&v=1` keeps its other query parameters
+# ends at `&` so `?api_key=…&v=1` keeps its other query parameters. Key, separator and value sit on
+# one line: `if not self._small_node_tokens:` must not take the next line's `return` for its value.
 #
 # The lookbehind after the quote is what keeps this linear. Without it the leading
 # `[A-Za-z0-9_.-]*` can start at every offset of a run of those characters, and at each one it
@@ -28,7 +29,7 @@ _MIN_VALUE_LEN = 6
 # always has an equivalent starting where the run does, and a left-to-right scan finds that one
 # first. So the only starts ruled out are ones that could never have won.
 _KV = re.compile(
-    r"""(?P<key>(?P<q>['"]?)(?<![A-Za-z0-9_.\-])[A-Za-z0-9_.\-]*(?:%s)[A-Za-z0-9_\-]*(?P=q))(?P<sep>\s*[=:]\s*)(?P<value>(?P<vq>['"])(?:\\.|(?!(?P=vq)).)*(?P=vq)|[^\s,;()\[\]{}'"&]+)"""
+    r"""(?P<key>(?P<q>['"]?)(?<![A-Za-z0-9_.\-])[A-Za-z0-9_.\-]*(?:%s)[A-Za-z0-9_\-]*(?P=q))(?P<sep>[ \t]*[=:][ \t]*)(?P<value>(?P<vq>['"])(?:\\.|(?!(?P=vq)).)*(?P=vq)|[^\s,;()\[\]{}'"&]+)"""
     % _KEY_WORDS,
     re.IGNORECASE,
 )

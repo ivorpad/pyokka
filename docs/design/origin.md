@@ -86,8 +86,15 @@ variable fanned out over its iterable's elements:
 ## Not done
 
 - **`suspects` findings** as a starting point: that branch (`worktree-bugs`, 994f73a) is not merged.
-- **Attribute paths into objects** (`self.cart.items[0]`): an object's repr does not show its
-  fields, so the walk follows the base name and drops the path.
+- **Attribute paths into objects** (`self.cart.items[0]`), done 2026-10-16 for objects whose repr
+  prints their fields: a dataclass, a namedtuple or an attrs class reads as a `Record`
+  (`agent/reprs.py`), `.field` is an `Attr` key on the path, and the walk (`origin/attrs.py`) binds
+  a field to its constructor argument (by keyword, or by the field order of the `class` statement in
+  the run's files), to the `self.field = …` statement of a stepped `__init__`, and a loop variable
+  to the element of the iterable whose field carries the text. A plain object (`<Foo object at …>`)
+  still prints no fields, and `origin` says so when one is named (`origin/exprs.py`); a value cut at
+  `maxValueChars` loses the fields past the cut. Not followed: `x.field = v` on an object that is
+  not the chain's base name, fields set outside `__init__`, `namedtuple("P", "x y")` factories.
 - **Done since, in the band** (`claude-plugin/pyokka-band`): `w`, `/pk w` and the tool action
   `origin` call `origin --live --json STEP` on a finding's step and draw the chain; `proposeFix`
   gets the chain and aims at `links[root.index]`.

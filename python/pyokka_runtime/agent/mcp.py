@@ -55,6 +55,7 @@ pyokka_history {run, out, var: ["total"]} writes code-history data; pyokka_narra
 pyokka_debug {action: "status", wait_seconds: 60} waits for the person to hit a breakpoint or step in VS Code, then prints the state.
 To teach in a browser: pyokka_page {action: "open", file} returns a URL for the person to open in one tab; then breakpoint, debug {op: "start"}, say for narration bubbles, wait_pause for their next step; close stops a page this server started.
 At a page's pause, pyokka_scratchpad {op: "open"} copies the paused function and its values into a separate python -I (network denied on macOS) and runs it; experiment runs your own code; save, list, history, load keep named versions; say puts a bubble under a line of it for the person watching.
+pyokka_review {action: "start", base: REF, repo} reviews a change as a guided debug session: it records base and head, plans the stops, and every answer ends with next:, the action to take; prompts/get review is the method.
 The text results are the form to read; json: true gives the raw shape."""
 
 
@@ -478,10 +479,14 @@ def call_tool(name: str, arguments: dict) -> dict:
             from .mcp_page import call_scratchpad
 
             text, is_error = call_scratchpad(arguments)
+        elif name == "pyokka_review":
+            from .review.tool import call_review
+
+            text, is_error = call_review(arguments)
         elif name in TOOLS:
             text, is_error = run_words(TOOLS[name](arguments))
         else:
-            raise ToolError("unknown tool %s" % name, "tools: pyokka_run, pyokka_page, pyokka_scratchpad, " + ", ".join([*TOOLS, *JSON_TOOLS]))
+            raise ToolError("unknown tool %s" % name, "tools: pyokka_run, pyokka_page, pyokka_scratchpad, pyokka_review, " + ", ".join([*TOOLS, *JSON_TOOLS]))
     except (ToolError, AgentError) as exc:
         text, is_error = "error: %s%s" % (exc.message, "\n" + exc.hint if exc.hint else ""), True
     except (TypeError, ValueError) as exc:  # an argument of the wrong type: int("abc")
@@ -514,7 +519,7 @@ def handle(msg: Any) -> dict | None:
         version = asked if asked in PROTOCOL_VERSIONS else PROTOCOL_VERSIONS[0]
         return {"jsonrpc": "2.0", "id": id_, "result": {
             "protocolVersion": version,
-            "capabilities": {"tools": {"listChanged": False}},
+            "capabilities": {"tools": {"listChanged": False}, "prompts": {"listChanged": False}},
             "serverInfo": {"name": "pyokka", "title": "Pyokka", "version": __version__},
             "instructions": INSTRUCTIONS,
         }}
@@ -528,11 +533,18 @@ def handle(msg: Any) -> dict | None:
         arguments = params.get("arguments") or {}
         if not isinstance(arguments, dict):
             return _error(id_, -32602, "tools/call params.arguments must be an object")
-        if params["name"] not in ("pyokka_run", "pyokka_page", "pyokka_scratchpad") and params["name"] not in TOOLS and params["name"] not in JSON_TOOLS:
+        if params["name"] not in ("pyokka_run", "pyokka_page", "pyokka_scratchpad", "pyokka_review") and params["name"] not in TOOLS and params["name"] not in JSON_TOOLS:
             return _error(id_, -32602, "unknown tool %s" % params["name"])
         return {"jsonrpc": "2.0", "id": id_, "result": call_tool(params["name"], arguments)}
-    if method in ("resources/list", "prompts/list"):
-        return {"jsonrpc": "2.0", "id": id_, "result": {method.split("/")[0]: []}}
+    if method == "resources/list":
+        return {"jsonrpc": "2.0", "id": id_, "result": {"resources": []}}
+    if method in ("prompts/list", "prompts/get"):
+        from .review.tool import prompts_get, prompts_list
+
+        if method == "prompts/list":
+            return {"jsonrpc": "2.0", "id": id_, "result": {"prompts": prompts_list()}}
+        prompt = prompts_get(params)
+        return {"jsonrpc": "2.0", "id": id_, "result": prompt} if prompt is not None else _error(id_, -32602, "unknown prompt %s" % (params.get("name") if isinstance(params, dict) else None))
     return _error(id_, -32601, "method not found: %s" % method)
 
 

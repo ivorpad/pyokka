@@ -240,35 +240,11 @@ export function formatText(root: ValueNode, opts: FormatOptions = {}): string {
   return formatValue(root, opts).map((l) => l.text).join('\n');
 }
 
-/** the host's node replaces ours entirely; only the prop identity (name / key) is kept */
-function replaceWith(node: ValueNode, target: ValueNode): ValueNode {
-  const prop = node as Partial<ValueProp>;
-  const out: Partial<ValueProp> = { ...target };
-  if (prop.name !== undefined) out.name = prop.name;
-  if (prop.keyRepr !== undefined) out.keyRepr = prop.keyRepr;
-  return out as ValueNode;
-}
+/** splicing an `expand` reply into its tree lives with the host now (the Frame section loads members there) */
+export { spliceNode } from '../src/shared/valueNodes';
 
-const pathKey = (queryPath: string[]): string => JSON.stringify(queryPath);
-
-/** Replace the node whose `queryPath` matches `target.queryPath` inside `root` (immutable). */
-export function spliceNode(root: ValueNode, target: ValueNode): ValueNode {
-  const key = pathKey(target.queryPath);
-  const visit = (node: ValueNode): ValueNode => {
-    if (pathKey(node.queryPath) === key && !node.loadActionNode) return replaceWith(node, target);
-    if (!node.props) return node;
-    let changed = false;
-    const props = node.props.map((p) => {
-      // a synthetic load node carries its parent's queryPath: never replace it, the parent is replaced instead
-      if (p.loadActionNode) return p;
-      const next = visit(p) as ValueProp;
-      if (next !== p) changed = true;
-      return next;
-    });
-    return changed ? { ...node, props } : node;
-  };
-  return visit(root);
-}
+/** the rows a value opens to: its props, plus the load row of a capped container (the Frame section's tree) */
+export { children as nodeChildren };
 
 /** kind of a node for compare / diagram compatibility checks */
 export function valueCategory(node: ValueNode): 'object' | 'list' | 'string' | 'other' {

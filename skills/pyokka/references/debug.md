@@ -149,8 +149,8 @@ launch has no recording (`--record` needs a file run as a script): use the recor
 of live pauses or the stop's values, and tell the user which you used.
 
 In Claude Code, the band follows a debug session: call the `band` tool with `{"action": "show"}`
-after the first stop, and pass `--session NAME` on every `--live` command (SKILL.md, "In Claude
-Code: the band"). With `--record` it shows the Time Machine: the step, the recorded values, bugs,
+after the first stop, and pass `--session NAME` on every `--live` command ([band.md](band.md)).
+With `--record` it shows the Time Machine: the step, the recorded values, bugs,
 where from and fix plans. With a plain `pyokka debug FILE --at NAME` it shows the pause: the place,
 the code, the paused frame's variables with their shape (`list[2]`), the call stack, an uncaught
 exception as `⚠ KeyError: 'Ben'`, and the prose. There `/pk n`, `i` and `o` step the program;
