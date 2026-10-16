@@ -222,21 +222,40 @@ def unavailable(asked: str, move: dict) -> bool:
 
 
 def refuse_unavailable(review: Review, asked: str, move: dict, again: str) -> Refusal:
-    """The refusal of a stop or ask whose asked surface has nothing to move: the stop stays unshown and ``next:`` starts the surface."""
-    from .view import data_hints
+    """The refusal of a stop or ask whose asked surface has nothing to move: the stop stays unshown and ``next:`` starts the
+    surface, then runs ``again`` (the command without its --surface) on it. A review of one test has no surface to start,
+    since both commands run the file and not the test, so its ``next:`` is ``again`` in chat."""
+    from .view import data_hints, one_test_note
 
+    test = review.data.get("test")
+    if test:
+        return review.refuse("surface %s is not available, so nothing was shown: %s" % (asked, one_test_note(test)),
+                             ["the person is not watching this stop; it is still unshown",
+                              "a review of one test stays in chat: pass surface chat (or auto) and explain the stop in your message"],
+                             "%s --surface chat" % again)
     vs, page = data_hints(review.data)
     why = str(move.get("note") or "nothing answers").split("; ")[0]
     return review.refuse("surface %s is not available, so nothing was shown: %s" % (asked, why),
                          ["the person is not watching this stop; it is still unshown",
                           "to explain it in the conversation instead, pass surface chat (auto takes the first view that answers)"],
-                         "%s; then %s" % (vs if asked == "vscode" else page, again))
+                         "%s; then %s --surface %s" % (vs if asked == "vscode" else page, again, asked))
 
 
 def data_hints_vs(review: Review) -> str:
     from .view import data_hints
 
     return data_hints(review.data)[0]
+
+
+def only_in_chat(review: Review, lead: str, hinted: bool = False) -> str:
+    """The tail of ``next:`` when auto fell to chat: ``lead`` ("the person saw this stop only in chat, so explain it") completed
+    with what starts VS Code for the next one. A review of one test has no view to start, and chat is where it stays; with
+    ``hinted`` the view line already named the run to start (a session that recorded another run), so it is not repeated."""
+    if review.data.get("test"):
+        return "%s in your message; a review of one test stays in chat" % lead
+    if hinted:
+        return "%s in your message; the view line names the run to start in VS Code" % lead
+    return "%s in your message. To show the next one in VS Code first run %s" % (lead, data_hints_vs(review))
 
 
 def _fell_to_chat(f: dict, move: dict) -> bool:
@@ -292,7 +311,7 @@ def stop(review: Review, f: dict) -> dict:
     move = move_view(review, s, say, f)
     asked = str(f.get("surface") or "auto")
     if unavailable(asked, move):
-        raise refuse_unavailable(review, asked, move, "%s --surface %s" % (nxt, asked))
+        raise refuse_unavailable(review, asked, move, nxt)
     said = review.data.setdefault("said", [])
     for entry in said:
         if isinstance(entry, dict) and entry.get("n") == waiting:
@@ -304,7 +323,7 @@ def stop(review: Review, f: dict) -> dict:
     remaining = review.remaining()
     then = ("review stop %d --say TEXT --go-on" % remaining[0]) if remaining else review.after_stops()
     if _fell_to_chat(f, move):
-        then = "%s; the person saw this stop only in chat, so explain it in your message. To show the next one in VS Code first run %s" % (then, data_hints_vs(review))
+        then = "%s; %s" % (then, only_in_chat(review, "the person saw this stop only in chat, so explain it", move.get("available") is False))
     lines = ["stop %d/%d  %s  %s  %s  %s" % (n, len(review.stops), s.get("kind"), where(s), _one_line(fact_text(s.get("fact")), 120), steps_text(s)), *_context_lines(run_, step), "say: %s" % say, _move_line(move)]
     return result(review, lines, "%s; when they say next, %s" % (WAIT, then), stop=s, step=step, say=say, moved=move, values=[{"name": k, "text": v} for k, v in values])
 
@@ -342,7 +361,7 @@ def ask(review: Review, f: dict) -> dict:
     move = move_view(review, s, say, f)
     asked = str(f.get("surface") or "auto")
     if unavailable(asked, move):
-        raise refuse_unavailable(review, asked, move, "review ask %s --say TEXT --surface %s" % (spec, asked))
+        raise refuse_unavailable(review, asked, move, "review ask %s --say TEXT" % spec)
     review.asked.append({"file": s["file"], "line": line, "step": step, "say": say, "surface": move.get("surface"), "at": now()})
     review.note("ask", file=s["file"], line=line, step=step, say=say)
     review.save()
@@ -352,7 +371,7 @@ def ask(review: Review, f: dict) -> dict:
     lines += [*_context_lines(run_, step), "say: %s" % say, _move_line(move)]
     then = WAIT
     if _fell_to_chat(f, move):
-        then = "%s; they saw this only in chat, so answer in your message. To show the next one in VS Code first run %s" % (WAIT, data_hints_vs(review))
+        then = "%s; %s" % (WAIT, only_in_chat(review, "they saw this only in chat, so answer", move.get("available") is False))
     return result(review, lines, then, stop=s, step=step, say=say, moved=move, values=[{"name": k, "text": v} for k, v in values])
 
 

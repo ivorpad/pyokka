@@ -229,3 +229,15 @@ Departures from the contract above, each with its reason, from the implementatio
   --stop-on-entry` without a recording; the next `stop` moves the Time Machine with one). The first
   VS Code acceptance run showed the need: told "no live VS Code session; nothing to move", the agent
   reviewed in chat while the person watched an empty editor.
+- A hint names only a command that reproduces the review's run. A review of one `--test` gets no
+  start command at all: `pyokka debug FILE --record` and `pyokka web FILE` run the test file as a
+  program (its imports and definitions, not the test), so `start` says it stays in chat whatever
+  surface was asked, `stop` and `ask` probe no session or page for it, and an asked `vscode` or
+  `page` is refused with `next:` the same stop in chat. The entry hints carry the review's `--args`.
+  A recording session on the entry whose step count differs from head's is refused before it is
+  moved: the review's step numbers belong to another run. A field review (2026-10-16) showed the
+  need: on a test review the refusal's `next:` named `pyokka debug tests/test_x.py
+  --record`, the agent recorded the file (217 steps against the review's 507), and the stops then
+  moved that Time Machine until one fell out of range. The agent's part was to follow a `next:`
+  without checking the run it produced against head.json; the tool's part was to hand it a command
+  that could not reproduce the review's run and to promise VS Code for every review.

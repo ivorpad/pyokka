@@ -6,9 +6,12 @@ debugger, ``vscode-recording`` when a live session holds a finished recording, e
 ``move_to`` moves that surface to a stop: the page gets ``goto step_b`` with the ``say`` text (refused
 when the page shows another file than the review's entry), a debug session gets a breakpoint at the
 stop's line with a condition made of up to two of the stop's locals whose text is a literal, then
-``continue``; a recording session gets ``step --to step_b``; chat moves nothing. Nothing here starts
-a server or opens an editor: a missing surface is reported, never created. ``review start`` opens
-one (``view.py``).
+``continue``; a recording session gets ``step --to step_b``, once its step count matches the head
+recording's (a session on the entry that recorded another run, other arguments or the file where the
+review ran a test, is refused, never moved); chat moves nothing. A review of one test (``meta.test``
+of ``head.json``) probes no session and no page: both would show the test file run as a program, not
+the test. Nothing here starts a server or opens an editor: a missing surface is reported, never
+created. ``review start`` opens one (``view.py``).
 """
 
 from __future__ import annotations
@@ -199,12 +202,24 @@ def start_commands(head_json: Any) -> tuple[str, str]:
 
 
 def start_hints_of(head_json: Any) -> tuple[str, str]:
-    """``start_commands`` with each command's MCP call beside it, and what VS Code needs (``view.start_hints``)."""
+    """``start_commands`` with each command's MCP call beside it, run with the head recording's arguments, and what VS Code
+    needs (``view.start_hints``); for a review of one test, why there is no view instead."""
     from .view import start_hints
 
+    meta = _head_meta(head_json)
     entry = entry_of(head_json) or "ENTRY"
-    root = str(_head_meta(head_json).get("workspaceRoot") or os.path.dirname(entry) or "REPO")
-    return start_hints(entry, root)
+    root = str(meta.get("workspaceRoot") or os.path.dirname(entry) or "REPO")
+    return start_hints(entry, root, meta.get("argv"), meta.get("test"))
+
+
+def head_steps(head_json: Any) -> int | None:
+    """The steps a VS Code recording of the same run holds: the head recording's ``stepCount`` when it was not cut
+    (``meta.recording`` is the cut), else None, since the editor's own cap may differ."""
+    meta = _head_meta(head_json)
+    if isinstance(meta.get("recording"), dict):
+        return None
+    count = meta.get("stepCount")
+    return int(count) if isinstance(count, int) and count > 0 else None
 
 
 def no_session_note(session: str | None, head_json: Any) -> str:
@@ -300,12 +315,31 @@ def _move_recording(stop: dict, session: str | None, head_json: Any) -> dict:
         return {"surface": "vscode-recording", "moved": False, "note": "the stop has no head step to move to"}
     live = _connect(session, "run", entry_of(head_json))
     try:
+        other = _another_run(live, head_json)
+        if other:
+            return {"surface": "chat", "moved": False, "available": False, "note": other}
         reply = live.step(None, to=int(step))
     finally:
         live.close()
     loc = reply.get("location") or {}
     where = "%s:%s" % (os.path.basename(str(loc.get("file") or "")), loc.get("line")) if loc.get("file") else ""
     return {"surface": "vscode-recording", "moved": True, "note": "Time Machine at step %d%s" % (step, ("  " + where) if where else "")}
+
+
+def _another_run(live: LiveRun, head_json: Any) -> str | None:
+    """The note refusing a recording session whose step count is not the head recording's: it recorded another run
+    (other arguments or cwd, a changed file, library code recorded, the editor's step cap), so its step numbers are not the review's; None when they match or either count is unknown."""
+    expected = head_steps(head_json)
+    if expected is None:
+        return None
+    try:
+        count = int((live.state().get("nav") or {}).get("count") or 0)
+    except (AgentError, TypeError, ValueError):
+        return None
+    if count <= 0 or count == expected:
+        return None
+    return ("the VS Code recording on %s is another run: %d steps, the review's head run has %d (other arguments or cwd, a changed file, library code recorded, or the editor's step cap), so its step numbers are not the review's; "
+            "start one as the review recorded it: %s; then stop again with the same n" % (os.path.basename(entry_of(head_json)) or "the entry", count, expected, start_hints_of(head_json)[0]))
 
 
 def move_to(stop: dict, say: str | None, surface: str | None, port: int | None, session: str | None, head_json: Any) -> dict:
@@ -319,6 +353,15 @@ def move_to(stop: dict, say: str | None, surface: str | None, port: int | None, 
     port = default_port(port)
     chosen = surface or "auto"
     entry = entry_of(head_json)
+    test = _head_meta(head_json).get("test")
+    if test and chosen in ("auto", "vscode", "page", "vscode-debug", "vscode-recording"):
+        from .view import one_test_note
+
+        # No session or page is probed: one on the test file would show the file run as a program, another run than the test's.
+        out: dict[str, Any] = {"surface": "chat", "moved": False, "note": "nothing to move: %s" % one_test_note(test)}
+        if chosen != "auto":
+            out["available"] = False
+        return out
     try:
         if chosen == "auto":
             chosen = detect(port, session, entry)
@@ -344,4 +387,4 @@ def move_to(stop: dict, say: str | None, surface: str | None, port: int | None, 
         return {"surface": chosen, "moved": False, "note": "%s%s" % (exc.message, (": " + exc.hint) if exc.hint else "")}
 
 
-__all__ = ["SURFACES", "condition_for", "default_port", "detect", "detect_vscode", "entry_of", "http_json", "is_literal", "move_to", "no_session_note", "page_is_open", "page_state", "start_commands", "start_hints_of", "stop_file"]
+__all__ = ["SURFACES", "condition_for", "default_port", "detect", "detect_vscode", "entry_of", "head_steps", "http_json", "is_literal", "move_to", "no_session_note", "page_is_open", "page_state", "start_commands", "start_hints_of", "stop_file"]

@@ -16,7 +16,7 @@ from typing import Any, Callable
 import pytest
 
 from pyokka_runtime.agent.live import SESSIONS_ENV
-from pyokka_runtime.agent.review.surfaces import condition_for, default_port, detect, detect_vscode, entry_of, is_literal, move_to, page_state, stop_file
+from pyokka_runtime.agent.review.surfaces import condition_for, default_port, detect, detect_vscode, entry_of, head_steps, is_literal, move_to, page_state, start_hints_of, stop_file
 from tests.test_agent_live import FILE, WORKSPACE, FakeBridge, paused_at, write_descriptor
 
 
@@ -258,6 +258,54 @@ def test_a_paused_session_on_another_file_is_neither_detected_nor_moved(no_sessi
 
 def test_chat_moves_nothing(no_sessions: Path):
     assert move_to(STOP, "say", "chat", closed_port(), None, HEAD) == {"surface": "chat", "moved": False, "note": "nothing to move"}
+
+
+# -- the review's run, not another one ------------------------------------------------------------------------
+
+def test_a_recording_of_another_run_is_refused_before_it_is_moved(no_sessions: Path):
+    """The field case: the review ran a test (507 steps), the agent recorded the test file as a program in VS Code (217
+    steps) and stop moved that Time Machine to the review's step numbers. The bridge here holds 40 steps."""
+    bridge = FakeBridge()
+    try:
+        write_descriptor(no_sessions, "run", bridge.descriptor())
+        other = {"meta": {**HEAD["meta"], "stepCount": 507, "argv": ["--fast"]}}
+        out = move_to(STOP, "say", "vscode", closed_port(), None, other)
+        assert (out["surface"], out["moved"], out["available"]) == ("chat", False, False)
+        assert out["note"].startswith("the VS Code recording on demo.py is another run: 40 steps, the review's head run has 507 (other arguments or cwd, a changed file, library code recorded, or the editor's step cap), so its step numbers are not the review's; start one as the review recorded it: pyokka debug %s --record --cwd %s --args --fast (MCP: pyokka_debug" % (FILE, WORKSPACE))
+        assert out["note"].endswith("then stop again with the same n") and not [r for r in bridge.requests if r["type"] == "step"]
+        # auto falls to chat the same way, so the stop prints there and next: says what starts the right run
+        out = move_to(STOP, "say", "auto", closed_port(), None, other)
+        assert (out["surface"], out["moved"]) == ("chat", False) and out["note"].startswith("the VS Code recording on demo.py is another run: 40 steps")
+        # the same count is the same run; a head recording that was cut cannot be compared and moves as before
+        assert move_to(STOP, "say", "vscode", closed_port(), None, {"meta": {**HEAD["meta"], "stepCount": 40}})["moved"] is True
+        assert move_to(STOP, "say", "vscode", closed_port(), None, {"meta": {**HEAD["meta"], "stepCount": 507, "recording": {"truncated": True, "kept": 30}}})["moved"] is True
+        assert move_to(STOP, "say", "vscode", closed_port(), None, HEAD)["moved"] is True  # no count in the meta: nothing to compare
+    finally:
+        bridge.close()
+    assert head_steps({"meta": {"stepCount": 507}}) == 507 and head_steps(HEAD) is None and head_steps({"meta": {"stepCount": 507, "recording": {"kept": 30}}}) is None and head_steps({"meta": {"stepCount": 0}}) is None
+
+
+def test_a_review_of_one_test_probes_no_session_and_no_page(no_sessions: Path):
+    """A session on the test file would show the file run as a program, another run than the test's: it is never read or moved."""
+    bridge = FakeBridge()
+    page = FakePage({"url": "http://127.0.0.1/", "file": FILE, "pages": 1, "state": {"nav": {"step": 3}}})
+    test_head = {"meta": {**HEAD["meta"], "test": "demo.py::test_x", "stepCount": 507}}
+    try:
+        write_descriptor(no_sessions, "run", bridge.descriptor())
+        out = move_to(STOP, "say", "auto", page.port, None, test_head)
+        assert out == {"surface": "chat", "moved": False, "note": "nothing to move: a review of one test (demo.py::test_x) has no recording session in VS Code and no page: pyokka debug and pyokka web run the test file as a program, another run than the test's (its imports and definitions, not the test), so its stops print in the conversation"}
+        for asked in ("vscode", "page"):
+            out = move_to(STOP, "say", asked, page.port, None, test_head)
+            assert (out["surface"], out["moved"], out["available"]) == ("chat", False, False) and "a review of one test" in out["note"]
+            assert "--record" not in out["note"] and "--cwd" not in out["note"] and "MCP:" not in out["note"]
+        assert bridge.requests == [] and page.requests == []
+        assert move_to(STOP, "say", "chat", page.port, None, test_head) == {"surface": "chat", "moved": False, "note": "nothing to move"}
+        vs, pg = start_hints_of(test_head)
+        assert vs == pg and vs.startswith("a review of one test (demo.py::test_x)") and "--record" not in vs
+        assert start_hints_of({"meta": {**HEAD["meta"], "argv": ["-v"]}})[0].startswith("pyokka debug %s --record --cwd %s --args -v (MCP:" % (FILE, WORKSPACE))
+    finally:
+        bridge.close()
+        page.close()
     out = move_to(STOP, "say", "auto", closed_port(), None, HEAD)
     assert (out["surface"], out["moved"]) == ("chat", False)
     assert out["note"].startswith("nothing to move: no page on 127.0.0.1:") and out["note"].endswith(

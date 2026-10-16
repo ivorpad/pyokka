@@ -184,6 +184,46 @@ def test_a_view_that_answered_but_missed_the_stop_is_shown_and_auto_says_it_fell
     r2 = fresh(started, tmp_path, "chat")
     res = call_tool("pyokka_review", {"action": "stop", "n": 1, "say": "the raise is at step %d" % step, "surface": "chat", "dir": str(r2.dir)})
     assert "only in chat" not in res["content"][0]["text"]
+    # a recording of another run: the view line names the run to start, and next: does not say it again
+    r3 = fresh(started, tmp_path, "mismatch")
+    fakes.answer = {"surface": "chat", "moved": False, "available": False, "note": "the VS Code recording on main.py is another run: 217 steps, the review's head run has 507; start one as the review recorded it: pyokka debug main.py --record (MCP: pyokka_debug {}); then stop again with the same n"}
+    res = call_tool("pyokka_review", {"action": "ask", "line": "shopkit/discounts.py:16", "say": "rate starts at 0.0", "dir": str(r3.dir)})
+    text = res["content"][0]["text"]
+    assert res["isError"] is False and "view: chat (not moved): the VS Code recording on main.py is another run: 217 steps" in text
+    nxt = text.rstrip("\n").split("\n")[-1]
+    assert nxt == "next: wait for the person; they saw this only in chat, so answer in your message; the view line names the run to start in VS Code"
+
+
+def test_a_review_of_one_test_is_never_told_to_record_the_file(started, tmp_path, fakes):
+    """The field case: told "no live VS Code session on test_x.py" and given `pyokka debug FILE --record`, the agent
+    recorded the test file as a program (217 steps against the review's 507) and the stops moved a Time Machine of another run."""
+    r = fresh(started, tmp_path)
+    data = json.loads((r.dir / "review.json").read_text())
+    data["test"] = "tests/test_pricing.py::Pricing.test_subtotal"
+    (r.dir / "review.json").write_text(json.dumps(data))
+    step = Review.load(str(r.dir)).stop(1)["step_b"]
+    fakes.answer = NO_SESSION
+    res = call_tool("pyokka_review", {"action": "stop", "n": 1, "say": "the raise is at step %d" % step, "surface": "vscode", "dir": str(r.dir)})
+    text = res["content"][0]["text"]
+    assert res["isError"] is True and "refused: surface vscode is not available, so nothing was shown: a review of one test (tests/test_pricing.py::Pricing.test_subtotal) has no recording session in VS Code and no page" in text
+    assert "a review of one test stays in chat: pass surface chat (or auto)" in text and "--record" not in text and "--cwd" not in text and "pyokka_debug" not in text
+    assert text.rstrip("\n").endswith("next: review stop 1 --say TEXT --surface chat") and not Review.load(str(r.dir)).data["said"]
+    res = call_tool("pyokka_review", {"action": "ask", "line": "shopkit/discounts.py:16", "say": "rate starts at 0.0", "surface": "page", "dir": str(r.dir)})
+    text = res["content"][0]["text"]
+    assert res["isError"] is True and "surface page is not available, so nothing was shown: a review of one test" in text and "pyokka_page" not in text and "--cwd" not in text
+    assert text.rstrip("\n").endswith("next: review ask shopkit/discounts.py:16 --say TEXT --surface chat")
+    # auto shows the stop in chat, and next: does not send the agent to start VS Code on the file
+    fakes.answer = None
+    res = call_tool("pyokka_review", {"action": "stop", "n": 1, "say": "the raise is at step %d" % step, "dir": str(r.dir)})
+    nxt = res["content"][0]["text"].rstrip("\n").split("\n")[-1]
+    assert res["isError"] is False and nxt.endswith("the person saw this stop only in chat, so explain it in your message; a review of one test stays in chat")
+    assert "To show the next one" not in nxt and "pyokka_debug" not in nxt
+    res = call_tool("pyokka_review", {"action": "ask", "line": "shopkit/discounts.py:16", "say": "rate starts at 0.0", "dir": str(r.dir)})
+    nxt = res["content"][0]["text"].rstrip("\n").split("\n")[-1]
+    assert nxt == "next: wait for the person; they saw this only in chat, so answer in your message; a review of one test stays in chat"
+    tool = next(t for t in tool_definitions() if t["name"] == "pyokka_review")
+    assert "a review of one test has neither view and stays in chat" in tool["description"]
+    assert "A review of one test has neither view" in tool["inputSchema"]["properties"]["surface"]["description"] and "stays in chat" in tool["inputSchema"]["properties"]["test"]["description"]
 
 
 def test_the_notes_and_the_start_lines_name_both_forms():

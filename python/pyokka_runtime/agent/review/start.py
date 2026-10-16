@@ -133,8 +133,11 @@ def _check_vscode(repo: str, rel: str) -> None:
 
 def _check_view(f: dict, repo: str = "", rel: str = "") -> None:
     """What the asked view needs, checked before the two recordings: surface vscode a VS Code to reach (a live
-    Pyokka session, or the ``code`` command to launch one), surface page a free port."""
-    if str(f.get("surface") or "") == "vscode" and not f.get("test"):
+    Pyokka session, or the ``code`` command to launch one), surface page a free port. A review of one test has
+    no view to check: it stays in chat, and ``open_view`` says why."""
+    if f.get("test"):
+        return
+    if str(f.get("surface") or "") == "vscode":
         _check_vscode(repo, rel)
         return
     if wanted(f) != "page":

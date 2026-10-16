@@ -489,7 +489,7 @@ pyokka review close
 pyokka review state
 ```
 
-- `start` opens the person's view after recording: VS Code by default (a recording session on the entry, run to its end, whose Time Machine the stops move), `--surface page` for the browser page (a `pyokka web` process the review stops at `report` or `close`), `--surface chat` for none; its `view:` line says what opened or why not.
+- `start` opens the person's view after recording: VS Code by default (a recording session on the entry, run to its end, whose Time Machine the stops move), `--surface page` for the browser page (a `pyokka web` process the review stops at `report` or `close`), `--surface chat` for none; its `view:` line says what opened or why not. A review of one `--test` has no view and stays in chat: both commands run the test file as a program, another run than the test's, so no hint names them for it and `stop --surface vscode|page` on it is refused.
 - `start` resolves REF in the repo (the current directory unless `--repo`), materialises the base
   tree in `DIR/base`, records head through the entry (`main.py` at the repo root when it exists,
   else `--entry` or `--test`, as `pyokka run ENTRY --cwd REPO --save DIR/head.json` would) and base
