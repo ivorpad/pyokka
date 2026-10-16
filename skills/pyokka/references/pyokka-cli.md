@@ -582,6 +582,15 @@ the pause's values in a separate `python -I`, `scratchpad say TEXT --line N` for
 `pyokka web -h` lists every command. Exactly one tab may
 be open per page. docs/WEB.md is the full reference.
 
+The file's folder is the run's workspace root and working directory. Files outside it are library
+code: the Time Machine and the page's debugger skip them unless the panel's Settings > Step Into
+Library Code is on (next run; every installed package is instrumented too). `debug start` waits
+10 s for its first stop; a slower one answers `debug start reached neither a pause nor the end in
+10 s` while the run goes on: `debug state` says whether it is still running, and `wait-pause`
+(a cursor N, read before you send the request that pauses it) then `wait-pause --after N --timeout
+25000` waits for the pause. `--say TEXT` on a move puts the explanation in a bubble under the new line and a move without
+it clears the bubble; `say TEXT --line N` sets one without moving.
+
 ## Live only
 
 **`state --live`** is how you find out what exists. It never moves anything.

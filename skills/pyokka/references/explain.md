@@ -1,4 +1,4 @@
-# explain: walk a person through a run in their editor
+# explain: walk a person through a run in their editor or on the browser page
 
 A model can explain source without any tool. What this mode adds is the real run in front
 of the user: the `pyokka` CLI puts the VS Code editor on a line, the line shows the values
@@ -31,6 +31,14 @@ In Claude Code, call the `band` tool with `{"action": "show"}` before the first 
 person's prompt, and the person can move with `/pk n`, `/pk b`, `/pk i`, `/pk o`. Pass
 `--session NAME` on every command, and read where they went with `context --live` when they moved
 on their own. Call it with `{"action": "hide"}` when the walk ends.
+
+On the browser page (`pyokka web`; SKILL.md, "On the browser page"), `pyokka web ctl` moves the
+page (`step over`, `line N`, `goto N`, `debug step over` at a live pause; `pyokka_page` takes the
+same with `say`). The **Say** of each message goes in the page's bubble under the line, not in
+chat: put it on the move with `--say TEXT` when the map already gave you the values, or move, read
+the values in the reply, then `say TEXT --line N`. A move without `--say` clears the bubble, so
+every stop gets one. Answer a question with `say` at the same line, without moving. In chat, one
+line per stop is enough. Check `narration` in the state once, after the first stop.
 
 ## 1. Map, for yourself
 

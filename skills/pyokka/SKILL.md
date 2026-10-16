@@ -1,6 +1,6 @@
 ---
 name: pyokka
-description: 'See what Python code does with Pyokka''s MCP tools or its `pyokka` CLI and the user''s VS Code window, in one of three modes given as the first argument. `debug` pauses a running program at a function or line, steps it and reads the frame. `explain` walks a person through a run in their editor, one line per message. `show` investigates a recording or a pause and delivers a page where every value comes from a command: a tour of the whole run, or a code-history page around chosen steps. Use when asked to debug, step, break, pause, explain, walk through, or "show me" what a Python program did, why a value is what it is, or what a library did with an argument.'
+description: 'See what Python code does with Pyokka''s MCP tools or its `pyokka` CLI and the user''s VS Code window, in one of three modes given as the first argument. `debug` pauses a running program at a function or line, steps it and reads the frame. `explain` walks a person through a run in their editor or on the browser page, one line per message. `show` investigates a recording or a pause and delivers a page where every value comes from a command: a tour of the whole run, or a code-history page around chosen steps. Use when asked to debug, step, break, pause, explain, walk through, or "show me" what a Python program did, why a value is what it is, or what a library did with an argument.'
 argument-hint: debug | explain | show [what to look at]
 disable-model-invocation: true
 ---
@@ -20,7 +20,7 @@ leaves the question open.
 | mode | for | what you hand back | read |
 |---|---|---|---|
 | `debug` | pause a running program, step it, read or set the frame, check a breakpoint | the stops you saw, in chat, then clean up | [references/debug.md](references/debug.md) |
-| `explain` | teach a person a file while they watch their editor | one line and a few sentences per message, their turn after each | [references/explain.md](references/explain.md) |
+| `explain` | teach a person a file while they watch their editor or the browser page | one line and a few sentences per message, their turn after each | [references/explain.md](references/explain.md) |
 | `show` | answer how or why with evidence someone will read or keep | a tour or a code-history page, plus a short finding in chat | [references/show.md](references/show.md) |
 
 With no mode, pick by the verb the user used. "Step", "break", "pause", "run to", "does it stop
@@ -51,15 +51,18 @@ The same commands are MCP tools ([references/mcp.md](references/mcp.md) has ever
 Check once per session and take the first route that works:
 
 1. Tools named `pyokka_run`, `pyokka_debug` and so on are in your tool list: call them.
-2. `mcporter list pyokka --brief` prints eight signatures (about 1.8 KB): the server is
+2. `mcporter list pyokka --brief` prints 18 signatures (about 3 KB): the server is
    registered in mcporter. Call a tool with `mcporter call pyokka.TOOL key=value ...`, arrays as
    JSON (`'at=["rrf"]'`), or the whole object as `--args '{...}'`. Before the first call to a
    tool, `mcporter list pyokka.TOOL` prints its parameters; the listing without `--brief` is every
-   tool's docs at once, about 18 KB.
+   tool's docs at once, about 30 KB.
 3. Neither works: use the CLI, found as the next section says.
 
-`mcporter config add pyokka --command pyokka --arg mcp --scope home` registers it. The references
-write commands in CLI form. Each maps to one tool:
+To register it, first check that `~/.local/bin/pyokka -h` prints the usage. No such file means
+`pyokka.agentAccess` is off: ask the user to turn it on in VS Code's settings, which writes the file
+at once, rather than registering a `python3 -m pyokka_runtime` command of your own. Then `mcporter
+config add pyokka --command ~/.local/bin/pyokka --arg mcp --scope home`; the full path works
+whatever PATH mcporter starts with. The references write commands in CLI form. Each maps to one tool:
 
 | CLI | tool and arguments |
 |---|---|
@@ -172,7 +175,36 @@ somewhere. To find out where a recording session is, use the reads, which move n
 **Under a sandbox (Codex).** The CLI reaches VS Code through `$PYOKKA_HOME/sessions/*.sock`. If a
 command fails with `Operation not permitted` or `stopped answering` right after connecting, your
 sandbox blocked the socket or the runner: ask to run that command outside the sandbox. It is not a
-missing session.
+missing session. The browser page is a server on 127.0.0.1, and a sandbox without network access
+makes `pyokka web ctl` and `pyokka_page` answer `no Pyokka page is served on 127.0.0.1:PORT` while
+the page is open; check outside the sandbox before you believe it.
+
+## On the browser page
+
+When the person works in the browser page (`pyokka web`, http://127.0.0.1:4777/), drive that page
+with `pyokka web ctl --port PORT` or `pyokka_page`. `pyokka debug` and `pyokka_debug` drive VS
+Code, another window. [references/pyokka-cli.md](references/pyokka-cli.md), "The browser page",
+has the commands.
+
+- `state` first. `pages: 0` or `no page is open` means no tab is connected to that server: ask
+  them to open or reload `http://127.0.0.1:PORT/`. Do not open a browser yourself or start a
+  second server on another port; one tab per server.
+- To show another file, stop their server and start `pyokka web FILE --port PORT` on the same
+  port. The tab reconnects with the breakpoints it had, shown in its gutter, and they still decide
+  where `debug start` stops; `break LINE off` removes one in the main file.
+- The file's folder is the run's root and working directory, and `pyokka web` has no flag to move
+  it. Code outside that folder is library code, which the debugger neither stops in nor steps
+  into, so a launcher in `/tmp` makes the whole project library code. Open a file whose folder
+  holds the code in question. When none calls it, ask the person which they want: a launcher at
+  the project root that you delete afterwards, or Step Into Library Code ticked in the panel's
+  Settings (the gear), which takes effect on the next run and instruments every installed package.
+- `debug start` goes to the first breakpoint that can hit, else to the first statement, and
+  waits 10 s for it. A server or a slow test answers `debug start reached neither a pause nor the
+  end in 10 s` and keeps running. Read `wait-pause` (it prints a cursor N), send the request that
+  reaches the breakpoint if it is a server, then `wait-pause --after N --timeout 25000`.
+- Explanations go on the page, in the bubble under the line, not in chat: `--say TEXT` on a move,
+  or `say TEXT --line N` once you have read the values the move returned. A move without `--say`
+  clears the bubble. `state` shows the bubble as `narration`.
 
 ## In Claude Code: the band
 
@@ -221,7 +253,10 @@ it (README, "In Claude Code"), and carry on with the CLI.
 ## Stay out of the user's project
 
 Pyokka needs no harness. Use what the project already has: an existing test, the entry point, a
-module the user named. Leave their repository exactly as you found it: its files, its config
+module the user named. It has to call the code in question: a module that only defines functions
+runs its imports and `def` lines and stops. Asked about pending changes, read `git status` and
+`git diff` first and run code that goes through the changed lines; `pyokka coverage RUN --file F`
+shows which of them ran. Leave their repository exactly as you found it: its files, its config
 (`pytest.ini`, `pyproject.toml`) and its directories. If the code needs a database or an external
 service to run and no test covers that path, say so and ask the user how they want to reach it. `run.json`, `history.json`, prose and pages go in a scratch
 directory outside the repository.
