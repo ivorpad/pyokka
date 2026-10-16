@@ -4,22 +4,28 @@
 has MCP tools but no shell, or where tool calls are easier to allow than shell commands.
 
 ```
-claude mcp add pyokka -- pyokka mcp            # Claude Code
-codex mcp add pyokka -- pyokka mcp             # Codex
-mcporter config add pyokka --command pyokka --arg mcp --scope home    # mcporter, for any agent with a shell
+claude mcp add pyokka -- ~/.local/bin/pyokka mcp                                 # Claude Code
+codex mcp add pyokka -- ~/.local/bin/pyokka mcp                                  # Codex
+mcporter config add pyokka --command ~/.local/bin/pyokka --arg mcp --scope home   # mcporter, for any agent with a shell
 ```
 
-From a checkout without `pyokka` on the PATH:
+`~/.local/bin/pyokka` is written by the VS Code extension once `pyokka.agentAccess` is on. The full
+path works whatever PATH the client starts with; the shell expands `~` before the client stores it.
+Check that `~/.local/bin/pyokka -h` prints the usage before registering: a client takes a missing
+file without complaint and fails only when it starts the server.
+
+From a checkout without the extension:
 
 ```json
 {"mcpServers": {"pyokka": {"command": "python3", "args": ["-m", "pyokka_runtime", "mcp"],
   "env": {"PYTHONPATH": "<repo>/python"}}}}
 ```
 
-Codex's `~/.codex/config.toml`: `[mcp_servers.pyokka]` with `command = "pyokka"`, `args = ["mcp"]`.
+Codex's `~/.codex/config.toml`: `[mcp_servers.pyokka]` with `command = "/Users/YOU/.local/bin/pyokka"`
+(TOML does not expand `~`), `args = ["mcp"]`.
 
 Registered in mcporter, an agent with a shell reads the tools a piece at a time:
-`mcporter list pyokka --brief` (one signature per tool, about 1.8 KB), `mcporter list
+`mcporter list pyokka --brief` (one signature per tool, about 3 KB), `mcporter list
 pyokka.pyokka_debug` (one tool), then `mcporter call pyokka.pyokka_debug action=start
 file=/abs/app.py 'at=["main"]'`. Every `mcporter call` starts its own `pyokka mcp` process; the
 debug session lives in VS Code and a kept runner in its own process, so the next call finds them.
