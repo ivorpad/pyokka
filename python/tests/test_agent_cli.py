@@ -351,7 +351,7 @@ def test_context_at_the_error_step(saved: Path, capsys):
 def test_errors_say_what_to_do_next(saved: Path, capsys):
     code, _ = pyokka("step", str(saved), "5000", "--into")
     err = capsys.readouterr().err
-    assert code == 2 and "step 5000 is past the recorded 28 steps" in err and "use `steps` or `find`" in err
+    assert code == 2 and "step 5000 is past the recorded 28 steps" in err and "pyokka_map {\"action\": \"steps\"" in err and "`pyokka find " in err
     code, _ = pyokka("step", str(saved), "27", "--into")
     err = capsys.readouterr().err
     assert code == 2 and "cannot step into from step 27: the end of the run" in err and "possible moves: back, backOver, backOut" in err
@@ -459,7 +459,7 @@ def test_why_walks_back_from_a_value(saved: Path, project: Path):
 def test_why_errors_say_what_to_do_next(saved: Path, capsys):
     code, _ = pyokka("why", str(saved), "5000", "total")
     err = capsys.readouterr().err
-    assert code == 2 and "step 5000 is past the recorded 28 steps" in err and "use `steps` or `find`" in err
+    assert code == 2 and "step 5000 is past the recorded 28 steps" in err and "pyokka_map {\"action\": \"steps\"" in err and "`pyokka find " in err
     code, _ = pyokka("why", str(saved))
     err = capsys.readouterr().err
     assert code == 2 and "why needs STEP" in err and "var run.json label" in err

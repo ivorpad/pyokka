@@ -219,9 +219,11 @@ describe('DapTranslator in replay', () => {
     expect(vars.variables[0]!.variablesReference).toBeGreaterThan(0);
     const member = await send('evaluate', { expression: 'x[0]', context: 'watch', frameId: 1 });
     expect(member.body).toMatchObject({ result: '1' });
-    const missing = await send('evaluate', { expression: 'len(x)', context: 'hover', frameId: 1 });
+    const missing = await send('evaluate', { expression: 'len(x)', context: 'watch', frameId: 1 });
     expect(missing.success).toBe(false);
     expect(missing.message).toContain('not in the recording at step 3');
+    // a hover over a recording gets no debug value, so VS Code shows Pyokka's own hover instead
+    expect((await send('evaluate', { expression: 'x', context: 'hover', frameId: 1 })).success).toBe(false);
     expect((await send('setVariable', { variablesReference: scopes.scopes[0]!.variablesReference, name: 'x', value: '3' })).success).toBe(false);
     const completions = (await send('completions', { text: 'x', column: 2 })).body as { targets: { label: string }[] };
     expect(completions.targets.map((c) => c.label)).toEqual(['x']);

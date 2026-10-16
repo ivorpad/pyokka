@@ -13,6 +13,7 @@ from __future__ import annotations
 import bisect
 import json
 import os
+import shlex
 from typing import Any, Protocol
 
 from ..bindings import index_bindings, statement_bindings
@@ -86,7 +87,7 @@ class SavedRun:
                 with open(self.path, "r", encoding="utf-8") as fh:
                     doc = json.load(fh)
             except FileNotFoundError:
-                raise AgentError("no saved run at %s" % self.path, "create one with `pyokka run FILE --save %s`" % os.path.basename(self.path)) from None
+                raise AgentError("no saved run at %s" % self.path, "record one: `pyokka run FILE --save %s` (MCP: pyokka_run {\"file\": \"FILE\", \"save\": %s})" % (shlex.quote(self.path), json.dumps(self.path))) from None
             except ValueError as exc:
                 raise AgentError("%s is not a saved run: %s" % (self.path, exc), "save it again with `pyokka run FILE --save ...`") from None
         if not isinstance(doc, dict) or "events" not in doc or "meta" not in doc:
@@ -264,8 +265,16 @@ class SavedRun:
         if self.trace.count == 0:
             raise AgentError("the run recorded no steps", "the file did not execute (syntax error?); see `pyokka story`")
         if not self.trace.valid(step):
-            raise AgentError("step %d is past the recorded %d steps (0..%d)" % (step, self.trace.count, self.trace.count - 1) if step >= 0 else "step %d is negative" % step, "use `steps` or `find` to pick one")
+            raise AgentError("step %d is past the recorded %d steps (0..%d)" % (step, self.trace.count, self.trace.count - 1) if step >= 0 else "step %d is negative" % step, self._pick_step_hint())
         return step
+
+    def _pick_step_hint(self) -> str:
+        """The two calls that find a step, on this run: ``steps`` lists them, ``find`` searches them."""
+        if os.path.isfile(self.path):
+            cli, mcp = shlex.quote(self.path), '"run": %s' % json.dumps(self.path)
+        else:  # a live session's recording, held in memory under a made-up name
+            cli, mcp = "--live", '"live": true'
+        return "list them with `pyokka steps %s` (MCP: pyokka_map {\"action\": \"steps\", %s}) or search with `pyokka find %s TEXT` (MCP: pyokka_map {\"action\": \"find\", %s, \"text\": \"TEXT\"})" % (cli, mcp, cli, mcp)
 
     def step_on_line(self, file: str, line: int) -> int:
         f = self.resolve_file(file)
@@ -372,18 +381,23 @@ class SavedRun:
     def _keep_link(self) -> SocketLink:
         keep = self.meta.get("keep")
         if not keep:
-            raise AgentError("this run was saved without --keep, so its values are gone", "run again with `pyokka run %s --save %s --keep`, or use --live with an open VS Code session" % (self.meta.get("file"), os.path.basename(self.path)))
+            raise AgentError("this run was saved without --keep, so its values are gone", "%s, or read the open VS Code session instead (`--live`; MCP: \"live\": true)" % self._keep_again())
         try:
             return SocketLink(str(keep.get("socket")), timeout=10.0)
         except LinkClosed:
-            raise AgentError("the kept runner (pid %s) is gone" % keep.get("pid"), "run again with `pyokka run %s --save %s --keep`" % (self.meta.get("file"), os.path.basename(self.path))) from None
+            raise AgentError("the kept runner (pid %s) is gone" % keep.get("pid"), self._keep_again()) from None
+
+    def _keep_again(self) -> str:
+        """Record this run again with its runner kept, in both forms, with the real paths."""
+        file = os.path.abspath(str(self.meta.get("file") or "FILE"))
+        return "record it again with the runner kept: `pyokka run %s --save %s --keep` (MCP: pyokka_run {\"file\": %s, \"save\": %s, \"keep\": true})" % (shlex.quote(file), shlex.quote(self.path), json.dumps(file), json.dumps(self.path))
 
     def _keep_call(self, req: dict) -> dict:
         link = self._keep_link()
         try:
             reply = link.call(req)
         except LinkClosed as exc:
-            raise AgentError("the kept runner stopped answering: %s" % exc, "run again with --keep") from None
+            raise AgentError("the kept runner stopped answering: %s" % exc, self._keep_again()) from None
         finally:
             link.close()
         if reply.get("type") == "error":

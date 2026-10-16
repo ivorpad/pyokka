@@ -1200,7 +1200,7 @@ Refused, with a `BridgeError` that names recording:
 | requests | error | hint |
 |---|---|---|
 | `var`, `why`, `walkthrough`, `graph`, `exceptions`, `http`, `values`, `story`, `find`, `steps` | `<verb> needs a recording` | ``start the debug session with recording (`pyokka debug FILE --record`, or "Pyokka: Debug Current File (Recording)"), or read a run-all session of the file`` |
-| `step` with `back`, `backOver`, `backOut` or `to` | `this debug session records nothing, so there is nothing behind the pause to replay` | ``into, over and out execute; `--record` gives you the backward moves`` |
+| `step` with `back`, `backOver`, `backOut` or `to` | `this debug session records nothing, so there is nothing behind the pause to replay` | ``into, over and out execute; a recording gives you the backward moves: `pyokka debug FILE --record` (MCP: pyokka_debug {"action":"start","file":"FILE","record":true})`` |
 
 On a `record: true` session every one of them answers, because that session keeps its run-all
 socket and is a run-all session with a pause. Nothing changes there.

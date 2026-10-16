@@ -19,6 +19,7 @@ export function registerValueCommands(reg: (id: string, fn: (...args: unknown[])
   reg('pyokka.copyExpressionData', (arg) => liveValues.copyExpressionData(arg));
   reg('pyokka.hoverCopy', (arg) => liveValues.hoverCopy(arg));
   reg('pyokka.exploreEntity', (arg) => liveValues.exploreEntity(arg));
+  reg('pyokka.seeLocal', (arg) => liveValues.seeLocal(arg));
   reg('pyokka.installMissingPackageToProject', (arg) => packages.installToProject(arg));
   reg('pyokka.installMissingPackageForFile', (arg) => packages.installForFile(arg));
 }

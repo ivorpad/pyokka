@@ -7,7 +7,8 @@ debugger, ``vscode-recording`` when a live session holds a finished recording, e
 when the page shows another file than the review's entry), a debug session gets a breakpoint at the
 stop's line with a condition made of up to two of the stop's locals whose text is a literal, then
 ``continue``; a recording session gets ``step --to step_b``; chat moves nothing. Nothing here starts
-a server or opens an editor: a missing surface is reported, never created.
+a server or opens an editor: a missing surface is reported, never created. ``review start`` opens
+one (``view.py``).
 """
 
 from __future__ import annotations
@@ -197,10 +198,19 @@ def start_commands(head_json: Any) -> tuple[str, str]:
     return "pyokka debug %s --record --cwd %s" % (entry, root), "pyokka web %s --cwd %s" % (entry, root)
 
 
+def start_hints_of(head_json: Any) -> tuple[str, str]:
+    """``start_commands`` with each command's MCP call beside it, and what VS Code needs (``view.start_hints``)."""
+    from .view import start_hints
+
+    entry = entry_of(head_json) or "ENTRY"
+    root = str(_head_meta(head_json).get("workspaceRoot") or os.path.dirname(entry) or "REPO")
+    return start_hints(entry, root)
+
+
 def no_session_note(session: str | None, head_json: Any) -> str:
     """The note of a ``--surface vscode`` stop with no session to move: which file was looked for and the command that starts one."""
     which = ("matches %s" % session) if session else ("on %s" % (os.path.basename(entry_of(head_json)) or "the entry"))
-    return "no live VS Code session %s; start one on the entry (%s, let it finish) and stop again" % (which, start_commands(head_json)[0])
+    return "no live VS Code session %s; start one on the entry: %s; then stop again with the same n" % (which, start_hints_of(head_json)[0])
 
 
 def _same_file(a: str | None, b: str | None) -> bool:
@@ -227,12 +237,12 @@ def _connect(session: str | None, prefer: str, entry: str) -> LiveRun:
 def _move_page(stop: dict, say: str | None, port: int, head_json: Any) -> dict:
     state = page_state(port)
     if state is None:
-        return {"surface": "page", "moved": False, "note": "no Pyokka page answers on 127.0.0.1:%d" % port}
+        return {"surface": "page", "moved": False, "available": False, "note": "no Pyokka page answers on 127.0.0.1:%d" % port}
     if not page_is_open(state):
-        return {"surface": "page", "moved": False, "note": str(state.get("error") or "%s browser tabs are open on the page; keep exactly one" % state.get("pages"))}
+        return {"surface": "page", "moved": False, "available": False, "note": str(state.get("error") or "%s browser tabs are open on the page; keep exactly one" % state.get("pages"))}
     entry = entry_of(head_json)
     if not _same_file(state.get("file"), entry):
-        return {"surface": "page", "moved": False, "note": "the page on port %d shows %s, not the review's entry %s; nothing moved" % (port, state.get("file"), entry or "(unknown)")}
+        return {"surface": "page", "moved": False, "available": False, "note": "the page on port %d shows %s, not the review's entry %s; nothing moved" % (port, state.get("file"), entry or "(unknown)")}
     step = stop.get("step_b")
     if step is None:
         return {"surface": "page", "moved": False, "note": "the stop has no head step to go to"}
@@ -302,6 +312,9 @@ def move_to(stop: dict, say: str | None, surface: str | None, port: int | None, 
     """``{surface, moved, note}``: move the surface to ``stop`` (``auto`` detects; ``vscode`` picks debug over recording).
 
     A refusal or a surface that stopped answering is ``moved: False`` with the reason in ``note``; nothing raises.
+    ``available: False`` marks an asked surface with nothing there to move (no session on the entry, no page
+    with one tab on the entry), which ``stop`` and ``ask`` refuse; a surface that answered and did not reach
+    the stop has no such key.
     """
     port = default_port(port)
     chosen = surface or "auto"
@@ -310,14 +323,14 @@ def move_to(stop: dict, say: str | None, surface: str | None, port: int | None, 
         if chosen == "auto":
             chosen = detect(port, session, entry)
             if chosen == "chat":
-                in_vscode, on_page = start_commands(head_json)
-                return {"surface": "chat", "moved": False, "note": "nothing to move: no page on 127.0.0.1:%d, no VS Code session on %s (start one where the person is: %s, or %s)" % (port, os.path.basename(entry) or "the entry", in_vscode, on_page)}
+                in_vscode, on_page = start_hints_of(head_json)
+                return {"surface": "chat", "moved": False, "note": "nothing to move: no page on 127.0.0.1:%d, no VS Code session on %s; the person saw it only in chat (start a view where the person is: %s; or %s)" % (port, os.path.basename(entry) or "the entry", in_vscode, on_page)}
         elif chosen == "vscode":
             chosen, live = detect_vscode(session, entry)
             if live is not None:
                 live.close()
             if chosen == "chat":
-                return {"surface": "chat", "moved": False, "note": no_session_note(session, head_json)}
+                return {"surface": "chat", "moved": False, "available": False, "note": no_session_note(session, head_json)}
         if chosen == "page":
             return _move_page(stop, say, port, head_json)
         if chosen == "vscode-debug":
@@ -331,4 +344,4 @@ def move_to(stop: dict, say: str | None, surface: str | None, port: int | None, 
         return {"surface": chosen, "moved": False, "note": "%s%s" % (exc.message, (": " + exc.hint) if exc.hint else "")}
 
 
-__all__ = ["SURFACES", "condition_for", "default_port", "detect", "detect_vscode", "entry_of", "http_json", "is_literal", "move_to", "no_session_note", "page_is_open", "page_state", "start_commands", "stop_file"]
+__all__ = ["SURFACES", "condition_for", "default_port", "detect", "detect_vscode", "entry_of", "http_json", "is_literal", "move_to", "no_session_note", "page_is_open", "page_state", "start_commands", "start_hints_of", "stop_file"]

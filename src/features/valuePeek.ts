@@ -1,6 +1,6 @@
 /**
  * Value Peek: hover an identifier / member chain while a session runs and see its value,
- * with command links (Explore value / Show as diagram / Copy / Why / Add watch). While the Time
+ * with command links (See value / Copy / Why / Show as diagram / Add watch). While the Time
  * Machine navigates, the value shown is the one recorded as of the current step, and a footer
  * names the step and the run's final value when it differs.
  *
@@ -22,11 +22,15 @@ import { memberChainAt, truncateOneLine } from '../util/text';
 import { isKeyword } from '../runtime/language';
 import { entryText } from '../views/panelSupport';
 import { localFooter, localOwner, pickLocal } from './hoverLocals';
+import { formatRepr } from '../shared/reprFormat';
 
 interface CacheEntry {
   runId: string;
   promise: Promise<LogEvent | undefined>;
 }
+
+/** the characters a hover's value fills before a bracket group opens onto lines of its own */
+const HOVER_WIDTH = 60;
 
 /** hidden markers hovers may leave in one session; the oldest goes when there are more */
 const HOVER_MARKERS_MAX = 60;
@@ -169,22 +173,21 @@ export class ValuePeekProvider implements vscode.HoverProvider {
     // the links also name the expression, its range and the session: LiveValues.resolveHoverEntry re-evaluates once the id's run is gone
     const target = { logId: logEv.logId, exp, range: range4, sessionKey: s.key };
     const links = [
-      `[$(search) Explore value](command:pyokka.exploreEntity?${args(target)} "Explore value")`,
-      `[$(type-hierarchy) Show as diagram](command:pyokka.showDiagramForEntry?${args(target)} "Show as diagram")`,
+      `[$(eye) See value](command:pyokka.exploreEntity?${args(target)} "Show the value in the Pyokka panel's Details")`,
       `[$(copy) Copy](command:pyokka.hoverCopy?${args(target)} "Copy value")`,
       `[$(question) Why](command:pyokka.whyValue?${args({ logId: logEv.logId })} "Why this value: the statements that produced it")`,
+      `[$(type-hierarchy) Show as diagram](command:pyokka.showDiagramForEntry?${args(target)} "Show as diagram")`,
     ];
     if (s.nav.active) links.push(watchLink(s, exp, range4));
     md.appendMarkdown(`**${escapeMd(exp)}**&nbsp;&nbsp;${links.join(' &nbsp;|&nbsp; ')}\n\n`);
     return md;
   }
 
-  /** The header followed by the entry's value: one line, then the full text when it spans several. */
+  /** The header followed by the entry's value, indented: the entry's own pretty text when it has one. */
   private markdown(s: Session, exp: string, logEv: LogEvent, range4: Range4): vscode.MarkdownString {
     const md = this.header(s, exp, logEv, range4);
-    md.appendCodeblock(truncateOneLine(logEv.text, 400), 'python');
     const full = entryText(logEv);
-    if (full !== logEv.text && full.includes('\n')) md.appendCodeblock(full.length > 2000 ? full.slice(0, 2000) + '\n…' : full, 'python');
+    md.appendCodeblock(full.includes('\n') ? (full.length > 2000 ? full.slice(0, 2000) + '\n…' : full) : formatRepr(truncateOneLine(logEv.text, 2000), HOVER_WIDTH), 'python');
     return md;
   }
 
@@ -193,13 +196,15 @@ export class ValuePeekProvider implements vscode.HoverProvider {
     const md = new vscode.MarkdownString(undefined, true);
     md.isTrusted = true;
     md.supportHtml = true;
+    const see = { sessionKey: s.key, name: exp, text: change.text, step: change.step, fileId: change.fileId, line: change.line, scopeId: change.scopeId };
     const links = [
+      `[$(eye) See value](command:pyokka.seeLocal?${args(see)} "Show the value in the Pyokka panel's Details")`,
       `[$(copy) Copy](command:pyokka.hoverCopy?${args({ text: change.text })} "Copy value")`,
       `[$(question) Why](command:pyokka.whyValue?${args({ step: change.step, name: exp })} "Why this value: the statements that produced it")`,
     ];
     if (s.nav.active) links.push(watchLink(s, exp, range4));
     md.appendMarkdown(`**${escapeMd(exp)}**&nbsp;&nbsp;${links.join(' &nbsp;|&nbsp; ')}\n\n`);
-    md.appendCodeblock(truncateOneLine(change.text ?? '', 400), 'python');
+    md.appendCodeblock(formatRepr(truncateOneLine(change.text ?? '', 2000), HOVER_WIDTH), 'python');
     md.appendMarkdown('\n\n' + localFooter(change, navigating));
     return md;
   }

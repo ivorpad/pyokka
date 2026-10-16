@@ -22,6 +22,7 @@ from ..source import AgentError, SavedRun
 from .actions import head_run, values_at
 from .render import conversation_lines, fact_text, finding_lines, plan_lines, try_lines, value_lines, where
 from .state import WAIT, Review, result
+from .view import close_view
 
 
 # -- skip ---------------------------------------------------------------------------------------------------------
@@ -145,4 +146,11 @@ def state(review: Review, f: dict | None = None) -> dict:
     return result(review, lines, plan=review.plan, shown=list(review.shown), skipped=review.skipped, remaining=review.remaining(), waiting=review.waiting, asked=review.asked, conversation=review.conversation, tries=review.tries, findings=review.findings, fix=fix, phase=review.phase)
 
 
-__all__ = ["skip", "look", "state", "current_step", "evaluate"]
+def close(review: Review, f: dict | None = None) -> dict:
+    """Stop the page server ``start`` opened; the VS Code recording stays for the person to keep reading."""
+    line = close_view(review.data)
+    review.save()
+    return result(review, [line or "nothing to close: start opened no page server (a VS Code recording runs nothing)"])
+
+
+__all__ = ["close", "skip", "look", "state", "current_step", "evaluate"]

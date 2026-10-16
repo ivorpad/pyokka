@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+import ast
 import datetime as _dt
 import decimal
 import enum
@@ -43,6 +44,20 @@ _LEAF_TYPES = (
 )
 
 
+
+def _ast_text(node: ast.AST) -> str:
+    """An ``ast`` node by its type and scalar fields: ``Constant(value=None)``, ``Name(id='x')``,
+    ``FunctionDef(name='f')``, ``Module()``. Child nodes, lists and absent (None) fields are left out, so the
+    text stays short and reads back as a record (``agent/reprs.py``: ``type_of`` is the node's type)."""
+    parts = []
+    for name, value in ast.iter_fields(node):
+        if isinstance(value, (ast.AST, list)):
+            continue
+        if value is None and not (isinstance(node, ast.Constant) and name == "value"):
+            continue  # an absent `returns` or `type_comment` says nothing; a Constant's None is the value
+        parts.append("%s=%r" % (name, value))
+    return "%s(%s)" % (type(node).__name__, ", ".join(parts))
+
 class _BoundedRepr(reprlib.Repr):
     def __init__(self, max_len: int) -> None:
         super().__init__()
@@ -61,10 +76,13 @@ class _BoundedRepr(reprlib.Repr):
             return "<int with roughly %d digits>" % (int(abs(x).bit_length() * 0.30103) + 1)
 
     def repr_instance(self, x: Any, level: int) -> str:  # noqa: D401 - reprlib API
-        try:
-            s = repr(x)
-        except BaseException:  # noqa: BLE001 - user __repr__ may raise anything
-            return "<%s object>" % type(x).__name__
+        if isinstance(x, ast.AST):
+            s = _ast_text(x)  # the default repr is `<ast.Constant object at 0x…>`, which says nothing
+        else:
+            try:
+                s = repr(x)
+            except BaseException:  # noqa: BLE001 - user __repr__ may raise anything
+                return "<%s object>" % type(x).__name__
         if len(s) > self.maxother:
             s = s[: self.maxother - 1] + "…"
         return s
@@ -122,10 +140,13 @@ class _MeasuredRepr(_BoundedRepr):
             self.maxtuple = self.maxlist = self.maxarray = self.maxdict = self.maxset = self.maxfrozenset = self.maxdeque = max(16, max_len // 10)
 
     def repr_instance(self, x: Any, level: int) -> str:
-        try:
-            s = repr(x)
-        except BaseException:  # noqa: BLE001 - user __repr__ may raise anything
-            return "<%s object>" % type(x).__name__
+        if isinstance(x, ast.AST):
+            s = _ast_text(x)
+        else:
+            try:
+                s = repr(x)
+            except BaseException:  # noqa: BLE001 - user __repr__ may raise anything
+                return "<%s object>" % type(x).__name__
         if len(s) > self.maxother:
             self.cut = True
             if level == self.maxlevel:

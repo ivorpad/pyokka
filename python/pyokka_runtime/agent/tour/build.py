@@ -111,6 +111,8 @@ def _candidate(t: TourRun, c: dict, chapter: str) -> dict:
         out["setup"] = True
     if c.get("repeat"):
         out["repeat"] = True
+    if FORCED in c["subs"]:
+        out["forced"] = True
     return out
 
 
@@ -135,10 +137,23 @@ def _chapter_of(chs: list[dict], step: int) -> str:
     return chs[-1]["id"] if chs else "c1"
 
 
-def build_tour(run: "SavedRun", *, goal: str | None = None, budget: int = DEFAULT_BUDGET, full: dict[str, str] | None = None) -> dict:
-    """``tour.json``. ``full``, when given, is filled with every kept value's whole recorded text by value id (the prose validator reads it)."""
+FORCED = ("forced", "stop")
+
+
+def build_tour(run: "SavedRun", *, goal: str | None = None, budget: int = DEFAULT_BUDGET, full: dict[str, str] | None = None, force: list[int] | None = None) -> dict:
+    """``tour.json``. ``full``, when given, is filled with every kept value's whole recorded text by value id (the prose validator reads it).
+
+    ``force`` lists steps that get a candidate whatever the ranking says (a review passes its stops, so its
+    says can become the tour's prose): the ``forced:stop`` signal joins any candidate already at that step,
+    and a forced candidate is never dropped by novelty, the user-code filters or the budget."""
     started = time.perf_counter()
     t = TourRun(run)
+    forced: list[int] = []
+    for st in force or []:
+        if not isinstance(st, int) or isinstance(st, bool) or not 0 <= st < t.n:
+            raise AgentError("step %r is outside the run" % (st,), "steps run 0 to %d; `pyokka steps RUN` lists them" % max(0, t.n - 1))
+        if st not in forced:
+            forced.append(st)
     g = resolve_goal(t, goal)
     pool = sig.Pool(t)
     # the walkthrough merges library calls, so it never has more moments than the unrolled list
@@ -158,7 +173,9 @@ def build_tour(run: "SavedRun", *, goal: str | None = None, budget: int = DEFAUL
             if m["kind"] in ("call", "tool") and m.get("entryStep") is not None and int(m["entryStep"]) - st > 3:
                 st = int(m["entryStep"])
             pool.add(st, "walkthrough", m["kind"], m["text"])
-        pooled = {st: c for st, c in pool.by_step.items() if any(s == "walkthrough" for s, _ in c["subs"])}
+        for st in forced:
+            pool.add(st, *FORCED, "a stop of the review")
+        pooled = {st: c for st, c in pool.by_step.items() if any(s in ("walkthrough", "forced") for s, _ in c["subs"])}
     else:
         chs = chapters(t)
         sig.narrative(t, pool)
@@ -170,6 +187,8 @@ def build_tour(run: "SavedRun", *, goal: str | None = None, budget: int = DEFAUL
             nxt = t.next_in_scope(st)
             if binds_call(t.stmt(st)) and nxt is not None and nxt <= c["end"] + 1:
                 pool.add(nxt, "chapter", "result", "what %s produced lands" % c["title"], (st,))
+        for st in forced:
+            pool.add(st, *FORCED, "a stop of the review")
         pooled = dict(pool.by_step)
     chapters_out = []
     for k, c in enumerate(chs, 1):
@@ -180,7 +199,7 @@ def build_tour(run: "SavedRun", *, goal: str | None = None, budget: int = DEFAUL
     for c in rank_mod.novel(t, pooled):
         i = c["step"]
         fid = t.fid[i]
-        if not is_small:
+        if not is_small and FORCED not in c["subs"]:
             if fid < 0 or (not t.user(fid) and not (c["subs"] & {("io", "http")})):
                 continue
             if t.function(i) == "<module>" and fid != t.main_fid:
@@ -222,7 +241,7 @@ def build_tour(run: "SavedRun", *, goal: str | None = None, budget: int = DEFAUL
         ch["candidates"] = sum(1 for c in selected if c["chapter"] == ch["id"])
     doc["candidates"] = selected
     text = json.dumps(doc, ensure_ascii=False, separators=(",", ":"))
-    doc["budget"].update({"estimate": len(text) // rank_mod.CHARS_PER_TOKEN, "found": total_candidates, "kept": len(selected), "dropped": total_candidates - len(selected)})
+    doc["budget"].update({"estimate": len(text) // rank_mod.CHARS_PER_TOKEN, "found": total_candidates, "kept": len(selected), "dropped": total_candidates - len(selected), "forced": sum(1 for c in selected if c.get("forced"))})
     doc["timing"] = {"ms": round((time.perf_counter() - started) * 1000), "whyCalls": spine_info["whyCalls"]}
     return doc
 

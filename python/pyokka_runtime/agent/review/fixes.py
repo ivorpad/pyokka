@@ -18,6 +18,7 @@ from ..diff import Side, diff_sides, render_diff
 from ..render import _one_line
 from ..source import SavedRun
 from ..workflows import _check
+from .view import close_view
 from .actions import _port, run_command, run_try, tail
 from .patching import PatchError, apply_patch
 from .render import conversation_entry, edge_line, finding_place, repro_text, unreached_line, unreached_span
@@ -159,13 +160,32 @@ def report(review: Review, f: dict) -> dict:
     path = os.path.abspath(os.path.expanduser(str(out))) if out else review.path("report.md")
     if inside(path, review.repo):
         raise review.refuse("--out %s is inside the repository" % path, ["nothing is written inside the repository under review"], "review report --out FILE")
+    page = tour = None
+    if f.get("page"):
+        from .page import page_path, write_page
+
+        page_path(review, f["page"])  # refused before anything is written
+    if f.get("tour"):
+        from .story import tour_path, write_tour
+
+        tour_path(review, f["tour"])
     os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
     with open(path, "w", encoding="utf-8") as fh:
         fh.write(md)
     review.data["report"] = {"path": path, "at": now()}
     review.phase = "reported"
+    if f.get("page"):
+        page = write_page(review, f["page"])  # the same review as a code-history page, for render-code-history.cjs
+    if f.get("tour"):
+        tour = write_tour(review, f["tour"])  # and as a tour of head.json, the stops as its picks, for render-tour.cjs
+    closed = close_view(review.data)
     review.save()
-    return result(review, [*md.rstrip("\n").split("\n"), "", "wrote %s" % path], report=path, markdown=md)
+    extra: dict = {}
+    if page:
+        extra.update(page=page["path"], pageWarnings=page["warnings"])
+    if tour:
+        extra.update(tour=tour["path"], tourWarnings=tour["warnings"])
+    return result(review, [*md.rstrip("\n").split("\n"), "", "wrote %s" % path, *(page["lines"] if page else []), *(tour["lines"] if tour else []), *([closed] if closed else [])], report=path, markdown=md, **extra)
 
 
 def _fix_status(review: Review, fd: dict) -> str:

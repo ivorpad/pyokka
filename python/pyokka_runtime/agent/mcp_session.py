@@ -14,7 +14,10 @@ recording does not mean "never happened".
 
 from __future__ import annotations
 
+import json
 import os
+import re
+import sys
 from typing import Any
 
 from ..protocol import MAX_LOCALS_ENTRIES
@@ -36,7 +39,117 @@ def _descriptor(d: dict) -> dict:
 
     text = lambda k: d.get(k) if isinstance(d.get(k), str) else None  # noqa: E731
     return {"session": text("descriptor"), "kind": descriptor_kind(d), "file": text("file"), "workspace": text("workspace"),
-            "displayName": text("displayName"), "pid": d.get("pid") if isinstance(d.get("pid"), int) else None, "started": text("started")}
+            "displayName": text("displayName"), "pid": d.get("pid") if isinstance(d.get("pid"), int) else None, "started": text("started"),
+            "recording": descriptor_kind(d) == "run"}
+
+
+START_CALL = 'open one with `pyokka debug FILE --record` (MCP: pyokka_debug {"action": "start", "file": "FILE", "record": true})'
+EXTENSION_INSTALL = "gh release download --repo ivorpad/pyokka --pattern '*.vsix' && code --install-extension pyokka-*.vsix"
+AGENT_ACCESS = re.compile(r'"pyokka\.agentAccess"\s*:\s*(true|false)')
+
+
+def default_settings_path() -> str:
+    """VS Code's user settings.json on this platform."""
+    if sys.platform == "darwin":
+        return os.path.expanduser("~/Library/Application Support/Code/User/settings.json")
+    if sys.platform.startswith("win"):
+        return os.path.join(os.environ.get("APPDATA") or os.path.expanduser("~"), "Code", "User", "settings.json")
+    return os.path.join(os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config"), "Code", "User", "settings.json")
+
+
+def find_code() -> str | None:
+    """The `code` launcher: what debug_start uses, else the one inside VS Code.app."""
+    try:
+        from .debug_start import code_command
+
+        found = code_command()
+        if found:
+            return found
+    except Exception:  # noqa: BLE001 - a missing binary is an answer here, not a failure
+        pass
+    from .web import VSCODE_APPS
+
+    for app in VSCODE_APPS:
+        launcher = os.path.join(app, "Contents", "Resources", "app", "bin", "code")
+        if os.path.exists(launcher):
+            return launcher
+    return None
+
+
+def extension_version(extensions_dir: str | None = None) -> str | None:
+    """The newest installed ivor.pyokka-X.Y.Z, or None."""
+    directory = extensions_dir or os.path.expanduser("~/.vscode/extensions")
+    try:
+        names = os.listdir(directory)
+    except OSError:
+        return None
+    versions = []
+    for name in names:
+        m = re.fullmatch(r"ivor\.pyokka-(\d+(?:\.\d+)*)(?:-.*)?", name)
+        if m:
+            versions.append((tuple(int(x) for x in m.group(1).split(".")), m.group(1)))
+    return max(versions)[1] if versions else None
+
+
+def agent_access(settings_path: str | None = None) -> bool | None:
+    """`pyokka.agentAccess` from VS Code's user settings.json (comments allowed); None when unset or unreadable."""
+    try:
+        with open(settings_path or default_settings_path(), "r", encoding="utf-8") as fh:
+            text = fh.read()
+    except OSError:
+        return None
+    try:
+        doc = json.loads(text)
+        value = doc.get("pyokka.agentAccess") if isinstance(doc, dict) else None
+        return value if isinstance(value, bool) else None
+    except ValueError:
+        pass
+    found = None
+    for m in AGENT_ACCESS.finditer(text):  # settings.json is JSONC: skip a line's commented-out setting
+        if "//" not in text[text.rfind("\n", 0, m.start()) + 1:m.start()]:
+            found = m.group(1) == "true"
+    return found
+
+
+def closed_sessions(directory: str | None = None) -> int:
+    """Descriptors left by a VS Code window whose process has exited."""
+    from .live import pid_alive, sessions_dir
+
+    directory = directory or sessions_dir()
+    try:
+        names = [n for n in os.listdir(directory) if n.endswith(".json")]
+    except OSError:
+        return 0
+    dead = 0
+    for name in names:
+        try:
+            with open(os.path.join(directory, name), "r", encoding="utf-8") as fh:
+                doc = json.load(fh)
+        except (OSError, ValueError):
+            continue
+        if isinstance(doc, dict) and "pid" in doc and not pid_alive(doc.get("pid")):
+            dead += 1
+    return dead
+
+
+def vscode_readiness(sessions_directory: str | None = None, extensions_dir: str | None = None, settings_path: str | None = None,
+                     code: str | None = None) -> dict:
+    """What a live session needs from this machine, read without starting anything."""
+    return {"code": code or find_code(), "extension": extension_version(extensions_dir),
+            "agentAccess": agent_access(settings_path), "closedSessions": closed_sessions(sessions_directory)}
+
+
+def readiness_note(vscode: dict) -> str:
+    """With no session open: the first thing missing, and the call that opens one."""
+    closed = " %d published session(s) belong to a VS Code window that has closed." % vscode["closedSessions"] if vscode.get("closedSessions") else ""
+    if not vscode.get("code"):
+        return ("No live session, and VS Code was not found (no `code` on PATH, none in /Applications): install VS Code, or set PYOKKA_CODE to its bin/code; then %s." % START_CALL) + closed
+    if not vscode.get("extension"):
+        return ("No live session, and the Pyokka extension is not installed: `%s`; then %s." % (EXTENSION_INSTALL, START_CALL)) + closed
+    if vscode.get("agentAccess") is not True:
+        state = "off" if vscode.get("agentAccess") is False else "not set (default off)"
+        return ('No live session, and pyokka.agentAccess is %s in VS Code\'s user settings: set "pyokka.agentAccess": true, then %s.' % (state, START_CALL)) + closed
+    return ("No live session: VS Code is not running or has no Pyokka session open; %s." % START_CALL) + closed
 
 
 def missing_sources(run: SavedRun) -> list[str]:
@@ -92,8 +205,10 @@ def session_state(args: dict) -> dict:
 
     sessions = list_sessions()
     if not args.get("live") and not args.get("session"):
-        return {"kind": "session", "mode": "list", "sessions": [_descriptor(d) for d in sessions],
-                "notes": ["Descriptors show published sessions, not confirmed pauses or visible editors. Pass live: true or session to read one's state."]}
+        vscode = vscode_readiness()
+        notes = [] if sessions else [readiness_note(vscode)]
+        notes.append("Descriptors show published sessions, not confirmed pauses or visible editors. Pass live: true or session to read one's state.")
+        return {"kind": "session", "mode": "list", "ready": bool(sessions), "vscode": vscode, "sessions": [_descriptor(d) for d in sessions], "notes": notes}
     picked = pick_session(sessions, session=args.get("session"))
     source = LiveRun(picked)
     try:
@@ -167,7 +282,7 @@ def _live_state(picked: dict, state: dict) -> dict:
 def seek_recorded(args: dict) -> dict:
     path = args.get("run")
     if not isinstance(path, str) or not path.strip():
-        raise AgentError("run must name a saved recording", "record one with pyokka_run {file}")
+        raise AgentError("run must name a saved recording", 'record one with pyokka_run {"file": "/abs/app.py", "save": "/abs/run.json"} (CLI: pyokka run FILE --save run.json) and pass that path')
     occurrence = args.get("occurrence") or "first"
     if occurrence not in ("first", "last"):
         raise AgentError("occurrence must be first or last")
@@ -193,6 +308,13 @@ def seek_recorded(args: dict) -> dict:
         rows = [r for r in (run.var(str(value), limit=1_000_000).get("changes") or []) if r.get("name") == value and r.get("text") == equals]
         result["matches"] = len(rows)
         if not rows:
+            seen = sorted({str(r.get("text")) for r in (run.var(str(value), limit=1_000_000).get("changes") or []) if r.get("name") == value})
+            if seen:
+                result["recordedTexts"] = seen[:20]
+                notes.append("%s never took the text %s; equals must match one of recordedTexts exactly, quotes included." % (value, json.dumps(equals)))
+            else:
+                notes.append('%s never changed in the recording; check the name with pyokka_value {"action": "var", "run": %s, "name": %s} (CLI: pyokka var %s %s).'
+                             % (value, json.dumps(run.path), json.dumps(value), run.path, value))
             return result
         chosen = rows[-1] if occurrence == "last" else rows[0]
         observed = _observed_step(run, chosen)
@@ -206,6 +328,8 @@ def seek_recorded(args: dict) -> dict:
         steps = list(run.trace.steps_on_line(fid, int(line)))
         result["matches"] = len(steps)
         if not steps:
+            notes.append('line %d of %s never ran; pyokka_coverage {"run": %s, "file": %s} lists the lines that did (CLI: pyokka coverage %s --file %s).'
+                         % (int(line), file, json.dumps(run.path), json.dumps(str(file)), run.path, file))
             return result
         result["step"] = steps[-1] if occurrence == "last" else steps[0]
     result["found"] = True

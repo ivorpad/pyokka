@@ -279,7 +279,7 @@ gave a value that fits on its other runs, the reason says so and names the count
 root is the earliest link that already carries the failing value. Fix the root, not the line that
 raised. `root: not known` means the chain stopped before any statement that made the value (a
 list filled in place by `append` is the usual case); `chain ends:` says where and why. A run
-saved with `--no-locals` has no chain: save it again with `--record-locals`.
+saved with `--no-locals` has no chain: save it again without that flag.
 
 JSON: `{step, file, line, function, statement, error?: {type, message, caught}, value?: {expr, text, type, chosen}, need?, links: [{step, file, fileId, line, function, scopeId, expr, how, certainty, text?, type?, note?, statement?, inputs?, root?}], root: {index, step, reason, evidence: "siblings"|"first"} | null, rootUnknown?, end, truncated, recordedLocals, reads?, hint?}`.
 `links` runs newest first; `root.index` points into it.
@@ -476,7 +476,7 @@ one command. A refusal has the same two lines around `refused: <why>` and its de
 (`isError` through MCP).
 
 ```
-pyokka review start --base REF [--repo DIR] [--entry FILE | --test NODEID] [--pr FILE] [--python P] [--dir DIR] [-- ARGS]
+pyokka review start --base REF [--repo DIR] [--entry FILE | --test NODEID] [--pr FILE] [--python P] [--surface vscode|page|chat] [--port P] [--dir DIR] [-- ARGS]
 pyokka review stop N --say TEXT [--go-on] [--surface auto|page|vscode|chat] [--port P] [--session NAME]
 pyokka review ask FILE:LINE --say TEXT
 pyokka review skip N --why TEXT
@@ -485,9 +485,11 @@ pyokka review try --code FILE | --expr EXPR [--inputs FILE] [--mocks FILE] [--ed
 pyokka review finding add --file F --line L --severity blocker|major|minor --title T --step N --repro ID|CMD [--expect TEXT] --fix TEXT
 pyokka review fix --patch FILE.diff [--tests CMD]
 pyokka review report [--out FILE]
+pyokka review close
 pyokka review state
 ```
 
+- `start` opens the person's view after recording: VS Code by default (a recording session on the entry, run to its end, whose Time Machine the stops move), `--surface page` for the browser page (a `pyokka web` process the review stops at `report` or `close`), `--surface chat` for none; its `view:` line says what opened or why not.
 - `start` resolves REF in the repo (the current directory unless `--repo`), materialises the base
   tree in `DIR/base`, records head through the entry (`main.py` at the repo root when it exists,
   else `--entry` or `--test`, as `pyokka run ENTRY --cwd REPO --save DIR/head.json` would) and base
@@ -664,6 +666,7 @@ the tour as compact JSON, with or without `--prose`.
 
 ```sh
 pyokka tour run.json --out tour.json                                 # the input for the prose
+pyokka tour run.json --at 197 --at 120 --out tour.json               # a candidate at each step whatever the ranking says (a review's stops)
 pyokka tour run.json --prose tour.prose.json --out tour.merged.json  # check and merge
 # prose accepted: 8 stops, 4 chapter texts, 1 warning
 # warning: c3 holds a picked stop but has no title; the page uses the function that opens it
@@ -789,7 +792,9 @@ one step at a time. The error names the saved-run command instead. `diff BEFORE.
 works, with the session as the after; in `shell --live` it is `diff BEFORE.json`.
 
 **`narrate RUN [--command CMD]`** asks a model for one sentence per walkthrough moment and
-stores it in the saved run. Never automatic, and the result is a gloss, not an observation.
+stores it in the saved run. The model is `--command` when given, else claude, else codex, found on PATH or in
+~/.local/bin, ~/.claude/local, /opt/homebrew/bin, /usr/local/bin. Never automatic, and the result is a gloss, not
+an observation.
 
 **`cache [--clear]`** is the instrumented-library-file cache (`$PYOKKA_HOME/cache`).
 
@@ -820,7 +825,7 @@ pyokka exceptions RUN
 pyokka http RUN
 pyokka coverage RUN [--file F]
 pyokka diff BEFORE.json AFTER.json [--limit K] [--ignore NAME]...
-pyokka tour RUN [--goal NAME|FILE:LINE] [--budget TOKENS] [--prose PATH] [--out PATH]
+pyokka tour RUN [--goal NAME|FILE:LINE] [--budget TOKENS] [--at STEP]... [--prose PATH] [--out PATH]
 pyokka narrate RUN [--command CMD] [--dry-run]
 pyokka history RUN --out PATH [--at STEP|FILE:LINE]... [--var NAME]... [--why STEP NAME]...
         [--pause] [--prose PATH] [--pad N] [--limit K] [--lang L] [--scope] [--append] [--value-chars N]

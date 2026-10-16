@@ -3,6 +3,8 @@ export type { CompletionItem, CompletionKind, Completions, HttpMode, HttpSource,
 export { StepFlag } from '../src/shared/protocol';
 /** the step cap's sentence (pure) */
 export { capSentence } from '../src/shared/traceCap';
+/** a repr's text, indented (pure) */
+export { formatRepr } from '../src/shared/reprFormat';
 export type { DebuggerState, DebugOutputChunk, DebugPanelInfo, DebugSessionBreakpoint, DebugSessionFrame, DebugSessionPanel, DebugSessionWatch, ExceptionsPanel, ExecutionGraphPanel, HostToWebview, HttpPanel, PanelEntry, PanelMoment, PanelSettings, PanelTourChapter, PanelTourStop, StoryPanel, TimelineModel, TourPanel, VariableView, ViewId, WalkthroughPanel, WebviewToHost, WhyView } from '../src/shared/webviewProtocol';
 export type { CallEdge, CallNode, DataEdge, DecisionNode, GraphEdge, GraphNode, GraphRow, StatementNode } from '../src/session/executionGraphTypes';
 /** the HTTP table's formatters (pure, no node imports) */

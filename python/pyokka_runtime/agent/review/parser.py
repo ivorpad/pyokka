@@ -39,6 +39,8 @@ def add_review_parser(sub: argparse._SubParsersAction) -> None:
     g.add_argument("--test", metavar="NODEID", help="one test to run instead, as FILE::NAME (a pytest node id or a unittest name)")
     s.add_argument("--pr", metavar="FILE", help="the PR text (default: pr.md at the repo root, else the commit messages base..head)")
     s.add_argument("--python", metavar="P", help="the interpreter that runs the trees (default: as `pyokka run` picks it)")
+    s.add_argument("--surface", choices=list(SURFACES), default=None, help="what start opens for the person: auto and vscode record the entry in VS Code (the stops move its Time Machine), page serves the browser page, chat opens nothing (default auto, else $PYOKKA_REVIEW_SURFACE)")
+    s.add_argument("--port", type=int, default=None, metavar="P", help="--surface page: the page's port (default $PYOKKA_PORT, else 4777)")
     dir_arg(s)
     s.add_argument("args", nargs="*", metavar="ARGS", help="arguments for the program, after --")
 
@@ -91,7 +93,12 @@ def add_review_parser(sub: argparse._SubParsersAction) -> None:
 
     r = acts.add_parser("report", help="re-run every reproduction, then write the review as markdown")
     r.add_argument("--out", metavar="FILE", help="where the markdown goes (default DIR/report.md)")
+    r.add_argument("--page", nargs="?", const=True, metavar="FILE", help="also write the review as a code-history page: history.json for render-code-history.cjs, one checkpoint per stop shown or line asked, at FILE or DIR/page.json (never inside the repository)")
+    r.add_argument("--tour", nargs="?", const=True, metavar="FILE", help="also write the review as a tour of head.json for render-tour.cjs: the stops shown as its picks, the says as its prose, at FILE or DIR/tour.json (never inside the repository)")
     dir_arg(r)
+
+    c = acts.add_parser("close", help="stop the page server start opened (report does it too); the VS Code recording stays")
+    dir_arg(c)
 
     z = acts.add_parser("state", help="the header, the plan with shown stops marked, findings, tries, and next:")
     dir_arg(z)

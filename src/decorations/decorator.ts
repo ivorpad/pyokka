@@ -169,7 +169,7 @@ export class Decorator {
         const hover = new vscode.MarkdownString(undefined, true);
         hover.isTrusted = true;
         const args = encodeURIComponent(JSON.stringify({ logId: ev.logId }));
-        hover.appendMarkdown(`**≈ ${ev.context ?? ''}** · from the last run, not re-executed &nbsp; [$(search) Explore value](command:pyokka.exploreEntity?${args}) &nbsp;|&nbsp; [$(copy) Copy](command:pyokka.hoverCopy?${args})\n\n`);
+        hover.appendMarkdown(`**≈ ${ev.context ?? ''}** · from the last run, not re-executed &nbsp; [$(eye) See value](command:pyokka.exploreEntity?${args}) &nbsp;|&nbsp; [$(copy) Copy](command:pyokka.hoverCopy?${args})\n\n`);
         hover.appendCodeblock(truncateOneLine(ev.text, 400), 'python');
         items.push({ line, col: 0, text: `≈ ${truncateOneLine(ev.text)}`, kind: 'log', hover });
       }

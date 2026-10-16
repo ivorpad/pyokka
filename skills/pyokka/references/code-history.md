@@ -71,9 +71,9 @@ written. A run that stops with only `history.json` on disk has no page to show.
 Update the same page as an investigation grows rather than making another. Keep distinct runs
 distinct: the header's `run.json` hash is what tells two pages apart.
 
-## The four evidence kinds
+## The five evidence kinds
 
-`kind` is one of these and the renderer refuses anything else. They are four different claims:
+`kind` is one of these and the renderer refuses anything else. They are five different claims:
 
 | kind | the claim | what it may carry |
 |---|---|---|
@@ -81,6 +81,7 @@ distinct: the header's `run.json` hash is what tells two pages apart.
 | `live pause` | the program is stopped here now, the frame is live | `values` from the frame, `output`, `reason`; **no chain**, because a `record: false` session recorded nothing behind the pause |
 | `static source` | nobody ran this; the explanation needs the source | **no values** |
 | `gloss` | a sentence a model wrote, from `narrate` | not an observation |
+| `try` | a sandbox run of code the agent wrote (`pyokka review try`), with its inputs and result; not an observation of the program's run | `values` (the result, then what the try recorded), `output`; its source is the pseudo-file `tries/<id>.py` in `files`; **no `step`, no chain** |
 
 Rules that keep a page honest, beyond the kinds:
 
@@ -107,7 +108,7 @@ Top level. Prose fields are empty until you fill them; the rest is generated.
 | `historyLabel`, `scope`, `footer` | **prose** | evidence coverage, its limits, completion or handoff status |
 | `reportHref`, `reportLabel` | prose | optional link, both or neither |
 | `meta` | generated | run identity (below) |
-| `files` | generated | `{"path": ["line 1", ...]}`, index 0 is line 1, `""` where no checkpoint asked |
+| `files` | generated | `{"path": ["line 1", ...]}`, index 0 is line 1, `""` where no checkpoint asked; a `try` checkpoint's code sits under `tries/<id>.py` |
 | `steps` | generated | the checkpoints, in the order the selectors were written |
 
 `meta`: `mode` (`saved run` or `live session`), `run`, `file`, `sourceSha256`, `runSha256`,
@@ -120,7 +121,7 @@ A checkpoint:
 |---|---|---|
 | `id` | generated | stable across regenerations; what `--prose` keys on |
 | `kind`, `tag` | generated | the evidence kind; the label on the card (`tag` is editable prose) |
-| `step` | generated | the step number, or `null` for a live pause or static source |
+| `step` | generated | the step number, or `null` for a live pause, a static source or a try |
 | `title`, `text`, `note` | **prose** | the observation, what it establishes, the limits |
 | `file`, `start`, `end`, `focus`, `bright` | generated | a key of `files`, the panel's range, the selected line, the lines that ran |
 | `values` | generated | one `name = value` per line |

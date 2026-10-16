@@ -130,11 +130,13 @@ settings.
 
 ### Value Peek: hover
 
-Hovering a name or a member chain shows its value with links: **Explore value**
-(opens it in the Details pane), **Show as diagram**, **Copy**, **Why** (the
-provenance tree, see below) and, while the Time Machine navigates, **Add
-watch**. The links keep working after the file re-ran: a click whose entry
-belongs to a replaced run re-evaluates the expression against the current one.
+Hovering a name or a member chain shows its value, indented, with links: **See
+value** (opens it in the Details pane, a recorded local too), **Copy**, **Why**
+(the provenance tree, see below), **Show as diagram** and, while the Time
+Machine navigates, **Add watch**. The links keep working after the file re-ran:
+a click whose entry belongs to a replaced run re-evaluates the expression
+against the current one. While the Time Machine shows a recording as a debug
+session, this hover replaces VS Code's debug hover.
 
 Where the value comes from depends on the mode. A value already recorded for
 exactly that expression needs no run. A bare name that nothing recorded there

@@ -309,6 +309,8 @@ export class DapTranslator {
     if (!expression.trim()) return { result: '', variablesReference: 0 };
     const session = this.need();
     if (this.shown !== undefined) {
+      // no debug hover over a recording: VS Code then shows Pyokka's own (valuePeek.ts: Copy, Why, See value)
+      if (context === 'hover') throw new Error('the recording is hovered by Pyokka');
       const found = recordedValue(this.recorded(frameId), expression, this.shown);
       return { result: found.text, type: found.node?.type, variablesReference: found.node && hasChildren(found.node) ? this.ref({ kind: 'node', node: found.node }) : 0 };
     }

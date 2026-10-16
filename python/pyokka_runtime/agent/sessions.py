@@ -13,7 +13,11 @@ import os
 from .source import AgentError, display_path
 
 NO_SESSION = "no live session"
-NO_SESSION_HINT = "open the file in VS Code with pyokka.agentAccess on, or use a saved run (`pyokka run FILE --save run.json`)"
+NO_SESSION_HINT = (
+    "start one with `pyokka debug FILE --record` (MCP: pyokka_debug {\"action\": \"start\", \"file\": \"FILE\", \"record\": true}; needs pyokka.agentAccess on in VS Code); "
+    "`record` keeps a recording behind the pauses, which the commands that read a run (story, var, why, history, pin) need; "
+    "or record a run and pass its path: `pyokka run FILE --save /abs/run.json` (MCP: pyokka_run {\"file\": \"FILE\", \"save\": \"/abs/run.json\"})"
+)
 
 #: the verbs that drive a live program: they prefer a ``kind: "debug"`` descriptor (4.7)
 DEBUG_VERBS = frozenset({"debug", "continue", "pause", "stop", "restart", "break", "watches", "locals", "exec"})
@@ -124,7 +128,8 @@ def pick_session(descriptors: list[dict], *, session: str | None = None, file_hi
     always selects exactly that socket, whatever the verb.
     """
     if not descriptors:
-        raise AgentError(NO_SESSION, NO_SESSION_HINT)
+        # the name the caller asked for goes in the message, so a misspelt `session` reads as one
+        raise AgentError("%s for %s" % (NO_SESSION, session) if session else NO_SESSION, NO_SESSION_HINT)
     listing = "; ".join(_describe(d) for d in descriptors[:6])
     if session:
         wanted = os.path.abspath(session)

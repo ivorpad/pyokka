@@ -42,7 +42,10 @@ const OUTPUT_THROTTLE_MS = 100;
 const RECORDING_VERBS = ['var', 'why', 'walkthrough', 'graph', 'exceptions', 'http', 'values', 'story', 'find', 'steps', 'recording'] as const;
 const RECORDING_HINT = 'start the debug session with recording (`pyokka debug FILE --record`, or "Pyokka: Debug Current File (Recording)"), or read a run-all session of the file';
 const BACKWARD_REFUSAL = 'this debug session records nothing, so there is nothing behind the pause to replay';
-const BACKWARD_HINT = 'into, over and out execute; `--record` gives you the backward moves';
+/** The backward moves need a recording: restart `file` with one, in CLI and MCP form. */
+function backwardHint(file: string): string {
+  return `into, over and out execute; a recording gives you the backward moves: \`pyokka debug ${file} --record\` (MCP: pyokka_debug ${JSON.stringify({ action: 'start', file, record: true })})`;
+}
 
 interface Client {
   socket: net.Socket;
@@ -369,7 +372,7 @@ export class DebugSocketServer implements vscode.Disposable {
       }
       case 'step': {
         const kind = typeof req.kind === 'string' ? req.kind : '';
-        if (int(req.to) !== undefined || kind === 'back' || kind === 'backOver' || kind === 'backOut' || kind === 'to') throw new BridgeError(BACKWARD_REFUSAL, BACKWARD_HINT);
+        if (int(req.to) !== undefined || kind === 'back' || kind === 'backOver' || kind === 'backOut' || kind === 'to') throw new BridgeError(BACKWARD_REFUSAL, backwardHint(ds.filePath));
         if (kind !== 'into' && kind !== 'over' && kind !== 'out') throw new BridgeError('step needs kind', 'kind is one of into, over, out');
         requirePaused(ds, `step ${kind}`);
         // `--count N`: N stops in a row, the last one is the reply (clamped to 1..1000)

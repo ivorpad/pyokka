@@ -11,9 +11,10 @@ disable-model-invocation: true
 
 The first word after the skill name is the mode: `/pyokka debug create_design`,
 `$pyokka explain demo.py`. Load that mode's file and follow it; it says what to deliver.
-Read only that file up front. The job's first command and its `pyokka VERB --help` carry the
-flags (`pyokka debug FILE --at NAME` pauses a live program, `pyokka run FILE --save run.json`
-records one); open [references/pyokka-cli.md](references/pyokka-cli.md) or
+Read that file first; the Read-next table below says when to open another. The job's first
+command and its `pyokka VERB --help` carry the flags (`pyokka debug FILE --at NAME` pauses a live
+program, `pyokka run FILE --save run.json` records one); open
+[references/pyokka-cli.md](references/pyokka-cli.md) or
 [references/live-debugger.md](references/live-debugger.md) when a command fails or its help
 leaves the question open.
 
@@ -29,6 +30,39 @@ in" is `debug`. "Walk me through", "teach me", "explain as we go" with the user 
 `explain`. "Show me", "why is", "how does", "what did the library do" is `show`. "Review", "PR",
 "diff", "what did this change break" is `review`. A request to see stepping gets real pauses in
 the editor, through `debug`. If two fit, ask which.
+
+## How a turn ends
+
+Run the next command instead of asking whether to. A turn ends with what was asked for, never with
+a plan, a question about work already requested ("Shall I start the debugger?") or a promise of
+the next step. A one-line offer of a follow-up after the deliverable is fine. A turn ends earlier
+in four cases:
+
+- The mode is `explain` or `review` and the person is watching. One stop per message, or as many
+  as they ask for, each explained from what its move printed, then their turn.
+- Two modes fit the request.
+- Only the person can supply what is missing: a database or service no test reaches, the
+  agent-access prompt in VS Code, which of two readings they meant, whether to keep a process you
+  started.
+- The next command would change something that is theirs: the paused program's state (an
+  `exec --live` that assigns), a breakpoint they set, their session.
+
+The person's explicit instruction beats this skill. If they ask for what it advises against (a
+`run.json` in their repository, a page committed), do it and say what it holds.
+
+## How you write to the person
+
+In chat, in a `--say`, in a tour's prose, in a gloss: one idea per sentence, 20 words or fewer,
+active voice, present tense, the actor named ("`subtotal` returns `0.0`", not "`0.0` is
+returned"). Tell them what to do in the imperative ("Say next"). The same word for the same
+thing, always: stop, step, value, try, finding, the person; never breakpoint, experiment, repro,
+variable or user for those. No -ing verb used as a noun, no idiom, no "simply" or "obviously". A
+label with a colon is not a sentence. Numbers, names and texts as the tool printed them, in code
+font. A list for parallel items, never a table. The answer first, then the step and the value that
+show it, then what is not verified. A caution before the detail it concerns. Six sentences per
+paragraph at most. These are the structural rules of ASD-STE100, without its dictionary;
+[references/review.md](references/review.md) and [references/tour-prompt.md](references/tour-prompt.md)
+repeat them, since each is also read on its own.
 
 ## The two products
 
@@ -46,6 +80,9 @@ while debugging", says what to use instead.
 Every command takes `--json` for the raw shape; the text form is for you. `pyokka VERB --help`
 lists a verb's flags; [references/pyokka-cli.md](references/pyokka-cli.md) has the JSON shapes
 and an example of each verb, for when a command fails or the help does not say enough.
+
+Say what the program held or did only after a command in this session printed it. The source says
+what could happen, and only a recording or a pause says what did.
 
 ## Tools
 

@@ -27,6 +27,7 @@ from urllib.parse import quote
 from .live import LiveRun, list_sessions, read_descriptor, sessions_dir
 from .sessions import descriptor_kind
 from .source import AgentError
+from .web import code_launchers
 
 #: how long the CLI waits for the window to write a descriptor, and how often it looks
 POLL_TIMEOUT_S = 20.0
@@ -38,6 +39,8 @@ URI_PREFIX = "vscode://ivor.pyokka/debug?"
 
 CODE_MISSING = "cannot find the `code` command"
 CODE_MISSING_HINT = 'install it from VS Code\'s Command Palette ("Shell Command: Install code command in PATH"), or set PYOKKA_CODE to the binary'
+
+EXTENSION_ID = "ivor.pyokka"
 
 TIMEOUT_HINT = (
     "look at the VS Code window first: the first time, VS Code asks whether to let Pyokka open the URI and waits for an answer. "
@@ -161,14 +164,18 @@ def build_uri(launch: dict, at: str | list[str] | None = None) -> str:
 
 
 def code_command() -> str:
-    """``$PYOKKA_CODE`` if set, else ``code`` on PATH."""
+    """``$PYOKKA_CODE`` if set, else ``code`` on PATH, else the launcher where VS Code and Homebrew install it."""
     explicit = os.environ.get("PYOKKA_CODE")
     if explicit:
         return explicit
     found = shutil.which("code")
-    if not found:
-        raise AgentError(CODE_MISSING, CODE_MISSING_HINT)
-    return found
+    if found:
+        return found
+    tried = code_launchers()
+    for candidate in tried:
+        if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
+            return candidate
+    raise AgentError(CODE_MISSING, "looked for $PYOKKA_CODE, `code` on PATH, %s. %s" % (", ".join(tried), CODE_MISSING_HINT))
 
 
 def matches_launch(descriptor: dict, launch: dict) -> bool:
@@ -241,13 +248,40 @@ def build_route(launch: dict, *, directory: str | None = None) -> tuple[str, dic
     return "uri", None
 
 
-def open_url(uri: str) -> None:
+def open_url(uri: str, command: str | None = None) -> None:
     """Hand the URI to VS Code. Which window answers is VS Code's choice: the focused one."""
-    command = code_command()
+    command = command or code_command()
     try:
-        subprocess.run([command, "--open-url", uri], check=False, capture_output=True, timeout=30)
-    except OSError as exc:
+        proc = subprocess.run([command, "--open-url", uri], check=False, capture_output=True, text=True, timeout=30)
+    except (OSError, subprocess.TimeoutExpired) as exc:
         raise AgentError("cannot run %s: %s" % (command, exc), CODE_MISSING_HINT) from None
+    if proc.returncode != 0:
+        detail = (proc.stderr or proc.stdout or "").strip()[-400:]
+        raise AgentError("`%s --open-url` failed (exit %d)%s" % (command, proc.returncode, ": " + detail if detail else ""), "set PYOKKA_CODE to a working VS Code launcher; %s" % CODE_MISSING_HINT)
+
+
+def check_extension(command: str, launch: dict) -> None:
+    """Refuse before opening the URI when VS Code lists its extensions and ivor.pyokka is not one of them.
+
+    A launcher that cannot list them (it fails, or takes over 10 s) proves nothing, so the start goes on.
+    """
+    try:
+        proc = subprocess.run([command, "--list-extensions"], check=False, capture_output=True, text=True, timeout=10)
+    except (OSError, subprocess.TimeoutExpired):
+        return
+    if proc.returncode != 0:
+        return
+    if EXTENSION_ID in (proc.stdout or "").lower().split():
+        return
+    if launch.get("module"):
+        cli, mcp = "--module %s" % launch["module"], '"module": %s' % json.dumps(str(launch["module"]))
+    else:
+        cli, mcp = str(launch.get("program") or "FILE"), '"file": %s' % json.dumps(str(launch.get("program") or "FILE"))
+    raise AgentError(
+        "the Pyokka extension (%s) is not installed in the VS Code of %s" % (EXTENSION_ID, command),
+        'install it with `%s --install-extension %s` (or a .vsix path in place of the id), then start again: `pyokka debug %s` (MCP: pyokka_debug {"action": "start", %s})'
+        % (command, EXTENSION_ID, cli, mcp),
+    )
 
 
 def poll_for_descriptor(launch: dict, since: float, *, timeout: float = POLL_TIMEOUT_S, directory: str | None = None) -> dict:
@@ -308,8 +342,10 @@ def focus_editor(file: str, line: int) -> bool:
 
 def start_via_uri(launch: dict, at: str | list[str] | None = None, *, timeout: float = POLL_TIMEOUT_S, directory: str | None = None) -> dict:
     """Route (c): open the URI, poll for the descriptor, return it."""
+    command = code_command()
+    check_extension(command, launch)
     since = time.time()
-    open_url(build_uri(launch, at))
+    open_url(build_uri(launch, at), command)
     return poll_for_descriptor(launch, since, timeout=timeout, directory=directory)
 
 

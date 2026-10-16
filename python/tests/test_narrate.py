@@ -45,6 +45,7 @@ def bin_dir(tmp_path: Path, monkeypatch) -> Path:
     d = tmp_path / "bin"
     d.mkdir()
     monkeypatch.setenv("PATH", "%s:/usr/bin:/bin" % d)  # the fakes use cat and printf
+    monkeypatch.setattr(narrate, "BACKEND_DIRS", {})  # the real claude in ~/.local/bin is not found, nor called
     return d
 
 

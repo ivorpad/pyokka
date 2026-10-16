@@ -1,4 +1,4 @@
-"""``pyokka tour RUN|--live [--goal NAME|F:L] [--budget TOKENS] [--prose PATH] [--out PATH] [--json]``: the parser and the command."""
+"""``pyokka tour RUN|--live [--goal NAME|F:L] [--budget TOKENS] [--at STEP]... [--prose PATH] [--out PATH] [--json]``: the parser and the command."""
 
 from __future__ import annotations
 
@@ -16,6 +16,7 @@ def add_tour_parser(sub: argparse._SubParsersAction, run_arg: Callable[[argparse
     run_arg(p)
     p.add_argument("--goal", metavar="NAME|FILE:LINE", help="explain this value instead of the program's output: a variable (its last recorded value) or a line (its last pass)")
     p.add_argument("--budget", type=int, default=DEFAULT_BUDGET, metavar="TOKENS", help="keep the JSON under about this many tokens, at 4 characters a token (default %d)" % DEFAULT_BUDGET)
+    p.add_argument("--at", action="append", type=int, metavar="STEP", help="force a candidate at this step; repeatable (a review passes its stops)")
     p.add_argument("--prose", metavar="PATH", help="tour.prose.json (picks, titles, text, quotes by range): check it against the run and merge it; a rejection lists every problem and exits 2. Give the same --goal and --budget as the tour the prose was written from")
     p.add_argument("--out", metavar="PATH", help="write the tour, merged with --prose when given, to this file as compact JSON")
 
@@ -33,7 +34,7 @@ def run_tour(args: Any, source: Any) -> dict:
         doc = source.recording()
         run = SavedRun(str(doc.get("meta", {}).get("file") or "live-session.json"), doc=doc)
     full: dict[str, str] = {}
-    tour = build_tour(run, goal=(args.goal or "").strip() or None, budget=args.budget or DEFAULT_BUDGET, full=full)
+    tour = build_tour(run, goal=(args.goal or "").strip() or None, budget=args.budget or DEFAULT_BUDGET, full=full, force=getattr(args, "at", None))
     prose_path = getattr(args, "prose", None)
     if prose_path:
         from .prose import apply_prose

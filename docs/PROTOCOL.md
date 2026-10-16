@@ -1089,7 +1089,7 @@ refuses:
 | requests | error | hint |
 |---|---|---|
 | `var`, `why`, `walkthrough`, `graph`, `exceptions`, `http`, `values`, `story`, `find`, `steps`, `recording` | `<verb> needs a recording` | start the debug session with recording (`pyokka debug FILE --record`), or read a run-all session of the file |
-| `step` with `back`, `backOver`, `backOut` or `to` | `this debug session records nothing, so there is nothing behind the pause to replay` | into, over and out execute; `--record` gives you the backward moves |
+| `step` with `back`, `backOver`, `backOut` or `to` | `this debug session records nothing, so there is nothing behind the pause to replay` | into, over and out execute; a recording gives you the backward moves: `pyokka debug FILE --record` (MCP: pyokka_debug {"action":"start","file":"FILE","record":true}) |
 
 `break` here goes into VS Code's own breakpoint list, so the gutter shows it and the host pushes it
 to the program in flight, exactly as the run socket's `break` does. `watches --add EXPR` without

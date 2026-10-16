@@ -19,6 +19,7 @@ from .source import AgentError, SavedRun
 
 MAX_CHECKPOINTS = 20
 MAX_TEXT = 4096
+RECORD_HINT = 'record one with pyokka_run {"file": "/abs/app.py", "save": "/abs/run.json"} (CLI: pyokka run FILE --save run.json) and pass the run path it prints'
 
 
 def _text(value: Any, name: str, limit: int = MAX_TEXT) -> str:
@@ -54,14 +55,19 @@ def _read_run(path: str) -> tuple[str, str, SavedRun]:
             raw = fh.read()
         doc = json.loads(raw.decode("utf-8"))
     except (OSError, ValueError) as exc:
-        raise AgentError("cannot open the investigation's run %s: %s" % (path, exc)) from None
+        raise AgentError("cannot open the investigation's run %s: %s" % (path, exc), RECORD_HINT) from None
     return real, hashlib.sha256(raw).hexdigest(), SavedRun(real, doc)
 
 
 def _resume(path: str, artifact: dict, real: str, digest: str, run: SavedRun) -> dict:
     stops = []
     for cp in artifact["checkpoints"]:
-        run.check_step(cp["step"])
+        try:
+            run.check_step(cp["step"])
+        except AgentError as exc:
+            raise AgentError("checkpoint %s: %s" % (cp["name"], exc.message),
+                             'pick a step with pyokka_map {"action": "steps", "run": %s} or {"action": "find", "run": %s, "text": "..."} (CLI: pyokka steps %s, pyokka find %s TEXT)'
+                             % (json.dumps(real), json.dumps(real), real, real)) from None
         stops.append({**cp, "context": run.context(step=cp["step"])})
     return {
         "kind": "saved-investigation", "version": 1, "path": path, "run": real, "sha256": digest,
@@ -80,7 +86,9 @@ def save_investigation(args: dict) -> dict:
     path = os.path.join(parent, os.path.basename(requested))
     question = _text(args.get("question"), "question")
     stops = _checkpoints(args.get("checkpoints"))
-    real, digest, run = _read_run(str(args.get("run") or ""))
+    if not isinstance(args.get("run"), str) or not args["run"].strip():
+        raise AgentError("run must name a saved run.json; a live session cannot be saved", RECORD_HINT)
+    real, digest, run = _read_run(args["run"])
     artifact = {"kind": "investigation", "version": 1, "run": os.path.relpath(real, parent), "sha256": digest, "question": question, "checkpoints": stops}
     result = _resume(path, artifact, real, digest, run)  # every checkpoint is checked before anything is written
     try:
@@ -100,14 +108,27 @@ def open_investigation(args: dict) -> dict:
     except (OSError, ValueError) as exc:
         raise AgentError("cannot open investigation %s: %s" % (args.get("path"), exc)) from None
     if not isinstance(doc, dict) or doc.get("kind") != "investigation" or doc.get("version") != 1:
-        raise AgentError("not an investigation (kind investigation, version 1)")
+        found = (lambda k: json.dumps(doc.get(k) if isinstance(doc, dict) else None))  # noqa: E731
+        raise AgentError("%s is not an investigation: kind %s, version %s (expected kind \"investigation\", version 1)" % (path, found("kind"), found("version")),
+                         'pyokka_save_investigation writes investigations; a run.json is read with pyokka_map {"action": "walkthrough", "run": %s}' % json.dumps(path))
     digest_saved = doc.get("sha256")
     if not isinstance(digest_saved, str) or len(digest_saved) != 64:
         raise AgentError("the investigation has no sha256 of its run")
     artifact = {"run": _text(doc.get("run"), "run"), "question": _text(doc.get("question"), "question"), "checkpoints": _checkpoints(doc.get("checkpoints"))}
-    real, digest, run = _read_run(os.path.join(os.path.dirname(path), artifact["run"]))
+    resolved = os.path.join(os.path.dirname(path), artifact["run"])
+    try:
+        real, digest, run = _read_run(resolved)
+    except AgentError as exc:
+        raise AgentError("%s keeps its run as %s, relative to its own folder, and %s is missing or unreadable (%s)" % (path, json.dumps(artifact["run"]), resolved, exc.message),
+                         'move the investigation back beside its run, or put the run at that path; if the run lives elsewhere now, save a new investigation: '
+                         'pyokka_save_investigation {"path": "<new file>", "run": "<the run\'s path>", "question": %s, "checkpoints": %s}'
+                         % (json.dumps(artifact["question"]), json.dumps(artifact["checkpoints"]))) from None
     if digest != digest_saved:
-        raise AgentError("the investigation's run changed since it was saved (sha256 differs), so its steps may be other moments", "save a new investigation over the new run")
+        raise AgentError("the run %s changed since %s was saved (sha256 differs): it was re-recorded or edited, so the saved steps may be other moments" % (real, path),
+                         'find the checkpoints again in the new run with pyokka_map {"action": "walkthrough", "run": %s} (CLI: pyokka walkthrough %s), then save them to a new file: '
+                         'pyokka_save_investigation {"path": "<new file>", "run": %s, "question": %s, "checkpoints": [{"name": "...", "step": N}]}; '
+                         'to reopen this file as saved, restore the run.json it was saved over'
+                         % (json.dumps(real), real, json.dumps(real), json.dumps(artifact["question"])))
     return _resume(path, artifact, real, digest, run)
 
 

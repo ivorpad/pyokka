@@ -7,7 +7,11 @@ and rejects any claim that the recording does not hold.
 
 Your reader is a developer who has not seen this program. After the tour they should be able to
 say what the run did, in what order, and which values made the result what it is. They read in
-short bursts. Put the point first, keep sentences short, and use plain words.
+short bursts. Put the point first, keep sentences short, and use plain words: one idea per
+sentence, 20 words or fewer, active voice, present tense, the actor named ("`parse_money` returns
+the text", not "the text is returned"). The same word for the same thing throughout the tour. No
+-ing verb used as a noun, no idiom, no "simply" or "obviously". A label with a colon is not a
+sentence. Lists for parallel items, never a table. Six sentences per paragraph at most.
 
 ## What TOUR.JSON holds
 

@@ -166,6 +166,27 @@ describe('code-history renderer', () => {
       .toContain('a static-source checkpoint has no observed values');
   });
 
+  it('accepts a try: a sandbox run with its code as a pseudo-file, no step and no chain', () => {
+    const code = ['# inputs:', '# DEFAULT = Settings()', 'result = spend_tier_rate(500.0, DEFAULT)'];
+    const tryStep = {
+      id: 't1', kind: 'try', tag: 'try t1 · edge E1', step: null, title: 'The boundary', text: 'A spend equal to the threshold gets no tier.', note: '',
+      file: 'tries/t1.py', start: 1, end: 3, focus: 1, bright: [1, 2, 3], values: 'result = 0.0', reads: [], stack: [], output: '',
+      call: null, hits: null, arm: null, reason: '', chain: [], exception: null, http: null, gloss: null, modified: false,
+      verify: 'pyokka review state --dir /tmp/r', evidence: [],
+    };
+    const withTry = (d: Record<string, any>, over: Record<string, unknown> = {}) => { d.files['tries/t1.py'] = code; d.steps.push({ ...tryStep, ...over }); };
+    const data = example();
+    withTry(data);
+    const { steps, files } = embedded(render(data).html);
+    const last = steps[steps.length - 1];
+    expect(last.kind).toBe('try');
+    expect(last.step).toBeNull();
+    expect(files['tries/t1.py']).toEqual(code);
+    expect(refuse(d => withTry(d, { step: 5 }))).toContain('it has no step number');
+    expect(refuse(d => withTry(d, { chain: [{ depth: 0, via: 'root', name: 'x', text: '1', statement: '', location: '', step: 1 }] }))).toContain('no provenance chain');
+    expect(refuse(d => { d.steps[0].kind = 'sandbox'; })).toContain('unknown evidence kind');
+  });
+
   it('names the checkpoint in every refusal, so the author knows which card to fix', () => {
     expect(refuse(d => { d.steps[2].focus = 1; })).toContain('Checkpoint 3 (why-22-answer)');
   });

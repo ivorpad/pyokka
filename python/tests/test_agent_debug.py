@@ -16,7 +16,7 @@ import time
 
 import pytest
 
-from pyokka_runtime.agent import debug_start
+from pyokka_runtime.agent import debug_start, web
 from pyokka_runtime.agent.commands import add_commands
 from pyokka_runtime.agent.live import descriptor_kind, list_sessions, pick_session, prefer_kind, substitution_note
 from pyokka_runtime.agent.render_debug import render_debug_state
@@ -227,7 +227,7 @@ def test_debug_start_needs_a_program_or_a_module():
 def stub_code(tmp_path, record):
     """A `code` stand-in that writes the URI it was given to `record` and exits 0."""
     script = tmp_path / "code-stub"
-    script.write_text('#!/bin/sh\nprintf "%s" "$2" > "%s"\n' % ("$2", record), encoding="utf-8")
+    script.write_text('#!/bin/sh\n[ "$1" = --list-extensions ] && { echo ivor.pyokka; exit 0; }\nprintf \'%%s\' "$2" > "%s"\n' % record, encoding="utf-8")
     script.chmod(0o755)
     return str(script)
 
@@ -259,8 +259,12 @@ def test_debug_start_ignores_a_descriptor_that_is_older_than_the_request(session
     assert debug_start.find_debug_descriptor(launch, since=time.time()) is None
 
 
-def test_debug_start_times_out_with_the_agent_access_hint(sessions, monkeypatch):
-    monkeypatch.setenv("PYOKKA_CODE", "/usr/bin/true")
+def test_debug_start_times_out_with_the_agent_access_hint(sessions, tmp_path, monkeypatch):
+    # a `code` that has the extension and opens nothing
+    script = tmp_path / "code-stub"
+    script.write_text('#!/bin/sh\n[ "$1" = --list-extensions ] && echo ivor.pyokka\nexit 0\n', encoding="utf-8")
+    script.chmod(0o755)
+    monkeypatch.setenv("PYOKKA_CODE", str(script))
     launch = debug_start.build_launch(program=APP, cwd="/ws")
     with pytest.raises(AgentError) as exc:
         debug_start.start_via_uri(launch, timeout=1.0)
@@ -276,6 +280,8 @@ def test_debug_start_times_out_with_the_agent_access_hint(sessions, monkeypatch)
 def test_debug_start_without_code_says_how_to_install_it(monkeypatch):
     monkeypatch.delenv("PYOKKA_CODE", raising=False)
     monkeypatch.setenv("PATH", "/nonexistent")
+    monkeypatch.setattr(web, "VSCODE_APPS", ())  # the app bundles and bin dirs of this machine are not looked at
+    monkeypatch.setattr(web, "CODE_BIN_DIRS", ())
     with pytest.raises(AgentError) as exc:
         debug_start.code_command()
     assert exc.value.message == debug_start.CODE_MISSING

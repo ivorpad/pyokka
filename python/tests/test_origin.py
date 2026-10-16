@@ -131,7 +131,7 @@ def test_without_locals_it_says_so(tmp_path: Path):
     run = run_of(tmp_path, "invoices.py", recordLocals=False)
     result = origin(run, 64)
     assert not result["recordedLocals"] and not result["links"]
-    assert "--record-locals" in result["hint"]
+    assert "--no-locals" in result["hint"] and "without no_locals" in result["hint"] and run.path in result["hint"]
     code, out = pyokka("origin", run.path, "64")
     assert code == 0 and "recorded no locals" in out
 

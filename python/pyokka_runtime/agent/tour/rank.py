@@ -27,7 +27,7 @@ WEIGHT = {
     ("crossing", "callback-in"): 3, ("crossing", "callback-out"): 3,
     ("narrative", "binds"): 3, ("io", "file-write"): 3, ("io", "subprocess"): 3,
     ("exception", "rare-arm"): 2, ("evidence", "goal-words"): 3, ("narrative", "text-in"): 2,
-("spine", "return"): 1.5, ("spine", "why"): 1, ("spine", "goal"): 5,
+("spine", "return"): 1.5, ("spine", "why"): 1, ("spine", "goal"): 5, ("forced", "stop"): 4,
     ("crossing", "lib-call"): 1,
 }
 SCRIPT_SPINE = 3  # the script's own statements on the spine
@@ -75,7 +75,8 @@ def novel(t: "TourRun", pooled: dict[int, dict]) -> list[dict]:
                 a = args.get(t.by_scope[t.scope[v]][0])  # a response or a result landing: the call it came from
         prev = seen.setdefault(key, [])
         http = bool(c["subs"] & {("io", "http"), ("io", "response")})
-        if prev and not http and (a is None or a in prev or len(prev) >= NEW_ARGS_MAX):
+        forced = ("forced", "stop") in c["subs"]  # a review's stop: a later pass of its line is still wanted
+        if prev and not http and not forced and (a is None or a in prev or len(prev) >= NEW_ARGS_MAX):
             continue
         prev.append(a)
         p = t.parent(t.scope[st])
@@ -105,7 +106,8 @@ def fit(candidates: list[dict], size_of, budget_tokens: int, fixed_chars: int) -
 
     Shares are filled smallest chapter first, so what a small chapter leaves unused goes to the
     others; inside a share the candidates go by score, and each chapter keeps its best
-    ``KEEP_PER_CHAPTER`` whatever they weigh."""
+    ``KEEP_PER_CHAPTER`` whatever they weigh. A forced candidate (``forced``: a review's stop) is
+    kept whatever it weighs and counts against its chapter's share, so the rest trims around it."""
     budget_chars = budget_tokens * CHARS_PER_TOKEN - fixed_chars
     sizes = {id(c): size_of(c) for c in candidates}
     if sum(sizes.values()) <= budget_chars:
@@ -120,7 +122,7 @@ def fit(candidates: list[dict], size_of, budget_tokens: int, fixed_chars: int) -
         share = max(0, remaining) / (len(groups) - k)
         used = 0
         for n, c in enumerate(sorted(group, key=lambda c: (-c["score"], c["step"]))):
-            if n >= KEEP_PER_CHAPTER and used + sizes[id(c)] > share:
+            if not c.get("forced") and n >= KEEP_PER_CHAPTER and used + sizes[id(c)] > share:
                 continue
             kept.add(id(c))
             used += sizes[id(c)]

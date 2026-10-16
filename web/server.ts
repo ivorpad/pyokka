@@ -727,7 +727,7 @@ export class BridgeServer {
         return Promise.resolve({ result: null, error: error instanceof Error ? error.message : String(error) });
       }
     }
-    if (!this.pages.size) return Promise.resolve({ result: null, error: `no page is open: open ${this.url} first` });
+    if (!this.pages.size) return Promise.resolve({ result: null, error: `no page is open: the person must open ${this.url} in one browser tab first` });
     if (this.pages.size > 1) return Promise.resolve({ result: null, error: `${this.pages.size} pages are open; close all but one before controlling this session (no command was sent)` });
     // a waitPause holds no pause of its own, so one other command may run beside it (the step it waits for)
     const wait = command.action === 'waitPause';

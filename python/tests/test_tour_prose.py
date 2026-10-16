@@ -179,6 +179,15 @@ def test_counts_outside_the_prompt_are_warnings():
     assert any("pick: 3 stops; the prompt asks for 6 to 10" in x for x in w)
 
 
+def test_sentence_rules_warn_and_never_reject():
+    p = prose()
+    p["intro"] = "The run was started by the loader and the rows were read from the file before the model was called, which is how the result was produced."
+    v, w, _ = check_prose(tour(), p, FULL)
+    assert not [x for x in v if x.startswith("intro")]
+    assert any(x.startswith('intro: "The run was started') and "words; may be passive" in x for x in w)
+    assert any(x.startswith("prose: ") and "sentences pass the sentence rules" in x for x in w)
+
+
 def test_rejection_carries_the_list_in_json():
     with pytest.raises(ProseRejected) as exc:
         apply_prose(tour(), prose(chapters={"c9": {"title": "x"}}), FULL)

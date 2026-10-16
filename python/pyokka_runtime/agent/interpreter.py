@@ -8,6 +8,7 @@ packages and pyokka's runtime import side by side; the interpreter must be 3.12 
 
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import subprocess
@@ -17,6 +18,8 @@ from dataclasses import dataclass
 from .source import AgentError
 
 MIN_VERSION = (3, 12)
+#: the MCP spelling of --python, for the hints an MCP client reads
+_MCP_FIELD = " (MCP: the `python` field of pyokka_run or pyokka_debug start)"
 
 
 @dataclass
@@ -93,7 +96,7 @@ def on_path(given: str, flag: str) -> str:
         return os.path.abspath(path)
     found = shutil.which(given)
     if not found:
-        raise AgentError("%s %s: no such command on PATH" % (flag, given), "give the interpreter's path, e.g. %s .venv/bin/python, or a command on PATH such as python3.12" % flag)
+        raise AgentError("%s %s: no such command on PATH" % (flag, given), "give the interpreter's path, e.g. %s .venv/bin/python, or a command on PATH such as python3.12%s" % (flag, _MCP_FIELD))
     return found
 
 
@@ -102,10 +105,10 @@ def _executable(given: str, flag: str) -> str:
     if os.path.isdir(path):
         inner = venv_python(path)
         if inner is None:
-            raise AgentError("%s %s is a directory with no bin/python in it" % (flag, given), "pass the interpreter itself, e.g. %s .venv/bin/python" % flag)
+            raise AgentError("%s %s is a directory with no bin/python in it" % (flag, given), "pass the interpreter itself, e.g. %s .venv/bin/python%s" % (flag, _MCP_FIELD))
         return inner
     if not os.path.isfile(path):
-        raise AgentError("%s %s does not exist" % (flag, given), "pass an interpreter path, e.g. %s .venv/bin/python" % flag)
+        raise AgentError("%s %s does not exist" % (flag, given), "pass an interpreter path, e.g. %s .venv/bin/python%s" % (flag, _MCP_FIELD))
     return os.path.abspath(path)
 
 
@@ -117,14 +120,14 @@ def probe(interp: Interpreter) -> Interpreter:
     try:
         out = subprocess.run([interp.path, "-c", "import sys; print('%d.%d.%d' % sys.version_info[:3])"], capture_output=True, text=True, timeout=20)
     except (OSError, subprocess.TimeoutExpired) as exc:
-        raise AgentError("cannot start %s (%s): %s" % (interp.path, interp.source, exc), "pass a working interpreter with --python PATH") from None
+        raise AgentError("cannot start %s (%s): %s" % (interp.path, interp.source, exc), "pass a working interpreter with --python PATH%s" % _MCP_FIELD) from None
     version = out.stdout.strip()
     try:
         parts = tuple(int(x) for x in version.split(".")[:2])
     except ValueError:
-        raise AgentError("%s (%s) did not report a version: %s" % (interp.path, interp.source, (out.stderr or out.stdout).strip()[:200]), "pass a working interpreter with --python PATH") from None
+        raise AgentError("%s (%s) did not report a version: %s" % (interp.path, interp.source, (out.stderr or out.stdout).strip()[:200]), "pass a working interpreter with --python PATH%s" % _MCP_FIELD) from None
     if parts < MIN_VERSION:
-        raise AgentError("%s (%s) is Python %s; the runtime needs 3.12 or newer" % (interp.path, interp.source, version), "pass a newer interpreter with --python PATH, or run with pyokka's own: --python %s" % sys.executable)
+        raise AgentError("%s (%s) is Python %s; the runtime needs 3.12 or newer" % (interp.path, interp.source, version), "pass a newer interpreter with --python PATH, or run with pyokka's own: --python %s (MCP: the `python` field, \"python\": %s)" % (sys.executable, json.dumps(sys.executable)))
     interp.version = version
     return interp
 

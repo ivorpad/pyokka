@@ -175,6 +175,11 @@ It loads only when asked by name: `/pyokka debug`, `/pyokka explain`, `/pyokka s
 
 It finds the `pyokka` command by itself. Its code-history pages need Node.
 
+The skill sets no model or effort of its own. Its reader-turn runs so far used Sonnet 5.5. On
+2026-10-16 it was read against the vendors' guidance for Claude Opus 5.5, Claude Fable 5.1 and the
+GPT-6 family and has not been run on them; `docs/design/skill-model-compat.md` has the sources and
+the ten-minute checks.
+
 `review` is the mode for a pull request or a diff. `pyokka review start --base REF` records the base
 and head trees through the entry file, compares the two runs and plans the stops: the steps where
 behaviour changed, the changed lines no run reached, the edge cases worth trying. `review stop N

@@ -280,6 +280,10 @@ def check_prose(tour: dict, prose: Any, full: dict[str, str]) -> tuple[list[str]
             n = len(picked_in.get(cid, []))
             if ix.chapters[cid].get("candidates", 0) >= lo and not lo <= n <= hi:
                 w.append("%s: %d stops; the prompt asks for %d to %d per chapter" % (cid, n, lo, hi))
+    from ..prose import prose_warnings
+
+    fields = [("intro", intro)] + [("%s.text" % cid, t.get("text", "")) for cid, t in chapter_texts.items()] + [("%s.text" % sid, t.get("text", "")) for sid, t in texts.items()]
+    w.extend(prose_warnings(fields))  # the sentence rules (SKILL.md, "How you write to the person"): style warns, never rejects
     return v, w, {"pick": pick, "texts": texts, "quotes": quotes, "chapters": chapter_texts, "intro": intro}
 
 

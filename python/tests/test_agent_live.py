@@ -319,7 +319,7 @@ def pyokka_json(*args: str) -> dict:
 def test_no_session_says_what_to_do(sessions: Path, capsys):
     code, _ = pyokka("state", "--live")
     err = capsys.readouterr().err
-    assert code == 2 and "error: no live session" in err and "pyokka.agentAccess" in err and "saved run" in err
+    assert code == 2 and "error: no live session" in err and "pyokka.agentAccess" in err and "`pyokka debug FILE --record`" in err and '"record": true' in err and "pyokka_run" in err
     code, out = pyokka("context", "--live", "--line", "demo.py:11", "--json")
     assert code == 2 and json.loads(out)["error"] == "no live session"
 

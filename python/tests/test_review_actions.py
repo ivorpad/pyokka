@@ -329,6 +329,20 @@ def test_ask_stops_at_an_unplanned_line_and_records_it(started, tmp_path, fakes)
 
 # -- try and finding -------------------------------------------------------------------------------------------------
 
+def test_try_hands_its_title_to_the_runner(started, tmp_path, fakes, monkeypatch):
+    """The page's Scratchpad names the experiment by the try's title; without it the page shows "Untitled experiment"."""
+    r = fresh(started, tmp_path)
+    seen = {}
+
+    def recording_runner(code, inputs, mocks, repo, page_port, **kw):
+        seen.update(kw)
+        return fake_run_try(code, inputs, mocks, repo, page_port)
+
+    monkeypatch.setitem(sys.modules, "pyokka_runtime.agent.review.tryrun", SimpleNamespace(run_try=recording_runner))
+    answer = run("try", dir=str(r.dir), expr="1 + 1", title="two")
+    assert answer["try"]["title"] == "two" and seen.get("title") == "two"
+
+
 def test_try_keeps_the_run_and_marks_the_edge(started, tmp_path, fakes):
     r = fresh(started, tmp_path)
     code = tmp_path / "boundary.py"
@@ -440,6 +454,53 @@ def test_report_refuses_a_changed_tree_and_a_reproduction_that_no_longer_holds(r
     assert exc.why.startswith("the tree at %s changed since start" % r.repo) and exc.next_command == "review start --base %s" % r.base
     (Path(r.repo) / "shopkit" / "report.py").write_text((Path(r.repo) / "shopkit" / "report.py").read_text()[len("# touched\n"):])
     assert "inside the repository" in refusal("report", dir=str(r.dir), out=str(Path(r.repo) / "report.md")).why
+
+
+def test_report_page_puts_every_stop_shown_on_a_code_history_page(reviewed, tmp_path):
+    """--page: one recorded-step checkpoint per stop shown or line asked, the say as its text, base beside head in its note, a finding's severity as its tag."""
+    r = reviewed
+    before = Review.load(str(r.dir))
+    type_stop = before.stop(2)
+    run("finding", dir=str(r.dir), file="shopkit/orders.py", line=30, severity="major", title="unit_price stays text", step=type_stop["step_b"], repro="t1", fix="parse the thousands separator")
+    page = tmp_path / "out" / "page.json"
+    answer = run("report", dir=str(r.dir), out=str(tmp_path / "out" / "review.md"), page=str(page))
+    data = json.loads(page.read_text())
+    entries = [e for e in before.conversation if e.get("kind") in ("stop", "ask")]
+    cards = [c for c in data["steps"] if c["id"].startswith("step-")]
+    assert len(cards) == len(entries) == 2
+    assert cards[0]["kind"] == "recorded step" and cards[0]["step"] == entries[0]["step"] and cards[0]["text"] == entries[0]["say"]
+    assert cards[0]["title"].startswith("Stop 1: raise in subtotal") and cards[0]["verify"].startswith("pyokka context ")
+    assert cards[1]["note"].startswith("Base had 1249.0. Head has '1,249.00'.") and cards[1]["tag"] == "FINDING · MAJOR"
+    assert any(c["id"].startswith("why-%d-unit_price" % type_stop["step_b"]) for c in data["steps"])
+    assert data["heading"].startswith("Review shop-") and data["summary"] and "2 of 2 stops shown" in data["subtitle"]
+    assert answer["page"] == str(page) and any(l.startswith("wrote page ") for l in answer["lines"]) and any("render-code-history.cjs" in l for l in answer["lines"])
+    tries = [c for c in data["steps"] if c["kind"] == "try"]
+    assert [c["id"] for c in tries] == ["t1"] and tries[0]["file"] == "tries/t1.py" and data["files"]["tries/t1.py"] and tries[0]["text"].startswith("Ran in the sandbox. The result is `0.0`.") and tries[0]["note"].startswith("Reproduces f1")
+    assert Review.load(str(r.dir)).data["page"]["path"] == str(page)
+    assert "inside the repository" in refusal("report", dir=str(r.dir), page=str(Path(r.repo) / "page.json")).why
+
+
+def test_report_tour_tells_the_stops_as_a_story_of_head(reviewed, tmp_path):
+    """--tour: the stops shown are forced candidates of head's tour and their says its prose; a say the tour's check rejects falls back to the fact."""
+    r = reviewed
+    before = Review.load(str(r.dir))
+    entries = [e for e in before.conversation if e.get("kind") in ("stop", "ask")]
+    tour = tmp_path / "out" / "tour.json"
+    answer = run("report", dir=str(r.dir), out=str(tmp_path / "out" / "review.md"), tour=str(tour))
+    doc = json.loads(tour.read_text())
+    assert doc["prose"]["stops"] == len(entries) == 2 and len(doc["pick"]) == 2
+    picked = [c for c in doc["candidates"] if c["id"] in doc["pick"]]
+    assert sorted(c["step"] for c in picked) == sorted(e["step"] for e in entries) and all(c.get("forced") for c in picked)
+    by_step = {c["step"]: c for c in picked}
+    for e in entries:
+        text = by_step[e["step"]]["prose"]["text"]
+        assert text == e["say"] or text.startswith("Here `") or text in ("The statement raises here and a handler catches it.", "The value changes type here."), text
+    plain = "This tour follows a review of %s: the stops below are where head behaves differently from base." % Path(r.repo).name
+    assert doc["intro"] in (before.data["summary"]["text"], plain, "")
+    assert answer["tour"] == str(tour) and any(l.startswith("wrote tour ") for l in answer["lines"]) and any("render-tour.cjs" in l for l in answer["lines"])
+    assert "inside the repository" in refusal("report", dir=str(r.dir), tour=str(Path(r.repo) / "tour.json")).why
+
+
 
 
 def test_report_reruns_the_reproductions_and_writes_the_markdown(reviewed, tmp_path):

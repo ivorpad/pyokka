@@ -25,7 +25,7 @@ from typing import Any
 from ...home import pyokka_home
 from ..source import AgentError
 
-ACTIONS = ("start", "stop", "ask", "skip", "look", "try", "finding", "fix", "report", "state")
+ACTIONS = ("start", "stop", "ask", "skip", "look", "try", "finding", "fix", "report", "state", "close")
 PHASES = ("stops", "findings", "reported")
 SURFACES = ("auto", "page", "vscode", "chat")
 SEVERITIES = ("blocker", "major", "minor")

@@ -185,7 +185,7 @@ def test_the_page_is_refused_when_it_shows_another_file_and_errors_are_reported(
     page = FakePage({"url": "http://127.0.0.1/", "file": WORKSPACE + "/other.py", "pages": 1, "state": {}})
     try:
         out = move_to(STOP, "say", "page", page.port, None, HEAD)
-        assert out == {"surface": "page", "moved": False, "note": "the page on port %d shows %s/other.py, not the review's entry %s; nothing moved" % (page.port, WORKSPACE, FILE)}
+        assert out == {"surface": "page", "moved": False, "available": False, "note": "the page on port %d shows %s/other.py, not the review's entry %s; nothing moved" % (page.port, WORKSPACE, FILE)}
         assert page.requests == []
     finally:
         page.close()
@@ -248,7 +248,7 @@ def test_a_paused_session_on_another_file_is_neither_detected_nor_moved(no_sessi
         out = move_to(STOP, "label is 'a'", "auto", closed_port(), None, HEAD)
         assert (out["surface"], out["moved"]) == ("chat", False) and "no VS Code session on demo.py" in out["note"]
         out = move_to(STOP, "label is 'a'", "vscode", closed_port(), None, HEAD)
-        assert out == {"surface": "chat", "moved": False, "note": "no live VS Code session on demo.py; start one on the entry (pyokka debug %s --record --cwd %s, let it finish) and stop again" % (FILE, WORKSPACE)}
+        assert out["surface"] == "chat" and out["moved"] is False and out["available"] is False and out["note"].startswith("no live VS Code session on demo.py; start one on the entry: pyokka debug %s --record --cwd %s (MCP: pyokka_debug {\"action\": \"start\", \"file\": \"%s\", \"record\": true, \"cwd\": \"%s\"})" % (FILE, WORKSPACE, FILE, WORKSPACE)) and out["note"].endswith("then stop again with the same n")
         assert not [r for r in other.requests if r["type"] in ("break", "continue")]
         out = move_to(STOP, "label is 'a'", "vscode", closed_port(), "other.py", HEAD)  # named, it is the one
         assert out["surface"] == "vscode-debug" and [r["type"] for r in other.requests][-2:] == ["break", "continue"]
@@ -261,9 +261,9 @@ def test_chat_moves_nothing(no_sessions: Path):
     out = move_to(STOP, "say", "auto", closed_port(), None, HEAD)
     assert (out["surface"], out["moved"]) == ("chat", False)
     assert out["note"].startswith("nothing to move: no page on 127.0.0.1:") and out["note"].endswith(
-        "no VS Code session on demo.py (start one where the person is: pyokka debug %s --record --cwd %s, or pyokka web %s --cwd %s)" % (FILE, WORKSPACE, FILE, WORKSPACE))
+        "or pyokka web %s --cwd %s (MCP: pyokka_page {\"action\": \"open\", \"file\": \"%s\", \"cwd\": \"%s\"}), then open its URL in one browser tab)" % (FILE, WORKSPACE, FILE, WORKSPACE)) and "no VS Code session on demo.py; the person saw it only in chat (start a view where the person is: pyokka debug %s --record --cwd %s (MCP: pyokka_debug" % (FILE, WORKSPACE) in out["note"]
     out = move_to(STOP, "say", "vscode", closed_port(), None, HEAD)
-    assert out == {"surface": "chat", "moved": False, "note": "no live VS Code session on demo.py; start one on the entry (pyokka debug %s --record --cwd %s, let it finish) and stop again" % (FILE, WORKSPACE)}
+    assert out["surface"] == "chat" and out["moved"] is False and out["available"] is False and out["note"].startswith("no live VS Code session on demo.py; start one on the entry: pyokka debug %s --record --cwd %s (MCP: pyokka_debug {\"action\": \"start\", \"file\": \"%s\", \"record\": true, \"cwd\": \"%s\"})" % (FILE, WORKSPACE, FILE, WORKSPACE)) and out["note"].endswith("then stop again with the same n")
     out = move_to(STOP, "say", "vscode", closed_port(), "other.py", HEAD)
-    assert out["note"] == "no live VS Code session matches other.py; start one on the entry (pyokka debug %s --record --cwd %s, let it finish) and stop again" % (FILE, WORKSPACE)
+    assert out["surface"] == "chat" and out["moved"] is False and out["available"] is False and out["note"].startswith("no live VS Code session matches other.py; start one on the entry: pyokka debug %s --record --cwd %s (MCP: pyokka_debug {\"action\": \"start\", \"file\": \"%s\", \"record\": true, \"cwd\": \"%s\"})" % (FILE, WORKSPACE, FILE, WORKSPACE)) and out["note"].endswith("then stop again with the same n")
     assert move_to(STOP, "say", "tv", closed_port(), None, HEAD)["note"].startswith("unknown surface 'tv'")

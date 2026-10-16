@@ -5,7 +5,9 @@
  * each one up in the frame through the adapter's `scopes` and `variables`. A name the frame does not
  * hold shows nothing, so naming too many is harmless.
  *
- * A `record: true` session is skipped: the run-all decorator already draws its values.
+ * A `record: true` session and a Time Machine replay (`replay`) are skipped: the run-all decorator
+ * already draws their values, and a second `name = value` list per line, read off the replayed
+ * frame, would repeat them.
  */
 import * as vscode from 'vscode';
 import { DEBUG_TYPE } from './dapAdapter';
@@ -121,7 +123,7 @@ export function registerDebugInlineValues(): vscode.Disposable {
   return vscode.languages.registerInlineValuesProvider(RUNNABLE_SELECTOR, {
     provideInlineValues(document, viewPort, context) {
       const session = vscode.debug.activeDebugSession;
-      if (session?.type !== DEBUG_TYPE || session.configuration['record'] === true) return [];
+      if (session?.type !== DEBUG_TYPE || session.configuration['record'] === true || session.configuration['replay'] !== undefined) return [];
       const lines = Array.from({ length: document.lineCount }, (_, i) => document.lineAt(i).text);
       const stop = context.stoppedLocation.end.line;
       const lang = runtimeLanguage(document) ?? 'python';

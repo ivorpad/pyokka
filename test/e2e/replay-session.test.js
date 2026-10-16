@@ -110,6 +110,22 @@ describe('the Time Machine as a replay debug session', function () {
     await waitFor(() => vscode.debug.activeStackItem?.session === ds && vscode.debug.activeStackItem.frameId === 1, 'the top frame focused in the side bar');
   });
 
+  it('leaves the inline values to the decorator: no second `name = value` list per line', async () => {
+    assert.ok(replaySession());
+    const stopped = new vscode.Range(LINE.ret - 1, 0, LINE.ret - 1, 0);
+    const all = new vscode.Range(0, 0, doc.lineCount - 1, 0);
+    const values = await vscode.commands.executeCommand('vscode.executeInlineValueProvider', doc.uri, all, { frameId: 1, stoppedLocation: stopped });
+    assert.deepEqual(values ?? [], []);
+  });
+
+  it("hovers a value with Pyokka's hover: See value, Copy and Why, since the debug hover gets no value", async () => {
+    const ds = replaySession();
+    await assert.rejects(ds.customRequest('evaluate', { expression: 'y', context: 'hover', frameId: 1 }));
+    const hovers = await vscode.commands.executeCommand('vscode.executeHoverProvider', doc.uri, new vscode.Position(LINE.ret - 1, 12));
+    const text = hovers.flatMap((h) => h.contents.map((c) => (typeof c === 'string' ? c : c.value))).join('\n');
+    for (const link of ['See value', 'Copy', 'Why']) assert.ok(text.includes(link), `${link} in ${text}`);
+  });
+
   it('steps back, reverse-continues and steps forward from the debug toolbar', async () => {
     const ds = replaySession();
     const from = session.nav.currentStep;

@@ -27,6 +27,9 @@ STEP_KINDS = ("next", "into", "over", "out", "back", "backOver", "backOut")
 DEBUG_OPS = ("start", "continue", "step", "pause", "stop", "state")
 WAIT_PAUSE_MAX_MS = 25_000
 OPEN_TIMEOUT_S = 15.0
+#: the next call when nothing answers on the port asked for: open there, then the person's tab
+OPEN_HINT = ('{"action": "open", "file": "/abs/demo.py", "port": %d} starts one (CLI: pyokka web FILE --port %d); this tool opens no browser, '
+             "so hand the person the URL it returns to open in one browser tab: nothing answers until they do")
 
 #: the pages this server started, by port: {"proc", "file", "url", "log"}
 STARTED: dict[int, dict] = {}
@@ -201,11 +204,15 @@ def call_page(a: dict) -> tuple[str, bool]:
         return json.dumps({"closed": True, "port": port, "file": page["file"]}) + "\n", False
     if action == "list":
         pages = [{"port": p, "file": v["file"], "url": v["url"], "pid": v["proc"].pid, "running": v["proc"].poll() is None} for p, v in sorted(STARTED.items())]
-        return json.dumps({"pages": pages}, indent=1) + "\n", False
+        out: dict[str, Any] = {"pages": pages}
+        if not pages:
+            out["hint"] = ('this server started no page; {"action": "state", "port": N} checks a page started with `pyokka web` on port N, '
+                           '{"action": "open", "file": "/abs/demo.py"} starts one and returns its URL for the person to open in one browser tab')
+        return json.dumps(out, indent=1) + "\n", False
     command = page_command(a)
     port = _port(a)
     if not listening(port):
-        raise AgentError("no Pyokka page is served on 127.0.0.1:%d" % port, '{"action": "open", "file": "/abs/demo.py"} starts one')
+        raise AgentError("no Pyokka page is served on 127.0.0.1:%d" % port, OPEN_HINT % (port, port))
     timeout = (command.get("timeoutMs") or 10_000) / 1000 + 10 if command["action"] == "waitPause" else 60
     status, body = _http(port, command, timeout)
     failed = status != 200 or not isinstance(body, dict) or bool(body.get("error"))
@@ -255,7 +262,7 @@ def call_scratchpad(a: dict) -> tuple[str, bool]:
     command = scratchpad_command(a)
     port = _port(a)
     if not listening(port):
-        raise AgentError("no Pyokka page is served on 127.0.0.1:%d" % port, 'pyokka_page {"action": "open", "file": "/abs/demo.py"} starts one')
+        raise AgentError("no Pyokka page is served on 127.0.0.1:%d" % port, "pyokka_page " + OPEN_HINT % (port, port))
     status, body = _http(port, command, 60)
     result = body.get("result") if isinstance(body, dict) else None
     failed = status != 200 or not isinstance(body, dict) or bool(body.get("error"))

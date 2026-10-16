@@ -218,6 +218,16 @@ def test_prose_sets_evidence_links_as_documented(saved: Path, tmp_path: Path):
     assert code == 2 and "evidence" in json.loads(out)["error"]
 
 
+def test_prose_sentence_rules_are_warnings(saved: Path, tmp_path: Path):
+    """A long passive summary still makes the page; the command names the sentence as a warning."""
+    prose = tmp_path / "prose.json"
+    prose.write_text(json.dumps({"summary": "The total was computed by the loop after the rows had been filtered by the branch on line 9, which is why only two of the three rows were counted."}), encoding="utf-8")
+    code, out = pyokka("history", str(saved), "--at", "8", "--out", str(tmp_path / "h.json"), "--prose", str(prose), "--json")
+    result = json.loads(out)
+    assert code == 0 and any(w.startswith('summary: "The total was computed') and "words; may be passive" in w for w in result["warnings"])
+    assert any(w.startswith("prose: ") for w in result["warnings"])
+
+
 LONG = """
 prompt = "x" * 500
 print(len(prompt))
@@ -383,3 +393,20 @@ def test_append_refuses_a_file_that_is_not_a_page(saved: Path, tmp_path: Path):
     target.write_text('{"hello": 1}', encoding="utf-8")
     code, out = pyokka("history", str(saved), "--at", "8", "--out", str(target), "--append", "--json")
     assert code == 2 and "is not a code-history page" in json.loads(out)["error"]
+
+
+def test_try_card_is_a_sandbox_run_with_its_code_as_a_pseudo_file():
+    from pyokka_runtime.agent.codehistory import KINDS, Builder, try_card
+
+    assert "try" in KINDS
+    data = {"files": {}}
+    t = {"id": "t1", "title": "boundary", "code": "result = spend_tier_rate(500.0, DEFAULT)\n", "inputs": "DEFAULT = Settings()\n", "mocks": None, "result": "0.0", "values": [{"name": "rate", "text": "0.0"}], "output": "", "error": None, "edge": "E1"}
+    card = try_card(data, t, "pyokka review state --dir /tmp/r")
+    assert set(card) == set(Builder.blank("x", "recorded step", "t"))
+    assert card["kind"] == "try" and card["tag"] == "try t1 · edge E1" and card["step"] is None and card["chain"] == []
+    assert data["files"]["tries/t1.py"] == ["# inputs:", "# DEFAULT = Settings()", "result = spend_tier_rate(500.0, DEFAULT)"]
+    assert card["file"] == "tries/t1.py" and (card["start"], card["end"], card["focus"]) == (1, 3, 1) and card["bright"] == [1, 2, 3]
+    assert card["values"] == "result = 0.0\nrate = 0.0" and card["verify"].startswith("pyokka ") and (card["title"], card["text"], card["note"]) == ("", "", "")
+    failed = try_card(data, {"id": "t2", "code": "1 / 0\n", "result": None, "error": "ZeroDivisionError: division by zero"}, "pyokka review state")
+    assert failed["output"] == "error: ZeroDivisionError: division by zero" and failed["values"] == "result = None" and failed["tag"] == "try t2"
+
