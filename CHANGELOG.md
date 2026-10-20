@@ -12,6 +12,8 @@
   recording. Three evals and their project (`skills/pyokka/evals/files/cart/`) cover the prompts,
   and `docs/PLAYBOOK.md` situation 9 has the Claude Code runs. It also corrects the playbook: Claude
   Code loads the skill only on `/pyokka`, since `SKILL.md` sets `disable-model-invocation`.
+  `review.md`, `pyokka-cli.md` and the playbook describe `review start` as it now plans: untracked
+  files included, `--only` limiting the diff read, a `uses:` line per item.
 
 ## 0.5.5
 

@@ -456,6 +456,12 @@ A review begins twice on purpose (`SKILL.md`, "How a turn ends"): the questions 
 the person can answer, and the answer decides the plan. The turns after that are situation 7 and
 situation 8's lifecycle: the plan with its sessions, then `start`, `continue`, `stop`.
 
+What `start` then plans, **shape** from the code: the change includes untracked files, read as new
+(a new module the change adds is on the agenda without a commit). Each item has a `uses:` line, such
+as `uses: parse_money calc.py:4 (stop 1)`, naming the repository code its changed lines call, with no
+breakpoint there. With `--only calc.py` only that file's diff is read, and the plan says what it left
+out: `only: calc.py; outside it, not read: 1 changed file (README.md)`.
+
 Pass: the diff is read before the question, the questions come in one message, and nothing starts
 before the answer. Fail: a `review start` before asking, or a question the diff already answers
 ("which file changed?").

@@ -3,13 +3,13 @@
 A review is a debug session whose sequence the tool owns, and you are the person's peer in it: you read
 before you answer, you say where you are going before you go, and every claim rests on a value from a run.
 `pyokka review start --base REF [--repo DIR] [--entry FILE | --test NODEID] [--only PATH...] [--pr FILE]`
-plans one item per changed function from the diff (module-level and test-file changes are set aside
-without a breakpoint, and so is every item outside `--only`'s files, directories or globs), with edge
-candidates `E1..En` and what to try, and starts the entry (`main.py` at the repo root when it exists, or
-the test) under the debugger in the person's VS Code, paused on entry with a breakpoint on each item;
-nothing of base runs. Its answer names the interpreter (`python:` and its source; `--python` overrides it)
-and the debug session (`session:`, the file `pyokka_debug` takes as `session`). Then the debugger is yours
-as in debug mode: `pyokka continue --live` (MCP `pyokka_debug continue`) reaches the next item; `step`,
+plans one item per changed function from the diff and the untracked files (module-level and test-file
+changes set aside, no breakpoint; `--only`'s files, directories or globs limit the diff read, and the
+plan lists the changed files outside as not read), each with `uses:`, the repository code its changed
+lines call (no breakpoint), and edge candidates `E1..En`, and starts the entry (`main.py` at the repo
+root, or the test) under the debugger in the person's VS Code, paused on entry with a breakpoint on each
+item; nothing of base runs. Its answer names the interpreter (`python:`; `--python` overrides it) and the
+debug session (`session:`, the file `pyokka_debug` takes as `session`). Then the debugger is yours as in debug mode: `pyokka continue --live` (MCP `pyokka_debug continue`) reaches the next item; `step`,
 `locals`, `eval` and `break` read and move the pause. `--full` is the recorded review instead: base and
 head run to their ends, the stops planned where the runs differ, the view a recording in VS Code, the page
 or chat (`--surface page|chat` implies it). Every result opens with `review <id> · <phase> · stops K/N
@@ -32,8 +32,8 @@ The plan lives in your message and your scratch directory, never in the reposito
 
 `pyokka review stop [N] --say TEXT` records the pause the debugger is at as a stop: the item it belongs to
 (an uncaught exception or a breakpoint of your own becomes an item), the frame's values, your text. It
-prints the item's `change:` (base's removed lines, head's added ones, `>` at the pause), the values on
-those lines and the other locals, and removes the item's breakpoint. Read the function first (`cat -n
+prints the item's `change:` (base's removed lines, head's added ones, `>` at the pause), its `uses:`
+line, the values on those lines and the other locals, and removes the item's breakpoint. Read the function first (`cat -n
 FILE` on the head tree), then say what happens at the pause; TEXT has to name a value of the frame, and
 the refusal lists them. One stop per message, then wait: the next `stop` needs `--go-on`, passed only
 after the person said next, and reaching the next item is `pyokka continue --live`, not a review command.
