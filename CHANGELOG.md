@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.5.7
+
 - The skill no longer turns "debug this" into a review because the repository has pending
   changes. A vague debug ask is `debug` in the repository it was invoked in: a plain script runs
   under `pyokka run` or `pyokka debug` directly, and a server (FastAPI under uvicorn) is launched
