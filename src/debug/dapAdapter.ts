@@ -102,15 +102,19 @@ export async function startDebugSession(launch: LaunchConfig, opts: { stopOnEntr
  * run inside the document's own session with `record: true`.
  */
 export async function debugDocument(doc: vscode.TextDocument, existing?: Session, opts: { stopOnEntry?: boolean; record?: boolean; recordFrom?: string; recordFromSpec?: RecordFromSpec } = {}): Promise<void> {
-  const record = opts.record === true || !!opts.recordFrom || !!opts.recordFromSpec;
-  const cwd = vscode.workspace.getWorkspaceFolder(doc.uri)?.uri.fsPath ?? '';
+  const launch: LaunchConfig = existing?.launch ?? {
+    program: doc.uri.fsPath, args: [], cwd: vscode.workspace.getWorkspaceFolder(doc.uri)?.uri.fsPath ?? '',
+    env: {}, stopOnEntry: false, breakOnException: 'uncaught', libraryCode: false, record: false,
+  };
+  const record = (opts.record ?? launch.record) || !!opts.recordFrom || !!opts.recordFromSpec;
+  const stopOnEntry = opts.stopOnEntry ?? launch.stopOnEntry;
   if (record && existing && attached.has(existing)) {
     // `recordFromSpec` is a restart keeping the run's own; `recordFrom` the `--at` text of a new start
-    const recordFrom = opts.recordFromSpec ?? recordFromSpec({ recordFrom: opts.recordFrom, cwd: cwd || path.dirname(doc.uri.fsPath) });
-    await existing.startDebug({ stopOnEntry: !!opts.stopOnEntry, ...(recordFrom ? { recordFrom } : {}) });
+    const recordFrom = opts.recordFromSpec ?? recordFromSpec({ recordFrom: opts.recordFrom ?? launch.recordFrom, cwd: launch.cwd || path.dirname(doc.uri.fsPath) });
+    await existing.startDebug({ stopOnEntry, ...(recordFrom ? { recordFrom } : {}) });
     return;
   }
-  await startDebugSession({ program: doc.uri.fsPath, args: [], cwd, env: {}, stopOnEntry: !!opts.stopOnEntry, breakOnException: 'uncaught', libraryCode: false, record, ...(opts.recordFrom ? { recordFrom: opts.recordFrom } : {}) }, { stopOnEntry: !!opts.stopOnEntry });
+  await startDebugSession({ ...launch, stopOnEntry, record, ...(opts.recordFrom !== undefined ? { recordFrom: opts.recordFrom } : {}) });
 }
 
 /** What "Pyokka: Stop Debugging" does, then wait until the run is gone: leave debug mode, stop the run. Resolves at once when no run is in flight. */

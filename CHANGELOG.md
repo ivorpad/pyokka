@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Restarting a completed recording keeps its launch configuration, including container transport,
+  path mappings, Python, working directory, arguments and environment overrides.
+
 - A pause at a stop of the review in the debugger now says so in the debugger's own answer, from
   the CLI, MCP and `shell --live`. A `review:` line names the stop and says nobody has explained it
   yet, and a `next:` line gives `review stop N --say TEXT` (with `--go-on` after an earlier stop)
