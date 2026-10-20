@@ -48,12 +48,13 @@ def start(f: dict) -> dict:
     base = _rev(repo, base_ref)
     head = git(repo, "rev-parse", "HEAD").strip()
     test = str(f.get("test") or "").strip() or None
-    rel = _entry(repo, f.get("entry"), test, base)
+    live = not f.get("full") and wanted(f) not in ("chat", "page")
+    rel = _entry(repo, f.get("entry"), test, base, live)
     directory = _directory(f.get("dir"), repo, base)
     pr_text, pr_from = _pr_text(repo, f.get("pr"), base)
     argv = [str(x) for x in (f.get("args") or [])]
     interp = _interpreter(os.path.join(repo, rel), f.get("python"))
-    if not f.get("full") and wanted(f) not in ("chat", "page"):
+    if live:
         # the debugger (the default): the agenda from the diff, the entry under the debugger in VS Code; the page and chat need the full recording
         from .debugger_actions import start_in_debugger
 
@@ -100,7 +101,7 @@ def start(f: dict) -> dict:
         "created": now(),
         "mode": "recording",
         "phase": "stops" if stops else "findings",
-        "tree_hash": tree_hash(repo),
+        "tree_hash": tree_hash(repo, rel),
         "pr": pr_from,
         "plan": {"stops": stops, "unreached": unreached, "edges": edges, "anomalies": anomalies},
         "shown": [],
@@ -221,8 +222,12 @@ def _test_names(path: str) -> list[str]:
     return names
 
 
-def _entry(repo: str, entry: Any, test: str | None, base: str) -> str:
-    """The entry file relative to the repo: ``--entry``, the file of ``--test FILE::NAME``, else ``main.py``."""
+def _entry(repo: str, entry: Any, test: str | None, base: str, live: bool = False) -> str:
+    """The entry file relative to the repo: ``--entry``, the file of ``--test FILE::NAME``, else ``main.py``.
+
+    The recorded review runs the entry in both trees, so it must be a file of the repository that base has too. A review
+    in the debugger (``live``) runs the working tree only: a launcher outside the repository (its absolute path is the
+    entry) or one the change adds is accepted there, the repository stays the cwd and the diff, and tree_hash pins its content."""
     if test and not entry and "::" in test:
         entry = test.split("::", 1)[0]
     if test and not entry:
@@ -239,16 +244,17 @@ def _entry(repo: str, entry: Any, test: str | None, base: str) -> str:
     path = os.path.abspath(entry if os.path.isabs(str(entry)) else os.path.join(repo, str(entry)))
     if not os.path.isfile(path):
         raise _refuse("no file %s" % path, next_command="review start --base REF --entry FILE")
-    if not inside(path, repo):
+    outside = not inside(path, repo)
+    if outside and not live:
         raise _refuse("%s is outside the repository %s" % (path, repo), ["the entry must be a file of the tree, so the base tree can run it too"], "review start --base REF --entry FILE")
-    rel = os.path.relpath(os.path.realpath(path), os.path.realpath(repo))
+    rel = os.path.realpath(path) if outside else os.path.relpath(os.path.realpath(path), os.path.realpath(repo))
     if not test and _is_test_file(rel):
         names = _test_names(path)
         raise _refuse("%s is a test file: run as a program it defines its tests and runs none (its imports and definitions only), so both trees would run no test" % rel,
                       ["give --test %s::NAME for one of its tests%s, or --entry a program file both trees run" % (rel, (" (%s)" % ", ".join(names[:8])) if names else "")],
                       "review start --base REF --test %s::NAME" % rel)
     # head is the working tree as it stands, the entry included: an uncommitted entry is reviewed as it is, and tree_hash pins it
-    if not git(repo, "ls-tree", base, "--", rel).strip():
+    if not live and not git(repo, "ls-tree", base, "--", rel).strip():
         raise _refuse("%s does not exist at %s" % (rel, base[:7]), ["the review needs an entry both trees run; name one with --entry FILE"], "review start --base REF --entry FILE")
     return rel
 
