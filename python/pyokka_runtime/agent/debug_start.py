@@ -22,6 +22,7 @@ from __future__ import annotations
 import calendar
 import json
 import os
+import posixpath
 import re
 import shutil
 import subprocess
@@ -63,7 +64,7 @@ AT_UNREADABLE = "--at wants FILE:LINE or a function name"
 AT_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*$")
 
 
-def build_launch(*, program: str | None = None, module: str | None = None, args: list[str] | None = None, cwd: str | None = None, env: dict[str, str] | None = None, python: str | None = None, stop_on_entry: bool = False, library_code: bool = False, record: bool = False, record_from: str | None = None) -> dict:
+def build_launch(*, program: str | None = None, module: str | None = None, args: list[str] | None = None, cwd: str | None = None, env: dict[str, str] | None = None, python: str | None = None, stop_on_entry: bool = False, library_code: bool = False, record: bool = False, record_from: str | None = None, transport: dict | None = None, path_mappings: list[dict] | None = None) -> dict:
     """The launch the host parses: absolute paths, a dotted module, the flags that are set."""
     if not program and not module:
         raise AgentError("debug needs a file or --module M", "e.g. `pyokka debug app.py`, or `pyokka debug --module app.server --args --port 8000`")
@@ -75,7 +76,23 @@ def build_launch(*, program: str | None = None, module: str | None = None, args:
     if module:
         launch["module"] = module
     launch["cwd"] = os.path.abspath(cwd) if cwd else (os.path.dirname(launch["program"]) if program else os.getcwd())
-    if python:
+    if transport:
+        launch["transport"] = transport
+        launch["pathMappings"] = path_mappings
+        launch["python"] = python or "python3"
+        if cwd:
+            if not posixpath.isabs(cwd):
+                raise AgentError("a transport launch needs an absolute container cwd")
+            launch["cwd"] = cwd
+        else:
+            for mapping in sorted(path_mappings or [], key=lambda m: len(m["localRoot"]), reverse=True):
+                relative = os.path.relpath(launch["cwd"], mapping["localRoot"])
+                if relative != ".." and not relative.startswith(".." + os.sep):
+                    launch["cwd"] = posixpath.normpath(posixpath.join(mapping["remoteRoot"], relative.replace(os.sep, "/")))
+                    break
+            else:
+                raise AgentError("no pathMappings entry covers the launch working directory")
+    elif python:
         from .interpreter import on_path
 
         launch["python"] = on_path(python, "--python")
@@ -155,6 +172,9 @@ def build_uri(launch: dict, at: str | list[str] | None = None, *, window_id: str
         parts.append(("env", json.dumps(dict(launch["env"]), separators=(",", ":"))))
     if launch.get("python"):
         parts.append(("python", str(launch["python"])))
+    for key in ("transport", "pathMappings"):
+        if launch.get(key):
+            parts.append((key, json.dumps(launch[key], separators=(",", ":"))))
     if launch.get("stopOnEntry"):
         parts.append(("stopOnEntry", "1"))
     if launch.get("record"):

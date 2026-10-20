@@ -23,7 +23,7 @@ interface Manifest {
     configuration: { properties: Record<string, { type?: string; default?: unknown; enum?: string[]; enumDescriptions?: string[]; description?: string; markdownDescription?: string }> };
     debuggers: {
       type: string;
-      configurationAttributes: { launch: { required: string[]; properties: Record<string, LaunchAttribute> } };
+      configurationAttributes: Record<string, { required: string[]; properties: Record<string, LaunchAttribute> }>;
       initialConfigurations: Record<string, unknown>[];
       configurationSnippets: { label: string; description?: string; body: Record<string, unknown> }[];
     }[];
@@ -129,11 +129,13 @@ describe('package.json contributions', () => {
   it('declares every launch attribute of the Pyokka debugger, with no required one', () => {
     const dbg = manifest.contributes.debuggers[0]!;
     expect(dbg.type).toBe('pyokka');
-    const launch = dbg.configurationAttributes.launch;
+    const launch = dbg.configurationAttributes.launch!;
     // a launch may name `module` instead of `program`, so nothing is required here
     expect(launch.required).toEqual([]);
     const p = launch.properties;
-    expect(Object.keys(p).sort()).toEqual(['args', 'breakOnException', 'cwd', 'env', 'libraryCode', 'module', 'program', 'python', 'record', 'stopOnEntry']);
+    expect(Object.keys(p).sort()).toEqual(['args', 'breakOnException', 'cwd', 'env', 'libraryCode', 'module', 'pathMappings', 'program', 'python', 'record', 'stopOnEntry', 'transport']);
+    expect(p['transport']).toMatchObject({ type: 'object', required: ['command'] });
+    expect(p['pathMappings']).toMatchObject({ type: 'array', minItems: 1 });
     expect(p['program']).toMatchObject({ type: 'string', default: '${file}' });
     expect(p['module']).toMatchObject({ type: 'string' });
     expect(p['args']).toMatchObject({ type: 'array', default: [] });
@@ -149,12 +151,22 @@ describe('package.json contributions', () => {
     for (const [name, spec] of Object.entries(p)) expect(spec.description, name).toBeTruthy();
   });
 
-  it('shows the three launch shapes in launch.json and in the snippets', () => {
+  it('offers attach to a debugpy endpoint with path mappings', () => {
+    const attach = manifest.contributes.debuggers[0]!.configurationAttributes.attach;
+    expect(attach?.required).toEqual(['connect']);
+    expect(attach?.properties.connect).toMatchObject({ type: 'object', required: ['port'], properties: { port: { type: 'integer', minimum: 1, maximum: 65535 }, host: { default: '127.0.0.1' } } });
+    expect(attach?.properties.pathMappings).toMatchObject({ type: 'array', items: { type: 'object', required: ['localRoot', 'remoteRoot'] } });
+    expect(attach?.properties.justMyCode).toMatchObject({ type: 'boolean', default: true });
+  });
+
+  it('shows launch and attach shapes in launch.json and in the snippets', () => {
     const dbg = manifest.contributes.debuggers[0]!;
-    expect(dbg.initialConfigurations.map((c) => c.name)).toEqual(['Pyokka: Debug Current File', 'Pyokka: Debug Current File (Recording)', 'Pyokka: Debug Module']);
+    expect(dbg.initialConfigurations.map((c) => c.name)).toEqual(['Pyokka: Debug Current File', 'Pyokka: Debug Current File (Recording)', 'Pyokka: Debug Module', 'Pyokka: Attach to debugpy']);
     expect(dbg.initialConfigurations[1]).toMatchObject({ program: '${file}', record: true });
     expect(dbg.initialConfigurations[2]).toMatchObject({ module: 'app.server', args: [], cwd: '${workspaceFolder}' });
-    expect(dbg.configurationSnippets.map((s) => s.label)).toEqual(['Pyokka: Debug Current File', 'Pyokka: Debug Current File (Recording)', 'Pyokka: Debug Module']);
+    expect(dbg.initialConfigurations[3]).toMatchObject({ request: 'attach', connect: { host: '127.0.0.1', port: 5678 } });
+    expect(dbg.configurationSnippets.map((s) => s.label)).toEqual(['Pyokka: Debug Current File', 'Pyokka: Debug Current File (Recording)', 'Pyokka: Debug Module', 'Pyokka: Attach to debugpy']);
+    expect(dbg.configurationSnippets[3]?.body.pathMappings).toEqual([{ localRoot: '^"\\${workspaceFolder}"', remoteRoot: '.' }]);
     for (const s of dbg.configurationSnippets) expect(s.body.type).toBe('pyokka');
   });
 

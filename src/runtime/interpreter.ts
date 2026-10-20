@@ -11,7 +11,7 @@ export { isVenvExecutable } from './pythonDiscovery';
 export interface Interpreter {
   path: string;
   version: [number, number, number];
-  source: 'setting' | 'python-extension' | 'venv' | 'defaultInterpreterPath' | 'PATH' | 'user';
+  source: 'setting' | 'python-extension' | 'venv' | 'defaultInterpreterPath' | 'PATH' | 'user' | 'transport';
   /** true when the executable lives inside a virtual environment (pyvenv.cfg next to bin/) */
   isVenv: boolean;
 }

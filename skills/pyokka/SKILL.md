@@ -53,10 +53,13 @@ The person need not know a mode, a verb or a flag. "Debug this", "why does this 
    without VS Code, and `pyokka debug tests/test_x.py --test NAME --at FUNCTION` pauses it in VS
    Code. `--cwd REPO` makes the project's own modules count as its code; without it only the test
    file's directory is recorded. A plain script runs as it is: `pyokka run SCRIPT --cwd REPO`, or `pyokka
-   debug SCRIPT --cwd REPO` for pauses. A server is launched under the debugger, not attached to:
+   debug SCRIPT --cwd REPO` for pauses. To launch a server under the debugger:
    `pyokka debug --module uvicorn --args app.main:app --cwd REPO` (no `--reload`), then send it a
-   request. Pyokka has no attach to a process that is already running or to a container; say so
-   and launch it locally instead.
+   request. A container launch uses `transport` and `pathMappings` in a Pyokka launch
+   configuration, then `pyokka debug --configuration NAME`; its wrapper keeps authentication.
+   VS Code also supports `request: "attach"` with `connect` and `pathMappings` for an existing
+   debugpy listener. Attach has no Pyokka recording or CLI/MCP access. See the README's
+   "Containers and attach" examples.
 5. Answer with the evidence: the cause, the step or stop and the value that show it, the fix as
    a proposal, and what you did not verify. "Debug" and "why" ask for the cause, not a change:
    edit the source only when the person asked for a fix.

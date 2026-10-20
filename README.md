@@ -26,7 +26,7 @@ settings and keys follow Quokka's.
 
 [Install](#install) · [The `pyokka` command](#the-pyokka-command) · [MCP](#mcp) ·
 [The skill](#the-skill) · [In Claude Code](#in-claude-code) · [In a browser](#in-a-browser) ·
-[Use](#use) · [Commands](#commands) · [Settings](#settings) · [Files](#files-pyokka-writes) ·
+[Containers and attach](#containers-and-attach) · [Use](#use) · [Commands](#commands) · [Settings](#settings) · [Files](#files-pyokka-writes) ·
 [Development](#development) · [Every feature in depth](docs/GUIDE.md) · [Playbook](docs/PLAYBOOK.md)
 
 ## Install
@@ -80,6 +80,79 @@ The rest is per feature:
 | The browser page | nothing: `node` 20+ when one is on PATH, else the Node inside VS Code |
 | Narrate and the Tour | `claude` or `codex` on PATH, GitHub Copilot in VS Code, or `pyokka.explain.command` |
 | Quick Package Install | nothing: `uv pip` when `uv` is on PATH, else `python -m pip` |
+
+## Containers and attach
+
+### Launch in Podman or Docker
+
+Put this configuration in `.vscode/launch.json` and select it in Run and Debug. `program` names
+the local file; `cwd` and `python` name paths inside the container. `pathMappings` translates
+execution paths, breakpoints, stack frames and recorded source locations.
+
+```json
+{
+  "name": "Pyokka: Ingest in Podman",
+  "type": "pyokka",
+  "request": "launch",
+  "program": "${workspaceFolder}/.codex/debug/pyokka_full_ingest.py",
+  "cwd": "/var/task",
+  "python": "/var/lang/bin/python",
+  "transport": {
+    "command": "podman",
+    "args": [
+      "exec", "-i",
+      "--workdir", "/var/task",
+      "figma-ux-experience-ingest-ingest-lambda-1",
+      "/var/task/scripts/local-exec-wrapper.sh"
+    ]
+  },
+  "pathMappings": [
+    {
+      "localRoot": "${workspaceFolder}",
+      "remoteRoot": "/var/task"
+    }
+  ],
+  "record": true
+}
+```
+
+Change the container, program and interpreter to match your project. For Docker, use
+`"command": "docker"`. The container must already be running, with Python 3.12+ and the project
+mounted or synchronized at the mapped path. Local roots must be absolute; remote roots use
+absolute Linux paths. No copy under a fake `/Users/...` path is needed.
+
+Pyokka appends the Python command to the transport arguments and transfers its matching runtime
+over stdin into a temporary container directory. There is no package to install in the container.
+Use `exec -i` without `-t`. An authentication wrapper should finish with `exec "$@"`, preserve
+stdin/stdout, and send its own messages to stderr. Authentication and environment setup stay with
+that wrapper. Pyokka sends only explicit launch `env` overrides, without importing the host's
+`.env`. The wrapper runs for the interpreter probe and again for the runner.
+
+`record: true` enables the Time Machine; `record: false` runs only the live debugger. The CLI
+can launch the same configuration with `pyokka debug --configuration "Pyokka: Ingest in Podman"`.
+
+### Attach to an existing debugpy server
+
+For a process already listening through debugpy, use an attach configuration. This example
+connects to a container endpoint forwarded to port 5679 on the host:
+
+```json
+{
+  "name": "Pyokka: Attach to container",
+  "type": "pyokka",
+  "request": "attach",
+  "connect": { "host": "127.0.0.1", "port": 5679 },
+  "pathMappings": [
+    { "localRoot": "${workspaceFolder}", "remoteRoot": "/var/task" }
+  ],
+  "justMyCode": true
+}
+```
+
+Attach uses VS Code's breakpoints, Call Stack, Variables, Watch and stepping controls. It keeps
+the server's existing process, authentication and working directory; normal disconnect leaves
+the server running. Attach does not provide Pyokka recording, the Time Machine, the Pyokka
+Debugger panel or CLI/MCP access. Use a transport launch when you need those features.
 
 ## The `pyokka` command
 

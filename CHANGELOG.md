@@ -18,6 +18,16 @@
   first statement, so a `return` inside an `except` or an `if` body the change does not hold is
   never chosen. A stop on `total = 0` had nothing to explain but the value.
 
+## 0.6.0
+
+- Container launches accept `transport` and `pathMappings`. Pyokka starts its matching runtime
+  through `podman exec -i`, `docker exec -i` or an authentication wrapper, maps source locations
+  back to the editor, and supports recording. The CLI reads the same launch configuration.
+- Attach configurations connect to an existing debugpy endpoint, with mapped breakpoints,
+  variables and stepping in VS Code. Disconnect keeps the server running. Attach does not record.
+- The README includes Podman launch and debugpy attach examples. Container launch was verified
+  in Docker; attach was verified against a running authenticated server, including reattachment.
+
 ## 0.5.7
 
 - The skill no longer turns "debug this" into a review because the repository has pending
