@@ -164,12 +164,13 @@ def test_stop_prints_the_change_and_the_values_the_changed_lines_use_first(world
     _, review = start(world)
     item = next(it for it in items_of(review) if it["function"] == "parse_money")
     long_text = "Settings(" + "r" * 190 + ")"  # as long as the runtime lets a local's text be; the stop cut it to 100 before
-    pause_at(world, item, {"settings": long_text, "text": "'\"1,249.00\"'"}, step=57)
+    # a pause inside the change, at line 11; the stop's own breakpoint is the return that decides, line 14 (stop_place.py)
+    pause_at(world, {**item, "line": 11}, {"settings": long_text, "text": "'\"1,249.00\"'"}, step=57)
     answer = run("stop", dir=str(world.dir), n=item["n"], say='text is "1,249.00" with the comma still in')
     lines = render_text(answer).split("\n")
     first = lines.index(next(line for line in lines if line.startswith("stop ")))
     assert len(long_text) == 200 and lines[first:first + 20] == [
-        "stop %d/%d  change  shopkit/money.py:11 parse_money  changed lines 8-11, 14; its breakpoint is removed" % (item["n"], len(review.stops)),
+        "stop %d/%d  change  shopkit/money.py:14 parse_money  changed lines 8-11, 14; its breakpoint is removed" % (item["n"], len(review.stops)),
         "paused at money.py:11 (breakpoint)  step #57",
         "change:",
         "  6 -def parse_money(text: str) -> float:",
@@ -186,11 +187,11 @@ def test_stop_prints_the_change_and_the_values_the_changed_lines_use_first(world
         "other locals:",
         "  settings = " + long_text,
         'say: text is "1,249.00" with the comma still in',
-        "view: VS Code, paused there; the person sees it in the editor",
+        "view: VS Code, paused there. The editor shows the pause, not the say: write the same words in your message",
         "next: wait for the person; when they say next, %s --go-on" % CONTINUE,
         "",
     ]
-    assert world.fake.removed == [{"file": str(world.repo / "shopkit" / "money.py"), "line": 11}]
+    assert world.fake.removed == [{"file": str(world.repo / "shopkit" / "money.py"), "line": 14}]
     # the payload and the record keep the frame's order and the whole texts; used names the first group
     assert answer["values"] == [{"name": "settings", "text": long_text}, {"name": "text", "text": "'\"1,249.00\"'"}] and answer["used"] == ["text"]
     assert Review.load(str(world.dir)).conversation[-1]["values"] == [["settings", long_text], ["text", "'\"1,249.00\"'"]]

@@ -76,6 +76,8 @@ def build_parser() -> argparse.ArgumentParser:
     web = sub.add_parser("web", add_help=False, help="the browser page: `pyokka web FILE [--port N]` serves it, `pyokka web ctl [--port N] state|step|debug ...` drives it (runs on node from PATH, else on the Node inside VS Code; `pyokka web -h` for the bridge's own usage)")
     web.add_argument("web_args", nargs=argparse.REMAINDER, metavar="ARGS")
     sub.add_parser("mcp", help="an MCP server on stdin/stdout: the commands as tools for Claude Code, Codex and other MCP clients (`claude mcp add pyokka -- pyokka mcp`)")
+    hook = sub.add_parser("hook", help="answer a Codex or Claude Code hook on stdin: `stop` keeps the agent from ending its turn at a review stop nobody explained, and prints nothing outside a review")
+    hook.add_argument("event", choices=["stop"], help="the hook event (a `Stop` hook)")
     cache = sub.add_parser("cache", help="the cache of instrumented library files ($PYOKKA_HOME/cache, default ~/.pyokka/cache, or PYOKKA_CACHE_DIR): directory, entries, size")
     cache.add_argument("--clear", action="store_true", help="remove every entry; the next run rewrites what it needs")
     cache.add_argument("--json", action="store_true", help="print the raw JSON shape")
@@ -121,6 +123,10 @@ def main(argv: list[str] | None = None) -> int:
         from .agent.mcp import serve
 
         return serve()
+    if args.command == "hook":
+        from .agent.review.reminder import hook_main
+
+        return hook_main(args.event, sys.stdin, sys.stdout)
     if args.command == "_child":
         from .child import spawned_child_main
 

@@ -2,6 +2,28 @@
 
 ## Unreleased
 
+- A pause at a stop of the review in the debugger now says so in the debugger's own answer, from
+  the CLI, MCP and `shell --live`. A `review:` line names the stop and says nobody has explained it
+  yet, and a `next:` line gives `review stop N --say TEXT` (with `--go-on` after an earlier stop)
+  or `review skip N --why TEXT` for a stop with nothing worth a word. A Codex review stepped past
+  every stop and explained none, because each pause came back as a plain debugger answer. The
+  stop's answer no longer says the person sees the say in the editor, since the editor shows only
+  the pause: it tells the agent to write the same words in its message. Smoke-tested with Codex
+  (GPT-6.1-Sol) on a two-stop review: it explained each stop in chat and waited for next.
+
+- A stop of the review in the debugger pauses on what the changed lines decide (an `if`, a
+  `while`, a `match`, a `return`, a `raise`, an `assert`, or a value made by a comparison or a
+  boolean test) instead of their first statement, else on a `for` loop or a call into code other
+  than a builtin. A candidate counts only where the program reaches it whenever it reaches the
+  first statement, so a `return` inside an `except` or an `if` body the change does not hold is
+  never chosen. A stop on `total = 0` had nothing to explain but the value.
+
+- `pyokka hook stop` answers a Codex or Claude Code `Stop` hook. When the agent ends its turn
+  while the review's debug session sits at a stop nobody explained, it sends the agent back once
+  with the same `review:` and `next:` lines; otherwise it prints nothing and exits 0. The README's
+  "The review's Stop hook" has the `hooks.json` entry for `~/.codex/hooks.json` and Claude Code's
+  `settings.json`.
+
 ## 0.6.0
 
 - Container launches accept `transport` and `pathMappings`. Pyokka starts its matching runtime

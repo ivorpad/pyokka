@@ -270,6 +270,24 @@ prints. Nothing is written inside the repository: the review lives under `$PYOKK
 Over MCP the same actions are the `pyokka_review` tool, and the server offers the method as the
 `review` prompt (`/mcp__pyokka__review` in Claude Code).
 
+### The review's Stop hook
+
+While a review runs in the debugger, each pause at a stop nobody has explained ends with a
+`review:` line and a `next:` line that tell the agent to explain it or skip it. The Stop hook
+backs that up: when the agent tries to end its turn at such a stop, `pyokka hook stop` sends it
+back once with what to do. Outside a review it prints nothing, so it costs a file read per turn.
+
+For Codex, add the hook to `~/.codex/hooks.json` (merge it with any hooks already there). Codex
+asks once whether to trust it:
+
+```json
+{ "hooks": { "Stop": [ { "hooks": [ { "type": "command", "command": "\"$HOME/.local/bin/pyokka\" hook stop", "timeout": 10 } ] } ] } }
+```
+
+For Claude Code, put the same `hooks` block in `~/.claude/settings.json` (or
+`$CLAUDE_CONFIG_DIR/settings.json`). Use the path `command -v pyokka` prints if the script is not
+in `~/.local/bin`.
+
 ## In Claude Code
 
 The Pyokka band is a Claude Code plugin. While an agent drives `pyokka ... --live`, it draws the
