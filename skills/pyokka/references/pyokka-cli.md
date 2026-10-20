@@ -873,6 +873,7 @@ pyokka locals --live [--frame N] [--scope local|global|all] [--names-only] [--na
 pyokka exec --live SOURCE [--frame N]
 pyokka record --live
 pyokka mcp
+pyokka hook stop
 pyokka cache [--clear] [--json]
 pyokka serve
 pyokka _child --port PORT --token TOKEN
@@ -880,6 +881,10 @@ pyokka _keep --socket SOCKET [--idle SECONDS]
 pyokka _imports FILE [--root DIR]
 pyokka _scratch
 ```
+
+`hook stop` answers a Codex or Claude Code `Stop` hook on stdin: while a review in the debugger
+sits at a stop nobody explained, it keeps the agent from ending its turn there, once; otherwise it
+prints nothing. The README's "The review's Stop hook" has the `hooks.json` entry.
 
 `debug --configuration NAME` takes program or module, args, cwd, env, envFile, python,
 stopOnEntry and `justMyCode: false` (as `--library-code`) from a `debugpy` or `python`

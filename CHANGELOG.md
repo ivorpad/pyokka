@@ -18,6 +18,12 @@
   first statement, so a `return` inside an `except` or an `if` body the change does not hold is
   never chosen. A stop on `total = 0` had nothing to explain but the value.
 
+- `pyokka hook stop` answers a Codex or Claude Code `Stop` hook. When the agent ends its turn
+  while the review's debug session sits at a stop nobody explained, it sends the agent back once
+  with the same `review:` and `next:` lines; otherwise it prints nothing and exits 0. The README's
+  "The review's Stop hook" has the `hooks.json` entry for `~/.codex/hooks.json` and Claude Code's
+  `settings.json`.
+
 ## 0.6.0
 
 - Container launches accept `transport` and `pathMappings`. Pyokka starts its matching runtime
