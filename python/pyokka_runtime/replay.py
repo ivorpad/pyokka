@@ -41,8 +41,8 @@ from .pure import compile_pure, run_pure
 from .serialize import serialize
 from .values import cut_entry
 
-# what a whole value keeps: far past the inline limits (5 levels, 8192 characters), short of unbounded
-WHOLE = LogLimitSet(depth=30, elements=5000, string_length=200_000)
+# what a full value keeps: far past the inline limits (5 levels, 8192 characters), short of unbounded
+FULL = LogLimitSet(depth=30, elements=5000, string_length=200_000)
 
 
 class ReplayStop(BaseException):
@@ -254,7 +254,7 @@ class ReplayDriver:
                 return {"missing": str(exc)}
             except Exception as exc:  # noqa: BLE001 - the program's own error, reported on the result
                 return {"error": "%s: %s" % (type(exc).__name__, exc)}
-            node = serialize(value, WHOLE, root_key="replay", hit=n, resolve_getters=tracer.config.resolve_getters, expression_root=self.expr)
+            node = serialize(value, FULL, root_key="replay", hit=n, resolve_getters=tracer.config.resolve_getters, expression_root=self.expr)
             return {"value": {"data": node}}
         finally:
             tracer.quiet -= 1

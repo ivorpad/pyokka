@@ -17,9 +17,9 @@ import { buildWhyDocument, type WhyLine } from '../why';
 import { formatRepr } from '../src-shared';
 import { IconButton, MenuButton, type MenuItem } from './ui';
 import { ValueTable } from './ValueTable';
-import type { WholeValueView } from '../../src/shared/replayProtocol';
-import type { WholeValueAsk } from './VariablePane';
-import { WholeValue } from './WholeValue';
+import type { FullValueView } from '../../src/shared/replayProtocol';
+import type { FullValueAsk } from './VariablePane';
+import { FullValue } from './FullValue';
 
 export interface DetailsHandle {
   focus(): void;
@@ -44,16 +44,16 @@ export interface DetailsProps {
   /** Time Machine to a step (a tree's node or call line; starts it when needed) */
   onGoto: (step: number) => void;
   onCloseWhy: () => void;
-  /** with a why tree: the whole value of its name at its step, once asked for (`whyKey`) */
-  whyWhole?: WholeValueView;
+  /** with a why tree: the full value of its name at its step, once asked for (`whyKey`) */
+  whyFull?: FullValueView;
   /** absent: the host has no replay (the browser page) */
-  onWhole?: (ask: WholeValueAsk) => void;
+  onFull?: (ask: FullValueAsk) => void;
   /** rows to mark in the tables, by entry logId: the loop's current item */
   tableMarks?: Record<string, number>;
   handle?: Ref<DetailsHandle>;
 }
 
-/** The pane's key for the whole value a why tree asks for: its name at its step. */
+/** The pane's key for the full value a why tree asks for: its name at its step. */
 export function whyKey(why: Pick<WhyView, 'step' | 'name'>): string {
   return `at:${why.step}:${why.name}`;
 }
@@ -93,7 +93,7 @@ function tablesFor(entries: Entry[]): TableEntry[] {
 
 /**
  * `tabled` lists the entries shown as a table above the editor with the rows the user opened:
- * the document then holds those rows only, under the entry's header, instead of the whole value.
+ * the document then holds those rows only, under the entry's header, instead of the full value.
  */
 function buildDocument(entries: Entry[], tabled: Map<string, { name: string; rows: { index: number; node: ValueNode }[] }> = new Map()): Built {
   const out: string[] = [];
@@ -383,20 +383,20 @@ export function Details(props: DetailsProps) {
           <IconButton icon="search" title="Find" active={findOpen} onClick={toggleFind} />
           <IconButton icon="copy" title="Copy with highlighting" onClick={copyAll} />
           <MenuButton icon="ellipsis" title="More" items={menuItems} />
-          {why && why.name && props.onWhole && (
+          {why && why.name && props.onFull && (
             <IconButton
               icon="list-tree"
-              title={`Whole value of ${why.name} at #${why.step}: replays the run in a separate process up to this step and copies all of it (network answers come from the HTTP recording; files it writes are written again)`}
-              spin={props.whyWhole?.status === 'pending'}
-              onClick={() => props.onWhole!({ key: whyKey(why), kind: 'at', step: why.step, name: why.name })}
+              title={`Full value of ${why.name} at #${why.step}: replays the run in a separate process up to this step and copies all of it (network answers come from the HTTP recording; files it writes are written again)`}
+              spin={props.whyFull?.status === 'pending'}
+              onClick={() => props.onFull!({ key: whyKey(why), kind: 'at', step: why.step, name: why.name })}
             />
           )}
           {why && <IconButton icon="close" title="Back to entries" onClick={props.onCloseWhy} />}
         </span>
       </header>
-      {why && props.whyWhole && (
-        <div class="pk-why-whole">
-          <WholeValue key={`${props.whyWhole.key}:${props.whyWhole.status}`} view={props.whyWhole} />
+      {why && props.whyFull && (
+        <div class="pk-why-full">
+          <FullValue key={`${props.whyFull.key}:${props.whyFull.status}`} view={props.whyFull} />
         </div>
       )}
       {!why && tables.length > 0 && (

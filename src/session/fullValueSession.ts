@@ -1,16 +1,16 @@
 /**
- * "Whole value" for a session: what its current run kept, handed to the replay
- * (wholeValueReplay.ts). The panel (views/wholeValuePane.ts) and the agent bridge both ask here.
+ * "Full value" for a session: what its current run kept, handed to the replay
+ * (fullValueReplay.ts). The panel (views/fullValuePane.ts) and the agent bridge both ask here.
  */
 import type { Session } from './session';
-import type { WholeValueView } from '../shared/replayProtocol';
-import { replayWholeValue, type ReplaySource, type WholeValueQuery } from './wholeValueReplay';
-import { replayTimeout } from './wholeValue';
+import type { FullValueView } from '../shared/replayProtocol';
+import { replayFullValue, type ReplaySource, type FullValueQuery } from './fullValueReplay';
+import { replayTimeout } from './fullValue';
 
 /** A replay waits at most this long when the session has no run timeout of its own. */
 const DEFAULT_REPLAY_TIMEOUT_MS = 300_000;
 
-export function sessionWholeValue(session: Session, query: WholeValueQuery): Promise<WholeValueView> {
+export function sessionFullValue(session: Session, query: FullValueQuery): Promise<FullValueView> {
   const st = session.state;
   const trace = session.trace;
   if (!trace) {
@@ -40,5 +40,5 @@ export function sessionWholeValue(session: Session, query: WholeValueQuery): Pro
     // the runtime stops the replay at twice the Run Timeout (replayTimeout); the host waits a little longer for its answer
     timeoutMs: replayTimeout(session.runTimeoutMs) > 0 ? replayTimeout(session.runTimeoutMs) + 10_000 : DEFAULT_REPLAY_TIMEOUT_MS,
   };
-  return replayWholeValue(src, query);
+  return replayFullValue(src, query);
 }

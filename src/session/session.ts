@@ -56,7 +56,7 @@ export interface RunState {
   http: HttpExchangeEvent[];
   finished: RunFinishedEvent | undefined;
   mode: ProtocolRunMode;
-  /** the request this run was started with: a replay sends it again (wholeValueReplay.ts) */
+  /** the request this run was started with: a replay sends it again (fullValueReplay.ts) */
   request?: Omit<RunRequest, 'type' | 'id'>;
   /** what the program read from outside it (the `inputs` event), handed back by a replay */
   inputs?: InputsRecord;
@@ -150,7 +150,7 @@ export class Session extends EventEmitter<SessionEvents> {
   cwdOverride: string | undefined;
   envOverride: Record<string, string> | undefined;
   readonly launch: LaunchConfig | undefined;
-  /** how a replay starts a runner like this session's (wholeValueReplay.ts); undefined over a transport */
+  /** how a replay starts a runner like this session's (fullValueReplay.ts); undefined over a transport */
   private readonly sideRunnerOptions: { command: string; cwd: string; env: Record<string, string> } | undefined;
 
   /** state of the latest run that produced events (may still be running) */

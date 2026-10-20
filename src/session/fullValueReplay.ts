@@ -1,12 +1,12 @@
 /**
- * Run one replay for "Whole value": a runner of its own (so the session's run, its Time Machine
+ * Run one replay for "Full value": a runner of its own (so the session's run, its Time Machine
  * and its finished child stay as they are), the recording run's request with a `replay` field,
- * and the events that come back. vscode-free: the session side (wholeValueSession.ts) hands in
+ * and the events that come back. vscode-free: the session side (fullValueSession.ts) hands in
  * what the run kept and a way to make a runner, so tests drive it with a fake one.
  */
 import { MAX_LOCALS_ENTRIES, type LocalsEvent, type LogEvent, type RunEvent, type RunRequest } from '../shared/protocol';
-import type { InputsRecord, ReplayResultEvent, WholeValueView } from '../shared/replayProtocol';
-import { compareRecorded, expectPairs, interpret, lastObservation, observationOf, refusal, replayRequest, type Observation } from './wholeValue';
+import type { InputsRecord, ReplayResultEvent, FullValueView } from '../shared/replayProtocol';
+import { compareRecorded, expectPairs, interpret, lastObservation, observationOf, refusal, replayRequest, type Observation } from './fullValue';
 
 type LocalsEntry = LocalsEvent['entries'][number];
 
@@ -44,7 +44,7 @@ export interface ReplaySource {
   timeoutMs: number;
 }
 
-export interface WholeValueQuery {
+export interface FullValueQuery {
   key: string;
   /** `change`: the value a Variable pane row recorded; `at`: the value at `step` */
   kind: 'change' | 'at';
@@ -60,9 +60,9 @@ export const REPLAY_CAPABILITY = 'replay';
 
 let serial = 0;
 
-export async function replayWholeValue(src: ReplaySource, query: WholeValueQuery): Promise<WholeValueView> {
+export async function replayFullValue(src: ReplaySource, query: FullValueQuery): Promise<FullValueView> {
   const started = Date.now();
-  const unavailable = (step: number, summary: string): WholeValueView => ({ key: query.key, status: 'unavailable', step, name: query.name, summary });
+  const unavailable = (step: number, summary: string): FullValueView => ({ key: query.key, status: 'unavailable', step, name: query.name, summary });
   // where the value is read, and which snapshot it is compared with
   let target = query.step;
   let observation: Observation | undefined;

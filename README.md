@@ -488,7 +488,7 @@ The ones people change:
 | `pyokka.runTimeout` (30000) | milliseconds before a run is stopped; 0 waits forever |
 | `pyokka.autoLog` (false) | a value for every statement |
 | `pyokka.timeMachine.recordLocals` (false) | record every local at every step |
-| `pyokka.timeMachine.recordInputs` (true) | keep the clock readings, `os.urandom` bytes and random seed a run read, so "Whole value" can replay it |
+| `pyokka.timeMachine.recordInputs` (true) | keep the clock readings, `os.urandom` bytes and random seed a run read, so "Full value" can replay it |
 | `pyokka.timeMachine.libraryCode` (false) | step into third-party packages |
 | `pyokka.http` (`off`) | `record` the program's HTTP calls, or `replay` them without the network |
 | `pyokka.secrets.mask` (true) | mask secret values before they leave the run |

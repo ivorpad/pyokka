@@ -1,16 +1,16 @@
 /**
- * A whole value a replay copied, under the Variable pane row or the Why tree that asked for it.
+ * A full value a replay copied, under the Variable pane row or the Why tree that asked for it.
  * First what was checked, in a sentence (the same steps, and every value the recording kept on the
  * way came out the same, or where one did not), then the value as a tree. Every member came with
  * the copy, so a row opens here, in the panel: nothing is loaded later, nothing runs, and nothing
  * moves the Time Machine. A member past the replay's copy limits says so instead of loading.
  */
 import { useMemo, useState } from 'preact/hooks';
-import type { WholeValueStatus, WholeValueView } from '../../src/shared/replayProtocol';
+import type { FullValueStatus, FullValueView } from '../../src/shared/replayProtocol';
 import { frameRows } from '../debuggerView';
 import { Icon, Repr } from './ui';
 
-const STATUS_ICON: Record<WholeValueStatus, string> = {
+const STATUS_ICON: Record<FullValueStatus, string> = {
   pending: 'loading',
   checked: 'pass',
   path: 'info',
@@ -20,7 +20,7 @@ const STATUS_ICON: Record<WholeValueStatus, string> = {
   error: 'error',
 };
 
-const STATUS_LABEL: Record<WholeValueStatus, string> = {
+const STATUS_LABEL: Record<FullValueStatus, string> = {
   pending: 'Replaying',
   checked: 'Checked',
   path: 'Path checked',
@@ -34,7 +34,7 @@ function seconds(ms: number): string {
   return ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(1)} s`;
 }
 
-export function WholeValue({ view }: { view: WholeValueView }) {
+export function FullValue({ view }: { view: FullValueView }) {
   // the root starts open: the copy was asked for to be read
   const [open, setOpen] = useState<Set<string>>(() => new Set([view.name]));
   const value = view.value;
@@ -48,17 +48,17 @@ export function WholeValue({ view }: { view: WholeValueView }) {
     });
   const d = view.difference;
   return (
-    <div class={`pk-whole pk-whole-${view.status}`} onClick={(e) => e.stopPropagation()} aria-label={`Whole value of ${view.name}`}>
-      <div class="pk-whole-status" role="status">
+    <div class={`pk-full pk-full-${view.status}`} onClick={(e) => e.stopPropagation()} aria-label={`Full value of ${view.name}`}>
+      <div class="pk-full-status" role="status">
         <Icon name={STATUS_ICON[view.status]} class={view.status === 'pending' ? 'codicon-modifier-spin' : undefined} />
-        <span class="pk-whole-label">{STATUS_LABEL[view.status]}</span>
-        <span class="pk-whole-summary">
+        <span class="pk-full-label">{STATUS_LABEL[view.status]}</span>
+        <span class="pk-full-summary">
           {view.summary}
           {view.ms !== undefined && view.status !== 'pending' && view.status !== 'unavailable' ? <span class="pk-dim"> Replayed in {seconds(view.ms)}.</span> : null}
         </span>
       </div>
       {d && (
-        <div class="pk-whole-diff">
+        <div class="pk-full-diff">
           <span class="pk-dim">
             #{d.step} {d.name}:
           </span>{' '}
@@ -66,7 +66,7 @@ export function WholeValue({ view }: { view: WholeValueView }) {
         </div>
       )}
       {rows.length > 0 && (
-        <ul class="pk-dbg-rows pk-whole-tree">
+        <ul class="pk-dbg-rows pk-full-tree">
           {rows.map((r) => {
             // a member the copy did not reach (its limits): there is no child process to load it from
             const beyond = r.needsLoad || r.more;

@@ -14,7 +14,7 @@ import { SettingsView, timeoutLabel } from './components/SettingsView';
 import { Walkthrough } from './components/Walkthrough';
 import { Tour } from './components/Tour';
 import { tourGotoMessage } from './tourView';
-import { VariablePane, type WholeValueAsk } from './components/VariablePane';
+import { VariablePane, type FullValueAsk } from './components/VariablePane';
 import { StoryPane } from './components/StoryPane';
 import { allEntries, entriesForDebugger, initialState, reduce, visibleEntries, type Entry } from './model';
 import { setValueSyntax, syntaxForName } from './format';
@@ -124,8 +124,8 @@ export function App() {
     dispatch({ type: 'whyClose' });
     post({ type: 'why.close' });
   }, []);
-  // "Whole value" exists only where the host replays (the extension announces it in `init`)
-  const askWhole = useMemo(() => (state.features.wholeValue ? (ask: WholeValueAsk) => post({ type: 'wholeValue.query', ...ask }) : undefined), [state.features.wholeValue]);
+  // "Full value" exists only where the host replays (the extension announces it in `init`)
+  const askFull = useMemo(() => (state.features.fullValue ? (ask: FullValueAsk) => post({ type: 'fullValue.query', ...ask }) : undefined), [state.features.fullValue]);
 
   const compareEnabled = selectedEntries.length === 2 && canCompare(selectedEntries[0], selectedEntries[1]);
   const openCompare = () => {
@@ -273,8 +273,8 @@ export function App() {
       onDiagram={openDiagram}
       onGoto={(step) => post({ type: 'debugger.goto', step })}
       onCloseWhy={closeWhy}
-      whyWhole={state.why ? state.wholeValues[whyKey(state.why)] : undefined}
-      onWhole={askWhole}
+      whyFull={state.why ? state.fullValues[whyKey(state.why)] : undefined}
+      onFull={askFull}
       handle={detailsRef}
     />
   );
@@ -310,8 +310,8 @@ export function App() {
           onWhy={queryWhy}
           onEnableRecordLocals={() => updateSettings(state.session.name ? 'session' : 'global')({ recordLocals: true })}
           onClose={() => setView('output')}
-          wholeValues={state.wholeValues}
-          onWhole={askWhole}
+          fullValues={state.fullValues}
+          onFull={askFull}
         />
       );
       break;

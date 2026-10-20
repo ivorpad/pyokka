@@ -3,7 +3,7 @@
  * program's outside inputs, the `replay` field of a run request, and the one `replay.result`
  * event such a run answers with. A replay runs the program again in a runner of its own, checks
  * every step against the recording and copies one value whole; the host compares the values the
- * recording kept on the way (src/session/wholeValue.ts).
+ * recording kept on the way (src/session/fullValue.ts).
  */
 import type { RunEventBase, ValueNode } from './protocol';
 
@@ -48,7 +48,7 @@ export interface ReplayResultEvent extends RunEventBase {
   expected?: { rid: number; depth: number };
   actual?: { rid: number; depth: number };
   message?: string;
-  /** `reached`: the whole value of `at.expr` (no registry behind it: nothing to load later) */
+  /** `reached`: the full value of `at.expr` (no registry behind it: nothing to load later) */
   value?: { data: ValueNode };
   /** `reached`: the expression's name is not defined in that frame */
   missing?: string;
@@ -60,8 +60,8 @@ export interface ReplayResultEvent extends RunEventBase {
 
 /** What a panel host answers beyond the common messages, announced in `init`. */
 export interface PanelFeatures {
-  /** `wholeValue.query`: replays for "Whole value" (the extension; the browser page has none) */
-  wholeValue?: boolean;
+  /** `fullValue.query`: replays for "Full value" (the extension; the browser page has none) */
+  fullValue?: boolean;
 }
 
 /**
@@ -71,19 +71,19 @@ export interface PanelFeatures {
  * replay took another way, so it has no value from this run; `unavailable`: this run cannot be
  * replayed (it called the network unrecorded, it began at a pause, ...); `error`: it failed.
  */
-export type WholeValueStatus = 'pending' | 'checked' | 'path' | 'differs' | 'diverged' | 'unavailable' | 'error';
+export type FullValueStatus = 'pending' | 'checked' | 'path' | 'differs' | 'diverged' | 'unavailable' | 'error';
 
-/** "Whole value" in the Variable and Why panes: one value copied by a replay of the run, and how far it was checked. */
-export interface WholeValueView {
+/** "Full value" in the Variable and Why panes: one value copied by a replay of the run, and how far it was checked. */
+export interface FullValueView {
   /** the pane's own key for the query (`change:12:orders`, `at:59:expected`) */
   key: string;
-  status: WholeValueStatus;
+  status: FullValueStatus;
   /** the step the value was read at, before its statement ran */
   step: number;
   name: string;
   /** what was compared, or why there is no value: one or two sentences */
   summary: string;
-  /** the whole value (`checked`, `path`, `differs`) */
+  /** the full value (`checked`, `path`, `differs`) */
   value?: ValueNode;
   /** the first value that came out different (`differs`) */
   difference?: { step: number; name: string; recorded: string; replay: string };

@@ -16,7 +16,7 @@ import type { SessionManager } from '../session/sessionManager';
 import type { TimeMachine, MoveKind } from '../timeMachine/navigator';
 import { contextSliceForLine, contextSliceForStep, locationAt, valuesAtStep, valuesForLine, type SliceInputs, type SliceOptions } from '../session/contextSlice';
 import { sessionProvenance, sessionVariableHistory } from '../session/variableQuery';
-import { bridgeWhole } from './bridgeWhole';
+import { bridgeFull } from './bridgeFull';
 import { redact, redactValueBag, redactValueNode } from '../util/redact';
 import { ensureDir } from '../util/paths';
 import { BridgeError, awaitIdle, describe, fileIdFor, int, isStale, readSource, redactExceptionReport, redactGraph, redactHistory, redactHttpTable, redactProvenance, redactSlice, redactValues, redactWalkthrough, rm, sessionRecording, sessionsDir, socketPathFor, sliceOptions, sweepDeadDescriptors, walkthroughInputs, type Request } from './bridgeSupport';
@@ -327,7 +327,7 @@ export class AgentBridge implements vscode.Disposable {
         return { ...redactProvenance(tree) };
       }
       case 'whole':
-        return bridgeWhole(session, req);
+        return bridgeFull(session, req);
       case 'eval': {
         const expression = typeof req.expression === 'string' ? req.expression.trim() : '';
         if (!expression) throw new BridgeError('eval needs expression', 'send {expression: "name.attr"}');

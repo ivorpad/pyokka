@@ -1,6 +1,6 @@
 /**
- * "Whole value" against the real runtime (python/, run with python/.venv): a recording run of
- * invoices.py, then the replay the panel asks for, through the same code (wholeValueReplay.ts).
+ * "Full value" against the real runtime (python/, run with python/.venv): a recording run of
+ * invoices.py, then the replay the panel asks for, through the same code (fullValueReplay.ts).
  * Skipped when the checkout has no python/.venv.
  */
 import * as fs from 'node:fs';
@@ -10,7 +10,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { RunnerClient } from '../../src/runtime/runnerClient';
 import { decodeSteps, type LocalsEvent, type LogEvent, type RunEvent, type RunRequest } from '../../src/shared/protocol';
 import type { InputsRecord } from '../../src/shared/replayProtocol';
-import { replayWholeValue, type ReplaySource } from '../../src/session/wholeValueReplay';
+import { replayFullValue, type ReplaySource } from '../../src/session/fullValueReplay';
 
 const REPO = path.resolve(__dirname, '..', '..');
 const PYTHON = path.join(REPO, 'python', '.venv', 'bin', 'python');
@@ -89,13 +89,13 @@ function source(run: Awaited<ReturnType<typeof record>>, overrides: Partial<Repl
   };
 }
 
-runtime('whole value, real runtime', () => {
+runtime('full value, real runtime', () => {
   it('invoices.py: the whole orders, checked against every value the recording kept', async () => {
     const run = await record(INVOICES);
     // the last snapshot of orders in main is where its change row points; ask for it as the row would
     const main = run.locals.filter((e) => e.changes.some((c) => c.name === 'orders' && c.text.startsWith("{'Ana'")));
     const row = main[main.length - 1]!;
-    const view = await replayWholeValue(source(run), { key: 'k', kind: 'change', step: row.step - 1, name: 'orders', scopeId: row.scopeId });
+    const view = await replayFullValue(source(run), { key: 'k', kind: 'change', step: row.step - 1, name: 'orders', scopeId: row.scopeId });
     expect(view.status, view.summary).toBe('checked');
     expect(view.step).toBe(row.step);
     expect(view.value?.props?.map((p) => p.name)).toEqual(['Ana', 'Ben', 'Caro', 'Dani']);
@@ -111,7 +111,7 @@ runtime('whole value, real runtime', () => {
     const plain = await record(INVOICES);
     expect(Array.from(run.steps)).toEqual(Array.from(plain.steps));
     const last = run.steps.length / 4 - 1;
-    const view = await replayWholeValue(source(run), { key: 'k', kind: 'at', step: last, name: 'orders' });
+    const view = await replayFullValue(source(run), { key: 'k', kind: 'at', step: last, name: 'orders' });
     expect(view.status, view.summary).toBe('checked');
   }, 60_000);
 
@@ -138,29 +138,29 @@ runtime('whole value, real runtime', () => {
     const steps = decodeSteps(trace.steps);
     const run = { req, steps, scopes: new Map(Array.from({ length: steps.length / 4 }, (_, i) => [i, steps[4 * i + 1]!])), locals: events.flatMap((e) => (e.type === 'locals' ? e.entries : [])), logs: events.filter((e): e is LogEvent => e.type === 'log'), inputs: undefined };
     const last = steps.length / 4 - 1;
-    const view = await replayWholeValue(source(run, { midRun: true, startedAt: trace.startedAt }), { key: 'k', kind: 'at', step: last, name: 'orders' });
+    const view = await replayFullValue(source(run, { midRun: true, startedAt: trace.startedAt }), { key: 'k', kind: 'at', step: last, name: 'orders' });
     expect(view.status, view.summary).toBe('checked');
     expect(view.value?.props?.map((p) => p.name)).toEqual(['Ana', 'Ben', 'Caro', 'Dani']);
     // one statement off is another start point: the replay says so instead of answering
-    const off = await replayWholeValue(source(run, { midRun: true, startedAt: trace.startedAt! + 1 }), { key: 'k', kind: 'at', step: last, name: 'orders' });
+    const off = await replayFullValue(source(run, { midRun: true, startedAt: trace.startedAt! + 1 }), { key: 'k', kind: 'at', step: last, name: 'orders' });
     expect(off.status, off.summary).toBe('diverged');
     expect(off.summary).toContain('start point did not match');
   }, 60_000);
 
   it('a random program replays with its inputs, and a different seed goes another way at the draw', async () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pk-whole-'));
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pk-full-'));
     const file = path.join(dir, 'draws.py');
     fs.writeFileSync(file, 'import random\nimport time\n\npicked = []\nfor name in ["Ana", "Ben", "Caro", "Dani"]:\n    if random.random() < 0.5:\n        picked.append(name)\nstamp = time.time()\nprint(picked, stamp)\nresult = picked\n');
     const run = await record(file);
     expect(run.inputs?.reads.map(([label]) => label)).toEqual(['time']);
     const last = run.steps.length / 4 - 1;
-    const same = await replayWholeValue(source(run), { key: 'k', kind: 'at', step: last, name: 'picked' });
+    const same = await replayFullValue(source(run), { key: 'k', kind: 'at', step: last, name: 'picked' });
     expect(same.status, same.summary).toBe('checked');
     // a seed whose first draw lands on the other side of 0.5 cannot take the same steps
     const first = await firstDrawBelowHalf(run.inputs!.seed);
     let other = 1;
     while ((await firstDrawBelowHalf(other)) === first) other++;
-    const off = await replayWholeValue(source(run, { inputs: { ...run.inputs!, seed: other } }), { key: 'k', kind: 'at', step: last, name: 'picked' });
+    const off = await replayFullValue(source(run, { inputs: { ...run.inputs!, seed: other } }), { key: 'k', kind: 'at', step: last, name: 'picked' });
     expect(off.status, off.summary).toBe('diverged');
     expect(off.value).toBeUndefined();
     fs.rmSync(dir, { recursive: true, force: true });

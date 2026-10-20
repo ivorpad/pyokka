@@ -1,8 +1,8 @@
-/** "Whole value": the rules a replay is held to (session/wholeValue.ts), without a runner. */
+/** "Full value": the rules a replay is held to (session/fullValue.ts), without a runner. */
 import { describe, expect, it } from 'vitest';
 import type { LogEvent, RunRequest } from '../../src/shared/protocol';
 import type { ReplayResultEvent } from '../../src/shared/replayProtocol';
-import { comparable, compareRecorded, expectPairs, interpret, lastObservation, observationOf, refusal, replayRequest } from '../../src/session/wholeValue';
+import { comparable, compareRecorded, expectPairs, interpret, lastObservation, observationOf, refusal, replayRequest } from '../../src/session/fullValue';
 
 const locals = [
   { step: 1, scopeId: 0, changes: [{ name: 'ORDERS_CSV', text: "'customer,tier…'…(+69 chars)" }] },

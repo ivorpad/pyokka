@@ -716,7 +716,7 @@ which step the pane shows: "Paused · inspecting step 59" at a debug pause,
 step 12 of 81" in a finished run. The Why tree's header says the same for the
 step it explains.
 
-**Whole value.** A Variable pane row whose value the recorder kept has a tree
+**Full value.** A Variable pane row whose value the recorder kept has a tree
 button, and so does the Why tree's header. It runs the program again in a runner
 of its own up to that step, with the run's file, its recorded HTTP answers and the
 clock readings and random seed the run had, checks every step against the

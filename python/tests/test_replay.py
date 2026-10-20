@@ -155,11 +155,11 @@ def test_a_recording_run_keeps_what_the_program_read_from_outside(runner, tmp_pa
     assert not of(runner.run(path, config={**CONFIG, "recordInputs": False}), "inputs")
 
 
-def test_a_replay_reaches_its_step_with_the_whole_value_and_the_text_the_recording_kept(runner, tmp_path):
+def test_a_replay_reaches_its_step_with_the_full_value_and_the_text_the_recording_kept(runner, tmp_path):
     path = write(tmp_path, "invoices.py", INVOICES)
     recorded = runner.run(path, runId="rec", config=dict(CONFIG))
     k, kept = change(recorded, "orders", "main")
-    assert kept.get("truncated") and "…(+" in kept["text"]  # the recorder cut it: the whole value is the replay's
+    assert kept.get("truncated") and "…(+" in kept["text"]  # the recorder cut it: the full value is the replay's
     got = result(replay(runner, path, recorded, k, "orders", check=(k, "orders")))
     assert got["status"] == "reached" and got["step"] == k and got["matched"] == k + 1
     assert got["check"] == {"step": k, "text": kept["text"]}
@@ -232,7 +232,7 @@ def test_a_program_that_swallows_the_stop_still_ends_with_one_result(runner, tmp
     assert not [e for e in of(replayed, "log") if e.get("kind") == "log"]
 
 
-def test_a_secret_stays_masked_in_the_whole_value_and_the_check_text(runner, tmp_path):
+def test_a_secret_stays_masked_in_the_full_value_and_the_check_text(runner, tmp_path):
     secret = "sk-live-1234567890abcdef1234"
     path = write(tmp_path, "settings.py", 'settings = {"api_key": "%s", "region": "eu"}\nprint(settings["region"])\n' % secret)
     recorded = runner.run(path, runId="rec", config=dict(CONFIG))

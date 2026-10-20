@@ -1603,58 +1603,58 @@ body[data-theme='light'] .pk-cp-bg.hl {
   cursor: pointer;
   border-radius: 2px;
 }
-/* "Whole value": a replay's copy under its row (or above the Why tree); the status edge says how far it was checked */
-.pk-whole {
+/* "Full value": a replay's copy under its row (or above the Why tree); the status edge says how far it was checked */
+.pk-full {
   margin: 2px 8px 6px 40px;
   padding: 4px 0 4px 8px;
   border-left: 2px solid color-mix(in srgb, var(--pk-fg) 25%, transparent);
   cursor: default;
 }
-.pk-why-whole .pk-whole {
+.pk-why-full .pk-full {
   margin: 4px 8px;
 }
-.pk-whole-checked {
+.pk-full-checked {
   border-left-color: var(--vscode-charts-green, #89d185);
 }
-.pk-whole-differs,
-.pk-whole-diverged {
+.pk-full-differs,
+.pk-full-diverged {
   border-left-color: var(--vscode-editorWarning-foreground, #cca700);
 }
-.pk-whole-error {
+.pk-full-error {
   border-left-color: var(--pk-error);
 }
-.pk-whole-status {
+.pk-full-status {
   display: flex;
   align-items: baseline;
   gap: 6px;
   font-size: 11px;
   color: var(--pk-dim);
 }
-.pk-whole-status .codicon {
+.pk-full-status .codicon {
   flex: none;
   font-size: 12px;
 }
-.pk-whole-checked .pk-whole-status .codicon {
+.pk-full-checked .pk-full-status .codicon {
   color: var(--vscode-charts-green, #89d185);
 }
-.pk-whole-differs .pk-whole-status .codicon,
-.pk-whole-diverged .pk-whole-status .codicon {
+.pk-full-differs .pk-full-status .codicon,
+.pk-full-diverged .pk-full-status .codicon {
   color: var(--vscode-editorWarning-foreground, #cca700);
 }
-.pk-whole-error .pk-whole-status .codicon {
+.pk-full-error .pk-full-status .codicon {
   color: var(--pk-error);
 }
-.pk-whole-label {
+.pk-full-label {
   flex: none;
   font-weight: 600;
   color: var(--pk-fg);
 }
-.pk-whole-diff {
+.pk-full-diff {
   margin-top: 2px;
   font-family: var(--pk-mono);
   font-size: var(--pk-mono-size);
 }
-.pk-whole-tree {
+.pk-full-tree {
   margin-top: 4px;
 }
 .pk-variable-read:hover {

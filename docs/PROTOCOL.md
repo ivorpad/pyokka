@@ -186,7 +186,7 @@ paused statement's own call) prints as `output`, not as a `log`.
 ### Replay
 
 `run.replay` runs the program again to a recorded step, checks every step on the
-way, and copies one value whole ("Whole value" in the panel, the bridge's
+way, and copies one value whole ("Full value" in the panel, the bridge's
 `whole`). The host sends the recording run's own request (the same
 `file.content`, `projectFiles`, `markers` and limits, so the instrumentation and
 the steps are the same) to a runner of its own, with no debugger, `breakpoints`,
@@ -246,7 +246,7 @@ more than the recording has, or one with another label, stops it with status
 `time.monotonic`, `time.perf_counter`, a `random.Random()` the program seeds
 itself, the `secrets` module, files, sockets that are not HTTP, threads.
 
-The host (src/session/wholeValue.ts) also compares the recording's `locals`
+The host (src/session/fullValue.ts) also compares the recording's `locals`
 entries and `log` events before `at.step` (kinds `log`, `value`, `autoLog`,
 `autoExpand`, `logpoint`, `error`; a timing differs every run) with the replay's,
 after replacing `0x…` addresses, and `check.text` with what the recording kept

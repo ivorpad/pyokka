@@ -14,7 +14,7 @@ import { applySettingsPatch, currentTheme, debuggerAction, defaultSettings, diag
 import { VariablePaneHost } from './variablePane';
 import { HttpPaneHost } from './httpPane';
 import { WhyPaneHost } from './whyPane';
-import { WholeValueHost } from './wholeValuePane';
+import { FullValueHost } from './fullValuePane';
 import { DebugPanelHost } from './debugPanel';
 import { DebuggerViewHost } from './debuggerView';
 import { GraphPaneHost } from './graphPane';
@@ -48,7 +48,7 @@ export class OutputPanel implements vscode.WebviewViewProvider, TimeMachineSink,
   private readonly http = new HttpPaneHost((s, msg) => this.post(s, msg));
   /** the Details pane's "why" tree for the bound session, recomputed after every run until the pane closes it */
   private readonly why = new WhyPaneHost((s, msg) => this.post(s, msg));
-  private readonly wholeValue = new WholeValueHost((s, msg) => this.post(s, msg));
+  private readonly fullValue = new FullValueHost((s, msg) => this.post(s, msg));
   private readonly debug = new DebugPanelHost((s, msg) => this.post(s, msg), (s) => this.pushDebugger(s), (view) => this.showView(view));
   /** the Debugger view: one live `record: false` session, independent of the bound run-all session */
   private debugView: DebuggerViewHost | undefined;
@@ -222,7 +222,7 @@ export class OutputPanel implements vscode.WebviewViewProvider, TimeMachineSink,
       this.http.push(session);
     });
     on('runStarted', () => {
-      this.wholeValue.reset(session);
+      this.fullValue.reset(session);
       this.post({ type: 'walkthrough', walkthrough: null });
       this.tour?.runStarted(session);
       this.post({ type: 'exceptions', report: null });
@@ -242,7 +242,7 @@ export class OutputPanel implements vscode.WebviewViewProvider, TimeMachineSink,
 
   private resync(): void {
     const s = this.bound;
-    this.post({ type: 'init', theme: currentTheme(), settings: s ? this.settings(s) : defaultSettings(), sessionName: s?.displayName ?? null, features: { wholeValue: true } });
+    this.post({ type: 'init', theme: currentTheme(), settings: s ? this.settings(s) : defaultSettings(), sessionName: s?.displayName ?? null, features: { fullValue: true } });
     this.debugView?.push();
     if (!s) return;
     this.postSession();
@@ -510,8 +510,8 @@ export class OutputPanel implements vscode.WebviewViewProvider, TimeMachineSink,
       case 'why.close':
         this.why.close();
         return;
-      case 'wholeValue.query':
-        if (s) void this.wholeValue.query(s, msg);
+      case 'fullValue.query':
+        if (s) void this.fullValue.query(s, msg);
         return;
       case 'debugger.goto':
         if (s) await this.gotoStep(s, msg.step);

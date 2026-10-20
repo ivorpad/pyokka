@@ -1,6 +1,6 @@
 /**
- * "Whole value": what a replay of the run has to match, and what its answer means. Pure, so the
- * rules are tested without a runner; wholeValueReplay.ts runs the replay.
+ * "Full value": what a replay of the run has to match, and what its answer means. Pure, so the
+ * rules are tested without a runner; fullValueReplay.ts runs the replay.
  *
  * The recorder keeps a local as 120 characters of repr, three levels deep, at the start of the
  * step after the statement that changed it. A replay runs the program again in a runner of its
@@ -12,7 +12,7 @@
  * copy `checked`.
  */
 import { MAX_LOCALS_ENTRIES, type LocalsEvent, type LogEvent, type RunRequest } from '../shared/protocol';
-import type { InputsRecord, ReplayResultEvent, WholeValueStatus, WholeValueView } from '../shared/replayProtocol';
+import type { InputsRecord, ReplayResultEvent, FullValueStatus, FullValueView } from '../shared/replayProtocol';
 
 type LocalsEntry = LocalsEvent['entries'][number];
 
@@ -193,9 +193,9 @@ export function interpret(
   locate: Locate,
   ms: number,
   notes: { inputs: 'handed back' | 'none recorded' | 'run paused'; valuesUntil?: number },
-): WholeValueView {
+): FullValueView {
   const base = { key, step: query.step, name: query.name, ms: Math.round(ms) };
-  const view = (status: WholeValueStatus, summary: string, extra: Partial<WholeValueView> = {}): WholeValueView => ({ ...base, status, summary, ...extra });
+  const view = (status: FullValueStatus, summary: string, extra: Partial<FullValueView> = {}): FullValueView => ({ ...base, status, summary, ...extra });
   if (!result) return view('error', 'The replay ended without an answer. The Pyokka log has what the runtime printed.');
   const matched = result.matched;
   switch (result.status) {
