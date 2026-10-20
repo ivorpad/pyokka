@@ -37,6 +37,8 @@ scripts/check.sh
 
 echo "==> version"
 python3 scripts/version.py "$@" --auto
+# uv.lock records the project's own version: relock so the tag's lock matches pyproject.toml
+(cd python && uv lock --offline -q)
 
 echo "==> changelog"
 NOTES=$(mktemp -t pyokka-notes)
