@@ -22,6 +22,16 @@
   `--only` limits the diff read to its files, by name, so a change's configuration outside them is never
   read, and lists the changed files it left out. The page server's command line is read with `ps -ww`,
   so a long path no longer makes a running server look stopped.
+- The Claude Code band reads only the run its own session's agent named. With several live sessions
+  and none named it followed the one opened last, and with nothing named it read whatever single
+  run was live on the machine, another Claude Code session's included. Now it shows the CLI's
+  `2 live sessions; say which`, reads an unnamed run only when its VS Code workspace holds the
+  session's directory or its program is under it, and names one that is elsewhere. A
+  `pyokka debug FILE` start was followed by the bare file name, so a `demo.py` open in another
+  window matched too; the band takes the exact session the CLI prints for a run without
+  `--record`, else the program's full path, and when that run ends it says so rather than move to
+  another. What it follows lives in the session's plugin state (`$.state`) instead of module
+  memory, which a reload of the band's code emptied.
 
 ## 0.5.5
 

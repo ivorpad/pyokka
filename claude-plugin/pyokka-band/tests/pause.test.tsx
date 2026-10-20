@@ -38,8 +38,9 @@ test('a pause without a recording: place, tag, code, the frame with shapes, the 
   for (const label of ['next', 'into', 'out']) expect(await ui.find({ type: 'Button', text: label })).toBeDefined()
   for (const label of ['back', 'bugs', 'plan a fix', 'where from']) expect(await ui.find({ type: 'Button', text: label })).toBeUndefined()
   await ui.unmount()
-  // `pyokka debug FILE` names the session to follow, and a pause has no run to scan for bugs
-  expect(w.runs[0]).toEqual(['pyokka', 'context', '--json', '--live', '--session', 'invoices.py'])
+  // `pyokka debug FILE` names the session to follow, by the file's full path so an invoices.py
+  // of another workspace is not it, and a pause has no run to scan for bugs
+  expect(w.runs[0]).toEqual(['pyokka', 'context', '--json', '--live', '--session', '/work/invoices.py'])
   expect(w.runs.some(r => r[1] === 'exceptions' || r[1] === 'suspects')).toBe(false)
 })
 

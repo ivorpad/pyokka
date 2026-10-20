@@ -6,7 +6,7 @@ import { applyEdits, diffOf, fixPrompt, readAnswer } from './fix'
 import { KEY_HELP, MOVES, NEEDS_HISTORY, originHere, TOOL_ACTIONS, TOOL_SPEC } from './keys'
 import type { Look, ToolInput } from './keys'
 import { narrationPrompt } from './narration'
-import { baseName, descriptorsIn, errorMessage, jsonOf, NEEDS_RECORDING, statementLines, stepOutcome, toFindings, toOrigin, toSpot } from './parse'
+import { baseName, errorMessage, exactSession, jsonOf, NEEDS_RECORDING, notHere, printedBy, sessionGone, sessionsNamed, statementLines, stepOutcome, toFindings, toOrigin, toSpot } from './parse'
 import type { RawContext, RawFinding, RawOrigin } from './parse'
 import { fixedText, originAnswer, planPath, planText } from './plans'
 import { findingAt, FIXER, FOLLOW_MS, IDLE_MS, memory, NARRATOR, plainRun, POLL_MS, PYOKKA_COMMAND, PYOKKA } from './state'
@@ -24,6 +24,9 @@ const bugIndex = atom({ plugin: 'pyokka-band', key: 'bugIndex' } as const, 0)
 const fix = atom({ plugin: 'pyokka-band', key: 'fix' } as const, null)
 const whereFrom = atom({ plugin: 'pyokka-band', key: 'origin' } as const, null)
 const notice = atom({ plugin: 'pyokka-band', key: 'notice' } as const, null)
+// The host keeps atoms per Claude Code session and through a reload of this code, which empties
+// `memory`: so one session's band never reads the run another session's agent named.
+const followed = atom({ plugin: 'pyokka-band', key: 'followed' } as const, [])
 
 // The band follows the Pyokka Time Machine of a VS Code session through the same
 // `pyokka … --live` commands an agent runs: after every pyokka command in the transcript,
@@ -37,28 +40,26 @@ const notice = atom({ plugin: 'pyokka-band', key: 'notice' } as const, null)
 
 // ---- the CLI bridge
 
-async function newestDescriptor($: EngineInterface, paths: string[]): Promise<string | undefined> {
-  const dir = paths[0]?.slice(0, paths[0].lastIndexOf('/'))
-  if (!dir) return undefined
-  const entries = await $.fs.list(dir)
-  const byName = new Map(entries.map(entry => [`${dir}/${entry.name}`, entry.mtimeMs]))
-  return paths.slice().sort((a, b) => (byName.get(b) ?? 0) - (byName.get(a) ?? 0))[0]
-}
-
 /**
- * Runs `pyokka <verb> --live ...` against the followed session. When the CLI says several
- * sessions are live and none is named, it follows the descriptor that changed last.
+ * Runs `pyokka <verb> --live ...` against the followed session; when it is no longer live, the
+ * next one held, and the last one's own error once all are gone. With nothing named, what a
+ * command without `--session` reaches, if it is this directory's. It never picks among several:
+ * the CLI's "2 live sessions" is what the band shows.
  */
 async function live($: EngineInterface, args: string[]) {
   const withSession = (s?: string) => [...PYOKKA, ...args, '--live', ...(s ? ['--session', s] : [])]
-  let ran = await $.process.run(withSession(memory.session), { timeoutMs: 20_000 })
-  const said = `${ran.stderr}\n${ran.stdout}`
-  if (ran.exitCode !== 0 && /live sessions/.test(said)) {
-    memory.session = await newestDescriptor($, descriptorsIn(said))
-    if (memory.session) ran = await $.process.run(withSession(memory.session), { timeoutMs: 20_000 })
-  } else if (ran.exitCode !== 0 && memory.session && /no live session|not found|descriptor/i.test(said)) {
-    memory.session = undefined
-    ran = await $.process.run(withSession(), { timeoutMs: 20_000 })
+  let held = await read($, followed)
+  if (held.length === 0) {
+    const state = await $.process.run([...PYOKKA, 'state', '--json', '--live'], { timeoutMs: 20_000 })
+    const doc = jsonOf<{ file?: string; live?: { workspace?: string } }>(state)
+    if (!doc) return state
+    const refused = notHere(doc, await $.session.cwd())
+    if (refused) return { ...state, exitCode: 1, stdout: '', stderr: refused }
+  }
+  let ran = await $.process.run(withSession(held[0]), { timeoutMs: 20_000 })
+  while (held.length > 1 && ran.exitCode !== 0 && sessionGone(`${ran.stderr}\n${ran.stdout}`)) {
+    held = await update($, followed, sessions => sessions.slice(1))
+    ran = await $.process.run(withSession(held[0]), { timeoutMs: 20_000 })
   }
   return ran
 }
@@ -212,7 +213,10 @@ async function recordFromHere($: EngineInterface, spot: Spot): Promise<void> {
   const dir = spot.path.slice(0, spot.path.lastIndexOf('/'))
   $.ui.toast(`Recording ${spot.file} from line ${spot.line}: the program runs again from the top`)
   await live($, ['stop', '--json'])
-  await $.process.run([...PYOKKA, 'debug', spot.path, '--record-from', `${spot.path}:${spot.line}`, '--no-focus'], { cwd: dir, timeoutMs: 120_000 })
+  const ran = await $.process.run([...PYOKKA, 'debug', spot.path, '--record-from', `${spot.path}:${spot.line}`, '--no-focus'], { cwd: dir, timeoutMs: 120_000 })
+  // the plain run's session ended with it: follow the recording of this file
+  const exact = exactSession(`${ran.stdout}\n${ran.stderr}`)
+  await update($, followed, () => (exact ? [exact, spot.path] : [spot.path]))
   memory.sources.delete(spot.path)
   memory.scannedRun = ''
   await stamp($)
@@ -432,7 +436,8 @@ async function press($: EngineInterface, typed: string): Promise<string | undefi
 
 /** Serves one call of the `band` tool; the text is what the model reads back. */
 async function useTool($: EngineInterface, input: ToolInput): Promise<string> {
-  if (input.session) memory.session = input.session
+  const session = input.session
+  if (session) await update($, followed, () => [session])
   await stamp($)
   const action = input.action ?? 'show'
   if (action === 'hide') {
@@ -527,12 +532,8 @@ export const register: Register = on => {
   on('tool.call', { tool: 'Bash' }, async ($, e, next) => {
     const ran = await next(e)
     if (PYOKKA_COMMAND.test(e.command)) {
-      const named = e.command.match(/--session\s+(\S+)/)?.[1]
-      // `pyokka debug FILE` names the program it starts: follow it by name, so the band reads
-      // its pause rather than a session it followed before
-      const started = e.command.match(/\bpyokka\s+debug\s+([^\s-]\S*\.py)(?=\s|$)/)?.[1]
-      if (named) memory.session = named
-      else if (started) memory.session = baseName(started)
+      const named = sessionsNamed(e.command, printedBy(ran), await $.session.cwd())
+      if (named.length > 0) await update($, followed, () => named)
       await stamp($)
       await refresh($)
     }

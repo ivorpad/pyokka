@@ -1146,9 +1146,14 @@ Controls:
   `step` (with `step`), `origin` or `fix`, and an optional `session`. The skill tells the agent when to call
   it.
 
-With several VS Code sessions open, the band follows the `--session NAME` of the last pyokka
-command, else the session that changed last. Each replay step raises the VS Code window by
-default; `"debug.focusWindowOnBreak": false` in VS Code's settings keeps it behind the terminal.
+Each Claude Code session's band follows what its own agent last named: the run a `pyokka debug`
+started (the exact session when the CLI prints one, else the program by its full path, so a file of
+the same name in another window never matches) or the `--session NAME` of a later pyokka command.
+When that run ends it says so rather than move to another. With nothing named it reads what a
+command without `--session` reaches, if that run's workspace holds the session's directory or its
+program is under it, and names one that is elsewhere; with several live it says so instead of
+picking one. Each replay step raises the VS Code window by default;
+`"debug.focusWindowOnBreak": false` in VS Code's settings keeps it behind the terminal.
 
 The band's tests run with `claude plugin test claude-plugin/pyokka-band`, against JSON the CLI
 printed for `tests/programs/invoices.py`; `python3 scripts/band-fixtures.py` captures it again

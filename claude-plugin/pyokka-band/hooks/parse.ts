@@ -66,9 +66,70 @@ export const jsonOf = <T>(ran: { exitCode: number; stdout: string }): T | undefi
   }
 }
 
-/** The session descriptors a "2 live sessions" error lists. */
-export const descriptorsIn = (text: string): string[] =>
-  [...text.matchAll(/(\/[^\s|]+\/sessions\/[^\s|]+\.json)/g)].map(m => m[1] ?? '').filter(Boolean)
+/** What a Bash call printed: the streams of its record, or the text the model read when it errored. */
+export const printedBy = (ran: { result?: unknown; text?: string }): string => {
+  const record = (typeof ran.result === 'object' && ran.result !== null ? ran.result : {}) as { stdout?: unknown; stderr?: unknown }
+  const streams = [record.stdout, record.stderr].filter((s): s is string => typeof s === 'string')
+  return streams.length > 0 ? streams.join('\n') : (ran.text ?? '')
+}
+
+/** A shell word as the CLI received it: one pair of quotes off. */
+const unquoted = (word: string) => word.replace(/^'([^']*)'$|^"([^"]*)"$/, '$1$2')
+
+/**
+ * `path` against `cwd`, with `.` and `..` resolved; undefined for a path the shell expands
+ * (`~`, `$VAR`), whose text is not the path the CLI was given.
+ */
+export const absolutePath = (path: string, cwd: string): string | undefined => {
+  if (/^[~$]/.test(path)) return undefined
+  const parts: string[] = []
+  for (const part of `${path.startsWith('/') ? '' : `${cwd}/`}${path}`.split('/')) {
+    if (part === '..') parts.pop()
+    else if (part !== '' && part !== '.') parts.push(part)
+  }
+  return `/${parts.join('/')}`
+}
+
+/** The exact descriptor `pyokka debug` printed for the session it started, as text or `--json`. */
+export const exactSession = (printed: string): string | undefined => {
+  const said = printed.match(/\(exactly this one: --session ('[^']*'|\S+)\)/)?.[1] ??
+    printed.match(/"session":\s*\{[^}]*"descriptor":\s*"([^"]+)"/)?.[1]
+  return said === undefined ? undefined : unquoted(said)
+}
+
+/**
+ * The sessions a pyokka command in Bash points the band at, most exact first; none when it names
+ * none, and the band keeps what it follows. A `pyokka debug` start gives the descriptor it printed,
+ * then the file it started as an absolute path, so a file of the same name in another workspace
+ * never matches (a recorded run prints only that name). Any other command gives its `--session`.
+ */
+export const sessionsNamed = (command: string, printed: string, cwd: string): string[] => {
+  const named = command.match(/--session(?:\s+|=)('[^']*'|"[^"]*"|\S+)/)?.[1]
+  if (!/\b(?:pyokka|pk)\s+debug\b/.test(command)) return named ? [unquoted(named)] : []
+  const file = command.match(/\b(?:pyokka|pk)\s+debug\s+([^\s-]\S*\.py)(?=\s|$)/)?.[1]
+  const printedName = printed.match(/^session: pass --session ('[^']*'|\S+) to the commands/m)?.[1]
+  const started = file ? (absolutePath(file, cwd) ?? baseName(file)) : (printedName ?? named)
+  return [exactSession(printed), started].filter((s): s is string => s !== undefined).map(unquoted)
+}
+
+/** The CLI's words for a session that is no longer live: its descriptor gone, or its window. */
+export const sessionGone = (said: string) => /no live session|cannot connect to the live session|stopped answering/i.test(said)
+
+const isWithin = (path: string, dir: string) => path === dir || path.startsWith(`${dir.replace(/\/+$/, '')}/`)
+
+/**
+ * Why the band does not read the run a command without `--session` reaches (`pyokka state --json`),
+ * or undefined when it may: its VS Code workspace holds `cwd`, the CLI's own preference, or the
+ * program is under `cwd`. Past those the CLI takes any live session on the machine, another
+ * Claude Code session's too.
+ */
+export const notHere = (state: { file?: string; live?: { workspace?: string } }, cwd: string): string | undefined => {
+  const file = state.file ?? ''
+  const workspace = state.live?.workspace ?? ''
+  if ((workspace !== '' && isWithin(cwd, workspace)) || (file !== '' && isWithin(file, cwd))) return undefined
+  // the band cuts its line to the width: the words first, the path the agent needs last
+  return `no live session here: ${baseName(file) || 'a run'} is live in another directory, and --session ${file || 'NAME'} follows it`
+}
 
 /** The first line of the CLI's error, without the hint lines under it. */
 export const firstLine = (text: string) => text.trim().split('\n')[0] ?? ''

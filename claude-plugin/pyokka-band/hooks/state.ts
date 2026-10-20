@@ -25,10 +25,9 @@ export const WINDOW_AFTER = 6
 /** A fix plan written this load: its path, and how to know its finding in a later run. */
 export type PlanRecord = { path: string; kind: string; where: string; status: string }
 
-// One load's memory, outside the atoms because no view draws it.
+// One load's memory, outside the atoms because no view draws it. A reload of this code empties
+// it, so what the band follows is an atom (`followed` in register.tsx).
 export const memory = {
-  /** The session the band follows: the descriptor or file name the CLI named last. */
-  session: undefined as string | undefined,
   /** Narrations written this load, by step (and whether a finding was on it), or by pause. */
   narrations: new Map<string, string>(),
   /** The last thing shown was a debug pause without a recording. */
