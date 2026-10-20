@@ -1,6 +1,6 @@
 # Pyokka playbook
 
-Eight situations, each with a prompt to paste into Codex or Claude Code, what the agent will do,
+Nine situations, each with a prompt to paste into Codex or Claude Code, what the agent will do,
 the lines you should see, and what passes or fails. Run them from the repository root against the
 example programs in `examples/`, or swap in your own file and test.
 

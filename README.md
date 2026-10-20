@@ -160,6 +160,9 @@ ln -s ~/pyokka/skills/pyokka ~/.claude/skills/pyokka   # Claude Code
 ln -s ~/pyokka/skills/pyokka ~/.agents/skills/pyokka    # Codex (its documented user location; older Codex read ~/.codex/skills)
 ```
 
+`main` can be ahead of the latest release. `git -C ~/pyokka checkout vX.Y.Z` keeps the skill at
+the version you installed.
+
 For one project only, link it inside the repository instead: `.claude/skills/pyokka` for Claude
 Code, `.agents/skills/pyokka` for Codex.
 
@@ -175,10 +178,11 @@ It loads only when asked by name: `/pyokka debug`, `/pyokka explain`, `/pyokka s
 
 It finds the `pyokka` command by itself. Its code-history pages need Node.
 
-The skill sets no model or effort of its own. Its reader-turn runs so far used Sonnet 5.5. On
-2026-10-16 it was read against the vendors' guidance for Claude Opus 5.5, Claude Fable 5.1 and the
-GPT-6 family and has not been run on them; `docs/design/skill-model-compat.md` has the sources and
-the ten-minute checks.
+The skill sets no model or effort of its own. Its reader-turn runs used Sonnet 5.5, and the
+[playbook](docs/PLAYBOOK.md)'s runs of 2026-10-20 used Codex with gpt-6.1-sol. On 2026-10-16 it was
+read against the vendors' guidance for Claude Opus 5.5, Claude Fable 5.1 and the GPT-6 family. It
+has not been run on the two Claude models, and `docs/design/skill-model-compat.md` has the sources
+and the ten-minute checks.
 
 `review` is the mode for a pull request or a diff. `pyokka review start --base REF` plans one item
 per changed function from the diff and starts the entry under the debugger in your VS Code, paused
@@ -417,6 +421,9 @@ Settings also come from `~/.pyokka/config.json`, `[tool.pyokka]` in `pyproject.t
 | `<file's folder>/.pyokka/runs/<name>.json` | Runs the MCP tool `pyokka_run` saves when it is given no `save` path |
 | `~/.pyokka/scratchpads/<id>/<n>.json` | The browser page's saved scratchpads, one file per version, never overwritten |
 | `~/.pyokka/recent.json` | The files the browser page's bridge ran (its View Recent Files) |
+| `~/.pyokka/last-debug.json` | The last `pyokka debug` launch per directory, which `break`, `continue` and `restart` start again when no debug session is open |
+| `~/.pyokka/reviews/<repo>-<base>/` | A review's plan, recordings, tries, fix and `report.md` (`--dir` moves it); `reviews/current` names the last one started |
+| `~/.pyokka/tool-results/` | MCP results over 8,000 characters (`PYOKKA_MCP_MAX_CHARS`), whole and redacted, which the reply names; the newest 200 are kept, in the temp directory's `pyokka-tool-results/` when the home is not writable |
 
 Otherwise the runtime never writes into your project, and the extension edits your files only for
 Insert / Delete Snap Output and a `.gitignore` line you accept.
