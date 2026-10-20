@@ -20,7 +20,7 @@ import hashlib
 import json
 import os
 import subprocess
-from typing import Any
+from typing import Any, NamedTuple
 
 from ...home import pyokka_home
 from ..source import AgentError
@@ -141,6 +141,41 @@ def git(repo: str, *args: str, check: bool = True) -> str:
     if check and done.returncode != 0:
         raise AgentError("git %s failed in %s: %s" % (args[0], repo, (done.stderr or done.stdout).strip()[:300]), "the repository under review must be a git checkout")
     return done.stdout
+
+
+class Change(NamedTuple):
+    diff: str  # the unified diff, the untracked files as added ones
+    untracked: list[str]  # the untracked files in it
+    files: list[str]  # every changed and untracked file, before ``keep``, for a refusal that names them
+
+
+def change_diff(repo: str, base: str, keep: Any = None) -> Change:
+    """The change under review: ``git diff BASE`` and each untracked file as an added one, in one unified diff.
+
+    ``git diff`` leaves untracked files out, so a new module was missing from the plan and ``--only NEWFILE`` was
+    refused (a review of 2026-10-20 had an agent build a temporary copy with its own baseline to get them in). The
+    untracked files are the ones ``git ls-files --others --exclude-standard`` lists, so ignored files, bytecode and
+    ``.pyokka`` stay out; the repository and its index are not touched. ``keep`` (a predicate on the
+    repository-relative path, ``--only``'s) limits the diff to the files it accepts, by name, before any content is read.
+    """
+    names = [n for n in git(repo, "diff", base, "--name-only", "--no-renames", "-z").split("\0") if n]
+    untracked = sorted(n for n in git(repo, "ls-files", "--others", "--exclude-standard", "-z").split("\0") if n and not _derived(n))
+    files = sorted({*names, *untracked})
+    if keep is not None:
+        names = [n for n in names if keep(n)]
+        untracked = [n for n in untracked if keep(n)]
+    if keep is None:
+        out = git(repo, "diff", base, "--no-ext-diff", "--no-color")
+    elif names:
+        out = git(repo, "diff", base, "--no-ext-diff", "--no-color", "--", *(":(literal)" + n for n in names))
+    else:
+        out = ""
+    for rel in untracked:
+        # --no-index exits 1 when the two differ, which an added file always does
+        added = git(repo, "diff", "--no-index", "--no-ext-diff", "--no-color", "--", os.devnull, rel, check=False)
+        if added:
+            out += added if added.endswith("\n") else added + "\n"
+    return Change(out, untracked, files)
 
 
 def tree_hash(repo: str) -> str:
@@ -338,4 +373,4 @@ def result(review: Review | None, lines: list[str], next_command: str | None = N
     return {"kind": "review", "header": header, "lines": [str(l) for l in lines], "next": nxt, **extra}
 
 
-__all__ = ["ACTIONS", "PHASES", "SURFACES", "SEVERITIES", "STATE_FILE", "START", "WAIT", "FINDING_ADD", "NO_REVIEW_HEADER", "Refusal", "Review", "result", "reviews_home", "current_path", "set_current", "current_note", "current_dir", "resolve_dir", "default_dir", "inside", "now", "next_id", "git", "tree_hash"]
+__all__ = ["ACTIONS", "PHASES", "SURFACES", "SEVERITIES", "STATE_FILE", "START", "WAIT", "FINDING_ADD", "NO_REVIEW_HEADER", "Refusal", "Review", "result", "reviews_home", "current_path", "set_current", "current_note", "current_dir", "resolve_dir", "default_dir", "inside", "now", "next_id", "git", "Change", "change_diff", "tree_hash"]

@@ -17,7 +17,7 @@ from ..context import _step_location
 from ..source import AgentError, SavedRun
 from .actions import TRY_ID, _function_at, head_run, run_command, tail, values_at
 from .render import finding_lines, try_lines
-from .state import FINDING_ADD, SEVERITIES, Review, git, next_id, now, result
+from .state import FINDING_ADD, SEVERITIES, Review, change_diff, next_id, now, result
 
 
 # -- finding -----------------------------------------------------------------------------------------------------------
@@ -63,7 +63,7 @@ def never_ran(review: Review, run_: SavedRun, file: str, line: int) -> bool:
     if not any(_same_file(file, c.get("file")) and line in (c.get("notRun") or []) for c in cov.get("files") or []):
         return False
     try:
-        changed = import_module(".edges", __package__).changed_lines(git(review.repo, "diff", str(review.data.get("base")), "--no-ext-diff", "--no-color"))
+        changed = import_module(".edges", __package__).changed_lines(change_diff(review.repo, str(review.data.get("base"))).diff)
     except Exception:  # noqa: BLE001  no edges module, no git: the plan's own list decided above
         return False
     return any(_same_file(file, name) and line in lines for name, lines in changed.items())

@@ -221,6 +221,10 @@ def only_line(plan: dict) -> str | None:
         return None
     left = [a for a in plan.get("aside") or [] if isinstance(a, dict) and a.get("reason") == ONLY_REASON]
     edges = [e for e in plan.get("aside_edges") or [] if isinstance(e, dict)]
+    outside = plan.get("outside")
+    if isinstance(outside, list) and not left and not edges:  # --only limited the diff read: what lies outside is files, never planned
+        return "only: %s; outside %s, not read: %d changed file%s%s" % (", ".join(paths), "it" if len(paths) == 1 else "them", len(outside), "" if len(outside) == 1 else "s",
+                                                                       " (%s%s)" % (", ".join(str(f) for f in outside[:8]), ", …" if len(outside) > 8 else "") if outside else "")
     listed = " (%s%s)" % (", ".join("%s:%s" % (a.get("file"), a.get("line")) for a in left[:8]), ", …" if len(left) > 8 else "") if left else ""
     return "only: %s; outside %s, set aside with no breakpoint: %d item%s%s, %d edge candidate%s" % (
         ", ".join(paths), "it" if len(paths) == 1 else "them", len(left), "" if len(left) == 1 else "s", listed, len(edges), "" if len(edges) == 1 else "s")

@@ -104,23 +104,21 @@ def test_state_and_view_name_the_session_while_it_is_up(world):
 
 # -- --only --------------------------------------------------------------------------------------------------------
 
-def test_only_keeps_the_items_inside_and_sets_the_rest_aside_before_numbering(world):
+def test_only_keeps_the_items_inside_and_reads_no_file_outside_them(world):
     full = unfiltered(world)
     keep = ("shopkit/discounts.py", "shopkit/pricing.py")
     answer, review = start(world, only=["shopkit/discounts.py", "./shopkit/pr*.py"])
     assert [(s["n"], s["file"], s["function"]) for s in review.stops] == [(i, s["file"], s["function"]) for i, s in enumerate((s for s in full["stops"] if s["file"] in keep), 1)]
-    left = [a for a in review.plan["aside"] if a.get("reason") == "outside --only"]
-    assert [(a["file"], a["function"]) for a in left] == [(s["file"], s["function"]) for s in full["stops"] if s["file"] not in keep] and left
-    assert all("n" not in a for a in left)
+    assert not [a for a in review.plan["aside"] if a.get("reason") == "outside --only"] and review.plan["aside_edges"] == []
+    outside = review.plan["outside"]
+    assert outside and set(outside) >= {s["file"] for s in full["stops"] if s["file"] not in keep} and not set(outside) & set(keep)
     edges = review.plan["edges"]
     assert [(e["id"], e["file"], e["line"]) for e in edges] == [("E%d" % i, e["file"], e["line"]) for i, e in enumerate((e for e in full["edges"] if e["file"] in keep), 1)]
-    assert [e["file"] for e in review.plan["aside_edges"]] == [e["file"] for e in full["edges"] if e["file"] not in keep]
     assert len(world.fake.added) == len(review.stops)  # breakpoints for the agenda alone
     text = render_text(answer)
     assert "%d items on the agenda" % len(review.stops) in text
-    assert "%d items and %d edge candidates left out: their files are outside --only shopkit/discounts.py, shopkit/pr*.py." % (len(left), len(review.plan["aside_edges"])) in text
-    assert "only: shopkit/discounts.py, shopkit/pr*.py; outside them, set aside with no breakpoint: %d items (%s:%s" % (len(left), left[0]["file"], left[0]["line"]) in text
-    assert "set aside, no breakpoint (%d):" % len(full["aside"]) in text  # the plan's own aside, module-level and test-file changes, as before
+    assert "%d changed files outside --only shopkit/discounts.py, shopkit/pr*.py, not read: %s" % (len(outside), outside[0]) in text
+    assert "only: shopkit/discounts.py, shopkit/pr*.py; outside them, not read: %d changed files (%s" % (len(outside), outside[0]) in text
     assert "only: shopkit/discounts.py, shopkit/pr*.py;" in render_text(run("state", dir=str(world.dir)))
     view = render_text(run("view", dir=str(world.dir), surface="vscode"))
     assert "only: shopkit/discounts.py, shopkit/pr*.py;" in view and len(world.fake.added) == 2 * len(review.stops)
@@ -140,7 +138,7 @@ def test_a_path_is_a_file_a_directory_or_a_glob_relative_to_the_repository(tmp_p
 def test_only_that_leaves_no_item_is_refused_before_the_last_review_changes(world):
     _, first = start(world)
     exc = refusal("start", base=world.base, repo=str(world.repo), dir=str(world.dir), only=["tests", "docs/nothing"])
-    assert "--only tests, docs/nothing leaves no item" in exc.why and "the agenda's files: shopkit/discounts.py" in exc.text
+    assert "--only tests, docs/nothing leaves no item" in exc.why and "the change's Python files: shopkit/config.py, shopkit/discounts.py" in exc.text
     assert exc.next_command == "review start --base REF --only PATH"
     assert Review.load(str(world.dir)).data == first.data and len(world.launches) == 1
 
@@ -224,3 +222,41 @@ def test_report_takes_the_reviews_breakpoints_out_too(world):
     world.fake.removed.clear()
     answer = run("report", dir=str(world.dir))
     assert len(world.fake.removed) == len(items_of(review)) and answer["lines"][-1].startswith("breakpoints: removed the review's %d " % len(items_of(review)))
+
+
+# -- untracked files, and what --only reads -----------------------------------------------------------------------------
+
+NEW_MODULE = "def receipt_valid(receipt):\n    expiry = receipt.get(\"expiry\")\n    return expiry is not None and expiry > 0\n"
+
+
+def test_an_untracked_module_is_part_of_the_change(world):
+    """A review of 2026-10-20 missed the new receipt and SQS modules: git diff leaves untracked files out."""
+    (world.repo / "shopkit" / "receipts.py").write_text(NEW_MODULE, encoding="utf-8")
+    (world.repo / ".gitignore").write_text((world.repo / ".gitignore").read_text(encoding="utf-8") + "scratch.py\n", encoding="utf-8")
+    (world.repo / "scratch.py").write_text("def ignored():\n    return 1\n", encoding="utf-8")
+    answer, review = start(world)
+    assert ("shopkit/receipts.py", "receipt_valid") in [(s["file"], s["function"]) for s in review.stops]
+    assert "scratch.py" not in {s["file"] for s in [*review.stops, *review.plan["aside"]]}  # ignored stays out
+    assert review.data["summary"]["untracked"] == ["shopkit/receipts.py"]
+    assert "1 untracked file included as new: shopkit/receipts.py." in render_text(answer)
+    assert git(world.repo, "status", "--porcelain", "--", "shopkit/receipts.py") == "?? shopkit/receipts.py"  # nothing staged
+
+
+def test_only_names_an_untracked_module(world):
+    (world.repo / "shopkit" / "receipts.py").write_text(NEW_MODULE, encoding="utf-8")
+    _, review = start(world, only=["shopkit/receipts.py"])
+    assert [(s["n"], s["file"], s["function"]) for s in review.stops] == [(1, "shopkit/receipts.py", "receipt_valid")]
+
+
+def test_only_reads_no_diff_outside_its_files(world):
+    from pyokka_runtime.agent.review import state
+    from pyokka_runtime.agent.review.scope import inside_any
+
+    (world.repo / "settings.toml").write_text('token = \"secret-value\"\n', encoding="utf-8")
+    full = state.change_diff(str(world.repo), world.base)
+    assert "secret-value" in full.diff and "settings.toml" in full.untracked
+    only = state.change_diff(str(world.repo), world.base, lambda rel: inside_any(rel, ["shopkit/pricing.py"]))
+    assert "secret-value" not in only.diff and "shopkit/discounts.py" not in only.diff and "+++ b/shopkit/pricing.py" in only.diff
+    assert only.untracked == [] and "settings.toml" in only.files and "shopkit/discounts.py" in only.files
+    none = state.change_diff(str(world.repo), world.base, lambda rel: False)
+    assert none.diff == "" and none.untracked == []
