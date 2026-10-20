@@ -17,6 +17,7 @@ import ast
 from ..source import AgentError
 from .debugger import abs_file, connect
 from .state import Review
+from .uses import uses_text
 
 
 def change_lines(item: dict, line: int | None) -> list[str]:
@@ -120,7 +121,8 @@ def locals_lines(item: dict, path: str, line: int | None, values: list[tuple[str
 def stop_context(review: Review, item: dict, line: int | None, values: list[tuple[str, str]]) -> tuple[list[str], list[str]]:
     """``(lines, used)``: the ``change:`` section and the locals, as the stop prints them after ``paused at``."""
     lines, used = locals_lines(item, abs_file(review, str(item.get("file") or "")), line, values)
-    return [*change_lines(item, line), *lines], used
+    uses = [uses_text(item["uses"])] if item.get("uses") else []
+    return [*change_lines(item, line), *uses, *lines], used
 
 
 def remove_breakpoint(review: Review, item: dict) -> bool:

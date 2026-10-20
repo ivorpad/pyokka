@@ -6,6 +6,7 @@ from __future__ import annotations
 from typing import Any
 
 from ..render import _one_line
+from .uses import uses_text
 
 VALUE_WIDTH = 100
 CODE_LINES = 40
@@ -221,6 +222,10 @@ def only_line(plan: dict) -> str | None:
         return None
     left = [a for a in plan.get("aside") or [] if isinstance(a, dict) and a.get("reason") == ONLY_REASON]
     edges = [e for e in plan.get("aside_edges") or [] if isinstance(e, dict)]
+    outside = plan.get("outside")
+    if isinstance(outside, list) and not left and not edges:  # --only limited the diff read: what lies outside is files, never planned
+        return "only: %s; outside %s, not read: %d changed file%s%s" % (", ".join(paths), "it" if len(paths) == 1 else "them", len(outside), "" if len(outside) == 1 else "s",
+                                                                       " (%s%s)" % (", ".join(str(f) for f in outside[:8]), ", …" if len(outside) > 8 else "") if outside else "")
     listed = " (%s%s)" % (", ".join("%s:%s" % (a.get("file"), a.get("line")) for a in left[:8]), ", …" if len(left) > 8 else "") if left else ""
     return "only: %s; outside %s, set aside with no breakpoint: %d item%s%s, %d edge candidate%s" % (
         ", ".join(paths), "it" if len(paths) == 1 else "them", len(left), "" if len(left) == 1 else "s", listed, len(edges), "" if len(edges) == 1 else "s")
@@ -236,7 +241,10 @@ def plan_lines(review: Any, with_stops: bool = True) -> list[str]:
         stops = review.stops
         out.append("stops (%d):" % len(stops) if stops else "stops: none planned (`review ask FILE:LINE --say TEXT` stops at any line that ran)")
         ended = isinstance(review.data.get("ended"), dict)
-        out.extend(stop_line(s, shown, skipped, ended) for s in stops)
+        for s in stops:
+            out.append(stop_line(s, shown, skipped, ended))
+            if s.get("uses"):
+                out.append("      " + uses_text(s["uses"]))
         if stops:
             agenda = ["shown %s" % (", ".join(str(n) for n in sorted(shown)) or "none"), "skipped %s" % (", ".join(str(n) for n in sorted(skipped)) or "none"), "remaining %s" % (", ".join(str(n) for n in review.remaining()) or "none")]
             if review.waiting is not None:
