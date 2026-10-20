@@ -2,6 +2,29 @@
 
 ## Unreleased
 
+- `package-lock.json` said 0.5.4 while the release said 0.5.5, because `scripts/version.py` never
+  wrote it. It now moves the lock's two copies of the number with the other four files, and the
+  lock is at 0.5.5. The lock was otherwise in sync: `npm ci` on npm 11 installs it as is (npm 10
+  reports it as missing vitest's nested esbuild 0.28.2, so use npm 11).
+- `review start` plans the whole change. Untracked files are part of it, read as added ones
+  (`git ls-files --others --exclude-standard`, so ignored files stay out), and the plan names them;
+  before, a new module never reached the agenda and `--only NEWFILE` was refused, which led an agent on
+  2026-10-20 to propose a temporary copy of the repository with a temporary Git baseline. Each item now
+  lists the repository code its changed lines call, under `uses:` with `file:line` and a stop number
+  when the callee is on the agenda, printed in the plan and at the stop; no breakpoint is set for them.
+  `--only` limits the diff read to its files, by name, so a change's configuration outside them is never
+  read, and lists the changed files it left out. The page server's command line is read with `ps -ww`,
+  so a long path no longer makes a running server look stopped.
+- The Claude Code band reads only the run its own session's agent named. With several live sessions
+  and none named it followed the one opened last, and with nothing named it read whatever single
+  run was live on the machine, another Claude Code session's included. Now it shows the CLI's
+  `2 live sessions; say which`, reads an unnamed run only when its VS Code workspace holds the
+  session's directory or its program is under it, and names one that is elsewhere. A
+  `pyokka debug FILE` start was followed by the bare file name, so a `demo.py` open in another
+  window matched too; the band takes the exact session the CLI prints for a run without
+  `--record`, else the program's full path, and when that run ends it says so rather than move to
+  another. What it follows lives in the session's plugin state (`$.state`) instead of module
+  memory, which a reload of the band's code emptied.
 - The skill handles a vague request ("debug this", "why does this test fail?", "review this issue")
   without debugger words from the person. `SKILL.md` gains "A vague request": run the tests and read
   `git status` first, pick the mode from what that finds, say the plan in a sentence, record the
