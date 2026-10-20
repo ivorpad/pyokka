@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- The skill no longer turns "debug this" into a review because the repository has pending
+  changes. A vague debug ask is `debug` in the repository it was invoked in: a plain script runs
+  under `pyokka run` or `pyokka debug` directly, and a server (FastAPI under uvicorn) is launched
+  under the debugger with `--module`. `review` is only for an ask that says review, PR or diff. The
+  skill now says that Pyokka cannot attach to a running process or a container.
+
+- `review start` without `--full` (the review in the debugger) no longer refuses a launcher outside
+  the repository or one the base commit lacks. Both checks ran before the mode was chosen, though
+  only `--full` runs the entry in the base tree. `--full` still refuses both. The repository stays
+  the working directory and the diff, and the launcher's content is folded into the tree hash, so
+  an edit to it invalidates the session.
+
 ## 0.5.6
 
 - `package-lock.json` said 0.5.4 while the release said 0.5.5, because `scripts/version.py` never

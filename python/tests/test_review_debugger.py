@@ -197,6 +197,33 @@ def test_surface_chat_runs_the_full_review_instead(world):
     assert "view: chat." in render_text(answer) and not world.launches
 
 
+def test_live_review_takes_an_external_or_new_launcher_and_full_refuses_both(world, tmp_path):
+    """The debugger runs only the working tree, so a launcher outside the repository or one base lacks is its entry;
+    --full runs both trees and still refuses them. The repository stays the cwd, and an edit to the launcher changes tree_hash."""
+    from pyokka_runtime.agent.review.state import tree_hash
+
+    outside = tmp_path / "launch" / "run_shop.py"
+    outside.parent.mkdir()
+    outside.write_text("import main\n")
+    added = world.repo / "launcher.py"
+    added.write_text("import main\n")
+    assert "outside the repository" in refusal("start", base=world.base, repo=str(world.repo), dir=str(world.dir), entry=str(outside), full=True).why
+    assert "does not exist at" in refusal("start", base=world.base, repo=str(world.repo), dir=str(world.dir), entry="launcher.py", full=True).why
+
+    _, review = start(world, entry=str(outside))
+    assert review.data["mode"] == "debugger" and review.data["entry"] == os.path.realpath(outside)
+    launch = world.launches[-1]
+    assert launch["program"] == os.path.realpath(outside) and launch["cwd"] == str(world.repo)
+    pinned = review.data["tree_hash"]
+    assert pinned == tree_hash(str(world.repo), review.data["entry"])
+    outside.write_text("import main  # edited\n")
+    assert tree_hash(str(world.repo), review.data["entry"]) != pinned
+
+    _, review = start(world, entry="launcher.py")
+    assert review.data["mode"] == "debugger" and review.data["entry"] == "launcher.py"
+    assert world.launches[-1]["program"] == str(world.repo / "launcher.py")
+
+
 # -- stop records the pause the debugger is at --------------------------------------------------------------------------
 
 def test_stop_records_the_pause_and_its_say_must_name_a_value_of_the_frame(world):
