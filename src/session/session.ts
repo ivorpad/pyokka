@@ -9,6 +9,7 @@ import { EventEmitter } from 'node:events';
 import type { Completions, CoverageEvent, ErrorEvent, HttpExchangeEvent, HttpMode, InputsRecord, LocalsEvent, LogEvent, OutputEvent, Range4, RunEvent, RunFinishedEvent, RunMode as ProtocolRunMode, RunRequest, StatementBinding, TimeEvent, WatchEvent } from '../shared/protocol';
 import { decodeSteps } from '../shared/protocol';
 import { RunnerClient } from '../runtime/runnerClient';
+import { pinnedHashSeed } from '../runtime/hashSeed';
 import { runtimeLanguage } from '../runtime/language';
 import type { Interpreter } from '../runtime/interpreter';
 import { FileTable, type RidLocation } from './fileTable';
@@ -201,7 +202,8 @@ export class Session extends EventEmitter<SessionEvents> {
     this.state = emptyRunState('r-0', '', this.mode);
     // Node throws on an 'error' event with no listener; a session can be unbound from the panel
     this.on('error', () => undefined);
-    const env: Record<string, string> = { ...this.config.env };
+    // one str-hashing seed for this session's runs and their replays (runtime/hashSeed.ts)
+    const env: Record<string, string> = { ...this.config.env, ...pinnedHashSeed(process.env, this.config.env) };
     this.runner = new RunnerClient({
       ...(opts.launch?.transport
         ? transportRunnerOptions(opts.launch, opts.runtimeDir, opts.workspaceRoot || path.dirname(this.filePath))

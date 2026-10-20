@@ -11,6 +11,7 @@ import { RunnerClient } from '../../src/runtime/runnerClient';
 import { decodeSteps, type LocalsEvent, type LogEvent, type RunEvent, type RunRequest } from '../../src/shared/protocol';
 import type { InputsRecord } from '../../src/shared/replayProtocol';
 import { replayFullValue, type ReplaySource } from '../../src/session/fullValueReplay';
+import { pinnedHashSeed } from '../../src/runtime/hashSeed';
 
 const REPO = path.resolve(__dirname, '..', '..');
 const PYTHON = path.join(REPO, 'python', '.venv', 'bin', 'python');
@@ -18,8 +19,9 @@ const INVOICES = path.join(REPO, 'claude-plugin', 'pyokka-band', 'tests', 'progr
 const runtime = fs.existsSync(PYTHON) ? describe : describe.skip;
 const runners: RunnerClient[] = [];
 
-function runner(): RunnerClient {
-  const r = new RunnerClient({ command: PYTHON, args: ['-m', 'pyokka_runtime', 'serve'], cwd: path.join(REPO, 'python'), requestTimeoutMs: 30_000 });
+/** `env` as a session gives its runners (session.ts): the recording's and the replay's get the same */
+function runner(env?: Record<string, string>): RunnerClient {
+  const r = new RunnerClient({ command: PYTHON, args: ['-m', 'pyokka_runtime', 'serve'], cwd: path.join(REPO, 'python'), requestTimeoutMs: 30_000, ...(env ? { env } : {}) });
   runners.push(r);
   return r;
 }
@@ -46,8 +48,8 @@ function request(file: string, runId: string): Omit<RunRequest, 'type' | 'id'> {
 }
 
 /** One recording run, kept the way a session keeps it; `debug` makes it the recording debug run a review starts. */
-async function record(file: string, debug = false): Promise<{ req: Omit<RunRequest, 'type' | 'id'>; steps: Int32Array; scopes: Map<number, number>; locals: LocalsEvent['entries']; logs: LogEvent[]; inputs?: InputsRecord }> {
-  const r = runner();
+async function record(file: string, debug = false, env?: Record<string, string>): Promise<{ req: Omit<RunRequest, 'type' | 'id'>; steps: Int32Array; scopes: Map<number, number>; locals: LocalsEvent['entries']; logs: LogEvent[]; inputs?: InputsRecord }> {
+  const r = runner(env);
   await r.start();
   const req = request(file, `r-${path.basename(file)}${debug ? '-debug' : ''}`);
   if (debug) req.config = { ...req.config, debug: true, record: true, stopOnEntry: false, breakOnException: 'uncaught' };
@@ -165,6 +167,33 @@ runtime('full value, real runtime', () => {
     expect(off.value).toBeUndefined();
     fs.rmSync(dir, { recursive: true, force: true });
   }, 60_000);
+});
+
+runtime('full value, real runtime: str hashing', () => {
+  it('a set of strings replays in the order the run iterated it, with the seed the session pins for both runners', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pk-full-'));
+    const file = path.join(dir, 'tags.py');
+    fs.writeFileSync(file, 'import os\n\ntags = {"tag-%02d" % i for i in range(20)}\nordered = list(tags)\nseen = (os.environ.get("PYTHONHASHSEED"), os.environ.get("PYOKKA_PINNED_HASHSEED"))\nresult = ordered[0]\n');
+    const env = pinnedHashSeed();
+    const run = await record(file, false, env);
+    const last = run.steps.length / 4 - 1;
+    const pinned = await replayFullValue(source(run, { makeRunner: () => runner(env) }), { key: 'k', kind: 'at', step: last, name: 'ordered' });
+    expect(pinned.status, pinned.summary).toBe('checked');
+    // the program never sees the pin
+    expect(run.locals.flatMap((e) => e.changes).find((c) => c.name === 'seen')?.text).toBe('(None, None)');
+    // an interpreter that salts with another seed (0.7.0 pinned none) iterates the set in another order
+    const unpinned = await replayFullValue(source(run, { makeRunner: () => runner() }), { key: 'k', kind: 'at', step: last, name: 'ordered' });
+    expect(unpinned.status, unpinned.summary).toBe('differs');
+    fs.rmSync(dir, { recursive: true, force: true });
+  }, 60_000);
+
+  it('a seed the user set is theirs: nothing is pinned', () => {
+    expect(pinnedHashSeed({ PYTHONHASHSEED: '7' })).toEqual({});
+    expect(pinnedHashSeed(undefined, { PYTHONHASHSEED: '0' })).toEqual({});
+    const pin = pinnedHashSeed({ PATH: '/usr/bin' });
+    expect(pin['PYTHONHASHSEED']).toMatch(/^[1-9]\d*$/);
+    expect(pin['PYOKKA_PINNED_HASHSEED']).toBe(pin['PYTHONHASHSEED']);
+  });
 });
 
 /** `random.Random(seed).random() < 0.5`, asked of Python itself so the generator is the program's. */

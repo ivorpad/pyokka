@@ -246,6 +246,14 @@ more than the recording has, or one with another label, stops it with status
 `time.monotonic`, `time.perf_counter`, a `random.Random()` the program seeds
 itself, the `secrets` module, files, sockets that are not HTTP, threads.
 
+A session pins one str-hashing seed for its runs and their replays: its runners get
+`PYTHONHASHSEED` and `PYOKKA_PINNED_HASHSEED` with the same value
+(src/runtime/hashSeed.ts), unless VS Code's environment or `pyokka.env` sets
+`PYTHONHASHSEED`. Without it a set of strings iterates in another order in every
+interpreter, and every run on macOS is a fresh one. The run child removes both before
+the program starts when they match (`child.unpin_hash_seed`), so the program and the
+processes it starts see the environment they would without Pyokka.
+
 The host (src/session/fullValue.ts) also compares the recording's `locals`
 entries and `log` events before `at.step` (kinds `log`, `value`, `autoLog`,
 `autoExpand`, `logpoint`, `error`; a timing differs every run) with the replay's,

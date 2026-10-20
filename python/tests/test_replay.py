@@ -255,3 +255,18 @@ def test_a_malformed_or_refused_replay_answers_once_with_an_error(runner, tmp_pa
     body = {"expect": expect(quads(recorded), 3), "at": {"step": 3, "expr": "import os"}}
     got = result(runner.run(path, runId="bad2", config=dict(CONFIG), replay=body))
     assert got["status"] == "error" and got["message"].startswith("import os cannot be evaluated")
+
+
+def test_the_runtime_takes_out_only_the_hash_seed_the_host_pinned():
+    from pyokka_runtime.child import unpin_hash_seed
+
+    pinned = {"PYTHONHASHSEED": "123", "PYOKKA_PINNED_HASHSEED": "123", "PATH": "/bin"}
+    unpin_hash_seed(pinned)
+    assert pinned == {"PATH": "/bin"}
+    # the user's own seed has no mark, and a mark for another seed leaves the user's alone
+    users = {"PYTHONHASHSEED": "7"}
+    unpin_hash_seed(users)
+    assert users == {"PYTHONHASHSEED": "7"}
+    other = {"PYTHONHASHSEED": "7", "PYOKKA_PINNED_HASHSEED": "123"}
+    unpin_hash_seed(other)
+    assert other == {"PYTHONHASHSEED": "7"}

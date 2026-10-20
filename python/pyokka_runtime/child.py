@@ -61,10 +61,22 @@ class EmitPipe:
             pending()
 
 
+def unpin_hash_seed(environ: Any) -> None:
+    """Take Pyokka's str-hashing seed out of the program's environment (src/runtime/hashSeed.ts).
+
+    The host pins one seed per session, so a replay iterates sets of strings in the order the run
+    did. The interpreter read it at its start; the program and the processes it starts get the
+    environment they would have without Pyokka. A PYTHONHASHSEED the user set has no mark and stays."""
+    mark = environ.pop("PYOKKA_PINNED_HASHSEED", None)
+    if mark is not None and environ.get("PYTHONHASHSEED") == mark:
+        del environ["PYTHONHASHSEED"]
+
+
 def child_main(request: dict, write: Callable[[bytes], None], ctl_fd: int) -> None:
     """Body of the run child. Never returns."""
     from .execute import Execution, RunSpec, install_step_streams
 
+    unpin_hash_seed(os.environ)
     emit = EmitPipe(write)
     spec = RunSpec.from_request(request)
     execution = Execution(spec, emit)
