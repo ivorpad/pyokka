@@ -3,10 +3,12 @@
 A Codex smoke test (2026-10-19, a langchain range, a review of two IPv6 functions) got 58 items from ``start``
 and made 56 ``skip`` calls, 31 KB of output, to leave the two it wanted. ``--only`` names them at ``start``
 instead. Each PATH is a file or a directory relative to the repository, or a glob, which is tried on the file
-and on every directory above it, so ``libs/*/langchain_core`` names directories. ``plan_items`` still plans the
-whole diff; ``narrow`` sets the changed functions whose file is outside every PATH aside before numbering, in
-the plan's ``aside`` with the reason, and the edge candidates the same way (``aside_edges``). The agenda is then
-numbered 1..N and the edges E1..En again, so ``open_debug`` sets breakpoints for the agenda alone.
+and on every directory above it, so ``libs/*/langchain_core`` names directories. ``start`` reads only the diff of
+the files inside (``state.change_diff`` with ``inside_any`` as its filter, by file name): a change's configuration
+outside them is never read, and the files left out are listed in the plan's ``outside``. ``narrow`` then sets
+aside whatever of the plan still lies outside every PATH, in the plan's ``aside`` with the reason, and the edge
+candidates the same way (``aside_edges``). The agenda is then numbered 1..N and the edges E1..En again, so
+``open_debug`` sets breakpoints for the agenda alone.
 """
 
 from __future__ import annotations
@@ -59,9 +61,11 @@ def inside_any(file: Any, paths: list[str]) -> bool:
     return any(within(rel, p) for p in paths)
 
 
-def narrow(plan: dict, paths: list[str]) -> tuple[dict, list[str]]:
+def narrow(plan: dict, paths: list[str], changed_files: list[str] | None = None) -> tuple[dict, list[str]]:
     """``(plan, notes)``: ``plan_items``'s plan with what lies outside every PATH set aside and the rest numbered
     again, and a note for each PATH that matched no changed file, so a typo shows. No PATH: the plan as it is.
+    ``changed_files`` is every file of the change before ``--only`` limited the diff that was read, which the
+    refusal and the notes name, since the narrowed plan holds only what was kept.
 
     An ``--only`` that leaves no item is refused: a debug session with no breakpoint shows nothing, and ``start``
     calls this before it touches the review directory, so the last review stays as it was.
@@ -71,10 +75,18 @@ def narrow(plan: dict, paths: list[str]) -> tuple[dict, list[str]]:
     stops = [s for s in plan.get("stops") or [] if isinstance(s, dict)]
     kept = [s for s in stops if inside_any(s.get("file"), paths)]
     if not kept:
-        files = sorted({str(s.get("file")) for s in stops})
-        raise Refusal(NO_REVIEW_HEADER, "--only %s leaves no item: none of the %d changed function%s is in a file inside %s" % (", ".join(paths), len(stops), "" if len(stops) == 1 else "s", "it" if len(paths) == 1 else "them"),
+        them = "it" if len(paths) == 1 else "them"
+        if changed_files is not None:  # the diff read was already limited to PATH: what it left is the change's file names
+            files = sorted(f for f in changed_files if f.endswith(".py"))
+            why = "--only %s leaves no item: no changed function is in a file inside %s" % (", ".join(paths), them)
+            listed = "the change's Python files: %s%s" % (", ".join(files[:12]), ", …" if len(files) > 12 else "") if files else "the change has no Python file, so there is nothing to narrow"
+        else:
+            files = sorted({str(s.get("file")) for s in stops})
+            why = "--only %s leaves no item: none of the %d changed function%s is in a file inside %s" % (", ".join(paths), len(stops), "" if len(stops) == 1 else "s", them)
+            listed = "the agenda's files: %s%s" % (", ".join(files[:12]), ", …" if len(files) > 12 else "") if files else "the diff changes no function, so there is nothing to narrow"
+        raise Refusal(NO_REVIEW_HEADER, why,
                       "review start --base REF --only PATH",
-                      ["the agenda's files: %s%s" % (", ".join(files[:12]), ", …" if len(files) > 12 else "") if files else "the diff changes no function, so there is nothing to narrow",
+                      [listed,
                        "a PATH is relative to the repository: a file, a directory, or a glob such as shopkit/*.py; module-level and test-file changes are set aside whatever --only says"])
     kept_ids = {id(s) for s in kept}
     left = [{**{k: v for k, v in s.items() if k != "n"}, "reason": ONLY_REASON} for s in stops if id(s) not in kept_ids]
@@ -86,24 +98,37 @@ def narrow(plan: dict, paths: list[str]) -> tuple[dict, list[str]]:
     left_edges = [{**e, "reason": ONLY_REASON} for e in edges if id(e) not in edge_ids]
     for i, e in enumerate(kept_edges, 1):
         e["id"] = "E%d" % i
+    outside = sorted(f for f in changed_files or [] if not inside_any(f, paths)) if changed_files is not None else None
     summary = dict(plan.get("summary") or {})
     summary.update(items=len(kept), functions=len(kept), agenda_files=len({s.get("file") for s in kept}), edges=len(kept_edges),
-                   only={"paths": list(paths), "items": len(left), "edges": len(left_edges)})
+                   only={"paths": list(paths), "items": len(left), "edges": len(left_edges), **({"outside": outside} if outside is not None else {})})
     summary["text"] = "%s %s" % (describe(summary), only_sentence(summary["only"]))
     changed = {str(x.get("file")).replace(os.sep, "/") for x in [*stops, *(plan.get("aside") or []), *edges] if isinstance(x, dict)}
-    changed |= {str(f).replace(os.sep, "/") for f in plan.get("other_files") or []}
+    changed |= {str(f).replace(os.sep, "/") for f in [*(plan.get("other_files") or []), *(changed_files or [])]}
     notes = ["note: --only %s matched no changed file" % p for p in paths if not any(within(f, p) for f in changed)]
-    narrowed = {**plan, "stops": kept, "aside": [*(plan.get("aside") or []), *left], "edges": kept_edges, "aside_edges": left_edges, "only": list(paths), "summary": summary}
+    narrowed = {**plan, "stops": kept, "aside": [*(plan.get("aside") or []), *left], "edges": kept_edges, "aside_edges": left_edges, "only": list(paths), "summary": summary,
+                **({"outside": outside} if outside is not None else {})}
     return narrowed, notes
 
 
+def untracked_sentence(files: list[str]) -> str:
+    """The summary's sentence for the untracked files ``change_diff`` read as added ones."""
+    return "%d untracked file%s included as new: %s%s." % (len(files), "" if len(files) == 1 else "s", ", ".join(files[:6]), ", …" if len(files) > 6 else "")
+
+
 def only_sentence(only: dict) -> str:
-    """The summary's sentence for ``--only``: how many items and edge candidates it left out, and why."""
+    """The summary's sentence for ``--only``: the changed files outside it, which were not read, or (a plan that read
+    the whole diff) how many items and edge candidates it left out."""
     items, edges = int(only.get("items") or 0), int(only.get("edges") or 0)
     paths = ", ".join(str(p) for p in only.get("paths") or [])
+    outside = only.get("outside")
+    if isinstance(outside, list) and not items and not edges:
+        if not outside:
+            return "--only %s left nothing out: every changed file is inside it." % paths
+        return "%d changed file%s outside --only %s, not read: %s%s." % (len(outside), "" if len(outside) == 1 else "s", paths, ", ".join(outside[:6]), ", …" if len(outside) > 6 else "")
     if not items and not edges:
         return "--only %s left nothing out: every changed function is inside it." % paths
     return "%d item%s and %d edge candidate%s left out: their files are outside --only %s." % (items, "" if items == 1 else "s", edges, "" if edges == 1 else "s", paths)
 
 
-__all__ = ["GLOB_CHARS", "inside_any", "narrow", "only_paths", "only_sentence", "within"]
+__all__ = ["GLOB_CHARS", "inside_any", "narrow", "only_paths", "only_sentence", "untracked_sentence", "within"]

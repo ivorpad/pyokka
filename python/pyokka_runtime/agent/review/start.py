@@ -23,7 +23,7 @@ from ..diff import Side, diff_sides
 from ..source import AgentError, SavedRun
 from .render import plan_lines
 from .view import close_previous, code_found, open_view, start_hints, wanted
-from .state import NO_REVIEW_HEADER, START, STATE_FILE, Refusal, Review, current_note, default_dir, git, inside, now, result, tree_hash
+from .state import NO_REVIEW_HEADER, START, STATE_FILE, Refusal, Review, current_note, default_dir, change_diff, git, inside, now, result, tree_hash
 
 OURS = ("base", "fixed", "tries", STATE_FILE, "base.json", "head.json", "fixed.json", "report.md")
 DIFF_LIMIT = 1_000_000
@@ -82,7 +82,7 @@ def start(f: dict) -> dict:
     except AgentError as exc:
         cov_b = {"files": [], "total": {}}
         notes.append("note: no coverage of head: %s" % exc.message)
-    diff_text = git(repo, "diff", base, "--no-ext-diff", "--no-color")
+    diff_text = change_diff(repo, base).diff
     build_plan = import_module(".plan", __package__).build_plan
     plan = build_plan(base_run, head_run, diff_json, exc_a, exc_b, cov_b, diff_text, pr_text, repo)
     stops, unreached, edges, anomalies, summary = _normalise(plan)

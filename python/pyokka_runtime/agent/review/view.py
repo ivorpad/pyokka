@@ -225,8 +225,10 @@ def _wait(done: Any, seconds: float) -> bool:
 
 def _ours(pid: int, port: Any) -> bool:
     """Whether ``pid`` still runs the page server this review started (a pid can be reused after the server exits)."""
+    # -ww: without it ps cuts the command to $COLUMNS (or 80) when its output is no terminal, and a long path to
+    # server.js pushed --port past the cut, so a running server read as already stopped and was left running
     try:
-        done = subprocess.run(["ps", "-p", str(pid), "-o", "command="], capture_output=True, text=True, timeout=5)
+        done = subprocess.run(["ps", "-ww", "-p", str(pid), "-o", "command="], capture_output=True, text=True, timeout=5)
     except (OSError, subprocess.SubprocessError):
         return False
     command = done.stdout.strip()

@@ -21,7 +21,7 @@ from ..source import AgentError
 from .actions import names_a_value
 from .debugger import CONTINUE, abs_file, adhoc_item, connect, current_pause, item_at, mark_ended, open_debug, pause_values, plan_items, recorded
 from .render import fact_text, plan_lines, value_lines, where
-from .state import FINDING_ADD, WAIT, Refusal, Review, current_note, git, now, result, tree_hash
+from .state import FINDING_ADD, WAIT, Refusal, Review, change_diff, current_note, now, result, tree_hash
 
 STOP_SAY = "review stop --say TEXT"
 
@@ -56,8 +56,9 @@ def start_in_debugger(f: dict, pre: dict) -> dict:
     ``pre`` is what ``start.start`` resolved before the mode decided the rest: repo, base, base_ref, head, rel, test,
     directory, argv, interp, pr_text, pr_from.
     """
-    from .scope import narrow, only_paths
+    from .scope import inside_any, narrow, only_paths, untracked_sentence
     from .session import session_lines
+    from .uses import attach_uses
     from .start import _check_vscode, _prepare
     from .view import close_previous
 
@@ -66,9 +67,14 @@ def start_in_debugger(f: dict, pre: dict) -> dict:
         _check_vscode(repo, rel)
     else:
         _needs_vscode()
-    diff_text = git(repo, "diff", pre["base"], "--no-ext-diff", "--no-color")
-    # --only narrows the agenda before the review directory is touched: one that leaves no item is refused with the last review intact
-    plan, only_notes = narrow(plan_items(repo, diff_text), only_paths(f, repo))
+    paths = only_paths(f, repo)
+    # --only limits the diff read to its files, untracked ones included, and narrows the agenda before the review
+    # directory is touched: one that leaves no item is refused with the last review intact
+    change = change_diff(repo, pre["base"], (lambda rel: inside_any(rel, paths)) if paths else None)
+    plan, only_notes = narrow(plan_items(repo, change.diff), paths, change.files)
+    attach_uses(plan["stops"], repo)  # on the numbered agenda, so a callee on it is named by the stop the person sees
+    if change.untracked:
+        plan["summary"] = {**plan["summary"], "untracked": change.untracked, "text": "%s %s" % (plan["summary"]["text"], untracked_sentence(change.untracked))}
     close_previous(directory)
     _prepare(directory)
     interp = pre.get("interp")
@@ -78,7 +84,7 @@ def start_in_debugger(f: dict, pre: dict) -> dict:
         "argv": list(pre.get("argv") or []), "python": getattr(interp, "path", None), "dir": directory, "created": now(), "mode": "debugger",
         "phase": "stops" if plan["stops"] else "findings", "tree_hash": tree_hash(repo), "pr": pre.get("pr_from"),
         "plan": {"stops": plan["stops"], "aside": plan.get("aside", []), "unreached": [], "edges": plan["edges"], "anomalies": [],
-                 **({"only": plan["only"], "aside_edges": plan["aside_edges"]} if plan.get("only") else {})},
+                 **({"only": plan["only"], "aside_edges": plan["aside_edges"], "outside": plan.get("outside", [])} if plan.get("only") else {})},
         "shown": [], "skipped": [], "ended": None, "waiting": None, "said": [], "asked": [], "conversation": [], "tries": [], "findings": [], "fix": None,
         "summary": plan["summary"],
     }
