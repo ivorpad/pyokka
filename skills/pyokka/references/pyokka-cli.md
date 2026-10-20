@@ -910,6 +910,11 @@ a file imports, and the Scratchpad's prepare, seed, format and run, one JSON req
   `PYOKKA_HOME`.
 - `PYOKKA_CODE` is the `code` binary `pyokka debug` opens the window with, and
   `PYOKKA_NO_FOCUS=1` leaves window focus alone.
+- `PYOKKA_VSCODE_PID` is set by each VS Code window in its terminals: the pid of the window that
+  wrote `$PYOKKA_HOME/windows/<pid>.json`. A `pyokka debug` (or review) that has to open the URI sends
+  it to that window; without it, to the window whose extension host started the agent, else to the one
+  window whose folder holds the program, else to the focused one. With no VS Code running, it starts
+  VS Code on the program's repository and waits for that window. `PYOKKA_WINDOWS_DIR` moves `windows/`.
 - `PYOKKA_SPAWN=1` makes the runner start each run in a fresh interpreter, and `PYOKKA_FORK=1`
   makes it fork on macOS too (it forks on Linux and spawns on macOS by default).
 - `PYOKKA_KEEP_DIR` is where `run --keep` puts the kept runner's socket (default: the temp

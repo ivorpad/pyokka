@@ -25,6 +25,13 @@
   `--record`, else the program's full path, and when that run ends it says so rather than move to
   another. What it follows lives in the session's plugin state (`$.state`) instead of module
   memory, which a reload of the band's code emptied.
+- `pyokka debug` and a review that opens the debugger now start in the VS Code window the agent was
+  invoked from, not whichever window has focus. Each window writes `$PYOKKA_HOME/windows/<pid>.json`
+  with its VS Code window id and sets `PYOKKA_VSCODE_PID` in its terminals; the CLI picks the window by
+  that variable, else the extension host that spawned the agent (the Claude Code panel), else the one
+  window whose folder holds the program, and only then the focused one. With no VS Code running it
+  starts VS Code on the program's repository and waits for that window, and it says so plainly when
+  VS Code is missing, fails to start, or its window never activates Pyokka.
 - The skill handles a vague request ("debug this", "why does this test fail?", "review this issue")
   without debugger words from the person. `SKILL.md` gains "A vague request": run the tests and read
   `git status` first, pick the mode from what that finds, say the plan in a sentence, record the

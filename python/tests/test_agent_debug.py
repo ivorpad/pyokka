@@ -16,7 +16,7 @@ import time
 
 import pytest
 
-from pyokka_runtime.agent import debug_start, web
+from pyokka_runtime.agent import debug_start, vscode_window, web
 from pyokka_runtime.agent.commands import add_commands
 from pyokka_runtime.agent.live import descriptor_kind, list_sessions, pick_session, prefer_kind, substitution_note
 from pyokka_runtime.agent.render_debug import render_debug_state
@@ -49,6 +49,8 @@ def sessions(tmp_path, monkeypatch):
     directory = tmp_path / "sessions"
     directory.mkdir()
     monkeypatch.setenv("PYOKKA_SESSIONS_DIR", str(directory))
+    monkeypatch.setenv("PYOKKA_WINDOWS_DIR", str(tmp_path / "windows"))  # no window of this machine steers the URI
+    monkeypatch.setattr(vscode_window, "vscode_running", lambda: True)  # nor does a VS Code this machine may lack
     return directory
 
 
@@ -603,3 +605,174 @@ def test_state_text_names_the_interpreter_it_has_and_library_stepping_when_on():
     # a launch that names no interpreter prints none rather than guessing `python3`
     bare = dict(base, launch=dict(base["launch"], python=None, args=[]))
     assert "  launch: /ws/app.py   (cwd /ws)" in render_debug_state(bare, source, args)
+
+
+# the window the command was invoked from (vscode_window.py, src/agent/windowFile.ts)
+
+def write_window(directory, pid, window_id, folders):
+    directory.mkdir(exist_ok=True)
+    (directory / ("%d.json" % pid)).write_text(json.dumps({"pid": pid, "windowId": window_id, "folders": folders}), encoding="utf-8")
+
+
+@pytest.fixture
+def windows(sessions, tmp_path, monkeypatch):
+    monkeypatch.delenv("PYOKKA_VSCODE_PID", raising=False)
+    return tmp_path / "windows"
+
+
+def test_the_invoking_window_is_the_terminals_then_an_ancestors_then_the_nearest_folders(windows, monkeypatch):
+    from pyokka_runtime.agent.vscode_window import invoking_window
+
+    here, other = os.getpid(), os.getppid()  # two live pids stand in for two extension hosts
+    write_window(windows, here, "3", ["/ws"])
+    write_window(windows, other, "7", ["/elsewhere"])
+    launch = debug_start.build_launch(program=APP, cwd="/ws")
+    # nothing says where the agent runs: the one window holding the file
+    assert invoking_window(launch, ancestors=[]) == ({"pid": here, "windowId": "3", "folders": ["/ws"]}, "folder")
+    # an agent an extension host spawned
+    window, how = invoking_window(launch, ancestors=[12345, other])
+    assert (window["windowId"], how) == ("7", "process")
+    # an integrated terminal says so outright, whatever the folders hold
+    monkeypatch.setenv("PYOKKA_VSCODE_PID", str(other))
+    window, how = invoking_window(launch, ancestors=[here])
+    assert (window["windowId"], how) == ("7", "terminal")
+
+
+def test_two_windows_holding_the_file_as_nearly_name_no_window(windows):
+    from pyokka_runtime.agent.vscode_window import invoking_window
+
+    write_window(windows, os.getpid(), "3", ["/ws"])
+    write_window(windows, os.getppid(), "7", ["/"])
+    launch = debug_start.build_launch(program=APP, cwd="/ws")
+    assert invoking_window(launch, ancestors=[])[0]["windowId"] == "3"  # the nearer folder wins
+    write_window(windows, os.getppid(), "7", ["/ws"])
+    assert invoking_window(launch, ancestors=[]) == (None, None)  # a tie is not guessed at
+
+
+def test_a_window_whose_extension_host_is_gone_is_not_the_invoking_one(windows, monkeypatch):
+    from pyokka_runtime.agent.vscode_window import invoking_window
+
+    write_window(windows, 2**22 + 12345, "3", ["/ws"])
+    monkeypatch.setenv("PYOKKA_VSCODE_PID", str(2**22 + 12345))
+    assert invoking_window(debug_start.build_launch(program=APP, cwd="/ws"), ancestors=[]) == (None, None)
+
+
+def test_the_uri_names_the_invoking_window_for_vscodes_router():
+    launch = debug_start.build_launch(program=APP, cwd="/ws")
+    assert debug_start.build_uri(launch, window_id="7").endswith("&windowId=7")
+    assert "windowId" not in debug_start.build_uri(launch)
+
+
+def test_a_recording_in_another_window_does_not_take_a_start_from_this_one(windows):
+    here, other = os.getpid(), os.getppid()
+    write_descriptor(windows.parent / "sessions", "9-1", kind="run", pid=other)
+    launch = debug_start.build_launch(program=APP, cwd="/ws")
+    caller = ({"pid": here, "windowId": "3"}, "terminal")
+    assert debug_start.build_route(launch, caller=caller) == ("uri", None)
+    # a window found only by its folder is a guess: the recording is still used, as before
+    assert debug_start.build_route(launch, caller=(caller[0], "folder"))[0] == "run"
+    mine = write_descriptor(windows.parent / "sessions", "8-1", kind="run", pid=here)
+    route, descriptor = debug_start.build_route(launch, caller=caller)
+    assert (route, descriptor["descriptor"]) == ("run", mine)
+
+
+def test_a_debug_session_in_the_invoking_window_comes_before_one_elsewhere(windows):
+    here, other = os.getpid(), os.getppid()
+    sessions = windows.parent / "sessions"
+    write_descriptor(sessions, "9-d1", kind="debug", pid=other, started="2026-09-15T09:11:00.000Z")
+    mine = write_descriptor(sessions, "8-d1", kind="debug", pid=here, started="2026-09-15T09:10:00.000Z")
+    launch = debug_start.build_launch(program=APP, cwd="/ws")
+    route, descriptor = debug_start.build_route(launch, caller=({"pid": here}, "process"))
+    assert (route, descriptor["descriptor"]) == ("debug", mine)
+    # no window known: the newest, as before
+    assert debug_start.build_route(launch)[1]["descriptor"] != mine
+
+
+def test_a_start_from_a_terminal_sends_the_uri_to_that_terminals_window(windows, tmp_path, monkeypatch):
+    record = tmp_path / "uri.txt"
+    monkeypatch.setenv("PYOKKA_CODE", stub_code(tmp_path, record))
+    write_window(windows, os.getpid(), "3", ["/ws"])
+    write_window(windows, os.getppid(), "7", ["/other"])
+    monkeypatch.setenv("PYOKKA_VSCODE_PID", str(os.getppid()))
+    launch = debug_start.build_launch(program=APP, cwd="/ws")
+
+    def later():
+        time.sleep(0.3)
+        write_descriptor(windows.parent / "sessions", "1-9", kind="debug", pid=os.getppid(), started=time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(time.time() + 1)) + ".000Z")
+
+    thread = threading.Thread(target=later)
+    thread.start()
+    monkeypatch.setattr(debug_start, "LiveRun", lambda d: d)
+    try:
+        found, send, route = debug_start.open_debug_session(launch, timeout=10.0)
+    finally:
+        thread.join()
+    assert route == "uri" and found["pid"] == os.getppid()
+    assert record.read_text().endswith("&windowId=7")  # the terminal's window, not the one holding /ws
+
+
+def launcher_stub(tmp_path, record, *, opens=None, exit_code=0):
+    """A `code` that records each call; given a folder, it "opens" it by writing `opens` as a window file."""
+    script = tmp_path / "code-launch"
+    window = "" if opens is None else "mkdir -p '%s'; printf '%%s' '%s' > '%s/%d.json'; " % (opens[0], json.dumps({"pid": os.getpid(), "windowId": "5", "folders": [opens[1]]}), opens[0], os.getpid())
+    script.write_text(
+        '#!/bin/sh\necho "$@" >> "%s"\n[ "$1" = --list-extensions ] && { echo ivor.pyokka; exit 0; }\n[ "$1" = --open-url ] && exit 0\n%sexit %d\n' % (record, window, exit_code),
+        encoding="utf-8",
+    )
+    script.chmod(0o755)
+    return str(script)
+
+
+def test_with_no_vscode_running_the_start_opens_the_repo_and_aims_at_that_window(windows, tmp_path, monkeypatch):
+    record = tmp_path / "calls.txt"
+    monkeypatch.setattr(vscode_window, "vscode_running", lambda: False)
+    monkeypatch.setattr(vscode_window, "project_folder", lambda launch: "/ws")
+    monkeypatch.setenv("PYOKKA_CODE", launcher_stub(tmp_path, record, opens=(str(windows), "/ws")))
+    launch = debug_start.build_launch(program=APP, cwd="/ws")
+    with pytest.raises(AgentError):  # nothing answers the URI here: the poll's own timeout
+        debug_start.start_via_uri(launch, timeout=0.5)
+    calls = record.read_text().splitlines()
+    assert calls[1] == "/ws"  # VS Code started on the repository, before the URI
+    assert calls[2].startswith("--open-url vscode://ivor.pyokka/debug?") and calls[2].endswith("&windowId=5")
+
+
+def test_a_vscode_that_fails_to_start_is_said(windows, tmp_path, monkeypatch):
+    record = tmp_path / "calls.txt"
+    monkeypatch.setattr(vscode_window, "vscode_running", lambda: False)
+    monkeypatch.setattr(vscode_window, "project_folder", lambda launch: "/ws")
+    monkeypatch.setenv("PYOKKA_CODE", launcher_stub(tmp_path, record, exit_code=3))
+    with pytest.raises(AgentError) as exc:
+        debug_start.start_via_uri(debug_start.build_launch(program=APP, cwd="/ws"), timeout=0.5)
+    assert exc.value.message.startswith("no VS Code window is open, and `")
+    assert "failed (exit 3)" in exc.value.message
+    assert "--open-url" not in record.read_text()  # no URI into a VS Code that is not there
+
+
+def test_a_started_vscode_whose_window_never_activates_pyokka_is_said(windows, tmp_path, monkeypatch):
+    record = tmp_path / "calls.txt"
+    monkeypatch.setattr(vscode_window, "vscode_running", lambda: False)
+    monkeypatch.setattr(vscode_window, "project_folder", lambda launch: "/ws")
+    monkeypatch.setattr(vscode_window, "LAUNCH_TIMEOUT_S", 0.5)
+    monkeypatch.setenv("PYOKKA_CODE", launcher_stub(tmp_path, record))
+    with pytest.raises(AgentError) as exc:
+        debug_start.start_via_uri(debug_start.build_launch(program=APP, cwd="/ws"), timeout=0.5)
+    assert "Pyokka started VS Code on /ws, but no window with Pyokka active appeared" in exc.value.message
+    assert "trust the folder" in exc.value.hint
+
+
+def test_an_open_vscode_is_not_started_again(windows, tmp_path, monkeypatch):
+    record = tmp_path / "calls.txt"
+    monkeypatch.setenv("PYOKKA_CODE", launcher_stub(tmp_path, record))  # vscode_running is True here
+    with pytest.raises(AgentError):
+        debug_start.start_via_uri(debug_start.build_launch(program=APP, cwd="/ws"), timeout=0.3)
+    assert [c.split()[0] for c in record.read_text().splitlines()] == ["--list-extensions", "--open-url"]
+
+
+def test_the_folder_opened_is_the_programs_repository(tmp_path):
+    import subprocess
+
+    repo = tmp_path / "repo"
+    (repo / "pkg").mkdir(parents=True)
+    subprocess.run(["git", "init", "-q", str(repo)], check=True)
+    assert vscode_window.project_folder({"program": str(repo / "pkg" / "app.py")}) == os.path.realpath(str(repo))
+    assert vscode_window.project_folder({"program": str(tmp_path / "loose.py")}) == str(tmp_path)
