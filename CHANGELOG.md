@@ -6,6 +6,13 @@
   wrote it. It now moves the lock's two copies of the number with the other four files, and the
   lock is at 0.5.5. The lock was otherwise in sync: `npm ci` on npm 11 installs it as is (npm 10
   reports it as missing vitest's nested esbuild 0.28.2, so use npm 11).
+- `pyokka debug` and a review that opens the debugger now start in the VS Code window the agent was
+  invoked from, not whichever window has focus. Each window writes `$PYOKKA_HOME/windows/<pid>.json`
+  with its VS Code window id and sets `PYOKKA_VSCODE_PID` in its terminals; the CLI picks the window by
+  that variable, else the extension host that spawned the agent (the Claude Code panel), else the one
+  window whose folder holds the program, and only then the focused one. With no VS Code running it
+  starts VS Code on the program's repository and waits for that window, and it says so plainly when
+  VS Code is missing, fails to start, or its window never activates Pyokka.
 
 ## 0.5.5
 
