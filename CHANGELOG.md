@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.7.0
+
 - Whole value: a Variable pane row whose value the recorder kept, and the Why tree's header,
   have a tree button that runs the program again in a runner of its own up to that step and
   copies the value whole (30 levels, 5,000 items per container, 200,000 characters per string,
