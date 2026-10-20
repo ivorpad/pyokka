@@ -40,7 +40,7 @@ export interface DebuggerProps {
   codePreview: CodePreview | null;
   onGoto: (step: number) => void;
   onPreviewRequest: (step: number) => void;
-  onAction: (action: 'toggleEcho' | 'toggleCodePreview') => void;
+  onAction: (action: 'toggleEcho' | 'toggleCodePreview' | 'toggleGuide') => void;
   onWatch: (op: 'remove' | 'refresh', id: string) => void;
   /** the + in the Watch expressions header: a new expression typed in the panel */
   onWatchAdd: (exp: string) => void;
@@ -82,15 +82,16 @@ export function DebuggerView(props: DebuggerProps) {
             {props.children}
           </div>
         </section>
-        <section class={`pk-pane pk-guide-pane${props.details ? ' has-details' : ''}`}>
+        <section class={`pk-pane pk-guide-pane${props.details ? ' has-details' : ''}${state.showGuide ? '' : ' is-hidden'}`}>
           <header class="pk-pane-header">
             <span class="pk-pane-title">TIMELINE GUIDE</span>
             <span class="pk-toolbar">
+              <IconButton icon="eye" title={state.showGuide ? 'Hide timeline guide' : 'Show timeline guide'} active={state.showGuide} onClick={() => props.onAction('toggleGuide')} />
               <IconButton icon="broadcast" title={state.echo ? 'Hide current step echo' : 'Show current step echo'} active={state.echo} onClick={() => props.onAction('toggleEcho')} />
               <IconButton icon="open-preview" title="Toggle code preview display" active={state.codePreview} onClick={() => props.onAction('toggleCodePreview')} />
             </span>
           </header>
-          <div class="pk-guide-body">{model ? <Guide model={model} /> : null}</div>
+          <div class="pk-guide-body">{model && state.showGuide ? <Guide model={model} /> : null}</div>
           {props.details}
         </section>
       </div>

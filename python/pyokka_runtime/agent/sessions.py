@@ -16,7 +16,8 @@ NO_SESSION = "no live session"
 NO_SESSION_HINT = (
     "start one with `pyokka debug FILE --record` (MCP: pyokka_debug {\"action\": \"start\", \"file\": \"FILE\", \"record\": true}; needs pyokka.agentAccess on in VS Code); "
     "`record` keeps a recording behind the pauses, which the commands that read a run (story, var, why, history, pin) need; "
-    "or record a run and pass its path: `pyokka run FILE --save /abs/run.json` (MCP: pyokka_run {\"file\": \"FILE\", \"save\": \"/abs/run.json\"})"
+    "or record a run and pass its path: `pyokka run FILE --save /abs/run.json` (MCP: pyokka_run {\"file\": \"FILE\", \"save\": \"/abs/run.json\"}); "
+    "a review opens its own view (`pyokka review view`, MCP pyokka_review {\"action\": \"view\"}) and needs no session from here"
 )
 
 #: the verbs that drive a live program: they prefer a ``kind: "debug"`` descriptor (4.7)

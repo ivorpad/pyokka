@@ -21,6 +21,8 @@ from pyokka_runtime.redact import REDACTED
 WORKSPACE = "/ws/proj"
 FILE = WORKSPACE + "/demo.py"
 DEAD_PID = 4_194_303  # above macOS's and Linux's pid ranges
+#: what every command that can read a live pause's values asks the bridge for (live.LIVE_TEXT_LEN)
+ASKS = {"textLen": 2000}
 
 
 def slice_at(step: int, **over) -> dict:
@@ -407,14 +409,14 @@ def test_state_text(sessions: Path, bridge: FakeBridge):
 
 def test_step_moves_and_renders_the_slice(sessions: Path, bridge: FakeBridge):
     doc = pyokka_json("step", "--live", "--into")
-    assert bridge.requests[-1] == {"id": 1, "type": "step", "kind": "into"}
+    assert bridge.requests[-1] == {"id": 1, "type": "step", "kind": "into", **ASKS}
     assert doc["step"] == 1 and "from" not in doc and doc["block"]["firstStep"] == 1  # the smallest step among the block's lines (line 9 has 2, the current line 1)
     assert doc["values"][0]["file"] == FILE and doc["values"][0]["text"] == "{'is_awesome': True, 'api_key': 'sk-abcdefghijklmnopqrstuvwxyz'}"  # the fake did not redact; the CLI does on the way out
     doc = pyokka_json("step", "--live", "5", "--over", "--scope")
     assert [(r["type"], r.get("to"), r.get("kind"), r.get("scope")) for r in bridge.requests[-2:]] == [("step", 5, None, None), ("step", None, "over", True)]
     assert doc["from"] == 5 and doc["step"] == 6
     doc = pyokka_json("step", "--live", "--to", "9")
-    assert bridge.requests[-1] == {"id": 1, "type": "step", "to": 9} and doc["step"] == 9
+    assert bridge.requests[-1] == {"id": 1, "type": "step", "to": 9, **ASKS} and doc["step"] == 9
     for flag, kind in (("--out", "out"), ("--back", "back"), ("--back-over", "backOver"), ("--back-out", "backOut")):
         pyokka_json("step", "--live", flag)
         assert bridge.requests[-1]["kind"] == kind
@@ -454,11 +456,11 @@ def test_an_older_extension_is_named_not_its_unknown_request(sessions: Path, bri
 
 def test_context_values_eval_expand(sessions: Path, bridge: FakeBridge, capsys):
     doc = pyokka_json("context", "--live", "--line", "demo.py:11")
-    assert bridge.requests[-1] == {"id": 1, "type": "context", "file": "demo.py", "line": 11} and doc["step"] == 5
+    assert bridge.requests[-1] == {"id": 1, "type": "context", "file": "demo.py", "line": 11, **ASKS} and doc["step"] == 5
     pyokka_json("context", "--live", "12", "--scope")
-    assert bridge.requests[-1] == {"id": 1, "type": "context", "step": 12, "scope": True}
+    assert bridge.requests[-1] == {"id": 1, "type": "context", "step": 12, "scope": True, **ASKS}
     pyokka_json("context", "--live")  # the current step
-    assert bridge.requests[-1] == {"id": 1, "type": "context"}
+    assert bridge.requests[-1] == {"id": 1, "type": "context", **ASKS}
     code, text = pyokka("context", "--live", "--line", "demo.py:11")
     assert code == 0 and text.startswith("step 5/40  demo.py:11  <module>\nblock <module>  demo.py  from step 2\n") and "'is_awesome': True" in text
 
@@ -469,7 +471,7 @@ def test_context_values_eval_expand(sessions: Path, bridge: FakeBridge, capsys):
     assert code == 2 and "not part of the run" in capsys.readouterr().err
 
     code, text = pyokka("eval", "--live", "pyokka['is_awesome']")
-    assert bridge.requests[-1] == {"id": 1, "type": "eval", "expression": "pyokka['is_awesome']"}
+    assert bridge.requests[-1] == {"id": 1, "type": "eval", "expression": "pyokka['is_awesome']", **ASKS}
     assert (code, text) == (0, "pyokka['is_awesome'] = True\n")
     doc = pyokka_json("eval", "--live", "pyokka")
     assert doc["valueBag"]["data"]["id"] == "v:1"
@@ -592,7 +594,7 @@ def test_watch_needs_live(tmp_path: Path, capsys):
 
 def test_debug_starts_paused_and_prints_the_stop(sessions: Path, bridge: FakeBridge):
     code, text = pyokka("debug", "--live")
-    assert bridge.requests[-1] == {"id": 1, "type": "debug"}
+    assert bridge.requests[-1] == {"id": 1, "type": "debug", **ASKS}
     assert code == 0 and text.startswith("paused at demo.py:11 (start)\nstep 0/40  demo.py:11  <module>\nblock <module>  demo.py  from step 0\n")
     assert "moves: into 1" in text
     doc = pyokka_json("debug", "--live")
@@ -616,7 +618,7 @@ def test_restart_prints_the_first_stop_of_the_new_run(sessions: Path, bridge: Fa
     pyokka_json("debug", "--live")
     pyokka_json("break", "--live", "demo.py:11")
     code, text = pyokka("restart", "--live")
-    assert bridge.requests[-1] == {"id": 1, "type": "restart"}
+    assert bridge.requests[-1] == {"id": 1, "type": "restart", **ASKS}
     assert code == 0 and text.startswith("paused at demo.py:11 (breakpoint)\nstep 3/40  demo.py:11  <module>\n")
     doc = pyokka_json("restart", "--live")
     assert doc["paused"]["reason"] == "breakpoint" and doc["step"] == 3
@@ -624,13 +626,13 @@ def test_restart_prints_the_first_stop_of_the_new_run(sessions: Path, bridge: Fa
 
 def test_stop_on_entry_is_sent_only_when_asked(sessions: Path, bridge: FakeBridge):
     pyokka_json("debug", "--live")
-    assert bridge.requests[-1] == {"id": 1, "type": "debug"}, "no --stop-on-entry: no stopOnEntry key"
+    assert bridge.requests[-1] == {"id": 1, "type": "debug", **ASKS}, "no --stop-on-entry: no stopOnEntry key"
     pyokka_json("break", "--live", "demo.py:11")
     doc = pyokka_json("debug", "--live", "--stop-on-entry")
-    assert bridge.requests[-1] == {"id": 1, "type": "debug", "stopOnEntry": True}
+    assert bridge.requests[-1] == {"id": 1, "type": "debug", "stopOnEntry": True, **ASKS}
     assert doc["paused"]["reason"] == "start" and doc["paused"]["step"] == 0, "the breakpoint is set, but the run still pauses before the first statement"
     doc = pyokka_json("restart", "--live", "--stop-on-entry")
-    assert bridge.requests[-1] == {"id": 1, "type": "restart", "stopOnEntry": True}
+    assert bridge.requests[-1] == {"id": 1, "type": "restart", "stopOnEntry": True, **ASKS}
     assert doc["paused"]["reason"] == "start"
 
 
@@ -676,9 +678,10 @@ def test_continue_prints_the_next_stop_then_finished(sessions: Path, bridge: Fak
     pyokka_json("debug", "--live")
     pyokka_json("break", "--live", "demo.py:11")
     code, text = pyokka("continue", "--live")
-    assert bridge.requests[-1] == {"id": 1, "type": "continue"}
+    assert bridge.requests[-1] == {"id": 1, "type": "continue", **ASKS}
     assert code == 0 and text.startswith("paused at demo.py:11 (breakpoint)\nstep 12/40  demo.py:11  <module>\n")
-    doc = pyokka_json("continue", "--live")
+    doc = pyokka_json("continue", "--live", "--scope")
+    assert bridge.requests[-1] == {"id": 1, "type": "continue", "scope": True, **ASKS}, "--scope lifts the block cap, as on step"
     assert doc["paused"]["breakpoint"]["resolvedLine"] == 11 and doc["step"] == 12
     bridge.finish_next = True
     code, text = pyokka("continue", "--live")
@@ -715,11 +718,18 @@ def test_pause_and_locals(sessions: Path, bridge: FakeBridge, capsys):
     assert code == 2 and "not paused" in capsys.readouterr().err
     pyokka_json("debug", "--live")
     code, text = pyokka("pause", "--live")
-    assert bridge.requests[-1] == {"id": 1, "type": "pause"} and code == 0 and text.startswith("paused at demo.py:11 (pause)\nstep 7/40")
+    assert bridge.requests[-1] == {"id": 1, "type": "pause", **ASKS} and code == 0 and text.startswith("paused at demo.py:11 (pause)\nstep 7/40")
+    pyokka_json("pause", "--live", "--scope")
+    assert bridge.requests[-1] == {"id": 1, "type": "pause", "scope": True, **ASKS}
     code, text = pyokka("locals", "--live")
-    assert bridge.requests[-1] == {"id": 1, "type": "locals"} and (code, text) == (0, "total = 3\npayload = None\n")
+    assert bridge.requests[-1] == {"id": 1, "type": "locals", **ASKS} and (code, text) == (0, "total = 3\npayload = None\n")
     doc = pyokka_json("locals", "--live")
-    assert bridge.requests[-1] == {"id": 1, "type": "locals", "valueBag": True} and doc["locals"][0]["valueBag"]["data"]["id"] == "v:total"
+    assert bridge.requests[-1] == {"id": 1, "type": "locals", "valueBag": True, **ASKS} and doc["locals"][0]["valueBag"]["data"]["id"] == "v:total"
+    # --text-len asks for another length, and 0 for all of it (the runtime clamps it as it clamps maxValueChars)
+    pyokka_json("locals", "--live", "--text-len", "5000")
+    assert bridge.requests[-1]["textLen"] == 5000
+    pyokka_json("locals", "--live", "--text-len", "0")
+    assert bridge.requests[-1]["textLen"] == 0
 
 
 def test_watches_add_list_and_remove(sessions: Path, bridge: FakeBridge):
@@ -740,10 +750,10 @@ def test_watches_add_list_and_remove(sessions: Path, bridge: FakeBridge):
 def test_step_and_context_at_the_frontier(sessions: Path, bridge: FakeBridge):
     pyokka_json("debug", "--live")
     code, text = pyokka("step", "--live", "--over")
-    assert bridge.requests[-1] == {"id": 1, "type": "step", "kind": "over"}
+    assert bridge.requests[-1] == {"id": 1, "type": "step", "kind": "over", **ASKS}
     assert code == 0 and text.startswith("paused at demo.py:11 (step over)\nstep 1/40")
     code, text = pyokka("context", "--live")
-    assert bridge.requests[-1] == {"id": 1, "type": "context"}
+    assert bridge.requests[-1] == {"id": 1, "type": "context", **ASKS}
     assert code == 0 and text.startswith("paused at demo.py:11 (step over)\nstep 1/40")
     assert "\nlocals:\n  total = 3\n  payload = None\noutput (last 3 lines):\n  start\n  loading 1\n  loading 2\nnot run: 32\n" in text
     doc = pyokka_json("context", "--live", "1")
@@ -827,7 +837,7 @@ def test_shell_answers_line_by_line_over_one_connection(sessions: Path, bridge: 
     assert code == 0
     assert bridge.tokens == ["t0ken"], "one token handshake for the whole shell"
     assert [r["type"] for r in bridge.requests] == ["state", "debug", "locals", "stop"], "`exit` stopped the shell before the last line"
-    assert bridge.requests[1] == {"id": 2, "type": "debug", "stopOnEntry": True}, "one connection, so the request ids count up"
+    assert bridge.requests[1] == {"id": 2, "type": "debug", "stopOnEntry": True, **ASKS}, "one connection, so the request ids count up"
     results = cap.out.split("\n\n")
     assert results[-1] == "" and len(results) == 5, "four results, a blank line after each"
     assert results[0] == "demo.py: 40 steps, live in VS Code (pid %d)\nTime Machine inactive: `step --live --into` starts it at the first step, `step --live --to N` jumps" % os.getpid()
@@ -848,9 +858,9 @@ def test_shell_json_prints_one_line_per_result(sessions: Path, bridge: FakeBridg
     docs = [json.loads(l) for l in cap.out.splitlines() if l.strip()]
     assert len(docs) == 4, "one JSON line per result, errors included"
     assert docs[0]["file"] == FILE and docs[0]["nav"] == {"active": False, "step": None, "count": 40}
-    assert bridge.requests[1] == {"id": 2, "type": "debug", "stopOnEntry": True}
+    assert bridge.requests[1] == {"id": 2, "type": "debug", "stopOnEntry": True, **ASKS}
     assert docs[1]["step"] == 0 and docs[1]["paused"]["reason"] == "start" and docs[1]["paused"]["step"] == 0
-    assert bridge.requests[2] == {"id": 3, "type": "locals", "valueBag": True}, "--json on the shell asks for the value bags, as the one-shot does"
+    assert bridge.requests[2] == {"id": 3, "type": "locals", "valueBag": True, **ASKS}, "--json on the shell asks for the value bags, as the one-shot does"
     assert [v["name"] for v in docs[2]["locals"]] == ["total", "payload"]
     assert docs[3]["ok"] is False and docs[3]["error"] == "the shell reads the live session, not run.json"
     assert "reads the saved run in its own process" in docs[3]["hint"]

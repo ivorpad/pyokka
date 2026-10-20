@@ -23,12 +23,13 @@ export function context(ds: DebugSession): PathContext {
 }
 
 /** The stop reply of a `record: false` pause: the slice of 4.3 plus `paused` and the frame's `locals`. */
-export async function stopReply(ds: DebugSession, info: PausedInfo, opts: { scope?: boolean; valueBag?: boolean }): Promise<Record<string, unknown>> {
+export async function stopReply(ds: DebugSession, info: PausedInfo, opts: { scope?: boolean; valueBag?: boolean; textLen?: number }): Promise<Record<string, unknown>> {
   const output = readOutput(ds.outputLog, ds.agentOutput, info.step, !!opts.scope);
   ds.agentOutput = output.cursor;
   let locals: LocalVar[] = [];
   try {
-    locals = await ds.debugLocals();
+    // the length the request asked for (the pyokka CLI sends 2,000); without it, the runtime's 200
+    locals = await ds.debugLocals(opts.textLen !== undefined ? { textLen: opts.textLen } : {});
   } catch {
     locals = []; // the program resumed or ended between the pause and this request
   }
@@ -56,7 +57,7 @@ export function waitForStop(ds: DebugSession, timeoutMs = STOP_TIMEOUT_MS): Prom
 }
 
 /** A stop as the reply carries it: the slice of 4.3, or `{finished}` when the program ended. */
-export function stopOrFinished(ds: DebugSession, result: PausedInfo | 'finished', opts: { scope?: boolean; valueBag?: boolean }): Promise<Record<string, unknown>> {
+export function stopOrFinished(ds: DebugSession, result: PausedInfo | 'finished', opts: { scope?: boolean; valueBag?: boolean; textLen?: number }): Promise<Record<string, unknown>> {
   return result === 'finished' ? Promise.resolve(finishedSlice(ds.lastFinished, ds.errors)) : stopReply(ds, result, opts);
 }
 

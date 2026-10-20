@@ -14,6 +14,8 @@ import ast
 import os
 import re
 
+from .syntax import function_at, functions
+
 OPS = {ast.Gt: ">", ast.GtE: ">=", ast.Lt: "<", ast.LtE: "<=", ast.Eq: "==", ast.NotEq: "!="}
 STDLIB_LIKE = {"self", "cls", "os", "sys", "re", "csv", "io", "json", "math", "ast", "path", "Path", "datetime", "time", "collections", "dataclasses", "decimal", "statistics", "itertools", "functools", "logging", "argparse", "pathlib", "typing"}
 #: methods of builtin and stdlib types that no project class has to define
@@ -59,9 +61,31 @@ def is_test_file(rel: str) -> bool:
     return "/tests/" in "/" + rel.replace(os.sep, "/") or os.path.basename(rel).startswith("test_")
 
 
-def _sources(tree_root: str) -> tuple[dict[str, tuple[str, ast.AST]], set[str]]:
-    """Every parseable ``.py`` under the tree, by relative path, and every attribute name any class defines."""
-    sources: dict[str, tuple[str, ast.AST]] = {}
+def _read(path: str) -> str | None:
+    """A file's text, None when it cannot be read as UTF-8."""
+    try:
+        with open(path, encoding="utf-8") as fh:
+            return fh.read()
+    except (UnicodeDecodeError, ValueError, OSError):
+        return None
+
+
+def _parse(src: str) -> ast.AST | None:
+    try:
+        return ast.parse(src)
+    except (SyntaxError, ValueError):
+        return None
+
+
+def _sources(tree_root: str) -> tuple[list[str], set[str]]:
+    """Every readable ``.py`` under the tree by relative path, in walk order, and every attribute name any class defines.
+
+    No tree is kept: the trees of a langchain checkout (2,630 files, 2026-10-20) held 435 MB for as long as ``edges``
+    ran, and ``_match`` parses a changed file on its own. Nor is a file parsed whose text could define no attribute:
+    without ``class`` it has no class body and without ``self`` no ``self.x =``, unless it holds a non-ASCII character,
+    since Python reads a fullwidth ``ｓｅｌｆ`` as ``self``.
+    """
+    paths: list[str] = []
     defined: set[str] = set()
     for root, dirs, names in os.walk(tree_root):
         dirs[:] = [d for d in dirs if not d.startswith(".") and d not in SKIP_DIRS]
@@ -69,13 +93,13 @@ def _sources(tree_root: str) -> tuple[dict[str, tuple[str, ast.AST]], set[str]]:
             if not n.endswith(".py"):
                 continue
             p = os.path.join(root, n)
-            try:
-                with open(p, encoding="utf-8") as fh:
-                    src = fh.read()
-                tree = ast.parse(src)
-            except (SyntaxError, UnicodeDecodeError, ValueError, OSError):
+            src = _read(p)
+            if src is None:
                 continue
-            sources[os.path.relpath(p, tree_root)] = (src, tree)
+            paths.append(os.path.relpath(p, tree_root))
+            tree = _parse(src) if "class" in src or "self" in src or not src.isascii() else None
+            if tree is None:
+                continue
             for node in ast.walk(tree):
                 if isinstance(node, ast.ClassDef):
                     for item in node.body:
@@ -91,11 +115,12 @@ def _sources(tree_root: str) -> tuple[dict[str, tuple[str, ast.AST]], set[str]]:
                             defined.add(sub.attr)
                         if isinstance(sub, ast.Assign):
                             defined.update(t.attr for t in sub.targets if isinstance(t, ast.Attribute) and isinstance(t.value, ast.Name) and t.value.id == "self")
-    return sources, defined
+    return paths, defined
 
 
 def enclosing(tree: ast.AST, node: ast.AST) -> str:
-    """The innermost function around ``node``, else ``<module>``."""
+    """The innermost function around ``node``, else ``<module>``; ``edges`` asks ``syntax.function_at``, the same rule,
+    with the file's functions listed once."""
     best = None
     for f in ast.walk(tree):
         if isinstance(f, (ast.FunctionDef, ast.AsyncFunctionDef)) and f.lineno <= node.lineno <= (f.end_lineno or f.lineno):  # type: ignore[attr-defined]
@@ -111,10 +136,14 @@ def _text(node: ast.AST) -> str:
         return "?"
 
 
-def _match(sources: dict[str, tuple[str, ast.AST]], rel: str) -> str | None:
-    for key in sources:
+def _match(tree_root: str, paths: list[str], rel: str) -> tuple[str, ast.AST] | None:
+    """The changed file ``rel`` and its tree: the first of ``paths``, in walk order, that names it and parses."""
+    for key in paths:
         if key == rel or key.endswith("/" + rel) or rel.endswith("/" + key):
-            return key
+            src = _read(os.path.join(tree_root, key))
+            tree = _parse(src) if src is not None else None
+            if tree is not None:
+                return key, tree
     return None
 
 
@@ -167,13 +196,14 @@ def _candidate(node: ast.AST, fn: str, lines: set[int], callee_ids: set[int], im
 def edges(diff_text: str, repo: str) -> list[dict]:
     """``[{id, kind, file, line, function, what, rank}]`` ranked, ``E1..En``; ``repo`` is the head tree."""
     changed = changed_lines(diff_text)
-    sources, defined = _sources(repo)
+    paths, defined = _sources(repo)
     rows: list[tuple[int, str, str, int, str, str]] = []  # (rank, kind, file, line, function, what)
     for rel, lines in changed.items():
-        hit = _match(sources, rel)
-        if hit is None or not lines or is_test_file(hit):
+        match = _match(repo, paths, rel) if lines else None
+        if match is None or is_test_file(match[0]):
             continue
-        src, tree = sources[hit]
+        hit, tree = match
+        funcs = functions(tree)  # listed once: a walk of the whole tree per node was 12 of the 20 s a langchain plan took (2026-10-20)
         callee_ids = {id(n.func) for n in ast.walk(tree) if isinstance(n, ast.Call)}
         imported: set[str] = set()
         for node in ast.walk(tree):
@@ -187,7 +217,7 @@ def edges(diff_text: str, repo: str) -> list[dict]:
             span = set(range(node.lineno, (getattr(node, "end_lineno", None) or node.lineno) + 1))
             if not (span & lines):
                 continue
-            fn = enclosing(tree, node)
+            fn = function_at(funcs, node.lineno) or "<module>"
             found = _candidate(node, fn, lines, callee_ids, imported, defined)
             if found is not None:
                 rows.append((found[0], found[1], hit, node.lineno, fn, found[2]))

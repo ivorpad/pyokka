@@ -948,6 +948,13 @@ a {
   overflow: auto;
   padding: 0 0 8px;
 }
+/* guide hidden: the pane keeps only its header, and the width goes to LOGS unless details need it */
+.pk-guide-pane.is-hidden .pk-guide-body {
+  display: none;
+}
+.pk-guide-pane.is-hidden:not(.has-details) {
+  flex: 0 0 auto;
+}
 .pk-guide-pane.has-details .pk-guide-body {
   flex: 0 1 auto;
   max-height: 45%;

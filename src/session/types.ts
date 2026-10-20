@@ -22,6 +22,8 @@ export interface NavState {
   selectedFrame: number;
   codePreview: boolean;
   echo: boolean;
+  /** the Timeline Guide (function -> colour) is shown; hidden, its pane collapses to the header */
+  showGuide: boolean;
   /** cached echo steps for the current step */
   echoSteps: number[];
   /** Auto Log was switched on by the Time Machine and must be switched off when it stops */
@@ -32,5 +34,5 @@ export interface NavState {
 }
 
 export function freshNavState(): NavState {
-  return { active: false, currentStep: -1, autoPlaying: false, deadEnd: false, showCallStack: false, selectedFrame: 0, codePreview: true, echo: true, echoSteps: [], prefetch: 10 };
+  return { active: false, currentStep: -1, autoPlaying: false, deadEnd: false, showCallStack: false, selectedFrame: 0, codePreview: true, echo: true, showGuide: true, echoSteps: [], prefetch: 10 };
 }

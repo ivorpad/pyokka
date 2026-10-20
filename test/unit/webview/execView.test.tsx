@@ -86,7 +86,7 @@ describe('toDiagram under a view', () => {
 });
 
 describe('ExecutionDiagram at the scopes level', () => {
-  const debug = (over: Partial<DebuggerState> = {}): DebuggerState => ({ active: true, autoPlaying: false, currentStep: 19, canStep: { into: true, back: true, over: true, backOver: true, out: false, backOut: false }, echoSteps: [], showCallStack: false, codePreview: false, echo: false, watches: [], ...over });
+  const debug = (over: Partial<DebuggerState> = {}): DebuggerState => ({ active: true, autoPlaying: false, currentStep: 19, canStep: { into: true, back: true, over: true, backOver: true, out: false, backOut: false }, echoSteps: [], showCallStack: false, codePreview: false, echo: false, showGuide: true, watches: [], ...over });
   const view = (over: Partial<ExecutionDiagramProps> = {}) =>
     render(
       <ExecutionDiagram

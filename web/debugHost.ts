@@ -17,7 +17,7 @@ import type { BridgeFile, PageToBridge, RequestBody } from './bridgeProtocol';
 export interface DebugLink {
   send(msg: PageToBridge): void;
   /** a request for the debug run's runtime */
-  debugRequest(body: RequestBody): Promise<RunnerMessage>;
+  debugRequest(body: RequestBody, signal?: AbortSignal): Promise<RunnerMessage>;
 }
 
 export interface LocalVar {
@@ -234,56 +234,57 @@ export class DebugHost {
    * `after` arrives, the run ends, or `timeoutMs` (at most 25 s) runs out. A person stepping in the
    * page is what it waits for, so it never moves the program itself.
    */
-  async waitForPause(after?: number, timeoutMs = 25_000): Promise<{ cursor: number; changed: boolean; ended?: boolean; timedOut?: boolean }> {
+  async waitForPause(after?: number, timeoutMs = 25_000, signal?: AbortSignal): Promise<{ cursor: number; changed: boolean; ended?: boolean; timedOut?: boolean }> {
     if (after === undefined) return { cursor: this.pauseCount, changed: false };
     const deadline = Date.now() + Math.min(Math.max(0, timeoutMs), 25_000);
-    while (this.pauseCount <= after && this.run?.running && Date.now() < deadline) await this.nextStop(deadline - Date.now());
+    while (this.pauseCount <= after && this.run?.running && Date.now() < deadline) await this.nextStop(deadline - Date.now(), signal);
     if (this.pauseCount > after) return { cursor: this.pauseCount, changed: true };
     return this.run?.running ? { cursor: this.pauseCount, changed: false, timedOut: true } : { cursor: this.pauseCount, changed: false, ended: true };
   }
 
   /** Resolves at the next pause or the end of the run (at once when neither can come). */
-  nextStop(timeoutMs = 10_000): Promise<void> {
+  nextStop(timeoutMs = 10_000, signal?: AbortSignal): Promise<void> {
+    if (signal?.aborted) return Promise.reject(new Error('command cancelled'));
     if (!this.run?.running) return Promise.resolve();
-    return new Promise((resolve) => {
-      const done = (): void => {
-        clearTimeout(t);
-        resolve();
+    return new Promise((resolve, reject) => {
+      const cleanup = (): void => {
+        clearTimeout(timer);
+        signal?.removeEventListener('abort', aborted);
+        const index = this.pauseWaiters.indexOf(done);
+        if (index >= 0) this.pauseWaiters.splice(index, 1);
       };
-      // a waiter that timed out leaves the list, so the next pause does not call it
-      const t = setTimeout(() => {
-        const i = this.pauseWaiters.indexOf(done);
-        if (i >= 0) this.pauseWaiters.splice(i, 1);
-        resolve();
-      }, timeoutMs);
+      const done = (): void => { cleanup(); resolve(); };
+      const aborted = (): void => { cleanup(); reject(new Error('command cancelled')); };
+      const timer = setTimeout(done, timeoutMs);
       this.pauseWaiters.push(done);
+      signal?.addEventListener('abort', aborted, { once: true });
     });
   }
 
-  private request(body: { action: 'continue' | 'step' | 'pause' | 'breakpoints' | 'watches' | 'locals' | 'exceptions'; kind?: 'into' | 'over' | 'out'; set?: unknown[]; mode?: DebugExceptionMode; frameId?: number }): Promise<Record<string, unknown>> {
+  private request(body: { action: 'continue' | 'step' | 'pause' | 'breakpoints' | 'watches' | 'locals' | 'exceptions'; kind?: 'into' | 'over' | 'out'; set?: unknown[]; mode?: DebugExceptionMode; frameId?: number }, signal?: AbortSignal): Promise<Record<string, unknown>> {
     const run = this.run;
     if (!run?.running) return Promise.reject(new Error('no debug run'));
-    return this.link.debugRequest({ type: 'debug', runId: run.runId, ...body } as RequestBody).then((reply) => {
+    return this.link.debugRequest({ type: 'debug', runId: run.runId, ...body } as RequestBody, signal).then((reply) => {
       if (reply.type === 'error') throw new Error(reply.message);
       return reply as unknown as Record<string, unknown>;
     });
   }
 
   /** `strict`: a refusal from the runtime is thrown to the caller (an agent) as well as shown. */
-  async control(action: Control, strict = false): Promise<void> {
+  async control(action: Control, strict = false, signal?: AbortSignal): Promise<void> {
     const run = this.run;
     try {
       switch (action) {
         case 'continue':
-          if (run?.paused) await this.request({ action: 'continue' });
+          if (run?.paused) await this.request({ action: 'continue' }, signal);
           return;
         case 'pause':
-          if (run?.running && !run.paused) await this.request({ action: 'pause' });
+          if (run?.running && !run.paused) await this.request({ action: 'pause' }, signal);
           return;
         case 'stepOver':
         case 'stepInto':
         case 'stepOut':
-          if (run?.paused) await this.request({ action: 'step', kind: action === 'stepOver' ? 'over' : action === 'stepInto' ? 'into' : 'out' });
+          if (run?.paused) await this.request({ action: 'step', kind: action === 'stepOver' ? 'over' : action === 'stepInto' ? 'into' : 'out' }, signal);
           return;
         case 'restart':
           this.start(run?.content);
@@ -353,10 +354,10 @@ export class DebugHost {
   }
 
   /** Evaluate in the selected frame of the pause, or throw the runtime's error (an agent's `eval`). */
-  async evaluateAtPause(expression: string): Promise<{ text: string; valueBag?: ValueBag }> {
+  async evaluateAtPause(expression: string, signal?: AbortSignal): Promise<{ text: string; valueBag?: ValueBag }> {
     const run = this.run;
     if (!run?.paused) throw new Error('the debugger is not paused');
-    const reply = await this.link.debugRequest({ type: 'evaluate', runId: run.runId, expression, ...(this.selectedFrame ? { frameId: this.selectedFrame } : {}) });
+    const reply = await this.link.debugRequest({ type: 'evaluate', runId: run.runId, expression, ...(this.selectedFrame ? { frameId: this.selectedFrame } : {}) }, signal);
     if (reply.type === 'evaluated') return { text: reply.text, valueBag: reply.valueBag };
     throw new Error(reply.type === 'error' ? reply.message : `unexpected reply ${reply.type}`);
   }

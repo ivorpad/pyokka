@@ -31,7 +31,7 @@ def pyokka(*args: object) -> tuple[int, str, str]:
 def test_start_prints_the_header_first_and_next_last_and_sets_the_current_review(shop, tmp_path, fakes, monkeypatch):
     home = tmp_path / "home"
     monkeypatch.setenv("PYOKKA_HOME", str(home))
-    code, out, err = pyokka("review", "start", "--base", shop.base, "--repo", shop.repo)
+    code, out, err = pyokka("review", "start", "--base", shop.base, "--repo", shop.repo, "--full")
     assert code == 0 and err == "", err
     lines = out.rstrip("\n").split("\n")
     assert re.match(r"^review shop-[0-9a-f]{7} · stops · stops 0/2 shown · findings 0 · tries 0$", lines[0])
@@ -80,6 +80,14 @@ def test_json_prints_the_raw_shapes(started, tmp_path, fakes):
     assert code == 0 and json.loads(out)["kind"] == "review"
 
 
+def test_view_takes_the_surface_as_a_word_the_way_the_hints_say_it(tmp_path, monkeypatch):
+    monkeypatch.setenv("PYOKKA_HOME", str(tmp_path / "home"))
+    code, out, err = pyokka("review", "view", "vscode", "--dir", str(tmp_path / "nowhere"))
+    assert code == 2 and "refused: no review in %s" % (tmp_path / "nowhere") in err, err  # parsed, then refused on the review, not on the word
+    with pytest.raises(SystemExit):  # a word that is no surface is the parser's refusal, before any review is read
+        pyokka("review", "view", "elsewhere", "--dir", str(tmp_path / "nowhere"))
+
+
 def test_without_an_action_or_a_review(tmp_path, monkeypatch):
     monkeypatch.setenv("PYOKKA_HOME", str(tmp_path / "home"))
     code, out, err = pyokka("review")
@@ -104,6 +112,19 @@ def test_finding_try_fix_and_report_words(started, tmp_path, fakes):
     code, out, err = pyokka("review", "report", "--dir", r.dir)
     assert code == 0 and "## Findings" in out and "No findings." in out and out.rstrip("\n").endswith("next: review state")
     assert (Path(r.dir) / "report.md").exists()
+
+
+def test_the_parser_takes_several_paths_for_only_and_several_numbers_for_skip():
+    from pyokka_runtime.__main__ import build_parser as cli_parser
+
+    args = cli_parser().parse_args(["review", "start", "--base", "B", "--only", "a", "b"])
+    assert args.only == ["a", "b"] and args.args == []
+    args = cli_parser().parse_args(["review", "start", "--base", "B", "--only", "a", "--only", "b/*.py", "--", "x"])
+    assert args.only == ["a", "b/*.py"] and args.args == ["x"]  # the flag repeats, and the program's arguments still come after --
+    assert cli_parser().parse_args(["review", "start", "--base", "B"]).only is None
+    args = cli_parser().parse_args(["review", "skip", "3", "4", "5", "--why", "x"])
+    assert args.ns == [3, 4, 5] and args.why == "x"
+    assert cli_parser().parse_args(["review", "skip", "2", "--why", "x"]).ns == [2]
 
 
 def test_review_is_refused_inside_the_shell():

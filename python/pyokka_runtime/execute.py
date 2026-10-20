@@ -71,10 +71,13 @@ class RunSpec:
     def from_request(cls, req: dict) -> "RunSpec":
         f = req.get("file") or {}
         path = os.path.abspath(str(f.get("path") or req.get("path") or "scratch.py"))
-        workspace = str(req.get("workspaceRoot") or os.path.dirname(path))
+        module = str(req.get("module") or "").strip() or None
+        # the project is the workspace the host names; without one, a file launch's project is the file's directory
+        # and a module launch's is its cwd, where `python -m` resolves the name from (a module launch has no file, so
+        # the file fallback would be the runner's own cwd and nothing of the program would be project code)
+        workspace = str(req.get("workspaceRoot") or (req.get("cwd") if module else None) or os.path.dirname(path))
         config = RunConfig.from_dict(req.get("config"))
         mode = str(req.get("mode") or "normal")
-        module = str(req.get("module") or "").strip() or None
         return cls(
             file_path=path,
             display_name=str(f.get("displayName") or os.path.basename(path)),
@@ -171,7 +174,11 @@ class _Loader(importlib.machinery.SourceFileLoader):
 
     def get_code(self, fullname: str):  # type: ignore[override]
         source = importlib.util.decode_source(self.get_data(self.path))
-        info = self.execution.instrument_source(source, self.path, module_scope=True, library=not self.execution.is_project_file(self.path))
+        # a module launch's target is the program, not a library import: instrumented as a main file even when it
+        # lives in site-packages (`-m pytest` with `libraryCode`), or its body would run quiet and keep the debugger
+        # disarmed for the whole run
+        library = not self.execution.is_project_file(self.path) and fullname not in self.execution.entry_modules
+        info = self.execution.instrument_source(source, self.path, module_scope=True, library=library)
         if info.code is None:
             # the compiler's own error, so the file and line travel with it (a bare SyntaxError(text)
             # named neither, and the stack started in this loader)
@@ -215,6 +222,7 @@ class Execution:
         self.aborted = False
         self.plugin_results: dict = {}
         self.in_plugin_hook = False  # while set, `finder` instruments nothing
+        self.entry_modules: set[str] = set()  # a module launch's target and its `__main__` (module_run.py): the program
         self.on_tracer: Callable[[Tracer], None] | None = None  # the run child attaches a debugger here (control.py)
         self.main_globals: dict | None = None  # the namespace the run used; `control` evaluates against it after the run
         secrets.install(spec.config.mask_secrets, spec.config.secret_names)

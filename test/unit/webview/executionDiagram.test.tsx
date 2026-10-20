@@ -59,7 +59,7 @@ function graph(over: Partial<ExecutionGraphPanel> = {}): ExecutionGraphPanel {
   };
 }
 
-const debug = (over: Partial<DebuggerState> = {}): DebuggerState => ({ active: true, autoPlaying: false, currentStep: 45, canStep: { into: true, back: true, over: true, backOver: true, out: false, backOut: false }, echoSteps: [], showCallStack: false, codePreview: false, echo: false, watches: [], ...over });
+const debug = (over: Partial<DebuggerState> = {}): DebuggerState => ({ active: true, autoPlaying: false, currentStep: 45, canStep: { into: true, back: true, over: true, backOver: true, out: false, backOut: false }, echoSteps: [], showCallStack: false, codePreview: false, echo: false, showGuide: true, watches: [], ...over });
 
 const walkthrough = (): WalkthroughPanel => ({
   runId: 'r1',

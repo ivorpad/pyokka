@@ -152,7 +152,8 @@ def debug_action(req: dict, frame: Any, debugger: Any, emit: Callable[[dict], No
                 error("scope must be local, global or all, got %r" % scope)
                 return None
             names = req.get("names")
-            reply = {"type": "debug.result", "id": rid, "locals": debugger.locals(_frame_for(req, frame, debugger), scope=scope, names=[str(n) for n in names] if isinstance(names, list) else None, names_only=req.get("namesOnly") is True)}
+            # `limits.textLen`: an agent's longer texts and the fields of a cut value; the editor sends none (dbgtext.py)
+            reply = {"type": "debug.result", "id": rid, "locals": debugger.locals(_frame_for(req, frame, debugger), scope=scope, names=[str(n) for n in names] if isinstance(names, list) else None, names_only=req.get("namesOnly") is True, limits=req.get("limits"))}
             if debugger.modified:
                 reply["modified"] = True  # an `exec` has written in this run: these are not only the program's values
             emit(reply)

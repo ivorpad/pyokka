@@ -1,0 +1,25 @@
+{
+  "tools": [
+    {
+      "name": "pyokka_result",
+      "description": "Reads retained details from a previous large tool result. Use when following a supplied continuation to inspect more of that result without repeating its action.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "cursor": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 96,
+            "description": "Copy a continuation or detail reference exactly from a previous result. It reads the captured result until expiry."
+          }
+        },
+        "required": ["cursor"],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "untrustedContentHint": true
+      }
+    }
+  ]
+}

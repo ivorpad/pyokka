@@ -1,4 +1,4 @@
-"""The agenda and the conversation around it: ``skip`` sets a stop aside with the person's reason, ``look``
+"""The agenda and the conversation around it: ``skip`` sets stops aside with the person's reason, ``look``
 answers "what is X here" from the recording without moving anything, ``state`` lists the agenda (shown,
 skipped, remaining), what was said, the tries and the findings.
 
@@ -27,25 +27,56 @@ from .view import close_view
 
 # -- skip ---------------------------------------------------------------------------------------------------------
 
-def skip(review: Review, f: dict) -> dict:
+def _numbered(noun: str, numbers: list[int]) -> str:
+    return "%s %d" % (noun, numbers[0]) if len(numbers) == 1 else "%ss %s" % (noun, ", ".join(str(k) for k in numbers))
+
+
+def skip_numbers(review: Review, f: dict, noun: str) -> tuple[list[int], str]:
+    """The numbers ``skip`` sets aside and the reason, every one checked before any is marked.
+
+    ``ns`` is the CLI's ``N [N …]`` and the MCP field for several, ``n`` the MCP field for one; a number given twice
+    counts once. A Codex smoke test (2026-10-19) made 56 single skip calls to leave two items, so one call takes them
+    all, and a number that is not in the plan or was shown already refuses the whole call: a typo never leaves the
+    rest half skipped. A call with one number is refused in the words it always was. ``noun`` is what the plan calls
+    an entry, a stop, or an item when the debugger runs the review.
+    """
+    given = f.get("ns")
+    values = list(given) if isinstance(given, (list, tuple)) else ([] if given in (None, "") else [given])
+    if f.get("n") not in (None, ""):
+        values.append(f.get("n"))
+    numbers: list[int] = []
     try:
-        n = int(f.get("n"))  # type: ignore[arg-type]
+        for value in values:
+            if int(value) not in numbers:
+                numbers.append(int(value))
     except (TypeError, ValueError):
-        raise review.refuse("skip wants N, the stop's number in the plan", plan_lines(review), "review skip N --why TEXT") from None
-    s = review.stop(n)
-    if s is None:
-        raise review.refuse("stop %d is not in the plan" % n, plan_lines(review), "review skip N --why TEXT")
-    if n in review.shown:
-        raise review.refuse("stop %d was shown already; nothing to skip" % n)
+        numbers = []
+    if not numbers:
+        raise review.refuse("skip wants N, the %s's number in the plan" % noun, plan_lines(review), "review skip N --why TEXT")
+    one = len(numbers) == 1
+    missing = [k for k in numbers if review.stop(k) is None]
+    if missing:
+        raise review.refuse("%s %s not in the plan%s" % (_numbered(noun, missing), "is" if len(missing) == 1 else "are", "" if one else "; nothing was skipped"), plan_lines(review), "review skip N --why TEXT")
+    shown = [k for k in numbers if k in review.shown]
+    if shown:
+        raise review.refuse("%s %s shown already; %s" % (_numbered(noun, shown), "was" if len(shown) == 1 else "were", "nothing to skip" if one else "nothing was skipped"))
     why = str(f.get("why") or "").strip()
     if not why:
-        raise review.refuse("skip %d needs --why TEXT, the reason the person gave" % n, next_command="review skip %d --why TEXT" % n)
-    review.mark_skipped(n, why)
-    review.note("skip", n=n, why=why)
+        words = " ".join(str(k) for k in numbers)
+        raise review.refuse("skip %s needs --why TEXT, the reason the person gave" % words, next_command="review skip %s --why TEXT" % words)
+    return numbers, why
+
+
+def skip(review: Review, f: dict) -> dict:
+    numbers, why = skip_numbers(review, f, "stop")
+    items = [(n, review.stop(n) or {}) for n in numbers]
+    for n in numbers:
+        review.mark_skipped(n, why)
+        review.note("skip", n=n, why=why)
     review.save()
     remaining = review.remaining()
     lines = [
-        "skipped %d. %s  %s  %s" % (n, s.get("kind"), where(s), _one_line(fact_text(s.get("fact")), 120)),
+        *("skipped %d. %s  %s  %s" % (n, s.get("kind"), where(s), _one_line(fact_text(s.get("fact")), 120)) for n, s in items),
         "why: %s" % why,
         "remaining: %s" % (", ".join(str(x) for x in remaining) or "none; the agenda is done"),
     ]
@@ -126,7 +157,9 @@ def look(review: Review, f: dict) -> dict:
 # -- state --------------------------------------------------------------------------------------------------------
 
 def state(review: Review, f: dict | None = None) -> dict:
-    lines = list(plan_lines(review))
+    from .session import session_lines
+
+    lines = [*session_lines(review), *plan_lines(review)]  # the session first: the file pyokka_debug takes, while it is up
     lines.extend(conversation_lines(review))
     lines.append("tries (%d):" % len(review.tries) if review.tries else "tries: none")
     for t in review.tries:
@@ -147,10 +180,14 @@ def state(review: Review, f: dict | None = None) -> dict:
 
 
 def close(review: Review, f: dict | None = None) -> dict:
-    """Stop the page server ``start`` opened; the VS Code recording stays for the person to keep reading."""
+    """Stop the page server ``start`` opened, and take the review's breakpoints out of VS Code while its debug session
+    answers (``session.remove_breakpoints``); the VS Code recording stays for the person to keep reading."""
+    from .session import remove_breakpoints
+
     line = close_view(review.data)
+    removed = remove_breakpoints(review)
     review.save()
-    return result(review, [line or "nothing to close: start opened no page server (a VS Code recording runs nothing)"])
+    return result(review, [*([line] if line else []), *removed] or ["nothing to close: start opened no page server (a VS Code recording runs nothing)"])
 
 
-__all__ = ["close", "skip", "look", "state", "current_step", "evaluate"]
+__all__ = ["close", "skip", "skip_numbers", "look", "state", "current_step", "evaluate"]

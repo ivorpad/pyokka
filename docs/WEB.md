@@ -176,7 +176,7 @@ code pane shows, which can differ from the paused frame's.
 Pass the context back to refuse a command once another actor moved the page: `expect` in the
 JSON body (`{"source": "live", "runId": "d-1", "step": 4, "frame": 0, "file": "/abs/app.py"}`),
 `--expect-source`, `--expect-run`, `--expect-step`, `--expect-frame` and `--expect-file` on
-`ctl` (`null` for step or file), or `expect` on any WebMCP tool. A stale one fails with
+`ctl` (`null` for step or file), or `expect` on any WebMCP control tool. A stale one fails with
 `stale context: KEY ...` before the page changes.
 
 The API controls exactly one page and one command at a time. Two open pages, a second command
@@ -230,6 +230,15 @@ with its results without running it, and `list` and `history` work with no page 
 scratchpad run` and `experiment` exit 1 unless the run completed. `create` starts one with no
 pause beside the main file.
 
+Replacing an edited scratchpad with `open`, `create`, `experiment` or `load` first saves its
+draft, including code, inputs, mocks and title. Reopening from the toolbar also preserves a
+closed draft. This save does not execute Python, and an unchanged draft adds no version.
+A failed or conflicting save leaves the current draft available and refuses replacement.
+An unconfirmed save is not retried automatically, since it may already have reached the store.
+An explicit `save` reconciles it with the stored version. If it did not arrive, the retry uses
+the original draft and expected version so a racing original request cannot create a duplicate.
+A differing remote version remains a conflict; the local draft is still readable through `state`.
+
 `say` shows an explanation in a bubble under a line of the scratchpad's code (`--line`, else the
 cursor line), as `ctl say` does in the code pane; with no text it clears the bubble, and opening,
 creating, loading, restoring or closing a scratchpad clears it too. `state` answers it as
@@ -246,11 +255,62 @@ they registered, and says how many the browser refused (a duplicate name rejects
 is updated then). On `document.modelContext` a tool resolves with its answer, which the browser
 hands the agent as JSON; a refused command resolves with `{"isError": true, "error": "..."}`,
 since Chrome hides a thrown error's message from the agent. Each tool has a title and the draft's
-hints: `readOnlyHint` on state, eval, var and why, `untrustedContentHint` on every tool whose
-answer carries the program's values or output, and `consequentialHint` on run and profile, which
+hints: `readOnlyHint` on state and eval, `untrustedContentHint` on every tool whose
+answer carries program values, output or authored text (including say and breakpoint), and `consequentialHint` on run and profile, which
 run the whole file again. Chrome 155 offered `document.modelContext` with
 `--enable-features=WebMCP,WebMCPTesting,DevToolsWebMCPSupport` (2026-10-15). A browser-automation
 agent can also call `window.pyokka` (the page host) directly.
+
+Variable history and provenance tools finish after their panel update and report presentation
+failures. A requested rerun carries its own token through the bridge and returns only after that
+run's terminal event has updated the page. A different run, launch failure, disconnect or
+completion deadline produces an error instead of returning the previous recording as success.
+
+### WebMCP cancellation
+
+The browser's invocation signal is separate from the registration lifetime. An already-cancelled
+call dispatches nothing. Cancellation during a wait removes the invocation's timers, listeners
+and pending reply callbacks, and prevents later command phases or narration. Rerun waits allow
+the configured runtime deadline plus five seconds, default to 35 seconds for an unlimited
+runtime, and are capped at five minutes. Debugger stop/pause waits remain bounded at ten seconds.
+
+Cancellation after dispatch does not roll back an action or prove Python stopped. Errors name an
+unknown outcome when completion was not confirmed. Conflicting recording, debugger and profile
+actions stay blocked until completion or supersession is observed; state reads and explicit
+stop recovery remain available. If a run acknowledgment was lost and state/stop cannot resolve
+it, reload the page before further control. A full reload clears the page's unresolved request
+bookkeeping. It does not prove prior work stopped. An automatic WebSocket reconnect alone
+cannot recover that missing acknowledgment. Do not repeat an execution merely to recover its answer.
+
+Scratchpad fetch cancellation prevents later replacement and stale result application. An
+already-started experiment can continue on the server until its runtime limit; a separate
+experiment leaves the paused program in place. An ambiguous draft save requires the explicit
+save reconciliation described above. Native errors resolve as structured data so their reasons
+remain visible to the agent.
+
+### Large WebMCP results
+
+WebMCP replies fit 1,500 serialized JSON characters, including escaping and the older API's
+text wrapper. Small answers keep their fields. Larger answers change shape to
+`{bounded:true, tool, outcome, summary, cursor, expires_in_ms}`. Errors retain `isError:true`.
+This compatibility change applies only to WebMCP; CLI and HTTP results keep their full shapes.
+
+Use the read-only `pyokka_result({cursor})` tool to inspect the captured answer. Copy its cursor
+or a nested `ref` exactly. Object and array pages carry `page_size`, `total_count` and
+`next_cursor`; long strings return exact chunks with code-point offsets. A null `next_cursor`
+ends the sequence. Reading a cursor again returns the same page, without stepping, executing,
+saving or changing the UI. Use the full captured `context`, not the summary, for a later
+command's `expect`.
+
+Snapshots last five minutes, belong to one tab, and are discarded when tools re-register or the
+tab reloads. Retention is capped at 16 snapshots, 4,194,304 UTF-16 units per snapshot and
+8,388,608 in total, including indexed metadata. Expiry or eviction returns
+`RESULT_UNAVAILABLE`. A result beyond capacity returns `RESULT_TOO_LARGE` and no cursor;
+the response still identifies the producing action's known outcome. Neither error repeats the
+original action. The exact accounting and page shapes are in
+[the bounded-result contract](../tasks/webmcp-results.md).
+Values that JSON cannot serialize, including nesting beyond the JavaScript serializer's depth
+limit, return `RESULT_NOT_SERIALIZABLE` without repeating the producing action.
 
 ## How it fits together
 

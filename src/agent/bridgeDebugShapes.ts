@@ -188,11 +188,14 @@ export function localsOptions(req: Request): LocalsOptions {
   const scope = req.scope;
   if (scope !== undefined && scope !== null && !['local', 'global', 'all'].includes(String(scope))) throw new BridgeError(`scope must be local, global or all, got ${JSON.stringify(scope)}`, 'send {scope: "local"}, "global" or "all", or leave it out for the frame\'s variables');
   const names = Array.isArray(req.names) ? req.names.filter((n): n is string => typeof n === 'string') : undefined;
+  const textLen = int(req.textLen);
   return {
     ...(int(req.frameId) ? { frameId: int(req.frameId) } : {}),
     ...(scope ? { scope: scope as LocalsOptions['scope'] } : {}),
     ...(names?.length ? { names } : {}),
     ...(req.namesOnly === true ? { namesOnly: true } : {}),
+    // an agent's text length, forwarded as the runtime's `limits.textLen` (0 is all of it); the runtime clamps it
+    ...(textLen !== undefined ? { textLen } : {}),
   };
 }
 
@@ -205,6 +208,9 @@ export function localsReply(vars: readonly LocalVar[], valueBag: boolean): Recor
       out.type = node.type;
       if (typeof node.length === 'number') out.length = node.length;
     }
+    // the fields of a value still cut at the asked length, redacted like its text (dbgtext.py masked them already)
+    if (Array.isArray(v.fields) && v.fields.length) out.fields = v.fields.map(([name, text]) => [redact(String(name)), redact(String(text))]);
+    if (typeof v.fieldsMore === 'number' && v.fieldsMore > 0) out.fieldsMore = v.fieldsMore;
     if (valueBag && v.valueBag) out.valueBag = redactValueBag(v.valueBag);
     return out;
   });

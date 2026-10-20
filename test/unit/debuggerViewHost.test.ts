@@ -150,8 +150,8 @@ describe('DebuggerViewHost at a pause', () => {
     expect(withLocals.localsPending).toBeUndefined();
     expect(withLocals.locals.map((l) => l.name)).toEqual(['rankings', 'k']);
     expect(withLocals.locals[0]!.valueBag?.data.expandable).toBe(true);
-    // the fake workspace folder is /w, so the program's path stays absolute in the display path
-    expect(withLocals.stack).toEqual([{ frameId: 0, name: 'rrf', file: APP, line: 42 }]);
+    // no folder holds the launch (the fake's is /w), so its cwd /ws is the project and the display path is relative to it
+    expect(withLocals.stack).toEqual([{ frameId: 0, name: 'rrf', file: 'app.py', line: 42 }]);
     expect(withLocals.selectedFrame).toBe(0);
     manager.dispose();
   });

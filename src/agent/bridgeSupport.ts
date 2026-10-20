@@ -54,7 +54,9 @@ export function int(v: unknown): number | undefined {
 }
 
 export function sliceOptions(req: Request): SliceOptions {
-  return { scope: !!req.scope, valueBag: !!req.valueBag };
+  // `textLen`: the stop's live locals at the length the client asked for; without it they keep the runtime's 200
+  const textLen = int(req.textLen);
+  return { scope: !!req.scope, valueBag: !!req.valueBag, ...(textLen !== undefined ? { textLen } : {}) };
 }
 
 export function describe(req: Request): string {

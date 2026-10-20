@@ -225,10 +225,11 @@ export class RunnerClient extends EventEmitter<RunnerClientEvents> {
 
   /**
    * Evaluate a side-effect-free expression against the finished run's namespace (no re-run), or in
-   * the frame `frameId` names while a debug run is paused (innermost by default).
+   * the frame `frameId` names while a debug run is paused (innermost by default). `textLen` is an
+   * agent's text length at a pause (0 is all of it); without it the text is the runtime's 200.
    */
-  async evaluate(runId: string, expression: string, opts: { frameId?: number } = {}): Promise<{ text: string; valueBag: ValueBag }> {
-    const reply = await this.request({ type: 'evaluate', runId, expression, ...(opts.frameId ? { frameId: opts.frameId } : {}) }, 15_000);
+  async evaluate(runId: string, expression: string, opts: { frameId?: number; textLen?: number } = {}): Promise<{ text: string; valueBag: ValueBag }> {
+    const reply = await this.request({ type: 'evaluate', runId, expression, ...(opts.frameId ? { frameId: opts.frameId } : {}), ...(opts.textLen !== undefined ? { limits: { textLen: opts.textLen } } : {}) }, 15_000);
     if (reply.type !== 'evaluated') throw new Error(`unexpected evaluate reply: ${reply.type}`);
     return { text: reply.text, valueBag: reply.valueBag };
   }

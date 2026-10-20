@@ -3,7 +3,7 @@
   "displayName": "Pyokka",
   "publisher": "ivor",
   "description": "Python playground in your editor: live values, coverage, and a time-travel debugger with an interactive timeline.",
-  "version": "0.5.3",
+  "version": "0.5.4",
   "repository": {
     "type": "git",
     "url": "https://github.com/ivorpad/pyokka.git"
@@ -448,6 +448,11 @@
         "category": "Pyokka"
       },
       {
+        "command": "pyokka.toggleTimelineGuide",
+        "title": "Show/Hide Timeline Guide",
+        "category": "Pyokka"
+      },
+      {
         "command": "pyokka.selectInterpreter",
         "title": "Select Python Interpreter for Pyokka",
         "category": "Pyokka"
@@ -872,6 +877,10 @@
         },
         {
           "command": "pyokka.toggleStepEcho",
+          "when": "pyokka.traceBeingNavigated"
+        },
+        {
+          "command": "pyokka.toggleTimelineGuide",
           "when": "pyokka.traceBeingNavigated"
         },
         {
@@ -1919,7 +1928,8 @@
     "preact-render-to-string": "^6.7.0",
     "shiki": "^4.4.3",
     "typescript": "^6.0.0",
-    "vitest": "^4 || ^5"
+    "vitest": "^4 || ^5",
+    "webmcp-types": "^0.1.10"
   },
   "dependencies": {
     "@dagrejs/dagre": "^1.1.0 || ^2 || ^3",

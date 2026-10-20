@@ -11,7 +11,7 @@ import type { CodePane } from './codePane';
 import type { ValueNode } from '../src/shared/protocol';
 import type { ScratchBaseline, ScratchCommand, ScratchEntry, ScratchProvenance, ScratchResult, ScratchSandbox, ScratchState, ScratchSummary } from './scratchpadProtocol';
 import { SCRATCH_OPS } from './scratchpadProtocol';
-import { completeValue, inputsSource, mocksSource, NEW_CODE, post } from './scratchpadClient';
+import { checkScratchSignal, completeValue, inputsSource, mocksSource, NEW_CODE, post, ScratchpadRefusal, scratchWait } from './scratchpadClient';
 import { renderResult, renderSandbox, SCRATCH_MARKUP } from './scratchpadView';
 import { NarrationZone } from './narrationZone';
 import './scratchpad.css';
@@ -36,10 +36,13 @@ export class Scratchpad {
   private sandbox: ScratchSandbox | null = null;
   private revision = 0;
   private readonly versions = new Map<string, number>();
+  private readonly confirmedDrafts = new Map<string, string>();
   private loadedVersion: number | null = null;
   private saveError: string | null = null;
+  private uncertainSave?: { id: string; draft: string; expectedVersion: number; entry: Pick<ScratchEntry, 'id' | 'title' | 'reason' | 'state' | 'baseline'> };
   private saves: Promise<void> = Promise.resolve();
   private updating = false;
+  private preserving = 0;
   private timer: ReturnType<typeof setTimeout> | undefined;
   private active?: AbortController;
 
@@ -83,7 +86,9 @@ export class Scratchpad {
 
   /* ---------- the agent's commands ---------- */
 
-  async control(cmd: ScratchCommand): Promise<ScratchState> {
+  async control(cmd: ScratchCommand, options: { signal?: AbortSignal; onDispatch?: () => void } = {}): Promise<ScratchState> {
+    const { signal, onDispatch } = options;
+    checkScratchSignal(signal);
     if (!SCRATCH_OPS.includes(cmd.op)) throw new Error(`scratchpad op is one of ${SCRATCH_OPS.join(', ')}`);
     if (cmd.title !== undefined && (typeof cmd.title !== 'string' || !cmd.title.trim() || cmd.title.length > 200)) throw new Error('a scratchpad title has 1 to 200 characters');
     if (cmd.code !== undefined && (typeof cmd.code !== 'string' || cmd.code.length > 100_000)) throw new Error('code is a string of at most 100000 characters');
@@ -91,21 +96,22 @@ export class Scratchpad {
       case 'state':
         return this.state();
       case 'open':
-        await this.open(cmd.line, cmd);
-        await this.whenRun();
+        await this.open(cmd.line, cmd, signal, onDispatch);
+        await this.whenRun(signal, onDispatch);
         break;
       case 'experiment': {
         if (typeof cmd.code !== 'string' || !cmd.code.trim()) throw new Error('experiment needs the complete code');
-        const { code } = await post<{ code: string }>('format', { code: cmd.code });
+        const { code } = await this.request<{ code: string }>('format', { code: cmd.code }, signal);
         const fields = { ...cmd, code, autoRun: cmd.autoRun ?? false };
-        if (this.host.debug.paused) await this.open(cmd.line, fields);
-        else await this.create(fields);
-        await this.run();
+        if (this.host.debug.paused) await this.open(cmd.line, fields, signal, onDispatch);
+        else await this.create(fields, signal, onDispatch);
+        checkScratchSignal(signal);
+        await this.run(signal, onDispatch);
         break;
       }
       case 'create':
-        await this.create(cmd);
-        await this.whenRun();
+        await this.create(cmd, signal, onDispatch);
+        await this.whenRun(signal, onDispatch);
         break;
       case 'update':
         this.requireOpen();
@@ -114,31 +120,31 @@ export class Scratchpad {
         break;
       case 'run':
         this.requireOpen();
-        await this.run();
+        await this.run(signal, onDispatch);
         break;
       case 'restore':
         this.requireOpen();
         this.restore();
-        await this.whenRun();
+        await this.whenRun(signal, onDispatch);
         break;
       case 'close':
         this.close();
         break;
       case 'save':
-        await this.save(cmd.title);
+        await this.save(cmd.title, signal, onDispatch);
         break;
       case 'list':
-        await this.saves;
-        return { ...this.state(), scratchpads: await this.library<ScratchSummary[]>('list') };
+        await scratchWait(this.saves, signal);
+        return { ...this.state(), scratchpads: await this.library<ScratchSummary[]>('list', {}, signal) };
       case 'history': {
-        await this.saves;
+        await scratchWait(this.saves, signal);
         const id = cmd.id ?? this.id;
         if (!id) throw new Error('history needs a scratchpad id (list names them)');
-        return { ...this.state(), history: await this.library<ScratchSummary[]>('history', { id }), ...(cmd.version !== undefined ? { entry: await this.library<ScratchEntry>('get', { id, version: cmd.version }) } : {}) };
+        return { ...this.state(), history: await this.library<ScratchSummary[]>('history', { id }, signal), ...(cmd.version !== undefined ? { entry: await this.library<ScratchEntry>('get', { id, version: cmd.version }, signal) } : {}) };
       }
       case 'load':
         if (!cmd.id) throw new Error('load needs a scratchpad id (list names them)');
-        await this.load(cmd.id, cmd.version);
+        await this.load(cmd.id, cmd.version, signal, onDispatch);
         break;
       case 'say': {
         this.requireOpen();
@@ -150,7 +156,8 @@ export class Scratchpad {
         break;
       }
     }
-    await this.saves;
+    await scratchWait(this.saves, signal);
+    checkScratchSignal(signal);
     return this.state();
   }
 
@@ -170,6 +177,7 @@ export class Scratchpad {
   /** The toolbar's Scratchpad: a copy from the pause, else the latest saved one, else a new one. */
   async toggle(): Promise<void> {
     if (!this.pane.hidden) return this.close();
+    await this.preserveDraft();
     if (this.host.debug.paused) return this.open(this.cursorLine());
     const saved = await this.library<ScratchSummary[]>('list');
     if (saved[0]) return this.load(saved[0].id);
@@ -177,12 +185,13 @@ export class Scratchpad {
   }
 
   /** Copy the function around `line` (default: the paused line) and the pause's values. */
-  async open(line?: number, fields: Partial<ScratchCommand> = {}): Promise<void> {
+  async open(line?: number, fields: Partial<ScratchCommand> = {}, signal?: AbortSignal, onDispatch?: () => void): Promise<void> {
+    checkScratchSignal(signal);
     const d = this.host.debug;
     const paused = d.paused;
     const run = d.run;
     if (!paused || !run) throw new Error('scratchpad open needs a live pause: pyokka_page {"action": "breakpoint", "line": N, "on": true}, then {"action": "debug", "op": "start"} (CLI: pyokka web ctl break N on, then pyokka web ctl debug start), then open again. create and experiment need no pause');
-    for (let i = 0; i < 40 && (d.locals?.step !== paused.step || d.locals.frameId !== d.selectedFrame); i++) await new Promise((r) => setTimeout(r, 25));
+    for (let i = 0; i < 40 && (d.locals?.step !== paused.step || d.locals.frameId !== d.selectedFrame); i++) await this.delay(signal);
     if (d.locals?.step !== paused.step || d.locals.frameId !== d.selectedFrame) throw new Error("the pause's values have not arrived; try again");
     const frameIndex = d.selectedFrame;
     const frame = paused.stack[frameIndex];
@@ -191,10 +200,10 @@ export class Scratchpad {
     const pausedLine = frame?.line ?? paused.line ?? 1;
     const values: Record<string, ValueNode | null> = {};
     const budget = { expansions: 200 };
-    for (const v of d.locals.locals) values[v.name] = v.valueBag ? await completeValue(this.link, run.runId, v.valueBag.data, 0, budget) : null;
+    for (const v of d.locals.locals) values[v.name] = v.valueBag ? await completeValue(this.link, run.runId, v.valueBag.data, 0, budget, signal) : null;
     const [prepared, seeded] = await Promise.all([
-      post<{ code: string; name?: string }>('prepare', { file, line: line ?? pausedLine }),
-      post<{ inputs: string; unavailable: Record<string, string> }>('seed', { values }),
+      this.request<{ code: string; name?: string }>('prepare', { file, line: line ?? pausedLine }, signal),
+      this.request<{ inputs: string; unavailable: Record<string, string> }>('seed', { values }, signal),
     ]);
     if (d.paused !== paused || d.selectedFrame !== frameIndex) throw new Error('the pause changed while its values were copied; open again');
     await this.begin({
@@ -206,18 +215,20 @@ export class Scratchpad {
       unavailable: seeded.unavailable,
       provenance: { file, line: pausedLine, function: frame?.name ?? null, runId: run.runId, step: paused.step, frame: frameIndex },
       autoRun: fields.autoRun,
-    });
+    }, signal, onDispatch);
   }
 
   /** A scratchpad without a pause, beside the main file (its imports and functions resolve). */
-  private async create(cmd: Partial<ScratchCommand>): Promise<void> {
+  private async create(cmd: Partial<ScratchCommand>, signal?: AbortSignal, onDispatch?: () => void): Promise<void> {
+    checkScratchSignal(signal);
     const file = this.host.main?.path;
     if (!file) throw new Error('a scratchpad needs a source file; the page has none yet');
-    await this.begin({ title: cmd.title ?? 'Untitled experiment', file, code: cmd.code ?? NEW_CODE, inputs: cmd.inputs !== undefined ? inputsSource(cmd.inputs) : '', mocks: cmd.mocks !== undefined ? mocksSource(cmd.mocks) : '', unavailable: {}, provenance: null, autoRun: cmd.autoRun });
+    await this.begin({ title: cmd.title ?? 'Untitled experiment', file, code: cmd.code ?? NEW_CODE, inputs: cmd.inputs !== undefined ? inputsSource(cmd.inputs) : '', mocks: cmd.mocks !== undefined ? mocksSource(cmd.mocks) : '', unavailable: {}, provenance: null, autoRun: cmd.autoRun }, signal, onDispatch);
   }
 
-  private async begin(s: { title: string; file: string; code: string; inputs: string; mocks: string; unavailable: Record<string, string>; provenance: ScratchProvenance | null; autoRun?: boolean }): Promise<void> {
-    await this.saves;
+  private async begin(s: { title: string; file: string; code: string; inputs: string; mocks: string; unavailable: Record<string, string>; provenance: ScratchProvenance | null; autoRun?: boolean }, signal?: AbortSignal, onDispatch?: () => void): Promise<void> {
+    await this.preserveDraft(signal, onDispatch);
+    checkScratchSignal(signal);
     this.updating = true;
     try {
       this.id = crypto.randomUUID();
@@ -241,7 +252,9 @@ export class Scratchpad {
     }
     this.show();
     this.describe(this.provenance ? `${this.file.split(/[\\/]/).pop()} · copied at line ${this.provenance.line} (${this.provenance.function}), step ${this.provenance.step}` : `${this.file.split(/[\\/]/).pop()} · no pause`);
-    this.persist('create');
+    this.persist('create', signal, onDispatch);
+    await scratchWait(this.saves, signal);
+    checkScratchSignal(signal);
     this.schedule(true);
   }
 
@@ -279,7 +292,7 @@ export class Scratchpad {
     this.loadedVersion = null;
     this.shadows.clear();
     this.renderResult();
-    if (this.pane.hidden || !this.auto.checked) {
+    if (this.pane.hidden || !this.auto.checked || this.preserving) {
       this.status = 'dirty';
       return this.say(this.auto.checked ? '' : 'Not run since the last edit');
     }
@@ -288,78 +301,182 @@ export class Scratchpad {
   }
 
   /** For the agent: the run an edit scheduled, finished. */
-  private async whenRun(): Promise<void> {
-    if (this.status === 'scheduled') await this.run();
-    for (let i = 0; i < 400 && this.status === 'running'; i++) await new Promise((r) => setTimeout(r, 25));
+  private async delay(signal?: AbortSignal): Promise<void> {
+    checkScratchSignal(signal);
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      await scratchWait(new Promise<void>((resolve) => { timer = setTimeout(resolve, 25); }), signal);
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
-  async run(): Promise<void> {
+  private async whenRun(signal?: AbortSignal, onDispatch?: () => void): Promise<void> {
+    checkScratchSignal(signal);
+    if (this.status === 'scheduled') await this.run(signal, onDispatch);
+    for (let i = 0; i < 400 && this.status === 'running'; i++) await this.delay(signal);
+  }
+
+  async run(signal?: AbortSignal, onDispatch?: () => void): Promise<void> {
+    checkScratchSignal(signal);
     if (!this.file) throw new Error('nothing to run: open a scratchpad first');
     if (this.timer) clearTimeout(this.timer);
     this.timer = undefined;
     const revision = ++this.revision;
     this.active?.abort();
     const active = (this.active = new AbortController());
+    const cancel = () => {
+      active.abort();
+      if (revision === this.revision) {
+        ++this.revision;
+        this.status = 'dirty';
+        this.error = 'Scratchpad cancelled; Python may still be running on the server';
+        this.say(this.error);
+      }
+    };
+    signal?.addEventListener('abort', cancel, { once: true });
     this.status = 'running';
     this.say('Running in a separate python -I…');
     try {
-      const r = await post<ScratchResult>('run', { file: this.file, code: this.editor.getValue(), inputs: this.inputs.getValue(), mocks: this.mocks.getValue(), unavailable: this.unavailable }, active.signal);
+      onDispatch?.();
+      const r = await this.request<ScratchResult>('run', { file: this.file, code: this.editor.getValue(), inputs: this.inputs.getValue(), mocks: this.mocks.getValue(), unavailable: this.unavailable }, active.signal);
+      checkScratchSignal(signal);
       if (revision !== this.revision) return;
       this.result = r;
       this.sandbox = r.sandbox ?? this.sandbox;
       this.error = r.error ? `${r.error.type}: ${r.error.message}${r.error.line ? ` (line ${r.error.line})` : ''}` : null;
       this.status = r.error ? 'error' : 'completed';
     } catch (e) {
+      checkScratchSignal(signal);
       if (revision !== this.revision || active.signal.aborted) return;
       this.result = null;
       this.error = e instanceof Error ? e.message : String(e);
       this.status = 'error';
+    } finally {
+      signal?.removeEventListener('abort', cancel);
     }
     this.say(this.error ?? '');
     this.renderResult();
-    this.persist('run');
-    await this.saves;
+    this.persist('run', signal, onDispatch);
+    await scratchWait(this.saves, signal);
   }
 
   /* ---------- versions ---------- */
 
-  private async library<T>(op: string, data: Record<string, unknown> = {}): Promise<T> {
-    return post<T>('library', { ...data, op });
+  /** Execution metadata does not make an otherwise unchanged draft need another version. */
+  private draftKey(state = this.state(), baseline = this.baseline): string {
+    return JSON.stringify({ title: state.title, file: state.file, code: state.code, inputs: state.inputs, mocks: state.mocks, autoRun: state.autoRun, provenance: state.provenance, unavailable: state.unavailable, baseline });
   }
 
-  private persist(reason: string): void {
+  /** Quiesce old work before saving, so a timer or late result cannot change the saved draft. */
+  private async preserveDraft(signal?: AbortSignal, onDispatch?: () => void): Promise<void> {
+    checkScratchSignal(signal);
+    ++this.preserving;
+    try {
+      if (this.timer) clearTimeout(this.timer);
+      this.timer = undefined;
+      this.active?.abort();
+      ++this.revision;
+      if (this.status === 'running' || this.status === 'scheduled') this.status = 'dirty';
+      await scratchWait(this.saves, signal);
+      // A failed request may already have reached the store. Replacement must not blindly retry it.
+      if (this.saveError) throw new Error(`draft not preserved: ${this.saveError}; the current draft is still available`);
+      while (this.id && this.confirmedDrafts.get(this.id) !== this.draftKey()) {
+        checkScratchSignal(signal);
+        this.persist('draft', signal, onDispatch);
+        await scratchWait(this.saves, signal);
+        if (this.saveError) throw new Error(`draft not preserved: ${this.saveError}; the current draft is still available`);
+      }
+    } finally {
+      --this.preserving;
+    }
+  }
+
+  private async request<T>(what: string, data: Record<string, unknown>, signal?: AbortSignal): Promise<T> {
+    checkScratchSignal(signal);
+    return scratchWait(post<T>(what, data, signal), signal);
+  }
+
+  private async library<T>(op: string, data: Record<string, unknown> = {}, signal?: AbortSignal): Promise<T> {
+    return this.request<T>('library', { ...data, op }, signal);
+  }
+
+  private persist(reason: string, signal?: AbortSignal, onDispatch?: () => void): void {
     if (!this.id) return;
     const id = this.id;
     const entry = { id, title: this.title, reason, state: JSON.parse(JSON.stringify(this.state())) as ScratchState, baseline: { ...this.baseline } };
     const revision = this.revision;
+    const draft = this.draftKey();
     this.saves = this.saves.then(async () => {
+      let dispatched = false;
+      const expectedVersion = this.versions.get(id) ?? 0;
       try {
-        const saved = await this.library<ScratchEntry>('save', { entry: { ...entry, expectedVersion: this.versions.get(id) ?? 0 } });
+        checkScratchSignal(signal);
+        if (this.uncertainSave) throw new Error('save outcome unknown; use save to reconcile the stored version before saving again');
+        dispatched = true;
+        onDispatch?.();
+        const saved = await this.library<ScratchEntry>('save', { entry: { ...entry, expectedVersion } }, signal);
         this.versions.set(id, saved.version);
+        this.confirmedDrafts.set(id, draft);
         if (this.id === id) {
           this.saveError = null;
           if (revision === this.revision) this.loadedVersion = saved.version;
         }
       } catch (e) {
+        if (dispatched && !(e instanceof ScratchpadRefusal)) this.uncertainSave = { id, draft, expectedVersion, entry };
         if (this.id === id) this.saveError = e instanceof Error ? e.message : String(e);
       }
-      if (this.id === id) await this.refreshLibrary().catch(() => undefined);
+      if (this.id === id && !signal?.aborted) await this.refreshLibrary(signal).catch(() => undefined);
     });
   }
 
-  private async save(title?: string): Promise<void> {
+  private async save(title?: string, signal?: AbortSignal, onDispatch?: () => void): Promise<void> {
+    checkScratchSignal(signal);
     if (!this.id) throw new Error('open or create a scratchpad before saving');
+    await scratchWait(this.saves, signal);
+    if (this.uncertainSave) {
+      const uncertain = this.uncertainSave;
+      const history = await this.library<ScratchSummary[]>('history', { id: uncertain.id }, signal);
+      let latest = history.length ? await this.library<ScratchEntry>('get', { id: uncertain.id }, signal) : undefined;
+      if ((latest?.version ?? 0) === uncertain.expectedVersion) {
+        // This explicit retry uses the identical snapshot and CAS version. If the original
+        // request races it, only one can publish the next version.
+        try {
+          checkScratchSignal(signal);
+          onDispatch?.();
+          latest = await this.library<ScratchEntry>('save', { entry: { ...uncertain.entry, expectedVersion: uncertain.expectedVersion } }, signal);
+        } catch (error) {
+          if (!(error instanceof ScratchpadRefusal)) throw error;
+          // A racing original may have won. Confirm its content instead of appending again.
+          latest = await this.library<ScratchEntry>('get', { id: uncertain.id }, signal);
+          if (latest.version <= uncertain.expectedVersion) throw error;
+        }
+      }
+      if (!latest || latest.version <= uncertain.expectedVersion || this.draftKey(latest.state, latest.baseline) !== uncertain.draft) throw new Error('save outcome unknown or changed in another page; inspect history before retrying; the current draft is still available');
+      this.versions.set(uncertain.id, latest.version);
+      this.confirmedDrafts.set(uncertain.id, uncertain.draft);
+      this.uncertainSave = undefined;
+      this.saveError = null;
+      if (title === undefined && this.draftKey() === uncertain.draft) return;
+    }
     if (title !== undefined && title.trim()) this.title = title.trim();
-    this.persist('save');
-    await this.saves;
+    this.persist('save', signal, onDispatch);
+    await scratchWait(this.saves, signal);
     if (this.saveError) throw new Error(`not saved: ${this.saveError}`);
   }
 
   /** Reopen a saved version as it was, results included, without running it. */
-  private async load(id: string, version?: number): Promise<void> {
-    await this.saves;
-    const latest = await this.library<ScratchEntry>('get', { id });
-    const entry = version === undefined ? latest : await this.library<ScratchEntry>('get', { id, version });
+  private async load(id: string, version?: number, signal?: AbortSignal, onDispatch?: () => void): Promise<void> {
+    await this.preserveDraft(signal, onDispatch);
+    let latest: ScratchEntry;
+    let entry: ScratchEntry;
+    do {
+      latest = await this.library<ScratchEntry>('get', { id }, signal);
+      entry = version === undefined ? latest : await this.library<ScratchEntry>('get', { id, version }, signal);
+      await this.preserveDraft(signal, onDispatch);
+      // Saving edits during the fetch can advance the version being reopened.
+    } while (id === this.id && latest.version < (this.versions.get(id) ?? 0));
+    checkScratchSignal(signal);
     if (this.timer) clearTimeout(this.timer);
     ++this.revision;
     this.active?.abort();
@@ -384,6 +501,7 @@ export class Scratchpad {
       this.result = s.result;
       this.error = s.error;
       this.status = s.status === 'running' || s.status === 'scheduled' ? 'dirty' : s.status;
+      this.confirmedDrafts.set(id, this.draftKey());
     } finally {
       this.updating = false;
     }
@@ -391,16 +509,18 @@ export class Scratchpad {
     this.describe(`${this.file.split(/[\\/]/).pop()} · saved v${entry.version} · not run on reopen`);
     this.say(this.error ?? '');
     this.renderResult();
-    await this.refreshLibrary();
+    await this.refreshLibrary(signal);
   }
 
-  private async refreshLibrary(): Promise<void> {
+  private async refreshLibrary(signal?: AbortSignal): Promise<void> {
     const list = this.pane.querySelector<HTMLSelectElement>('.pkw-scratch-list')!;
-    const entries = await this.library<ScratchSummary[]>('list');
+    const entries = await this.library<ScratchSummary[]>('list', {}, signal);
+    checkScratchSignal(signal);
     list.replaceChildren(new Option('Saved scratchpads', ''), ...entries.map((e) => new Option(`${e.title} · v${e.version}`, e.id)));
     list.value = this.id && entries.some((e) => e.id === this.id) ? this.id : '';
     const history = this.pane.querySelector<HTMLSelectElement>('.pkw-scratch-history')!;
-    const versions = this.id ? await this.library<ScratchSummary[]>('history', { id: this.id }).catch(() => []) : [];
+    const versions = this.id ? await this.library<ScratchSummary[]>('history', { id: this.id }, signal).catch(() => []) : [];
+    checkScratchSignal(signal);
     history.replaceChildren(new Option('Versions', ''), ...versions.map((v) => new Option(`v${v.version} · ${v.reason} · ${new Date(v.updatedAt).toLocaleTimeString()}`, String(v.version))));
     history.value = this.loadedVersion === null ? '' : String(this.loadedVersion);
     this.pane.querySelector<HTMLInputElement>('.pkw-scratch-title')!.value = this.title;

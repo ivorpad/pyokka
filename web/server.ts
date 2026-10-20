@@ -228,10 +228,11 @@ export class BridgeServer {
 
   /* ---------- runs ---------- */
 
-  async run(reason: string, content?: string): Promise<void> {
+  async run(reason: string, content?: string, requestId?: string): Promise<void> {
     if (blocksBridgeRun(!!this.debugRun, reason)) {
       // the page already has the new source or setting; Run, debug restart or a save after the debug run executes it
       log(`${reason}: no run while debug run ${this.debugRun!.runId} is active`);
+      if (requestId !== undefined) this.broadcast({ type: 'run.error', requestId, message: 'a live debug run is active; stop it before running again' });
       return;
     }
     const runId = `w-${++this.runCounter}`;
@@ -242,7 +243,7 @@ export class BridgeServer {
     this.runData = emptyRun(runId, text);
     this.views.reset();
     this.events = [];
-    this.broadcast({ type: 'run.begin', runId, content: text, reason });
+    this.broadcast({ type: 'run.begin', runId, content: text, reason, ...(requestId !== undefined ? { requestId } : {}) });
     log(`run ${runId} of ${this.file.displayName} (${reason})`);
     const dirs = runDirs(this.file.path, this.opts.cwd);
     const request: Omit<RunRequest, 'type' | 'id'> = {
@@ -265,7 +266,9 @@ export class BridgeServer {
     try {
       await this.runner.run(request);
     } catch (err) {
-      this.broadcast({ type: 'runner.error', message: err instanceof Error ? err.message : String(err) });
+      const message = err instanceof Error ? err.message : String(err);
+      if (requestId !== undefined) this.broadcast({ type: 'run.error', requestId, runId, message });
+      this.broadcast({ type: 'runner.error', message });
     }
   }
 
@@ -605,7 +608,7 @@ export class BridgeServer {
       case 'run':
         if (msg.watch !== undefined) this.watch = pickWatches(msg.watch);
         if (msg.traceContext !== undefined) this.traceContext = msg.traceContext && Number.isInteger(msg.traceContext.step) ? { step: msg.traceContext.step, prefetch: Math.max(0, Math.min(200, Number(msg.traceContext.prefetch) || 10)) } : undefined;
-        await this.run('page', msg.content);
+        await this.run('page', msg.content, typeof msg.requestId === 'string' ? msg.requestId : undefined);
         return;
       case 'narrate':
         await this.views.narrate();

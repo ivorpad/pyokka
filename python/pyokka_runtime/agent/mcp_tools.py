@@ -156,6 +156,7 @@ def tool_definitions() -> list[dict]:
                     "line": {**line_prop, "description": "values: every value logged on this FILE:LINE, by hit"},
                     "expression": {"type": "string", "description": "eval: a pure expression (names, attributes, subscripts, non-mutating calls)"},
                     "frame": {"type": "integer", "description": "eval, live at a pause: which frame, innermost 0"},
+                    "text_len": {"type": "integer", "minimum": 0, "description": "eval, live at a pause: characters of the value (default 2,000; 0 for all of it)"},
                     "value_id": {"type": "string", "description": "expand: valueBag.data.id from eval with json: true"},
                     "path": {"type": "array", "items": {"type": "string"}, "description": "expand: query path segments"},
                     "depth": {"type": "integer", "description": "why: levels to expand (default 5); origin: most links (default 20)"},
@@ -180,7 +181,7 @@ def tool_definitions() -> list[dict]:
         {
             "name": "pyokka_debug",
             "title": "Live debugger",
-            "description": "Drive Pyokka's debugger in a VS Code window (the ivor.pyokka extension must be installed and the setting pyokka.agentAccess on; start opens the file in that window and brings it to the front at the first stop, where the person sees the pause; every reply here is also returned as text). Every action that runs the program returns the next stop the way pyokka_step prints one.\n" + _action_list(tuple(a for a in DEBUG_ACTIONS if a != "status"), helps, DEBUG_COMMAND) + "\n- status: the live session's state without moving it; with wait_seconds, first wait up to that long for the running program to pause (a breakpoint, or the person stepping in VS Code) or finish",
+            "description": "Drive Pyokka's debugger in a VS Code window (the ivor.pyokka extension must be installed and the setting pyokka.agentAccess on; start opens the file in that window and brings it to the front at the first stop, where the person sees the pause; every reply here is also returned as text). Every action that runs the program returns the next stop the way pyokka_step prints one. A review (pyokka_review) starts its own debug session on the entry with a breakpoint per changed function: drive that session here (continue, step, eval, break) and record each pause with pyokka_review stop. A review started with full: true records both trees instead and moves its own view; for it a session started here is another run.\n" + _action_list(tuple(a for a in DEBUG_ACTIONS if a != "status"), helps, DEBUG_COMMAND) + "\n- status: the live session's state without moving it; with wait_seconds, first wait up to that long for the running program to pause (a breakpoint, or the person stepping in VS Code) or finish",
             "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -202,6 +203,7 @@ def tool_definitions() -> list[dict]:
                     "until": {"type": "string", "description": "continue: run until this expression is true"},
                     "to": {"type": "string", "description": "continue: run to this FILE:LINE"},
                     "no_wait": {"type": "boolean", "description": "continue, pause: answer at once instead of waiting for the stop"},
+                    "whole_block": {"type": "boolean", "description": "continue, pause: the stop's whole block (lifts the 60-line cap) and the program's output window, not only what it printed since the last stop; at a pause already reached, pyokka_step with live: true and whole_block: true reads it"},
                     "add": {"type": "array", "items": {"type": "string"}, "description": "break: FILE:LINE breakpoints to add; watches: expressions to add"},
                     "when": {"type": "string", "description": "break: only pause when this expression is true at the added line"},
                     "remove": {"type": "array", "items": {"type": "string"}, "description": "break: FILE:LINE or function names to remove; watches: watch ids to remove"},
@@ -214,6 +216,7 @@ def tool_definitions() -> list[dict]:
                     "scope": {"type": "string", "enum": ["local", "global", "all"], "description": "locals: local is the function's own names, global the module-level values the program bound, all the frame's variables plus those globals (default: the frame's variables)"},
                     "names_only": {"type": "boolean", "description": "locals: one name: type per line, without reading the values"},
                     "names": {"type": "array", "items": {"type": "string"}, "description": "locals: only these variables"},
+                    "text_len": {"type": "integer", "minimum": 0, "description": "locals: characters of each value (default 2,000; 0 for all of it); a value still cut lists its fields under it"},
                     "wait_seconds": {"type": "integer", "minimum": 0, "maximum": 600, "description": "status: wait up to this many seconds for a running program to pause or finish; returns at once when it is paused already"},
                 },
                 "required": ["action"],

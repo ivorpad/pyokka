@@ -59,8 +59,10 @@ def fix(review: Review, f: dict) -> dict:
         tests_result = {"command": tests, "exit": code, "output_tail": tail(out)}
     fixed_json = review.path("fixed.json")
     _record_fixed(review, fixed, fixed_json)
-    head, after = SavedRun(review.path("head.json")), SavedRun(fixed_json)
-    comparison = diff_sides(Side("a", "head.json", head), Side("b", "fixed.json", after), limit=100)
+    from .debugger import ensure_head_json
+
+    after = SavedRun(fixed_json)
+    comparison = diff_sides(Side("a", "head.json", SavedRun(review.path("head.json"))), Side("b", "fixed.json", after), limit=100) if ensure_head_json(review) else None
     checks = []
     for fd in review.findings:
         exp = fd.get("expect")
@@ -69,7 +71,7 @@ def fix(review: Review, f: dict) -> dict:
             checks.append({"finding": fd["id"], **_check(after, name.strip(), value)})
     review.data["fix"] = {
         "patch": patch_path, "files": changed, "tests": tests_result, "fixed_json": fixed_json,
-        "diff": {"total": comparison["total"], "matching": comparison["matching"], "a": comparison["a"], "b": comparison["b"], "firstDifference": comparison.get("firstDifference")},
+        "diff": {"total": comparison["total"], "matching": comparison["matching"], "a": comparison["a"], "b": comparison["b"], "firstDifference": comparison.get("firstDifference")} if comparison else None,
         "checks": checks, "at": now(),
     }
     review.reopen()
@@ -78,9 +80,12 @@ def fix(review: Review, f: dict) -> dict:
     if tests_result:
         lines.append("tests: %s → exit %s%s" % (tests, tests_result["exit"], " (passed)" if tests_result["exit"] == 0 else ""))
         lines.extend("  " + l for l in tests_result["output_tail"].split("\n") if l.strip())
-    lines.append("fixed/%s recorded to %s: %s steps, exit %s" % (review.data.get("entry"), fixed_json, comparison["b"]["count"], comparison["b"]["exitCode"]))
-    lines.append("head → fixed:")
-    lines.extend("  " + l for l in render_diff(comparison, None, None)[:DIFF_LINES])
+    lines.append("fixed/%s recorded to %s: %s steps, exit %s" % (review.data.get("entry"), fixed_json, after.meta.get("stepCount"), after.meta.get("exitCode")))
+    if comparison:
+        lines.append("head → fixed:")
+        lines.extend("  " + l for l in render_diff(comparison, None, None)[:DIFF_LINES])
+    else:
+        lines.append("no head recording to compare with (a review in the debugger of a test has none, or its VS Code session is gone); the tests and the checks are the evidence")
     lines.extend(check_line(c) for c in checks)
     if not checks:
         lines.append("no finding has a NAME=VALUE --expect, so no value is checked; the diff above is the evidence")
@@ -161,6 +166,11 @@ def report(review: Review, f: dict) -> dict:
     if inside(path, review.repo):
         raise review.refuse("--out %s is inside the repository" % path, ["nothing is written inside the repository under review"], "review report --out FILE")
     page = tour = None
+    if f.get("page") or f.get("tour"):
+        from .debugger import ensure_head_json
+
+        if not ensure_head_json(review):
+            raise review.refuse("--page and --tour need a head recording, and this review has none (a review in the debugger of a test, or a VS Code session that is gone)", ["`review report` without them writes the markdown"], "review report")
     if f.get("page"):
         from .page import page_path, write_page
 
@@ -179,13 +189,16 @@ def report(review: Review, f: dict) -> dict:
     if f.get("tour"):
         tour = write_tour(review, f["tour"])  # and as a tour of head.json, the stops as its picks, for render-tour.cjs
     closed = close_view(review.data)
+    from .session import remove_breakpoints
+
+    removed = remove_breakpoints(review)  # a review in the debugger leaves none of its breakpoints in VS Code once reported
     review.save()
     extra: dict = {}
     if page:
         extra.update(page=page["path"], pageWarnings=page["warnings"])
     if tour:
         extra.update(tour=tour["path"], tourWarnings=tour["warnings"])
-    return result(review, [*md.rstrip("\n").split("\n"), "", "wrote %s" % path, *(page["lines"] if page else []), *(tour["lines"] if tour else []), *([closed] if closed else [])], report=path, markdown=md, **extra)
+    return result(review, [*md.rstrip("\n").split("\n"), "", "wrote %s" % path, *(page["lines"] if page else []), *(tour["lines"] if tour else []), *([closed] if closed else []), *removed], report=path, markdown=md, **extra)
 
 
 def _fix_status(review: Review, fd: dict) -> str:
@@ -263,7 +276,10 @@ def markdown(review: Review) -> str:
     if skipped:
         not_verified.append("%d stop%s skipped at the person's request: %s" % (len(skipped), "" if len(skipped) == 1 else "s", ", ".join("%s (%s)" % (s.get("n"), s.get("why")) for s in skipped)))
     out += ["- %s" % n for n in not_verified] or ["- nothing left unverified in the plan"]
-    out += ["", "Evidence: %s and %s; every value above comes from those recordings." % (review.path("base.json"), review.path("head.json")), ""]
+    if d.get("mode") == "debugger":
+        out += ["", "Evidence: the pauses of the debug session in VS Code (%s under the debugger%s); every value above was read from a paused frame%s." % (d.get("entry"), " with its recording on" if (d.get("view") or {}).get("record") else "", (", and the recording is saved at %s" % review.path("head.json")) if d.get("head_json_saved") else ""), ""]
+    else:
+        out += ["", "Evidence: %s and %s; every value above comes from those recordings." % (review.path("base.json"), review.path("head.json")), ""]
     return "\n".join(out)
 
 

@@ -88,7 +88,7 @@ const code = new CodePane(
 
 const wsUrl = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`;
 const link = new BridgeLink(wsUrl, (msg) => onBridge(msg), (connected) => {
-  host.connected = connected;
+  host.connectionChanged(connected);
   statusDot.className = connected ? 'pkw-dot ok' : 'pkw-dot off';
   statusDot.title = connected ? 'Connected to the Pyokka bridge' : 'Bridge not reachable: is pyokka-web still running?';
 });
@@ -258,7 +258,7 @@ split.addEventListener('pointerdown', (e) => {
 
 // the Scratchpad: experiments seeded from the live pause, run in a separate python -I
 const scratchpad = new Scratchpad($('pkw-scratchpad'), host, link, code);
-host.onScratchpad = (command) => scratchpad.control(command);
+host.onScratchpad = (command, options) => scratchpad.control(command, options);
 (window as unknown as { pyokkaScratchpad: Scratchpad }).pyokkaScratchpad = scratchpad;
 $('pkw-scratch-toggle').addEventListener('click', () => void scratchpad.toggle().catch((e) => host.notice(e instanceof Error ? e.message : String(e), 'error')));
 

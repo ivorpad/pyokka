@@ -401,7 +401,7 @@ export class DebugSocketServer implements vscode.Disposable {
         const expression = typeof req.expression === 'string' ? req.expression.trim() : '';
         if (!expression) throw new BridgeError('eval needs expression', 'send {expression: "name.attr"}');
         requirePaused(ds, 'evaluate');
-        const r = await ds.evaluate(expression, { frameId: int(req.frameId) });
+        const r = await ds.evaluate(expression, { frameId: int(req.frameId), textLen: int(req.textLen) });
         if (!r) throw new BridgeError(`not evaluable: ${expression}`, 'pure calls run (builtins like len, sorted, isinstance; non-mutating methods of str, dict, list, tuple, set); a user function and an unknown name are refused');
         return { text: redact(r.text), valueBag: r.valueBag ? redactValueBag(r.valueBag) : undefined };
       }

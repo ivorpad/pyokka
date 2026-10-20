@@ -27,7 +27,7 @@ from typing import Any
 from ..protocol import PROVENANCE_DEPTH, PROVENANCE_MAX_DEPTH
 from .origin.walk import ORIGIN_DEPTH, ORIGIN_MAX_DEPTH
 from ..redact import redact
-from .live import watch_line
+from .live import LIVE_TEXT_LEN, watch_line
 from .tour.cli import add_tour_parser, run_tour
 from .recording import annotate_cut, note_line
 from .render import _one_line, exec_error, render
@@ -38,6 +38,8 @@ _MISSING = object()
 MOVE_FLAGS = [("--into", "into"), ("--over", "over"), ("--out", "out"), ("--back", "back"), ("--back-over", "backOver"), ("--back-out", "backOut")]
 DEBUG_COMMANDS = ("debug", "continue", "pause", "stop", "restart", "break", "watches", "locals", "exec", "record")
 LIVE_HINT = "debugging needs a live session (`--live`)"
+#: `continue --scope` and `pause --scope`: what `step --scope` does to a stop
+STOP_SCOPE_HELP = "the stop's whole block (lifts the 60-line cap) and the program's output window, not only what it printed since the last stop"
 
 
 def add_commands(sub: argparse._SubParsersAction) -> None:
@@ -111,6 +113,7 @@ def add_commands(sub: argparse._SubParsersAction) -> None:
     run_arg(p)
     p.add_argument("expression")
     p.add_argument("--frame", type=int, default=None, metavar="N", help="with --live at a pause: which frame to evaluate in, innermost 0")
+    p.add_argument("--text-len", dest="text_len", type=int, default=None, metavar="N", help="with --live at a pause: characters of the value (default 2,000; 0 for all of it)")
 
     p = sub.add_parser("expand", help="expand a value node of the finished run (needs --keep)")
     run_arg(p)
@@ -225,9 +228,11 @@ def add_commands(sub: argparse._SubParsersAction) -> None:
     g = p.add_mutually_exclusive_group()
     g.add_argument("--until", metavar="EXPR", help="run until EXPR is true, then stop there (a watch that lives for this one resume)")
     g.add_argument("--to", metavar="FILE:LINE", help="run to this line and stop there (a breakpoint that lives for this one resume)")
+    p.add_argument("--scope", action="store_true", help=STOP_SCOPE_HELP)
     p = sub.add_parser("pause", help="--live: pause the running program at its next statement and print the stop")
     live_arg(p)
     p.add_argument("--no-wait", dest="no_wait", action="store_true", help="answer `pause requested` at once: a program blocked in accept() pauses only when the next request arrives")
+    p.add_argument("--scope", action="store_true", help=STOP_SCOPE_HELP)
     p = sub.add_parser("stop", help="--live: end the debug run and leave debug mode; the session and its recording stay; prints `stopped: exit N, K steps`")
     live_arg(p)
     p = sub.add_parser("restart", help="--live: stop the debug run and start it again; prints the first stop like `debug`")
@@ -257,6 +262,7 @@ def add_commands(sub: argparse._SubParsersAction) -> None:
     p.add_argument("--scope", choices=["local", "global", "all"], default=None, help="local: the function's own names (parameters, locals; not a closure's free variables); global: the module-level values the program bound; all: the frame's variables plus those globals (default: the frame's variables)")
     p.add_argument("--names-only", dest="names_only", action="store_true", help="one `name: type` per line, without reading the values")
     p.add_argument("--name", action="append", default=None, metavar="NAME", help="only this variable (repeatable)")
+    p.add_argument("--text-len", dest="text_len", type=int, default=None, metavar="N", help="characters of each value (default 2,000; 0 for all of it); a value still cut lists its fields under it")
     p = sub.add_parser("record", help="--live: record from the current pause on, in a run started with --record-from that has not reached that point yet; prints the pause as step 0")
     live_arg(p)
     p = sub.add_parser("exec", help="--live: run a statement in the paused frame: an assignment, a call, an import, a block. The program sees the new value when it continues; `eval` reads without writing")
@@ -577,6 +583,11 @@ def open_source(args: Any) -> RunSource:
         return open_pair(args)
     if args.command in ("debug", "break"):
         _split_at(args)
+    if args.command == "debug":
+        from .debug_fields import start_without_launch, test_names_file
+
+        test_names_file(args)  # `--test tests/test_x.py::test_b` with no FILE names the file
+        start_without_launch(args)  # `--test NAME` (or --cwd, --python…) with no FILE and no --module is refused
     if args.command == "shell" and not is_live(args):
         args.live = True  # the shell has no saved-run form, so `pyokka shell` and `pyokka shell --session demo.py` are live
     if args.command in DEBUG_COMMANDS and not is_live(args):
@@ -708,6 +719,10 @@ def _watch(args: Any, source: Any, out: Any) -> int:
 
 def _run_command(args: Any, source: RunSource) -> dict:
     cmd = args.command
+    # a live pause's values at the agent's length, or `--text-len` (locals, eval); the editor keeps 200, and a
+    # saved run's verbs take no such argument
+    asked = getattr(args, "text_len", None)
+    live_len = {"text_len": LIVE_TEXT_LEN if asked is None else asked} if is_live(args) else {}
     if cmd == "story":
         return source.story(file=args.file, scope=args.scope, line=parse_line(args.line) if args.line else None, limit=max(1, args.limit))
     if cmd == "steps":
@@ -718,12 +733,12 @@ def _run_command(args: Any, source: RunSource) -> dict:
             raise AgentError("step needs N, the step to move from", "e.g. `step run.json 12 --into`; with --live the current step is implied")
         # `--count N` is a live-only move: a saved run is navigated one step at a time
         extra = {"count": args.count} if getattr(args, "count", None) and is_live(args) else {}
-        return source.step(args.step, kind=kind, to=args.to, scope=args.scope, **extra)
+        return source.step(args.step, kind=kind, to=args.to, scope=args.scope, **extra, **live_len)
     if cmd == "context":
         if args.step is None and not args.line and not is_live(args):
             raise AgentError("context needs a step number or --line FILE:LINE", "e.g. `context 12` or `context --line agent.py:16`; with --live the current step is implied")
         file, line = parse_line(args.line) if args.line else (None, None)
-        return source.context(step=args.step, file=file, line=line, scope=args.scope)
+        return source.context(step=args.step, file=file, line=line, scope=args.scope, **live_len)
     if cmd == "values":
         file, line = parse_line(args.line)
         return source.values(file, line)
@@ -747,7 +762,7 @@ def _run_command(args: Any, source: RunSource) -> dict:
         return source.origin(int(args.step) if args.step is not None else None, (args.name or "").strip(), depth=depth)  # type: ignore[attr-defined]
     if cmd == "eval":
         frame = getattr(args, "frame", None)
-        return source.eval(args.expression, frame=frame) if frame else source.eval(args.expression)
+        return source.eval(args.expression, frame=frame, **live_len) if frame else source.eval(args.expression, **live_len)
     if cmd == "expand":
         return source.expand(args.value_id, list(args.path))
     if cmd == "release":
@@ -801,7 +816,7 @@ def _run_command(args: Any, source: RunSource) -> dict:
         for spec in getattr(args, "_extra_breaks", []):
             f, l = parse_line(spec, "break")
             source.breakpoints(add=[{"file": f, "line": l}])  # type: ignore[attr-defined]
-        result = source.debug(stop_on_entry=args.stop_on_entry, launch=launch)  # type: ignore[attr-defined]
+        result = source.debug(stop_on_entry=args.stop_on_entry, launch=launch, **live_len)  # type: ignore[attr-defined]
         if getattr(args, "_route", None) == "debug" and not getattr(args, "_relaunched", None) and isinstance(result, dict):
             _already_paused(args, result)
         # a cold start paused behind the terminal: bring the window up at the stop, once
@@ -819,13 +834,13 @@ def _run_command(args: Any, source: RunSource) -> dict:
         return result
     if cmd == "continue":
         to = parse_line(args.to, "continue --to") if getattr(args, "to", None) else None
-        return source.continue_(no_wait=bool(getattr(args, "no_wait", False)), until=getattr(args, "until", None), to=to)  # type: ignore[attr-defined]
+        return source.continue_(no_wait=bool(getattr(args, "no_wait", False)), until=getattr(args, "until", None), to=to, scope=bool(getattr(args, "scope", False)), **live_len)  # type: ignore[attr-defined]
     if cmd == "pause":
-        return source.pause(no_wait=bool(getattr(args, "no_wait", False)))  # type: ignore[attr-defined]
+        return source.pause(no_wait=bool(getattr(args, "no_wait", False)), scope=bool(getattr(args, "scope", False)), **live_len)  # type: ignore[attr-defined]
     if cmd == "stop":
         return source.stop()  # type: ignore[attr-defined]
     if cmd == "restart":
-        return source.restart(stop_on_entry=args.stop_on_entry)  # type: ignore[attr-defined]
+        return source.restart(stop_on_entry=args.stop_on_entry, **live_len)  # type: ignore[attr-defined]
     if cmd == "break":
         log_message = getattr(args, "log_message", None)
         if log_message is not None and not log_message.strip():
@@ -843,7 +858,7 @@ def _run_command(args: Any, source: RunSource) -> dict:
     if cmd == "watches":
         return source.watches(add=[{"exp": exp, **({"breakWhen": args.break_when} if args.break_when else {})} for exp in args.add], remove=list(args.remove))  # type: ignore[attr-defined]
     if cmd == "locals":
-        return source.locals(value_bag=bool(args.json), frame=getattr(args, "frame", None), scope=getattr(args, "scope", None), names_only=bool(getattr(args, "names_only", False)), names=getattr(args, "name", None))  # type: ignore[attr-defined]
+        return source.locals(value_bag=bool(args.json), frame=getattr(args, "frame", None), scope=getattr(args, "scope", None), names_only=bool(getattr(args, "names_only", False)), names=getattr(args, "name", None), **live_len)  # type: ignore[attr-defined]
     if cmd == "exec":
         return source.exec(args.source, frame=getattr(args, "frame", None))  # type: ignore[attr-defined]
     if cmd == "diff":
@@ -867,7 +882,7 @@ def _run_command(args: Any, source: RunSource) -> dict:
 
         return pin_command(args, source)
     if cmd == "record":
-        return source.record()  # type: ignore[attr-defined]
+        return source.record(**live_len)  # type: ignore[attr-defined]
     if cmd == "narrate":
         from .narrate import narrate_saved
 

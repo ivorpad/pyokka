@@ -68,6 +68,8 @@ def launch(execution: Any, module: str) -> Any:
     cwd = execution.spec.cwd
     if not sys.path or sys.path[0] != cwd:
         sys.path.insert(0, cwd)
+    name = module.strip()
+    execution.entry_modules = {name, name + ".__main__"}  # the finder's loader instruments the target as the program
     try:
         resolved = resolve(module)
     except ImportError as exc:

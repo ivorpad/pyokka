@@ -467,8 +467,10 @@ coverage, exceptions, test?`.
 ## Reviewing a change
 
 **`review`** reviews a change as a guided debug session, the sequence owned by the tool
-([review.md](review.md) is the method). `start` records the base and head trees and plans the
-stops; `stop` moves the person's view and prints the stop; `try` reproduces in the Scratchpad's
+([review.md](review.md) is the method). `start` plans a breakpoint per changed function from the
+diff and starts the entry under the debugger in VS Code, paused on entry; the debugger is driven as
+always and `stop --say` records the pause it is at (`--full` records base and head and plans the
+stops from the comparison, and then `stop N` moves the person's view); `try` reproduces in the Scratchpad's
 sandbox; `finding add` refuses without a step and a reproduction; `fix` tries a patch on a copy;
 `report` re-runs every reproduction before it prints. Every result's first line is the header,
 `review <id> · <phase> · stops K/N shown · findings F · tries T`, and its last is `next:` with
@@ -476,10 +478,11 @@ one command. A refusal has the same two lines around `refused: <why>` and its de
 (`isError` through MCP).
 
 ```
-pyokka review start --base REF [--repo DIR] [--entry FILE | --test NODEID] [--pr FILE] [--python P] [--surface vscode|page|chat] [--port P] [--dir DIR] [-- ARGS]
-pyokka review stop N --say TEXT [--go-on] [--surface auto|page|vscode|chat] [--port P] [--session NAME]
+pyokka review start --base REF [--repo DIR] [--entry FILE | --test NODEID] [--only PATH...] [--full] [--pr FILE] [--python P] [--surface vscode|page|chat] [--port P] [--dir DIR] [-- ARGS]
+pyokka review view [--surface vscode|page|chat] [--port P]      # the person's view, opened after start when it opened none or they moved
+pyokka review stop [N] --say TEXT [--go-on] [--surface auto|page|vscode|chat] [--port P] [--session NAME]   # records the pause the debugger is at; in a --full review moves the view to stop N
 pyokka review ask FILE:LINE --say TEXT
-pyokka review skip N --why TEXT
+pyokka review skip N [N...] --why TEXT
 pyokka review look --expr EXPR [--step N]
 pyokka review try --code FILE | --expr EXPR [--inputs FILE] [--mocks FILE] [--edge E3] [--title T] [--port P]
 pyokka review finding add --file F --line L --severity blocker|major|minor --title T --step N --repro ID|CMD [--expect TEXT] --fix TEXT
@@ -489,7 +492,18 @@ pyokka review close
 pyokka review state
 ```
 
-- `start` opens the person's view after recording: VS Code by default (a recording session on the entry, run to its end, whose Time Machine the stops move), `--surface page` for the browser page (a `pyokka web` process the review stops at `report` or `close`), `--surface chat` for none; its `view:` line says what opened or why not. A review of one `--test` has no view and stays in chat: both commands run the test file as a program, another run than the test's, so no hint names them for it and `stop --surface vscode|page` on it is refused.
+- Without `--full`, `start` plans from `git diff BASE` alone: one item per changed function, a
+  breakpoint at the first statement of its first changed span (a changed `def` header breaks in the
+  body), and starts the entry under the debugger in the person's VS Code, stopped on entry, with the
+  debugger's recording on for a program (a test runs through its runner, which has no recording).
+  Nothing of base is run. The debugger is then driven as always (`continue --live`, `step`, `eval`,
+  `break`); `stop [N] --say TEXT` records the pause the session is at, refused when the text names
+  none of the frame's values or when the program is running or ended; `ask` and `look` are refused
+  with the debugger's commands; `skip` removes the breakpoint; `view vscode` starts the program
+  again with the remaining items' breakpoints; `finding add` takes a recorded pause near its line.
+  `--surface page|chat` implies `--full`, and a `start` with no VS Code to reach refuses and names
+  `--full`.
+- With `--full`, `start` opens the person's view after recording: VS Code by default (a recording session on the entry, run to its end, whose Time Machine the stops move), `--surface page` for the browser page (a `pyokka web` process the review stops at `report` or `close`), `--surface chat` for none; its `view:` line says what opened or why not. A review of one `--test` has no view and stays in chat: both commands run the test file as a program, another run than the test's, so no hint names them for it and `stop --surface vscode|page` on it is refused.
 - `start` resolves REF in the repo (the current directory unless `--repo`), materialises the base
   tree in `DIR/base`, records head through the entry (`main.py` at the repo root when it exists,
   else `--entry` or `--test`, as `pyokka run ENTRY --cwd REPO --save DIR/head.json` would) and base
@@ -500,8 +514,8 @@ pyokka review state
   `sign`, `none`, `print`, `value`; the changed lines no run reached; edge candidates `E1..En` from
   the added lines (comparison boundaries, missing keys, except paths with their fallback, new
   parameters, empty loops, zero divisors, slice bounds, orderings, attributes no class in the
-  project defines) with what to try. It refuses a dirty worktree only when `--entry` is
-  uncommitted. `--dir DIR` is the review directory, default
+  project defines) with what to try. Head is the working tree as it stands, uncommitted changes
+  and the entry included. `--dir DIR` is the review directory, default
   `$PYOKKA_HOME/reviews/<repo-name>-<base7>/` (`review.json`, `base/`, `base.json`, `head.json`,
   `tries/`, `fixed/`, `report.md`); every later action takes `--dir` too, else the review `start`
   last wrote, named in `$PYOKKA_HOME/reviews/current`. Nothing is written inside the repository.
@@ -816,7 +830,7 @@ pyokka values RUN --line F:L
 pyokka var RUN NAME [--file F] [--scope NAME] [--limit K]
 pyokka why RUN STEP [NAME] [--depth N]
 pyokka origin RUN STEP [EXPR] [--depth N]
-pyokka eval RUN EXPRESSION [--frame N]
+pyokka eval RUN EXPRESSION [--frame N] [--text-len N]
 pyokka expand RUN VALUE_ID [--path SEGMENT]...
 pyokka release RUN
 pyokka state RUN
@@ -829,10 +843,10 @@ pyokka tour RUN [--goal NAME|FILE:LINE] [--budget TOKENS] [--at STEP]... [--pros
 pyokka narrate RUN [--command CMD] [--dry-run]
 pyokka history RUN --out PATH [--at STEP|FILE:LINE]... [--var NAME]... [--why STEP NAME]...
         [--pause] [--prose PATH] [--pad N] [--limit K] [--lang L] [--scope] [--append] [--value-chars N]
-pyokka review start --base REF [--repo DIR] [--entry FILE | --test NODEID] [--pr FILE] [--python P] [--dir DIR] [-- ARGS]
-pyokka review stop N --say TEXT [--go-on] [--surface auto|page|vscode|chat] [--port P] [--session NAME]
+pyokka review start --base REF [--repo DIR] [--entry FILE | --test NODEID] [--only PATH...] [--full] [--pr FILE] [--python P] [--dir DIR] [-- ARGS]
+pyokka review stop [N] --say TEXT [--go-on] [--surface auto|page|vscode|chat] [--port P] [--session NAME]   # records the pause the debugger is at; in a --full review moves the view to stop N
 pyokka review ask FILE:LINE --say TEXT
-pyokka review skip N --why TEXT
+pyokka review skip N [N...] --why TEXT
 pyokka review look --expr EXPR [--step N]
 pyokka review try --code FILE | --expr EXPR [--inputs FILE] [--mocks FILE] [--edge E3] [--title T] [--port P]
 pyokka review finding add --file F --line L --severity blocker|major|minor --title T --step N --repro ID|CMD
@@ -845,14 +859,14 @@ pyokka shell --live
 pyokka debug FILE [--at FILE:LINE|NAME]... [--module M] [--cwd DIR] [--env K=V]... [--python PATH]
         [--stop-on-entry] [--record | --record-from NAME|FILE:LINE] [--library-code] [--no-focus]
         [--configuration NAME] [--test NAME] [--args ...]
-pyokka continue --live [--no-wait] [--until EXPR | --to FILE:LINE] [--no-start]
-pyokka pause --live [--no-wait]
+pyokka continue --live [--no-wait] [--until EXPR | --to FILE:LINE] [--scope] [--no-start]
+pyokka pause --live [--no-wait] [--scope]
 pyokka stop --live
 pyokka restart --live [--stop-on-entry] [--no-start]
 pyokka break --live [FILE:LINE...] [--when EXPR] [--at NAME|FILE:LINE]... [--remove FILE:LINE|NAME]...
         [--list] [--on-exception off|uncaught|raised] [--no-start]
 pyokka watches --live [--add EXPR]... [--break-when change|true] [--remove ID]... [--list]
-pyokka locals --live [--frame N] [--scope local|global|all] [--names-only] [--name NAME]...
+pyokka locals --live [--frame N] [--scope local|global|all] [--names-only] [--name NAME]... [--text-len N]
 pyokka exec --live SOURCE [--frame N]
 pyokka record --live
 pyokka mcp

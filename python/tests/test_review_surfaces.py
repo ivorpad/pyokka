@@ -17,6 +17,7 @@ import pytest
 
 from pyokka_runtime.agent.live import SESSIONS_ENV
 from pyokka_runtime.agent.review.surfaces import condition_for, default_port, detect, detect_vscode, entry_of, head_steps, is_literal, move_to, page_state, start_hints_of, stop_file
+from pyokka_runtime.agent.review.view import VIEW_PAGE, VIEW_VSCODE
 from tests.test_agent_live import FILE, WORKSPACE, FakeBridge, paused_at, write_descriptor
 
 
@@ -248,7 +249,7 @@ def test_a_paused_session_on_another_file_is_neither_detected_nor_moved(no_sessi
         out = move_to(STOP, "label is 'a'", "auto", closed_port(), None, HEAD)
         assert (out["surface"], out["moved"]) == ("chat", False) and "no VS Code session on demo.py" in out["note"]
         out = move_to(STOP, "label is 'a'", "vscode", closed_port(), None, HEAD)
-        assert out["surface"] == "chat" and out["moved"] is False and out["available"] is False and out["note"].startswith("no live VS Code session on demo.py; start one on the entry: pyokka debug %s --record --cwd %s (MCP: pyokka_debug {\"action\": \"start\", \"file\": \"%s\", \"record\": true, \"cwd\": \"%s\"})" % (FILE, WORKSPACE, FILE, WORKSPACE)) and out["note"].endswith("then stop again with the same n")
+        assert out["surface"] == "chat" and out["moved"] is False and out["available"] is False and out["note"].startswith("no live VS Code session on demo.py; open the review's: %s records the entry in VS Code as the review's run" % VIEW_VSCODE) and out["note"].endswith("then stop again with the same n")
         assert not [r for r in other.requests if r["type"] in ("break", "continue")]
         out = move_to(STOP, "label is 'a'", "vscode", closed_port(), "other.py", HEAD)  # named, it is the one
         assert out["surface"] == "vscode-debug" and [r["type"] for r in other.requests][-2:] == ["break", "continue"]
@@ -271,7 +272,7 @@ def test_a_recording_of_another_run_is_refused_before_it_is_moved(no_sessions: P
         other = {"meta": {**HEAD["meta"], "stepCount": 507, "argv": ["--fast"]}}
         out = move_to(STOP, "say", "vscode", closed_port(), None, other)
         assert (out["surface"], out["moved"], out["available"]) == ("chat", False, False)
-        assert out["note"].startswith("the VS Code recording on demo.py is another run: 40 steps, the review's head run has 507 (other arguments or cwd, a changed file, library code recorded, or the editor's step cap), so its step numbers are not the review's; start one as the review recorded it: pyokka debug %s --record --cwd %s --args --fast (MCP: pyokka_debug" % (FILE, WORKSPACE))
+        assert out["note"].startswith("the VS Code recording on demo.py is another run: 40 steps, the review's head run has 507 (other arguments or cwd, a changed file, library code recorded, or the editor's step cap), so its step numbers are not the review's; record the review's run instead: %s" % VIEW_VSCODE)
         assert out["note"].endswith("then stop again with the same n") and not [r for r in bridge.requests if r["type"] == "step"]
         # auto falls to chat the same way, so the stop prints there and next: says what starts the right run
         out = move_to(STOP, "say", "auto", closed_port(), None, other)
@@ -293,7 +294,7 @@ def test_a_review_of_one_test_probes_no_session_and_no_page(no_sessions: Path):
     try:
         write_descriptor(no_sessions, "run", bridge.descriptor())
         out = move_to(STOP, "say", "auto", page.port, None, test_head)
-        assert out == {"surface": "chat", "moved": False, "note": "nothing to move: a review of one test (demo.py::test_x) has no recording session in VS Code and no page: pyokka debug and pyokka web run the test file as a program, another run than the test's (its imports and definitions, not the test), so its stops print in the conversation"}
+        assert (out["surface"], out["moved"]) == ("chat", False) and "available" not in out and out["note"].startswith("nothing to move: a review of one test (demo.py::test_x) stays in chat: no VS Code session and no page can show it")
         for asked in ("vscode", "page"):
             out = move_to(STOP, "say", asked, page.port, None, test_head)
             assert (out["surface"], out["moved"], out["available"]) == ("chat", False, False) and "a review of one test" in out["note"]
@@ -302,16 +303,16 @@ def test_a_review_of_one_test_probes_no_session_and_no_page(no_sessions: Path):
         assert move_to(STOP, "say", "chat", page.port, None, test_head) == {"surface": "chat", "moved": False, "note": "nothing to move"}
         vs, pg = start_hints_of(test_head)
         assert vs == pg and vs.startswith("a review of one test (demo.py::test_x)") and "--record" not in vs
-        assert start_hints_of({"meta": {**HEAD["meta"], "argv": ["-v"]}})[0].startswith("pyokka debug %s --record --cwd %s --args -v (MCP:" % (FILE, WORKSPACE))
+        assert start_hints_of({"meta": {**HEAD["meta"], "argv": ["-v"]}})[0].startswith(VIEW_VSCODE + " records the entry in VS Code as the review's run")
     finally:
         bridge.close()
         page.close()
     out = move_to(STOP, "say", "auto", closed_port(), None, HEAD)
     assert (out["surface"], out["moved"]) == ("chat", False)
     assert out["note"].startswith("nothing to move: no page on 127.0.0.1:") and out["note"].endswith(
-        "or pyokka web %s --cwd %s (MCP: pyokka_page {\"action\": \"open\", \"file\": \"%s\", \"cwd\": \"%s\"}), then open its URL in one browser tab)" % (FILE, WORKSPACE, FILE, WORKSPACE)) and "no VS Code session on demo.py; the person saw it only in chat (start a view where the person is: pyokka debug %s --record --cwd %s (MCP: pyokka_debug" % (FILE, WORKSPACE) in out["note"]
+        "or %s serves the page; have the person open its URL in one browser tab)" % VIEW_PAGE) and "no VS Code session on demo.py; the person saw it only in chat (start a view where the person is: %s records the entry" % VIEW_VSCODE in out["note"]
     out = move_to(STOP, "say", "vscode", closed_port(), None, HEAD)
-    assert out["surface"] == "chat" and out["moved"] is False and out["available"] is False and out["note"].startswith("no live VS Code session on demo.py; start one on the entry: pyokka debug %s --record --cwd %s (MCP: pyokka_debug {\"action\": \"start\", \"file\": \"%s\", \"record\": true, \"cwd\": \"%s\"})" % (FILE, WORKSPACE, FILE, WORKSPACE)) and out["note"].endswith("then stop again with the same n")
+    assert out["surface"] == "chat" and out["moved"] is False and out["available"] is False and out["note"].startswith("no live VS Code session on demo.py; open the review's: %s records the entry" % VIEW_VSCODE) and out["note"].endswith("then stop again with the same n")
     out = move_to(STOP, "say", "vscode", closed_port(), "other.py", HEAD)
-    assert out["surface"] == "chat" and out["moved"] is False and out["available"] is False and out["note"].startswith("no live VS Code session matches other.py; start one on the entry: pyokka debug %s --record --cwd %s (MCP: pyokka_debug {\"action\": \"start\", \"file\": \"%s\", \"record\": true, \"cwd\": \"%s\"})" % (FILE, WORKSPACE, FILE, WORKSPACE)) and out["note"].endswith("then stop again with the same n")
+    assert out["surface"] == "chat" and out["moved"] is False and out["available"] is False and out["note"].startswith("no live VS Code session matches other.py; open the review's: %s records the entry" % VIEW_VSCODE) and out["note"].endswith("then stop again with the same n")
     assert move_to(STOP, "say", "tv", closed_port(), None, HEAD)["note"].startswith("unknown surface 'tv'")

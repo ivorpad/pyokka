@@ -55,10 +55,11 @@ pyokka_history {run, out, var: ["total"]} writes code-history data; pyokka_narra
 pyokka_debug {action: "status", wait_seconds: 60} waits for the person to hit a breakpoint or step in VS Code, then prints the state.
 To teach in a browser: pyokka_page {action: "open", file} returns a URL for the person to open in one tab; then breakpoint, debug {op: "start"}, say for narration bubbles, wait_pause for their next step; close stops a page this server started.
 At a page's pause, pyokka_scratchpad {op: "open"} copies the paused function and its values into a separate python -I (network denied on macOS) and runs it; experiment runs your own code; save, list, history, load keep named versions; say puts a bubble under a line of it for the person watching.
-pyokka_review {action: "start", base: REF, repo} reviews a change as a guided debug session: it records base and head, plans the stops, and every answer ends with next:, the action to take; prompts/get review is the method.
+pyokka_review {action: "start", base: REF, repo} reviews a change as a guided debug session: it plans a breakpoint per changed function and starts the entry under the debugger in VS Code (full: true records base and head and plans from the comparison instead), stop --say records each pause, and every answer ends with next:, the action to take; prompts/get review is the method.
 The text results are the form to read; json: true gives the raw shape."""
 
 
+from .mcp_spill import spill
 from .mcp_tools import DEBUG_ACTIONS, DEBUG_COMMAND, MAP_ACTIONS, MOVES, VALUE_ACTIONS, tool_definitions
 
 
@@ -210,6 +211,7 @@ def words_value(a: dict) -> list[str]:
         return words + ["--", *pos]
     if action == "eval":
         _opt(words, a, "frame", "--frame")
+        _opt(words, a, "text_len", "--text-len")
         return words + ["--", *pos, str(_need(a, "expression", "eval", '{"action": "eval", "run": "run.json", "expression": "len(scores)"}'))]
     if action == "expand":
         for seg in a.get("path") or []:
@@ -257,8 +259,10 @@ def words_debug(a: dict) -> list[str]:
         _opt(words, a, "until", "--until")
         _opt(words, a, "to", "--to")
         _opt(words, a, "no_wait", "--no-wait")
+        _opt(words, a, "whole_block", "--scope")
     if action == "pause":
         _opt(words, a, "no_wait", "--no-wait")
+        _opt(words, a, "whole_block", "--scope")
     if action == "break":
         _opt(words, a, "when", "--when")
         _opt(words, a, "on_exception", "--on-exception")
@@ -285,6 +289,7 @@ def words_debug(a: dict) -> list[str]:
             raise ToolError("names must be a list of variable names", 'e.g. {"action": "locals", "names": ["total", "items"]}')
         for n in names or []:
             words.append("--name=%s" % n)
+        _opt(words, a, "text_len", "--text-len")
     if action == "exec":
         _opt(words, a, "frame", "--frame")
         return words + ["--", str(_need(a, "source", "exec", '{"action": "exec", "source": "rank = 3"}'))]
@@ -485,8 +490,11 @@ TOOLS: dict[str, Callable[[dict], list[str]]] = {
 
 
 def call_tool(name: str, arguments: dict) -> dict:
-    """A ``tools/call`` result: the command's text, ``isError`` when it failed."""
+    """A ``tools/call`` result: the command's text, ``isError`` when it failed; a text over the limit goes to a file and
+    the result keeps its first and last lines and the path (``mcp_spill.py``)."""
     try:
+        # the branches that answer JSON: the JSON tools, the page's two, and `json: true` on any other but pyokka_run
+        as_json = name in (*JSON_TOOLS, "pyokka_page", "pyokka_scratchpad") or (bool(arguments.get("json")) and name != "pyokka_run")
         if name == "pyokka_run":
             text, is_error = call_run(arguments)
         elif name == "pyokka_debug" and arguments.get("action") == "status":
@@ -512,13 +520,13 @@ def call_tool(name: str, arguments: dict) -> dict:
         else:
             raise ToolError("unknown tool %s" % name, "tools: pyokka_run, pyokka_page, pyokka_scratchpad, pyokka_review, " + ", ".join([*TOOLS, *JSON_TOOLS]))
     except (ToolError, AgentError) as exc:
-        text, is_error = "error: %s%s" % (exc.message, "\n" + exc.hint if exc.hint else ""), True
+        text, is_error, as_json = "error: %s%s" % (exc.message, "\n" + exc.hint if exc.hint else ""), True, False
     except (TypeError, ValueError) as exc:  # an argument of the wrong type: int("abc")
-        text, is_error = "error: bad argument: %s" % exc, True
+        text, is_error, as_json = "error: bad argument: %s" % exc, True, False
     except Exception as exc:  # never take the server down with one call
         traceback.print_exc(file=sys.stderr)
-        text, is_error = "error: %s: %s (a bug in pyokka; the traceback is in the server's log)" % (type(exc).__name__, exc), True
-    return {"content": [{"type": "text", "text": text}], "isError": is_error}
+        text, is_error, as_json = "error: %s: %s (a bug in pyokka; the traceback is in the server's log)" % (type(exc).__name__, exc), True, False
+    return {"content": [{"type": "text", "text": spill(text, name, arguments, as_json)}], "isError": is_error}
 
 
 # -- JSON-RPC over stdio ------------------------------------------------------------------------

@@ -149,7 +149,7 @@ def readiness_note(vscode: dict) -> str:
     if vscode.get("agentAccess") is not True:
         state = "off" if vscode.get("agentAccess") is False else "not set (default off)"
         return ('No live session, and pyokka.agentAccess is %s in VS Code\'s user settings: set "pyokka.agentAccess": true, then %s.' % (state, START_CALL)) + closed
-    return ("No live session: VS Code is not running or has no Pyokka session open; %s." % START_CALL) + closed
+    return ("No live session: VS Code is not running or has no Pyokka session open; %s. A review opens its own view (pyokka_review start, or view later) and needs no session from here." % START_CALL) + closed
 
 
 def missing_sources(run: SavedRun) -> list[str]:

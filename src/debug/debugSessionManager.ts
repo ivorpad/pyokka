@@ -72,7 +72,10 @@ export class DebugSessionManager extends EventEmitter<DebugSessionManagerEvents>
       this.report();
       return existing;
     }
-    const workspaceRoot = folderFor(launch) ?? '';
+    // the project: the folder that holds the launch, else its cwd. The window's first folder, unrelated to the
+    // launch, made nothing project code on 2026-10-19: an agent's `-m pytest` on a repository that was not an open
+    // folder ran to its end with no pause. The runtime makes the same choice when the host names no workspace.
+    const workspaceRoot = folderFor(launch) ?? launch.cwd;
     const ds = new DebugSession({ id: `debug-${++this.counter}`, launch, runtimeDir: this.runtimeDir, workspaceRoot });
     this.sessions.set(key, ds);
     ds.on('changed', () => this.report());
@@ -137,6 +140,5 @@ function folderFor(launch: LaunchConfig): string | undefined {
     if (folder) return folder.uri.fsPath;
   }
   const byCwd = vscode.workspace.getWorkspaceFolder(vscode.Uri.file(launch.cwd));
-  if (byCwd) return byCwd.uri.fsPath;
-  return (vscode.workspace.workspaceFolders ?? [])[0]?.uri.fsPath;
+  return byCwd?.uri.fsPath;
 }

@@ -21,7 +21,7 @@ from .graph import render_graph
 from .http import render_http
 from .origin.text import render_origin
 from .live import stop_reason
-from .render_debug import exec_error, is_debug_reply, recording_start_lines, recording_suffix, render_debug_exec, render_debug_state, render_debug_stop, render_record
+from .render_debug import cut_hint, exec_error, is_debug_reply, local_lines, recording_start_lines, recording_suffix, render_debug_exec, render_debug_state, render_debug_stop, render_record, unseen_run_note, value_line
 from .recording import cut_line
 
 MOVE_LABEL = {"into": "into", "over": "over", "out": "out", "back": "back", "backOver": "back-over", "backOut": "back-out"}
@@ -105,6 +105,7 @@ def render(command: str, result: dict, source: Any, args: Any) -> str:
         "verify": _render_workflow,
     }[command]
     lines.extend(fn(result, source, args))
+    lines.extend(cut_hint(command, result))  # one line at the end when a live value was cut
     return "\n".join(redact(l) for l in lines) + "\n"
 
 
@@ -188,8 +189,9 @@ def _paused_line(paused: dict, source: Any, loc: dict | None = None) -> str:
     return "paused at %s (%s%s)" % (_loc(source, file, line), stop_reason(paused), recording_suffix(paused))
 
 
-def _locals_lines(variables: list, indent: str = "  ") -> list[str]:
-    return ["%s%s = %s" % (indent, v.get("name"), _one_line(v.get("text"))) for v in variables if isinstance(v, dict)]
+def _locals_lines(variables: list, indent: str = "  ", text_len: int | None = None) -> list[str]:
+    """A live pause's variables as the runtime cut them, with the fields of a cut one (``render_debug.local_lines``)."""
+    return [line for v in variables if isinstance(v, dict) for line in local_lines(v, indent, text_len)]
 
 
 def _output_lines(output: Any, scope: bool = False) -> list[str]:
@@ -212,7 +214,9 @@ def render_stop(result: dict, source: Any, args: Any) -> list[str]:
     fin = result.get("finished")
     if isinstance(fin, dict):
         # `stepped` says how many of a `--count N` run's stops happened before the program ended
-        return render_debug_stop(result, source, args) if result.get("stepped") is not None or fin.get("error") else ["finished: exit %s, %s steps" % (fin.get("exitCode"), fin.get("stepCount"))]
+        if result.get("stepped") is not None or fin.get("error"):
+            return render_debug_stop(result, source, args)
+        return ["finished: exit %s, %s steps" % (fin.get("exitCode"), fin.get("stepCount")), *unseen_run_note(args)]
     if result.get("resumed") or result.get("requested") or is_debug_reply(result):
         return render_debug_stop(result, source, args)
     return render_context(result, source, args)
@@ -369,7 +373,7 @@ def render_locals(result: dict, source: Any, args: Any) -> list[str]:
         return ["(no variables in this frame)"]
     if getattr(args, "names_only", False):
         return ["%s: %s" % (v.get("name"), v.get("type") or "unknown") for v in variables]
-    return _locals_lines(variables, "")
+    return _locals_lines(variables, "", getattr(args, "text_len", None))
 
 
 def render_values(result: dict, source: Any, args: Any) -> list[str]:
@@ -501,7 +505,7 @@ def render_why(result: dict, source: Any, args: Any) -> list[str]:
 
 
 def render_eval(result: dict, source: Any, args: Any) -> list[str]:
-    return ["%s = %s" % (result["expression"], _one_line(result.get("text"), 2000))]
+    return ["%s = %s" % (result["expression"], value_line(result.get("text"), getattr(args, "text_len", None)))]  # as the runtime cut it
 
 
 def _node_lines(node: dict, indent: str = "  ") -> list[str]:

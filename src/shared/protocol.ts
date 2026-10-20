@@ -179,7 +179,8 @@ export type HostRequest =
   | { type: 'hello'; id: number; version: string }
   | RunRequest
   | { type: 'expand'; id: number; runId: string; valueId: string; queryPath: string[] }
-  | { type: 'evaluate'; id: number; runId: string; expression: string; frameId?: number }
+  /** `limits.textLen`: an agent's longer text at a pause (dbgtext.py); the editor sends none and keeps 200 */
+  | { type: 'evaluate'; id: number; runId: string; expression: string; frameId?: number; limits?: { textLen?: number } }
   /** run a statement in the paused frame (docs/design/debugger-product.md, 2.7); paused runs only */
   | { type: 'exec'; id: number; runId: string; source: string; frameId?: number }
   | { type: 'complete'; id: number; runId: string; expression: string; limit?: number }

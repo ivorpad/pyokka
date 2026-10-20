@@ -33,7 +33,9 @@ summary: {...}}`.
 
 ### `start --base REF [--repo DIR] [--entry FILE | --test NODEID] [--pr FILE] [--python P] [--dir DIR] [-- ARGS]`
 
-1. Resolve REF in the repo (default cwd); refuse a dirty worktree only if `--entry` is uncommitted.
+1. Resolve REF in the repo (default cwd). Head is the working tree as it stands, uncommitted
+   changes and the entry included (until 2026-10-19 an uncommitted entry was refused; nothing
+   needed it committed: head records the working tree, `fix` copies it, `tree_hash` pins it).
    Materialise the base tree in `DIR/base`.
 2. Record head: the entry file (default `main.py` at the repo root when it exists, else required) through
    the recorder as `pyokka run ENTRY --cwd REPO --save DIR/head.json` would; `--test` runs one test.
@@ -229,15 +231,159 @@ Departures from the contract above, each with its reason, from the implementatio
   --stop-on-entry` without a recording; the next `stop` moves the Time Machine with one). The first
   VS Code acceptance run showed the need: told "no live VS Code session; nothing to move", the agent
   reviewed in chat while the person watched an empty editor.
-- A hint names only a command that reproduces the review's run. A review of one `--test` gets no
-  start command at all: `pyokka debug FILE --record` and `pyokka web FILE` run the test file as a
-  program (its imports and definitions, not the test), so `start` says it stays in chat whatever
-  surface was asked, `stop` and `ask` probe no session or page for it, and an asked `vscode` or
-  `page` is refused with `next:` the same stop in chat. The entry hints carry the review's `--args`.
-  A recording session on the entry whose step count differs from head's is refused before it is
-  moved: the review's step numbers belong to another run. A field review (2026-10-16) showed the
-  need: on a test review the refusal's `next:` named `pyokka debug tests/test_x.py
-  --record`, the agent recorded the file (217 steps against the review's 507), and the stops then
-  moved that Time Machine until one fell out of range. The agent's part was to follow a `next:`
-  without checking the run it produced against head.json; the tool's part was to hand it a command
-  that could not reproduce the review's run and to promise VS Code for every review.
+- A hint names only a review command. A review of one `--test` gets no start command at all: a
+  VS Code session or a page runs a file as a program and not a test, and a debug session of the test
+  is another run, so `start` says it stays in chat whatever surface was asked (and to tell the person
+  before the first stop), `stop` and `ask` probe no session or page for it, and an asked `vscode` or
+  `page` is refused with `next:` the same stop in chat. For an entry, `review view vscode|page|chat`
+  opens the view after `start`, and every hint that used to name `pyokka debug ENTRY --record` or
+  `pyokka web ENTRY` names it; the `pyokka_debug` description and the `pyokka_session` notes say the
+  review opens and moves its view itself. A recording session on the entry whose step count differs
+  from head's is refused before it is moved: the review's step numbers belong to another run. A test
+  file as `--entry` is refused with the tests it defines, and a run that recorded no statement (a test
+  runner that is not installed) is refused with the runner's words instead of compared. Two field
+  reviews showed the need. 2026-10-16: on a test review the refusal's `next:` named `pyokka debug
+  tests/test_x.py --record`, the agent recorded the file (217 steps against the review's 507), and the
+  stops moved that Time Machine until one fell out of range. 2026-10-17, on 0.5.3: the agent read "a
+  review of one test stays in chat" and started a debug session of the test to get the VS Code view
+  the person had asked for; `pyokka_debug start` with `test` and no `file` then answered with
+  yesterday's finished recording. The agent's part, both times, was to work around a limit the person
+  should have been told about; the tool's part was to name the debugger as the way to a view, to
+  accept a start with nothing to start, and to compare two empty runs when the test runner was
+  missing.
+- Measured with Codex (gpt-6.1-sol, medium) as the agent on 2026-10-17, against a VS Code that is
+  installed and never answers, with the field prompt "review in vscode HEAD against its prev commit"
+  on a tests-only copy of the shop fixture: on the 0.5.3 text, 1 run in 3 started a debug session of
+  the test (two calls) and 1 reviewed a test file as a program through `--entry`; on the new text, 0
+  of 8 called the debugger, 0 reviewed the file as a program, every final message told the person the
+  review stays in chat or asked them to choose, and 2 of 8 showed a stop in chat and waited (3 of
+  the 8 ran before the review interpreter had pytest, so their test reviews recorded nothing and the
+  agents stopped short; the debugger count is unaffected, the stop count is partly that). On the
+  shop fixture with `main.py`, 0 of 3 before and 0 of 3 after started a debug session; all waited for
+  the person to accept the VS Code prompt. The control, "pause main.py at subtotal and show me the
+  frame", used `pyokka_debug start` in 3 of 3. A plain "review HEAD against HEAD^" asked where to
+  watch in 2 of 2, and one went on to a chat review that found the planted `subtotal` bug with a
+  reproduction. Runs took 30 to 90 s and 150k to 550k tokens each. The harness: a scratch HOME per
+  run with Codex's auth linked, Pyokka as a native MCP server with its tools approved by config, the
+  skill copied with implicit invocation allowed (`codex exec` has no `$pyokka` mention), a `code`
+  shim that lists the extension and answers nothing else, a venv with pytest as the review
+  interpreter, and a scorer over the `--json` events; its scripts were not kept in the repository.
+
+## Before start: understand, ask, plan (contract, 2026-10-19)
+
+The plan `start` builds is an execution diff of one entry: a stop is a head step where one run of
+head did something anomalous against one run of base, so the plan is as wide as that run's
+footprint. A repository without `main.py` has no program both trees run, which leaves one test as
+the only runnable unit, and a changed file the test never imports appears in neither the stops nor
+the unreached list (the coverage report lists the files the recording loaded); it survives only as
+an edge candidate. On a range of many commits or many files that is omission with no trace of it.
+Head is always `HEAD`, so a range A..B needs B checked out. A field review on 2026-10-19 also met
+the uncommitted-entry refusal (removed the same day) on in-progress work. The person's statement
+of the flow they want: understand the change, ask them what it is for, plan over the whole change,
+then go through it with Pyokka in one session or several, their choice. The skill text carries
+the first three today; this section is the contract for the tool's part. There is no size
+threshold: every review plans, and a small change is a one-item plan and one session.
+
+### The sequence
+
+1. Understand (the agent, no tool): `git diff --stat BASE..HEAD`, `git log --format=%s BASE..HEAD`,
+   then the hunks; one paragraph of what the change does, by area.
+2. Ask (the agent, the harness's question tool): one call, four questions at most, options drawn
+   from the diff. What the change is for and which outcome matters most; a PR text that answers it
+   is confirmed in one line, not asked. Which areas first, or left out, the areas of step 1 as the
+   options. Where to watch: VS Code, the page or chat. Whether a finding ends the review or a fix in the repository does. Claude Code has
+   `AskUserQuestion` (up to four questions, two to four options each); a harness without a
+   question tool gets the questions in the conversation and the turn ends there.
+3. Plan (`plan`, below): the items and the sessions, from the source diff and the answers. The
+   plan is shown with its proposed split, and the person's word on one session or several, and
+   how long they have, comes before the first `start`: the turn ends a second time.
+4. Sessions (`start --session K`): one recording pair per session through its exerciser, stops
+   attached to items, findings and tries shared across sessions.
+5. `state` across sessions, `report` over all of them.
+
+### `plan --base REF [--head REF] [--repo DIR] [--pr FILE] [--dir DIR]`
+
+Source diff only, no recording. `--head REF` (new, also on `start`) names a head other than the
+working tree; the tool materialises it as it does base, into `DIR/head/`, and the review then
+describes that tree and not the checkout. Items are the changed functions of `git diff BASE HEAD`,
+grouped by file and by area (the first path component below the repository root), each
+`{n, file, function, lines: [[lo, hi], ...], size, edges: [E...], exercisers: [...], rank, session}`.
+An exerciser is `{kind: test | program | none, entry, test}`: a test file whose source imports the
+item's module or names the function (one `FILE::NAME` per test that names the function, else the
+file's first test), `main.py` when it imports the module, else none; an item with none is read and
+`try` only, its edges the agenda. Rank: the person's priorities first (the areas they named), then
+an except path, a new parameter, a comparison boundary, size. Items that share an exerciser form a
+session; an item with none joins the session of its area. `plan` writes `review.json` with `phase:
+plan`, `plan.items` and `plan.sessions: [{k, exerciser, items: [n...], status}]`, and `plan.md`,
+the items by session, one line each, for the person; `_prepare` keeps a directory that holds a
+plan. Output: the header, the paragraph of step 1, the sessions with their items, `next: wait for
+the person; then review start --session 1`.
+
+### `start --session K`, and `start` without a plan
+
+`start --session K` records base and head through session K's exerciser into
+`DIR/sessions/K/base.json` and `head.json`, compares them as today, and attaches each stop to the
+item whose file and lines hold it; a stop outside every item is listed under "outside the plan".
+An item of the session with no stop keeps its edges as the agenda. `tries/`, `findings` and
+`fixed/` stay at the root, shared. `start` without `--session` on a planned review refuses and
+lists the sessions. `start` on a directory with no plan behaves as today: one session and an
+implied plan with one item per changed function, so a small change costs no extra call. A second
+`start --session K` re-records K and keeps every other session; today a second `start` on the
+same base in the same directory removes the first review's recordings, tries and findings
+(`_prepare`).
+
+### `state`, `report`, the tree hash
+
+`state` lists the sessions with their items done (a stop shown, an edge tried, or skipped with a
+reason) and remaining. `report` covers every session: what we looked at together, in order across
+sessions, then the findings, then per session the items not looked at. The tree hash is per
+session: a fix in the repository between sessions is allowed, the next `start --session` hashes
+the tree it records, and the report names the tree each session ran against. `report` refuses
+only a finding without a reproduction or one that no longer reproduces; "the tree changed since
+start" becomes a line of the report, not a refusal.
+
+### Until it is built
+
+The skill text says: the plan lives in your message and your scratch directory, never in the
+repository or the review directory (a directory with content and no `review.json` is refused by
+`start`); one `--dir` per session, since a second `start` on the same base in the same directory
+removes the first session's work; `--head` has no equivalent, so a range A..B is reviewed with B
+checked out.
+
+### As built the same day: the debugger runs the review
+
+The person's word on 2026-10-19, after the morning's contract: "pyokka review with debug mode is much
+better, meaning not full exec", then "we wanted to use pyokka debug as part of it; I don't know why we
+have all this separation", and "pyokka review is just a workflow to help me debug or review code". The
+separation of 0.5.3 ("a session you start with the debugger is another run, which the review does not
+move") protected the recorded review from the debugger; it was never a decision that the debugger
+should stay out of reviewing. So the default moved, and the plan phase above stays as written with
+one change of meaning for `start`:
+
+- `review start --base REF` (`mode: debugger`) plans from the diff alone, one item per changed
+  function (`debugger.plan_items`: hunks grouped by function, a breakpoint at the first statement of
+  the first span, a changed `def` header breaking at the body's first statement), and starts the entry
+  under the debugger in VS Code through `debug_start.open_debug_session`, stopped on entry, a
+  breakpoint per item, the debugger's recording on for a program (a test runs through its runner as a
+  module launch, which has no recording). Nothing of base is run or materialised. The page and chat
+  need the recording of both trees, so `--surface page|chat` implies `--full`, and `start` without a
+  reachable VS Code refuses and names `--full`.
+- The debugger is driven as always, through `pyokka_debug` and the `--live` verbs; the review does not
+  wrap `continue`, `break` or `eval`. `review stop [N] --say TEXT` reads the pause the session is at
+  (`state`), matches it to an item (a pause outside every item, an uncaught exception or the person's
+  own breakpoint, becomes an item of kind `pause`), checks the text names a value of the frame's
+  locals, records it with those values, and hands the floor to the person; the next `stop` needs
+  `--go-on`. `ask` and `look` are refused with the debugger's own commands. `skip` removes the
+  breakpoint. `view vscode` starts the program again with the remaining items' breakpoints when the
+  run ended or the session is gone; `view page|chat` is refused with `--full`.
+- `finding add` takes the pause recorded within three lines of the line (or in the same function) as
+  the place, with the values read there; `--step N` is a step of the debugger's recording; a changed
+  line the run never paused at, once the program ended, takes a try as its reproduction, as an
+  unreached line does. `report --page` and `--tour` save the session's recording as `head.json` first
+  and are refused when there is none. `fix` compares against that recording when it exists.
+- The first build of the day wrapped `continue`, `break` and `eval` inside `review stop`, `ask` and
+  `look` (a two-step stop that continued, then explained); the person saw the duplication and it was
+  cut the same afternoon. `--full` keeps the recorded review of 0.5.x unchanged, with its tests.
+- Not built: `plan` as an action, `start --session K`, `--head REF`, the per-session tree hash, an
+  aggregated `report`. The 0.5.3 rule that the review does not move a debugger session stays true of
+  the recorded review only.

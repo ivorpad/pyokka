@@ -19,6 +19,7 @@ from pyokka_runtime.agent.review import surfaces as real_surfaces
 from pyokka_runtime.agent.review import tool as review_tool
 from pyokka_runtime.agent.review import view as review_view
 from pyokka_runtime.agent.review.state import ACTIONS, Refusal, Review
+from pyokka_runtime.agent.review.view import VIEW_PAGE, VIEW_VSCODE
 from tests.test_review_actions import fakes, fresh, shop, started  # noqa: F401  pytest fixtures
 
 import pytest
@@ -42,7 +43,7 @@ def _never_launch_vscode():
         mp.setattr(debug_start, "open_debug_session", refuse)
         yield
 
-FIELDS = ("action", "base", "repo", "entry", "test", "pr", "python", "dir", "args", "n", "say", "go_on", "why", "surface", "port", "session", "line", "code", "expr", "inputs", "mocks", "edge", "title", "file", "severity", "step", "repro", "expect", "fix", "patch", "tests", "out", "page", "tour", "json")
+FIELDS = ("action", "base", "repo", "entry", "test", "full", "only", "pr", "python", "dir", "args", "n", "ns", "say", "go_on", "why", "surface", "port", "session", "line", "code", "expr", "inputs", "mocks", "edge", "title", "file", "severity", "step", "repro", "expect", "fix", "patch", "tests", "out", "page", "tour", "json")
 
 
 def cli(*args: object) -> tuple[int, str, str]:
@@ -62,9 +63,27 @@ def test_the_tool_is_listed_with_the_contract_fields():
     assert conditions[json.dumps({"enum": ["stop", "ask"]}, sort_keys=True)] == ["say"]
     assert conditions[json.dumps({"const": "finding"}, sort_keys=True)] == ["repro"]  # step is left out only for a line head never ran; the action checks it
     assert conditions[json.dumps({"const": "start"}, sort_keys=True)] == ["base"]
-    assert conditions[json.dumps({"const": "skip"}, sort_keys=True)] == ["n", "why"] and conditions[json.dumps({"const": "look"}, sort_keys=True)] == ["expr"]
+    assert conditions[json.dumps({"const": "skip"}, sort_keys=True)] == ["why"] and conditions[json.dumps({"const": "look"}, sort_keys=True)] == ["expr"]
+    skip_then = next(c["then"] for c in schema["allOf"] if c["if"]["properties"]["action"] == {"const": "skip"})
+    assert skip_then["anyOf"] == [{"required": ["n"]}, {"required": ["ns"]}]  # one number as n, several as ns
+    assert schema["properties"]["n"]["type"] == "integer" and schema["properties"]["ns"]["type"] == "array" and schema["properties"]["ns"]["items"] == {"type": "integer"}
+    assert schema["properties"]["only"]["type"] == "array" and schema["properties"]["only"]["items"] == {"type": "string"}
     assert "skip" in ACTIONS and "look" in ACTIONS and schema["properties"]["go_on"]["type"] == "boolean"
     assert "next:" in tool["description"] and tool["annotations"]["openWorldHint"] is True
+
+
+def test_the_tool_takes_ns_for_skip_and_refuses_only_on_a_recorded_review(started, tmp_path, fakes, monkeypatch):
+    r = fresh(started, tmp_path)
+    res = call_tool("pyokka_review", {"action": "skip", "ns": [2, 1, 2], "why": "they want the report", "dir": str(r.dir)})
+    lines = res["content"][0]["text"].rstrip("\n").split("\n")
+    assert res["isError"] is False and lines[1].startswith("skipped 2. type  shopkit/orders.py:30") and lines[2].startswith("skipped 1. raise  shopkit/pricing.py:12")
+    assert lines[3] == "why: they want the report" and lines[4] == "remaining: none; the agenda is done"
+    assert [s["n"] for s in Review.load(str(r.dir)).skipped] == [2, 1]
+    # a recorded review has no agenda to narrow: only is refused before anything is recorded
+    monkeypatch.setenv("PYOKKA_HOME", str(tmp_path / "home"))
+    res = call_tool("pyokka_review", {"action": "start", "base": r.base, "repo": str(r.repo), "dir": str(tmp_path / "other"), "only": ["shopkit"]})
+    text = res["content"][0]["text"]
+    assert res["isError"] is True and "refused: --only narrows the agenda of a review in the debugger" in text and not (tmp_path / "other").exists()
 
 
 def test_the_tool_answers_what_the_cli_prints(started, tmp_path, fakes):
@@ -120,7 +139,7 @@ def test_prompts_list_and_get(tmp_path, monkeypatch):
     assert [p["name"] for p in listed["result"]["prompts"]] == ["review"] and listed["result"]["prompts"][0]["arguments"] == []
     got = handle({"jsonrpc": "2.0", "id": 4, "method": "prompts/get", "params": {"name": "review"}})
     message = got["result"]["messages"][0]
-    assert message["role"] == "user" and message["content"]["type"] == "text" and 5 <= len(message["content"]["text"].strip().split("\n")) <= 60
+    assert message["role"] == "user" and message["content"]["type"] == "text" and 5 <= len(message["content"]["text"].strip().split("\n")) <= 80  # the method grew a plan paragraph on 2026-10-19
     assert handle({"jsonrpc": "2.0", "id": 5, "method": "prompts/get", "params": {"name": "other"}})["error"]["code"] == -32602
     assert handle({"jsonrpc": "2.0", "id": 6, "method": "resources/list"})["result"] == {"resources": []}
     # the skill's reference, first section only: the intro when there is one, else the first heading's section
@@ -152,8 +171,8 @@ def test_an_asked_view_with_nothing_answering_is_refused_and_the_stop_stays_unsh
     assert res["isError"] is True and "stops 0/2 shown" in text.split("\n")[0]
     assert "refused: surface vscode is not available, so nothing was shown: no live VS Code session on main.py" in text
     nxt = text.rstrip("\n").split("\n")[-1]
-    assert nxt.startswith("next: pyokka debug %s --record --cwd %s (MCP: pyokka_debug {\"action\": \"start\", \"file\": \"%s\", \"record\": true, \"cwd\": \"%s\"})" % (entry, r.repo, entry, r.repo))
-    assert "pyokka.agentAccess" in nxt and "the code command (" in nxt and nxt.endswith("then review stop 1 --say TEXT --surface vscode")
+    assert nxt == "next: %s; then review stop 1 --say TEXT --surface vscode" % VIEW_VSCODE, nxt
+    assert "pyokka_debug" not in nxt and "--record" not in nxt
     review = Review.load(str(r.dir))
     assert review.waiting is None and 1 in review.remaining() and not review.data["said"]
     # the page: refused the same way, and an ask leaves no trace
@@ -161,7 +180,7 @@ def test_an_asked_view_with_nothing_answering_is_refused_and_the_stop_stays_unsh
     res = call_tool("pyokka_review", {"action": "ask", "line": "shopkit/discounts.py:16", "say": "rate starts at 0.0", "surface": "page", "port": 4790, "dir": str(r.dir)})
     text = res["content"][0]["text"]
     assert res["isError"] is True and "refused: surface page is not available, so nothing was shown: no Pyokka page answers on 127.0.0.1:4790" in text
-    assert 'pyokka web %s --cwd %s (MCP: pyokka_page {"action": "open"' % (entry, r.repo) in text and text.rstrip("\n").endswith("then review ask shopkit/discounts.py:16 --say TEXT --surface page")
+    assert text.rstrip("\n").endswith("next: %s; then review ask shopkit/discounts.py:16 --say TEXT --surface page" % VIEW_PAGE) and "pyokka web" not in text
     assert not Review.load(str(r.dir)).asked
 
 
@@ -176,10 +195,10 @@ def test_a_view_that_answered_but_missed_the_stop_is_shown_and_auto_says_it_fell
     fakes.answer = None
     res = call_tool("pyokka_review", {"action": "stop", "n": 2, "say": "unit_price = '1,249.00'", "dir": str(r.dir), "go_on": True})
     nxt = res["content"][0]["text"].rstrip("\n").split("\n")[-1]
-    assert res["isError"] is False and "the person saw this stop only in chat" in nxt and "MCP: pyokka_debug" in nxt
+    assert res["isError"] is False and "the person saw this stop only in chat" in nxt and nxt.endswith("To show the next one in VS Code first run %s" % VIEW_VSCODE) and "pyokka_debug" not in nxt
     res = call_tool("pyokka_review", {"action": "ask", "line": "shopkit/discounts.py:16", "say": "rate starts at 0.0 and only a spend above a threshold raises it", "dir": str(r.dir)})
     nxt = res["content"][0]["text"].rstrip("\n").split("\n")[-1]
-    assert res["isError"] is False and nxt.startswith("next: wait for the person; they saw this only in chat") and "MCP: pyokka_debug" in nxt
+    assert res["isError"] is False and nxt.startswith("next: wait for the person; they saw this only in chat") and nxt.endswith(VIEW_VSCODE) and "pyokka_debug" not in nxt
     # surface chat is the agent's choice: next: stays plain
     r2 = fresh(started, tmp_path, "chat")
     res = call_tool("pyokka_review", {"action": "stop", "n": 1, "say": "the raise is at step %d" % step, "surface": "chat", "dir": str(r2.dir)})
@@ -205,7 +224,7 @@ def test_a_review_of_one_test_is_never_told_to_record_the_file(started, tmp_path
     fakes.answer = NO_SESSION
     res = call_tool("pyokka_review", {"action": "stop", "n": 1, "say": "the raise is at step %d" % step, "surface": "vscode", "dir": str(r.dir)})
     text = res["content"][0]["text"]
-    assert res["isError"] is True and "refused: surface vscode is not available, so nothing was shown: a review of one test (tests/test_pricing.py::Pricing.test_subtotal) has no recording session in VS Code and no page" in text
+    assert res["isError"] is True and "refused: surface vscode is not available, so nothing was shown: a review of one test (tests/test_pricing.py::Pricing.test_subtotal) stays in chat: no VS Code session and no page can show it" in text
     assert "a review of one test stays in chat: pass surface chat (or auto)" in text and "--record" not in text and "--cwd" not in text and "pyokka_debug" not in text
     assert text.rstrip("\n").endswith("next: review stop 1 --say TEXT --surface chat") and not Review.load(str(r.dir)).data["said"]
     res = call_tool("pyokka_review", {"action": "ask", "line": "shopkit/discounts.py:16", "say": "rate starts at 0.0", "surface": "page", "dir": str(r.dir)})
@@ -222,19 +241,19 @@ def test_a_review_of_one_test_is_never_told_to_record_the_file(started, tmp_path
     nxt = res["content"][0]["text"].rstrip("\n").split("\n")[-1]
     assert nxt == "next: wait for the person; they saw this only in chat, so answer in your message; a review of one test stays in chat"
     tool = next(t for t in tool_definitions() if t["name"] == "pyokka_review")
-    assert "a review of one test has neither view and stays in chat" in tool["description"]
+    assert "a review of one test stays in chat" in tool["description"]
     assert "A review of one test has neither view" in tool["inputSchema"]["properties"]["surface"]["description"] and "stays in chat" in tool["inputSchema"]["properties"]["test"]["description"]
 
 
 def test_the_notes_and_the_start_lines_name_both_forms():
     head = {"meta": {"file": "/w/demo.py", "workspaceRoot": "/w"}}
     note = real_surfaces.no_session_note(None, head)
-    assert note.startswith('no live VS Code session on demo.py; start one on the entry: pyokka debug /w/demo.py --record --cwd /w (MCP: pyokka_debug {"action": "start", "file": "/w/demo.py", "record": true, "cwd": "/w"})')
-    assert "pyokka.agentAccess" in note and note.endswith("then stop again with the same n")
-    vs, page = review_view.start_hints("/w/demo.py", "/w")
-    assert page == 'pyokka web /w/demo.py --cwd /w (MCP: pyokka_page {"action": "open", "file": "/w/demo.py", "cwd": "/w"}), then open its URL in one browser tab'
+    assert note.startswith("no live VS Code session on demo.py; open the review's: %s records the entry in VS Code as the review's run" % VIEW_VSCODE)
+    assert "pyokka.agentAccess" in note and note.endswith("then stop again with the same n") and "pyokka debug" not in note
+    vs, page = review_view.start_hints()
+    assert page == "%s serves the page; have the person open its URL in one browser tab" % VIEW_PAGE
     state, lines = review_view.open_view({"repo": "/w", "entry": "demo.py"}, {"surface": "chat"})
-    assert state == {"kind": "chat"} and "pyokka debug /w/demo.py --record --cwd /w (MCP: pyokka_debug" in lines[0] and "pyokka web /w/demo.py --cwd /w (MCP: pyokka_page" in lines[0]
+    assert state == {"kind": "chat"} and VIEW_VSCODE in lines[0] and VIEW_PAGE in lines[0] and "pyokka debug" not in lines[0] and "pyokka web" not in lines[0]
     tool = next(t for t in tool_definitions() if t["name"] == "pyokka_review")
     assert "refused when nothing answers" in tool["inputSchema"]["properties"]["surface"]["description"] and "pyokka.agentAccess" in tool["inputSchema"]["properties"]["surface"]["description"]
     assert "surface vscode or page with nothing answering is refused" in tool["description"]
@@ -280,5 +299,50 @@ def test_start_with_surface_vscode_and_no_vscode_to_reach_is_refused_before_reco
     text = res["content"][0]["text"]
     assert res["isError"] is True and not called
     assert "refused: surface vscode needs VS Code: no live Pyokka session answers and the code command was not found" in text
-    assert "pyokka debug %s/main.py --record --cwd %s (MCP: pyokka_debug" % (shop.repo, shop.repo) in text and "pyokka.agentAccess" in text
+    assert VIEW_VSCODE in text and "pyokka.agentAccess" in text and "pyokka debug" not in text and "tell the person" in text
     assert text.rstrip("\n").endswith("next: review start --base REF --surface page, or --surface chat")
+
+
+# -- view: the review's own view, opened later -------------------------------------------------------------------------
+
+def test_view_opens_the_persons_view_after_start_and_the_person_fixes_what_vscode_lacks(started, tmp_path, fakes, monkeypatch):
+    from pyokka_runtime.agent import debug_start
+    from pyokka_runtime.agent.source import AgentError
+
+    r = fresh(started, tmp_path)
+    res = call_tool("pyokka_review", {"action": "view", "surface": "chat", "dir": str(r.dir)})
+    text = res["content"][0]["text"]
+    assert res["isError"] is False and "view: chat. Stops print in the conversation and move no editor or page" in text and VIEW_VSCODE in text and VIEW_PAGE in text
+    assert text.rstrip("\n").endswith("next: review stop 1 --say TEXT") and Review.load(str(r.dir)).data["view"] == {"kind": "chat"}
+    # VS Code asked and the editor does not answer: the line says what the person has to do, and names the review's own command, no other tool's
+    res = call_tool("pyokka_review", {"action": "view", "surface": "vscode", "dir": str(r.dir)})
+    text = res["content"][0]["text"]
+    assert res["isError"] is False and "view: chat. Could not open VS Code: tests never launch VS Code" in text
+    assert "tell the person what the message asks of them, then %s" % VIEW_VSCODE in text and "pyokka debug" not in text and "pyokka_debug" not in text
+    # no code command and no session: refused before anything opens
+    def missing():
+        raise AgentError("no code command")
+
+    monkeypatch.setattr(debug_start, "code_command", missing)
+    res = call_tool("pyokka_review", {"action": "view", "surface": "vscode", "dir": str(r.dir)})
+    text = res["content"][0]["text"]
+    assert res["isError"] is True and "refused: surface vscode needs VS Code: no live Pyokka session answers and the code command was not found" in text
+    assert "tell the person, and run this again once they have them" in text and text.rstrip("\n").endswith("next: review view --surface page, or the stops in chat")
+    # the page on a taken port: refused as start refuses it
+    with socket.socket() as taken:
+        taken.bind(("127.0.0.1", 0))
+        taken.listen(1)
+        port = taken.getsockname()[1]
+        res = call_tool("pyokka_review", {"action": "view", "surface": "page", "port": port, "dir": str(r.dir)})
+    text = res["content"][0]["text"]
+    assert res["isError"] is True and "refused: surface page needs a free port and %d is taken" % port in text
+    # a review of one test: chat whatever was asked, and the line says to tell the person first
+    data = json.loads((r.dir / "review.json").read_text())
+    data["test"] = "tests/test_pricing.py::Pricing.test_subtotal"
+    (r.dir / "review.json").write_text(json.dumps(data))
+    res = call_tool("pyokka_review", {"action": "view", "surface": "vscode", "dir": str(r.dir)})
+    text = res["content"][0]["text"]
+    assert res["isError"] is False and "view: chat. A review of one test (tests/test_pricing.py::Pricing.test_subtotal) stays in chat" in text
+    assert "Say so to the person before the first stop" in text and "pyokka debug" not in text
+    tool = next(t for t in tool_definitions() if t["name"] == "pyokka_review")
+    assert "view" in tool["inputSchema"]["properties"]["action"]["enum"] and "needs no pyokka_debug session" in tool["description"]

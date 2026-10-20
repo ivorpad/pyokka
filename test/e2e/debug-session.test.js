@@ -6,6 +6,7 @@
 // Target: test/e2e/fixtures/debug_target.py and fixtures/debug_pkg/, copied into the workspace.
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 const vscode = require('vscode');
 
@@ -234,6 +235,48 @@ describe('Pyokka Debugger: a debug session of its own', function () {
     } finally {
       await vscode.debug.removeBreakpoints(vscode.debug.breakpoints);
       await stopAll();
+    }
+  });
+
+  it('a module launch whose cwd is outside the workspace folder pauses in its package', async () => {
+    // an agent's URI start on a repository that is not an open folder: the project is the launch's cwd when no
+    // folder holds it. With the window's first folder as the root, nothing was project code and nothing paused
+    // (2026-10-19, `-m pytest` on a clone under /tmp).
+    const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'pk-outside-'));
+    const outsidePkg = path.join(outside, PKG_NAME);
+    fs.mkdirSync(outsidePkg, { recursive: true });
+    for (const name of ['__init__.py', 'server.py']) fs.writeFileSync(path.join(outsidePkg, name), fs.readFileSync(path.join(PKG, name), 'utf8'));
+    const serverFile = path.join(outsidePkg, 'server.py');
+    vscode.debug.addBreakpoints([new vscode.SourceBreakpoint(new vscode.Location(vscode.Uri.file(serverFile), new vscode.Position(PKG_LINE.label - 1, 0)), true)]);
+    await sleep(300);
+    try {
+      assert.ok(
+        await vscode.debug.startDebugging(undefined, {
+          type: 'pyokka',
+          request: 'launch',
+          name: 'module outside',
+          module: `${PKG_NAME}.server`,
+          args: ['--port', '8124'],
+          cwd: outside,
+          internalConsoleOptions: 'neverOpen',
+        }),
+        'the module launch was accepted',
+      );
+      const ds = await waitFor(() => api.debugSessions()[0], 'the debug session');
+      assert.equal(fs.realpathSync(ds.workspaceRoot), fs.realpathSync(outside), 'the project is the cwd when no folder holds the launch');
+      const paused = ds.debug.paused ?? (await ds.waitForPause(60_000));
+      assert.notEqual(paused, 'finished', 'the module paused at the breakpoint');
+      assert.equal(paused.line, PKG_LINE.label);
+      await vscode.debug.removeBreakpoints(vscode.debug.breakpoints);
+      const finished = new Promise((r) => ds.once('finished', r));
+      await ds.debugContinue();
+      const fin = await Promise.race([finished, sleep(30_000).then(() => undefined)]);
+      assert.ok(fin, 'the module ran to the end');
+      assert.equal(fin.exitCode, 0);
+    } finally {
+      await vscode.debug.removeBreakpoints(vscode.debug.breakpoints);
+      await stopAll();
+      fs.rmSync(outside, { recursive: true, force: true });
     }
   });
 
