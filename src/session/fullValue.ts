@@ -23,22 +23,41 @@ export interface Observation {
   text: string;
 }
 
+/** The first step after `step` that ran in scope `scopeId`; undefined when the scope ran no later step. */
+export function nextInScope(scopeOf: (step: number) => number, count: number, step: number, scopeId: number): number | undefined {
+  for (let j = step + 1; j < count; j++) if (scopeOf(j) === scopeId) return j;
+  return undefined;
+}
+
 /**
- * The snapshot behind a Variable pane row: the first locals entry at or after the row's step, in
- * the row's scope, that carries the name (with the row's text when it has one). The row's step is
- * the statement that made the change; the snapshot is the scope's next step.
+ * Where a change is read, and the snapshot it is compared with. The recorder keeps a change at
+ * the start of a step: the scope's next step (`next`) for a statement's own write, the row's own
+ * step for a loop target at an iteration or a parameter at a call's first step (`History.attribute`).
+ * A row from a snapshot carries that snapshot's text, which says which of the two it is. A row
+ * without one (the statement kept the same object, the recorder was past its cap, the text was
+ * masked for display) is read at `next`, the value after its statement. The snapshot at the start
+ * of the row's own step is taken only when the text says so, since it can hold the value from
+ * before the change.
  */
-export function observationOf(locals: readonly LocalsEntry[], change: { step: number; scopeId: number; name: string; text?: string }): Observation | undefined {
-  const find = (byText: boolean): Observation | undefined => {
+export function changeTarget(locals: readonly LocalsEntry[], change: { step: number; scopeId: number; name: string; text?: string }, next: number | undefined): { step: number; observation?: Observation } | undefined {
+  const snapshotAt = (step: number | undefined): Observation | undefined => {
+    if (step === undefined) return undefined;
     for (const entry of locals) {
-      if (entry.step < change.step || entry.scopeId !== change.scopeId) continue;
+      if (entry.step > step) break;
+      if (entry.step !== step || entry.scopeId !== change.scopeId) continue;
       const ch = entry.changes.find((c) => c.name === change.name);
-      if (ch && (!byText || ch.text === change.text)) return { step: entry.step, scopeId: entry.scopeId, text: ch.text };
+      if (ch) return { step, scopeId: entry.scopeId, text: ch.text };
     }
     return undefined;
   };
-  // the row's text picks its snapshot when the name changed more than once; a display copy of it may not match, so the name decides then
-  return (change.text !== undefined ? find(true) : undefined) ?? find(false);
+  const after = snapshotAt(next);
+  if (change.text !== undefined) {
+    if (after && after.text === change.text) return { step: after.step, observation: after };
+    const own = snapshotAt(change.step);
+    if (own && own.text === change.text) return { step: own.step, observation: own };
+  }
+  if (next === undefined) return undefined;
+  return after ? { step: next, observation: after } : { step: next };
 }
 
 /** The last snapshot of `name` at or before `step` in one of `scopes` (the step's own, then the module's). */

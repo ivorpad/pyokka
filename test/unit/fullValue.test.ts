@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import type { LogEvent, RunRequest } from '../../src/shared/protocol';
 import type { ReplayResultEvent } from '../../src/shared/replayProtocol';
-import { comparable, compareRecorded, expectPairs, interpret, lastObservation, observationOf, refusal, replayRequest } from '../../src/session/fullValue';
+import { changeTarget, comparable, compareRecorded, expectPairs, interpret, lastObservation, nextInScope, refusal, replayRequest } from '../../src/session/fullValue';
 
 const locals = [
   { step: 1, scopeId: 0, changes: [{ name: 'ORDERS_CSV', text: "'customer,tier…'…(+69 chars)" }] },
@@ -37,15 +37,29 @@ function request(overrides: Partial<Omit<RunRequest, 'type' | 'id'>> = {}, confi
 const ok = { midRun: false, httpCount: 0, running: false, paused: false, transport: false, step: 4, count: 81 };
 
 describe('where the recording kept a value', () => {
-  it('a row is the snapshot at or after its step, in its scope, with its text', () => {
-    // the row of the statement at step 8 that changed orders: the scope's next snapshot is step 9
-    expect(observationOf(locals, { step: 8, scopeId: 3, name: 'orders', text: "{'Ana': {'items': [{...}], 'tier': 'gold'}}" })).toEqual({ step: 9, scopeId: 3, text: "{'Ana': {'items': [{...}], 'tier': 'gold'}}" });
-    // another scope's snapshot never answers for it
-    expect(observationOf(locals, { step: 15, scopeId: 3, name: 'orders' })).toBeUndefined();
+  it('a statement\'s change is the snapshot at the start of its scope\'s next step', () => {
+    // the row of the statement at step 8 that changed orders: the scope's next step is 9
+    expect(changeTarget(locals, { step: 8, scopeId: 3, name: 'orders', text: "{'Ana': {'items': [{...}], 'tier': 'gold'}}" }, 9)).toEqual({ step: 9, observation: { step: 9, scopeId: 3, text: "{'Ana': {'items': [{...}], 'tier': 'gold'}}" } });
+    // another scope's snapshot never answers for it: the value is still read where the scope goes on
+    expect(changeTarget(locals, { step: 15, scopeId: 3, name: 'orders' }, 16)).toEqual({ step: 16 });
   });
 
-  it('a row whose text the panel shows differently still finds its snapshot by name', () => {
-    expect(observationOf(locals, { step: 10, scopeId: 3, name: 'orders', text: 'a display copy' })?.step).toBe(14);
+  it('a loop target or a parameter is kept at its own step, and its text says so', () => {
+    // a parameter seen at the call's first step (9), then the statement there changed it again (14)
+    expect(changeTarget(locals, { step: 9, scopeId: 3, name: 'orders', text: "{'Ana': {'items': [{...}], 'tier': 'gold'}}" }, 14)).toEqual({ step: 9, observation: { step: 9, scopeId: 3, text: "{'Ana': {'items': [{...}], 'tier': 'gold'}}" } });
+    // without the text the start of its own step is never taken: it can hold the value from before the change
+    expect(changeTarget(locals, { step: 9, scopeId: 3, name: 'orders' }, 14)?.observation?.step).toBe(14);
+  });
+
+  it('a row whose text the panel shows differently is read at the next step of its scope', () => {
+    expect(changeTarget(locals, { step: 10, scopeId: 3, name: 'orders', text: 'a display copy' }, 11)).toEqual({ step: 11 });
+    expect(changeTarget(locals, { step: 13, scopeId: 3, name: 'orders', text: 'a display copy' }, 14)?.observation?.step).toBe(14);
+  });
+
+  it('a statement its scope ran nothing after has no step to be read at', () => {
+    expect(changeTarget(locals, { step: 30, scopeId: 3, name: 'orders' }, undefined)).toBeUndefined();
+    expect(nextInScope((s) => (s >= 4 && s <= 6 ? 1 : 0), 10, 3, 0)).toBe(7);
+    expect(nextInScope(() => 0, 10, 9, 0)).toBeUndefined();
   });
 
   it('a step reads the last snapshot at or before it, its own scope before the module', () => {

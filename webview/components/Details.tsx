@@ -14,7 +14,7 @@ import { monaco, monacoTheme, READONLY_OPTIONS } from '../monaco';
 import type { UiPrefs } from '../vscode';
 import { shapeLabel, tableFor, type ValueTableModel } from '../valueTable';
 import { buildWhyDocument, type WhyLine } from '../why';
-import { formatRepr } from '../src-shared';
+import { formatRepr, whyFullTarget } from '../src-shared';
 import { IconButton, MenuButton, type MenuItem } from './ui';
 import { ValueTable } from './ValueTable';
 import type { FullValueView } from '../../src/shared/replayProtocol';
@@ -383,12 +383,12 @@ export function Details(props: DetailsProps) {
           <IconButton icon="search" title="Find" active={findOpen} onClick={toggleFind} />
           <IconButton icon="copy" title="Copy with highlighting" onClick={copyAll} />
           <MenuButton icon="ellipsis" title="More" items={menuItems} />
-          {why && why.name && props.onFull && (
+          {why && why.name && why.tree && props.onFull && (
             <IconButton
               icon="list-tree"
               title={`Full value of ${why.name} at #${why.step}: replays the run in a separate process up to this step and copies all of it (network answers come from the HTTP recording; files it writes are written again)`}
               spin={props.whyFull?.status === 'pending'}
-              onClick={() => props.onFull!({ key: whyKey(why), kind: 'at', step: why.step, name: why.name })}
+              onClick={() => props.onFull!({ key: whyKey(why), ...whyFullTarget(why.tree!) })}
             />
           )}
           {why && <IconButton icon="close" title="Back to entries" onClick={props.onCloseWhy} />}

@@ -150,9 +150,59 @@ describe('a replay for a full value', () => {
     expect(view).toMatchObject({ status: 'error', summary: 'The replay failed: a replay cannot start from a pause.' });
   });
 
-  it('a row with no snapshot after it has nothing to replay to', async () => {
+  it('a row with no later step in its scope has nothing to replay to', async () => {
     const view = await replayFullValue(source(new FakeRunner(() => [])), { key: 'k', kind: 'change', step: 5, name: 'orders', scopeId: 0 });
     expect(view.status).toBe('unavailable');
-    expect(view.summary).toContain('no snapshot of orders after step #5');
+    expect(view.summary).toBe('No later step ran in the scope of step #5, so none shows the value it gave orders.');
+  });
+});
+
+describe('the step a change is read at', () => {
+  /** replays `locals` before the target and answers `check` with the text kept at the step it names, as a faithful replay would */
+  const faithful = (locals: ReplaySource['locals'], kept: Record<number, string>) =>
+    new FakeRunner((req) => [
+      { type: 'locals', entries: locals.filter((e) => e.step < req.replay!.at.step) },
+      { type: 'replay.result', status: 'reached', step: req.replay!.at.step, matched: req.replay!.at.step, value, ...(req.replay!.check ? { check: { step: req.replay!.check.step, text: kept[req.replay!.check.step] } } : {}) },
+      { type: 'run.finished', exitCode: 0, durationMs: 5, timedOut: false, stopped: false, stepCount: 4, logCount: 0 },
+    ]);
+
+  it('is the next step of its scope, not the start of its own step, where an earlier change shows', async () => {
+    // step 2 made orders {} (seen at the start of step 3), step 3 made the dict with Ben (seen at the start of step 4)
+    const locals = [
+      { step: 3, scopeId: 0, changes: [{ name: 'orders', text: '{}' }] },
+      { step: 4, scopeId: 0, changes: [{ name: 'orders', text: "{'Ben': {...}}" }] },
+    ];
+    const runner = faithful(locals, { 3: '{}', 4: "{'Ben': {...}}" });
+    // a row without its text: the name alone used to pick the snapshot at the start of step 3, the value from before the change
+    const view = await replayFullValue(source(runner, { locals }), { key: 'k', kind: 'change', step: 3, name: 'orders', scopeId: 0 });
+    expect(runner.sent[0]!.replay?.at).toEqual({ step: 4, expr: 'orders' });
+    expect(runner.sent[0]!.replay?.check).toEqual({ step: 4, name: 'orders' });
+    expect(view).toMatchObject({ status: 'checked', step: 4 });
+  });
+
+  it('skips the steps of the calls the statement made', async () => {
+    // step 3 calls into scope 1 (steps 4 and 5); the statement after it in scope 0 is step 6
+    const steps = new Int32Array(Array.from({ length: 8 }, (_, i) => [i + 1, 0, 0, 0]).flat());
+    const locals = [{ step: 6, scopeId: 0, changes: [{ name: 'orders', text: "{'Ben': {...}}" }] }];
+    const runner = faithful(locals, { 6: "{'Ben': {...}}" });
+    const view = await replayFullValue(source(runner, { locals, steps, count: 8, scopeId: (s) => (s === 4 || s === 5 ? 1 : 0) }), { key: 'k', kind: 'change', step: 3, name: 'orders', scopeId: 0 });
+    expect(runner.sent[0]!.replay?.at).toEqual({ step: 6, expr: 'orders' });
+    expect(view).toMatchObject({ status: 'checked', step: 6 });
+  });
+
+  it('a statement that left no snapshot (the same object, or past the cap) is still read at the next step, with nothing of its own to compare', async () => {
+    // the only later snapshot of orders belongs to a later change: it must not stand in for this one
+    const locals = [{ step: 5, scopeId: 0, changes: [{ name: 'orders', text: "{'Ben': {...}, 'Caro': {...}}" }] }];
+    const runner = faithful(locals, { 5: "{'Ben': {...}, 'Caro': {...}}" });
+    const view = await replayFullValue(source(runner, { locals }), { key: 'k', kind: 'change', step: 2, name: 'orders', scopeId: 0 });
+    expect(runner.sent[0]!.replay?.at).toEqual({ step: 3, expr: 'orders' });
+    expect(runner.sent[0]!.replay).not.toHaveProperty('check');
+    expect(view.status).toBe('path');
+  });
+
+  it('a row asked without its scope takes the scope of its step', async () => {
+    const runner = faithful(recordedLocals, { 4: "{'Ben': {'items': [{...}]}}" });
+    await replayFullValue(source(runner), { key: 'k', kind: 'change', step: 3, name: 'orders' });
+    expect(runner.sent[0]!.replay?.at).toEqual({ step: 4, expr: 'orders' });
   });
 });

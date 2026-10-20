@@ -6,7 +6,7 @@
  */
 import { MAX_LOCALS_ENTRIES, type LocalsEvent, type LogEvent, type RunEvent, type RunRequest } from '../shared/protocol';
 import type { InputsRecord, ReplayResultEvent, FullValueView } from '../shared/replayProtocol';
-import { compareRecorded, expectPairs, interpret, lastObservation, observationOf, refusal, replayRequest, type Observation } from './fullValue';
+import { changeTarget, compareRecorded, expectPairs, interpret, lastObservation, nextInScope, refusal, replayRequest, type Observation } from './fullValue';
 
 type LocalsEntry = LocalsEvent['entries'][number];
 
@@ -46,12 +46,13 @@ export interface ReplaySource {
 
 export interface FullValueQuery {
   key: string;
-  /** `change`: the value a Variable pane row recorded; `at`: the value at `step` */
+  /** `change`: the value the statement at `step` made (a Variable pane row, a why tree's root when its step made it); `at`: the value when `step` began */
   kind: 'change' | 'at';
   step: number;
   name: string;
+  /** the change's scope; absent: the scope of `step` */
   scopeId?: number;
-  /** the row's text, which picks its snapshot when a name changed twice in one scope */
+  /** the row's recorded text, which says whether its snapshot is at its own step or at the scope's next (`changeTarget`) */
   text?: string;
 }
 
@@ -66,11 +67,14 @@ export async function replayFullValue(src: ReplaySource, query: FullValueQuery):
   // where the value is read, and which snapshot it is compared with
   let target = query.step;
   let observation: Observation | undefined;
-  if (query.kind === 'change') {
-    observation = query.scopeId === undefined ? undefined : observationOf(src.locals, { step: query.step, scopeId: query.scopeId, name: query.name, text: query.text });
-    if (!observation) return unavailable(query.step, `The recording kept no snapshot of ${query.name} after step #${query.step}, so there is no step to replay to.`);
-    target = observation.step;
-  } else if (target >= 0 && target < src.count) {
+  const inRange = query.step >= 0 && query.step < src.count;
+  if (query.kind === 'change' && inRange) {
+    const scopeId = query.scopeId ?? src.scopeId(query.step);
+    const read = changeTarget(src.locals, { step: query.step, scopeId, name: query.name, text: query.text }, nextInScope(src.scopeId, src.count, query.step, scopeId));
+    if (!read) return unavailable(query.step, `No later step ran in the scope of step #${query.step}, so none shows the value it gave ${query.name}.`);
+    target = read.step;
+    observation = read.observation;
+  } else if (inRange) {
     observation = lastObservation(src.locals, query.name, target, [src.scopeId(target), 0]);
   }
   const refused = refusal({ request: src.request, midRun: src.midRun, startedAt: src.startedAt, httpCount: src.httpCount, running: src.running, paused: src.paused, transport: src.transport, step: target, count: src.count });
