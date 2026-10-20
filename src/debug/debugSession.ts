@@ -21,6 +21,7 @@ import { appendOutput, OutputLog } from '../session/outputBuffer';
 import { currentFunctionBreakpoints, currentSourceBreakpoints } from '../features/debugBreakpoints';
 import { freshDebugState, mergeBreakpoints, reduceDebugState, type BreakpointSpec, type BreakWatchSpec, type DebugBreakpointEcho, type DebugState, type ExceptionMode, type LocalVar, type LocalsOptions, localsRequest, type PausedInfo, type PausedThread, type StepKind } from '../session/debugState';
 import { debugRunRequest, launchName, type LaunchConfig } from './debugSessionState';
+import { probeTransportInterpreter, transportRunnerOptions } from '../runtime/transportRunner';
 import type { ExecResult } from './debugExec';
 import { StopWaiters } from './debugWaiters';
 import { log } from '../util/log';
@@ -170,10 +171,12 @@ export class DebugSession extends EventEmitter<DebugSessionEvents> {
   async start(opts: { stopOnEntry?: boolean } = {}): Promise<void> {
     if (this.disposed) throw new Error('the debug session has ended');
     const resource = vscode.Uri.file(this.launch.program ?? this.launch.cwd);
-    this.interpreterPath = this.launch.python ?? (await resolveInterpreter(resource)).path;
+    this.interpreterPath = this.launch.transport
+      ? (await probeTransportInterpreter(this.launch, this.workspaceRoot)).path
+      : this.launch.python ?? (await resolveInterpreter(resource)).path;
     const runner = new RunnerClient({
-      command: this.interpreterPath,
-      cwd: this.runtimeDir,
+      ...(this.launch.transport ? transportRunnerOptions(this.launch, this.runtimeDir, this.workspaceRoot)
+        : { command: this.interpreterPath, cwd: this.runtimeDir }),
       version: '1',
       log: (line) => log.info(`[${this.displayName}] ${line}`),
     });

@@ -75,7 +75,7 @@ export class DebugSessionManager extends EventEmitter<DebugSessionManagerEvents>
     // the project: the folder that holds the launch, else its cwd. The window's first folder, unrelated to the
     // launch, made nothing project code on 2026-10-19: an agent's `-m pytest` on a repository that was not an open
     // folder ran to its end with no pause. The runtime makes the same choice when the host names no workspace.
-    const workspaceRoot = folderFor(launch) ?? launch.cwd;
+    const workspaceRoot = folderFor(launch) ?? launch.pathMappings?.[0]?.localRoot ?? launch.cwd;
     const ds = new DebugSession({ id: `debug-${++this.counter}`, launch, runtimeDir: this.runtimeDir, workspaceRoot });
     this.sessions.set(key, ds);
     ds.on('changed', () => this.report());

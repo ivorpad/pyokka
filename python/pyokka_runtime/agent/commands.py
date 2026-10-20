@@ -401,7 +401,8 @@ def debug_launch(args: Any) -> dict | None:
         argv = [*words, *argv]
         cwd = cwd or os.path.dirname(os.path.abspath(program))
         program = None
-    return build_launch(
+    configuration = getattr(args, "_configuration", None) or {}
+    launch = build_launch(
         program=program,
         module=module,
         args=argv,
@@ -412,7 +413,12 @@ def debug_launch(args: Any) -> dict | None:
         library_code=bool(getattr(args, "library_code", False)),
         record=record,
         record_from=record_from,
+        transport=configuration.get("transport"),
+        path_mappings=configuration.get("pathMappings"),
     )
+    if configuration.get("breakOnException"):
+        launch["breakOnException"] = configuration["breakOnException"]
+    return launch
 
 
 def _open_debug_start(args: Any) -> RunSource:

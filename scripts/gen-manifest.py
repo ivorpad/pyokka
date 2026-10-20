@@ -349,7 +349,7 @@ contributes = {
         {'injectTo': ['source.python'], 'scopeName': 'source.pyokka-snap', 'path': './syntaxes/pyokka-snap.tmLanguage.json'},
     ],
     'snippets': [{'language': 'python', 'path': './snippets/pyokka.code-snippets'}],
-    # the debugger type: F5 / "Run and Debug" over Pyokka's own pause (src/debug/dapAdapter.ts); no debugpy involved
+    # launch uses Pyokka's own pause; attach connects to an existing debugpy DAP listener
     'debuggers': [{
         'type': 'pyokka', 'label': 'Pyokka', 'languages': ['python'],
         # `required` is empty because a launch may name `module` instead of `program`; parseLaunch
@@ -365,11 +365,44 @@ contributes = {
             'breakOnException': {'type': 'string', 'enum': ['off', 'uncaught', 'raised'], 'default': 'uncaught', 'description': 'Where the debugger pauses on an exception: never, on one nobody caught, or at every raise in your code.'},
             'libraryCode': {'type': 'boolean', 'default': False, 'description': 'Step into third-party packages (never the standard library).'},
             'record': {'type': 'boolean', 'default': False, 'description': 'Also record the run, so the Time Machine, the Code Story and `why` open over it at every pause. Slower; needs "program".'},
+            'transport': {
+                'type': 'object', 'required': ['command'], 'additionalProperties': False,
+                'description': 'Run Python through this command and its args, for example podman exec -i CONTAINER WRAPPER. Pyokka appends the container interpreter and runtime bootstrap. The wrapper must exec its arguments and preserve stdin/stdout.',
+                'properties': {
+                    'command': {'type': 'string', 'minLength': 1, 'description': 'Executable on the extension host. No shell expansion.'},
+                    'args': {'type': 'array', 'items': {'type': 'string'}, 'default': [], 'description': 'Arguments before the Python executable. Use -i without -t for a container exec.'},
+                },
+            },
+            'pathMappings': {
+                'type': 'array', 'minItems': 1, 'description': 'Required with transport. Map local source roots to absolute directories in the container.',
+                'items': {'type': 'object', 'required': ['localRoot', 'remoteRoot'], 'additionalProperties': False, 'properties': {
+                    'localRoot': {'type': 'string', 'minLength': 1, 'default': '${workspaceFolder}', 'description': 'Absolute local source directory.'},
+                    'remoteRoot': {'type': 'string', 'minLength': 1, 'default': '/var/task', 'description': 'Absolute POSIX source directory in the container.'},
+                }},
+            },
+        }}, 'attach': {'required': ['connect'], 'properties': {
+            'connect': {
+                'type': 'object', 'required': ['port'], 'additionalProperties': False,
+                'description': 'An existing debugpy DAP listener, reachable from this VS Code extension host.',
+                'properties': {
+                    'host': {'type': 'string', 'default': '127.0.0.1', 'minLength': 1, 'description': 'Hostname or IP address. Use a forwarded port for a remote container.'},
+                    'port': {'type': 'integer', 'minimum': 1, 'maximum': 65535, 'default': 5678, 'description': 'The port exposed by debugpy.listen or python -m debugpy --listen.'},
+                },
+            },
+            'pathMappings': {
+                'type': 'array', 'default': [], 'description': 'Map local source directories to directories in the running server.',
+                'items': {'type': 'object', 'required': ['localRoot', 'remoteRoot'], 'additionalProperties': False, 'properties': {
+                    'localRoot': {'type': 'string', 'minLength': 1, 'default': '${workspaceFolder}', 'description': 'Local source directory.'},
+                    'remoteRoot': {'type': 'string', 'minLength': 1, 'default': '.', 'description': 'Source directory in the server. A dot means its current working directory.'},
+                }},
+            },
+            'justMyCode': {'type': 'boolean', 'default': True, 'description': 'Step through application code only. False includes libraries.'},
         }}},
         'initialConfigurations': [
             {'type': 'pyokka', 'request': 'launch', 'name': 'Pyokka: Debug Current File', 'program': '${file}'},
             {'type': 'pyokka', 'request': 'launch', 'name': 'Pyokka: Debug Current File (Recording)', 'program': '${file}', 'record': True},
             {'type': 'pyokka', 'request': 'launch', 'name': 'Pyokka: Debug Module', 'module': 'app.server', 'args': [], 'cwd': '${workspaceFolder}'},
+            {'type': 'pyokka', 'request': 'attach', 'name': 'Pyokka: Attach to debugpy', 'connect': {'host': '127.0.0.1', 'port': 5678}, 'pathMappings': [{'localRoot': '${workspaceFolder}', 'remoteRoot': '.'}]},
         ],
         'configurationSnippets': [
             {
@@ -386,6 +419,11 @@ contributes = {
                 'label': 'Pyokka: Debug Module',
                 'description': 'Run a dotted module like `python -m`, with arguments. A server started with --reload runs your code in a worker the debugger never sees.',
                 'body': {'type': 'pyokka', 'request': 'launch', 'name': 'Pyokka: Debug Module', 'module': 'app.server', 'args': [], 'cwd': '^"\\${workspaceFolder}"'},
+            },
+            {
+                'label': 'Pyokka: Attach to debugpy',
+                'description': 'Connect to a running debugpy server. Use VS Code debug controls; Pyokka recording and CLI sessions are unavailable.',
+                'body': {'type': 'pyokka', 'request': 'attach', 'name': 'Pyokka: Attach to debugpy', 'connect': {'host': '127.0.0.1', 'port': 5678}, 'pathMappings': [{'localRoot': '^"\\${workspaceFolder}"', 'remoteRoot': '.'}]},
             },
         ],
     }],
