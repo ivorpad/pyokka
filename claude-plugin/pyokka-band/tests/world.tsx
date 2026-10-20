@@ -10,6 +10,15 @@ import { CONTEXT_64, EXCEPTIONS_CAUGHT, INVOICES_SOURCE, ORIGIN_64 } from './fix
 export type World = {
   /** What `pyokka context --live --json` prints; a string: the error it fails with. */
   context: object | string
+  /** What `context` prints instead for one `--session` value ('' for none), when set. */
+  contextBySession?: Record<string, object | string>
+  /** What the agent's Bash command printed. */
+  bash: string
+  /** The directory the session runs in (`$.session.cwd()`). */
+  cwd: string
+  /** The VS Code workspace and the program of the run `state` reaches without `--session`. */
+  workspace: string
+  stateFile: string
   /** What `pyokka step --live` prints; a string: the error it fails with. */
   step: object | string
   /** What `context` prints after the next `step`, when set: the stop the step reached. */
@@ -38,6 +47,10 @@ export const PROGRAM = '/work/invoices.py'
 
 export const newWorld = (): World => ({
   context: CONTEXT_64,
+  bash: '',
+  cwd: '/work',
+  workspace: '/work',
+  stateFile: PROGRAM,
   step: {},
   exceptions: EXCEPTIONS_CAUGHT,
   suspects: null,
@@ -64,7 +77,14 @@ const done = (stdout: string, exitCode = 0, stderr = '') => ({
 const answer = (w: World, argv: readonly string[]) => {
   const verb = argv[0] === 'pyokka' ? argv[1] : argv[0]
   const isLive = argv.includes('--live')
-  if (verb === 'context') return typeof w.context === 'string' ? done('', 1, w.context) : done(JSON.stringify(w.context))
+  const session = argv.includes('--session') ? (argv[argv.indexOf('--session') + 1] ?? '') : ''
+  const reply = w.contextBySession?.[session] ?? w.context
+  if (verb === 'context') return typeof reply === 'string' ? done('', 1, reply) : done(JSON.stringify(reply))
+  // the run `context` would read, as `state` names it; failing as that `context` fails
+  if (verb === 'state' && isLive) {
+    const live = { descriptor: '/h/.pyokka/sessions/4-1.json', workspace: w.workspace }
+    return typeof reply === 'string' ? done('', 1, reply) : done(JSON.stringify({ kind: 'run', file: w.stateFile, live }))
+  }
   if (verb === 'step') {
     if (w.afterStep !== undefined) w.context = w.afterStep
     return typeof w.step === 'string' ? done('', 1, w.step) : done(JSON.stringify(w.step))
@@ -80,7 +100,8 @@ const answer = (w: World, argv: readonly string[]) => {
 }
 
 export function engine(on: On, w: World) {
-  on('tool.call', { tool: 'Bash' }, () => ({ result: { stdout: '', stderr: '', interrupted: false } }))
+  on('tool.call', { tool: 'Bash' }, () => ({ result: { stdout: w.bash, stderr: '', interrupted: false } }))
+  on('session.cwd', () => ({ value: w.cwd }))
   on('process.run', (_, e) => {
     w.runs.push([...e.argv])
     return answer(w, e.argv)

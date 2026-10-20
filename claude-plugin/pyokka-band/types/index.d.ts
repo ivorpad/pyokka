@@ -126,6 +126,8 @@ declare module 'claude-code' {
       fix: Fix
       origin: ValueOrigin
       notice: string | null
+      /** The live sessions the band reads, most exact first: what this session's agent named last. */
+      followed: string[]
     }
   }
 }

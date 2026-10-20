@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import { errorMessage, shapeOf, statementLines, stepOutcome, toFindings, toOrigin, toSpot } from '../hooks/parse'
+import { absolutePath, errorMessage, printedBy, sessionGone, sessionsNamed, shapeOf, statementLines, stepOutcome, toFindings, toOrigin, toSpot } from '../hooks/parse'
 import type { RawFinding } from '../hooks/parse'
 import {
   CONTEXT_29,
@@ -142,4 +142,30 @@ test('errorMessage: a JSON error alone or among other lines, and an older extens
   expect(errorMessage('{"ok": false, "error": "unknown request \\"origin\\"", "hint": "type is one of state"}')).toBe(
     'The VS Code extension is older than this CLI (no origin request): install the vsix built from this checkout and run Developer: Reload Window.',
   )
+})
+
+test('the session a command names: paths against the cwd, the shell\'s own paths by name', async () => {
+  expect(absolutePath('../invoices.py', '/work/app')).toBe('/work/invoices.py')
+  expect(absolutePath('./a/./b.py', '/work')).toBe('/work/a/b.py')
+  expect(absolutePath('/abs/x.py', '/work')).toBe('/abs/x.py')
+  expect(absolutePath('~/x.py', '/work')).toBeUndefined()
+  expect(sessionsNamed('pyokka debug ~/demo/invoices.py --record', '', '/work')).toEqual(['invoices.py'])
+  expect(sessionsNamed('pk debug invoices.py --at main', '', '/work')).toEqual(['/work/invoices.py'])
+  // a start through another window's session (`--session`) follows what it started, not the window
+  expect(sessionsNamed('pyokka debug invoices.py --session /h/s/1-1.json', '', '/work')).toEqual(['/work/invoices.py'])
+  expect(sessionsNamed('ls pyokka-notes && pyokka state --live', '', '/work')).toEqual([])
+  expect(sessionsNamed('pyokka step --over --live --session "my app.py"', '', '/work')).toEqual(['my app.py'])
+})
+
+test('a gone session is not an ambiguous one, whose hint names descriptors too', async () => {
+  expect(sessionGone('{"ok": false, "error": "no live session for /h/s/41-2.json"}')).toBe(true)
+  expect(sessionGone('cannot connect to the live session invoices.py: [Errno 61] Connection refused')).toBe(true)
+  expect(sessionGone('{"ok": false, "error": "2 live sessions match invoices.py", "hint": "pick one by descriptor: --session /a.json | /b.json"}')).toBe(false)
+  expect(sessionGone('{"ok": false, "error": "2 live sessions; say which"}')).toBe(false)
+})
+
+test('what a Bash call printed: its streams, or the text of an errored call', async () => {
+  expect(printedBy({ result: { stdout: 'out', stderr: 'err', interrupted: false } })).toBe('out\nerr')
+  expect(printedBy({ result: 'Exit code 2', text: 'Exit code 2\nno live session' })).toBe('Exit code 2\nno live session')
+  expect(printedBy({})).toBe('')
 })
