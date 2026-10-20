@@ -661,6 +661,11 @@ def dispatch(args: Any, out: Any = None) -> int:
                 err.write("%s\n" % redact(exc.hint))
         return 2
     notes = recording_notes(source)
+    nudge = None
+    if is_live(args) and args.command in ("debug", "continue", "step", "restart"):
+        from .review.reminder import reminder  # a pause at a review stop nobody explained says so (review/reminder.py)
+
+        nudge = reminder(args.command, result, source)
     live_cap = result.get("recording") if isinstance(result, dict) else None
     if not notes and isinstance(live_cap, dict) and live_cap.get("truncated") and "kept" in live_cap:
         notes = [(None, live_cap)]  # a live session's `state` carries it (bridge.ts)
@@ -669,6 +674,8 @@ def dispatch(args: Any, out: Any = None) -> int:
             annotate_cut(result)
             if notes:
                 result["recording"] = notes[0][1] if len(notes) == 1 and notes[0][0] is None else {label: info for label, info in notes}
+            if nudge:
+                result["review"] = {k: v for k, v in nudge.items() if k != "lines"}
         out.write(json.dumps(result, ensure_ascii=False, indent=1) + "\n")
     else:
         for label, info in notes:
@@ -685,6 +692,8 @@ def dispatch(args: Any, out: Any = None) -> int:
         if getattr(args, "_relaunched", None):
             out.write("no debug session was running: started the last launch from this directory again, `%s`\n" % args._relaunched)
         out.write(render(args.command, result, source, args))
+        if nudge:
+            out.write("\n".join(nudge["lines"]) + "\n")
     # `verify` with an expectation that failed (or that the recording cannot support) exits 1
     return 1 if args.command == "verify" and result.get("checks") and not result.get("verified") else 0
 
