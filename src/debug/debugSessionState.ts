@@ -13,6 +13,7 @@ import type { ErrorEvent, Range4, RecordFromSpec, RunConfig, RunRequest } from '
 import type { BlockLine, SliceBlock, SliceError, SliceLocation, SliceOptions, SliceValue } from '../session/contextSlice';
 import type { BreakpointSpec, ExceptionMode, PausedInfo, PausedThread } from '../session/debugState';
 import { stopBlock } from './stopBlock';
+import { TransportPaths, type LaunchTransport, type PathMapping } from '../runtime/transportPaths';
 
 export { BLOCK_LINES, BLOCK_SIGNATURE_LINES, stopBlock, type StopBlockInputs } from './stopBlock';
 
@@ -35,6 +36,9 @@ export interface LaunchConfig {
   env: Record<string, string>;
   /** interpreter path; undefined means resolve it as a run-all session does */
   python?: string;
+  /** Run the bundled runtime through an argv-based command (e.g. podman exec -i ... wrapper). */
+  transport?: LaunchTransport;
+  pathMappings?: PathMapping[];
   stopOnEntry: boolean;
   breakOnException: ExceptionMode;
   libraryCode: boolean;
@@ -87,6 +91,21 @@ export function substitute(value: string, ctx: LaunchContext): string {
  * session on a document, and a module has none).
  */
 export function parseLaunch(raw: Record<string, unknown>, ctx: LaunchContext = {}): LaunchConfig {
+  let transport: LaunchTransport | undefined;
+  let paths: TransportPaths | undefined;
+  if (raw['transport'] !== undefined) {
+    const t = raw['transport'] as Partial<LaunchTransport> | null;
+    if (!t || typeof t.command !== 'string' || !t.command.trim() || t.args !== undefined && (!Array.isArray(t.args) || t.args.some((a) => typeof a !== 'string'))) {
+      throw new Error('"transport" needs a command string and an optional array of string args.');
+    }
+    transport = { command: substitute(t.command, ctx), args: (t.args ?? []).map((a) => substitute(a, ctx)) };
+    const mappings = raw['pathMappings'];
+    paths = new TransportPaths(Array.isArray(mappings) ? mappings.map((m: Record<string, unknown>) => ({
+      ...m, localRoot: typeof m?.['localRoot'] === 'string' ? substitute(m['localRoot'], ctx) : undefined,
+    })) : mappings);
+  } else if (raw['pathMappings'] !== undefined) {
+    throw new Error('A launch with "pathMappings" also needs "transport".');
+  }
   const module = str(raw['module']);
   let program = str(raw['program']);
   if (program) {
@@ -101,7 +120,12 @@ export function parseLaunch(raw: Record<string, unknown>, ctx: LaunchContext = {
   if (module && !MODULE_RE.test(module)) throw new Error(`"module" is a dotted module name, not a path: got ${JSON.stringify(module)}`);
   if (module && record) throw new Error('"record": true runs the file as a Pyokka run-all session, which has no module launch; use "record": false, or a "program" launch');
   const rawCwd = str(raw['cwd']);
-  const cwd = rawCwd ? path.resolve(substitute(rawCwd, ctx)) : ctx.workspaceRoot || (program ? path.dirname(program) : process.cwd());
+  const localCwd = ctx.workspaceRoot || (program ? path.dirname(program) : process.cwd());
+  const cwd = paths
+    ? rawCwd ? substitute(rawCwd, ctx) : paths.toRemote(localCwd, true)
+    : rawCwd ? path.resolve(substitute(rawCwd, ctx)) : localCwd;
+  if (paths && !path.posix.isAbsolute(cwd)) throw new Error('A transport launch needs an absolute container "cwd".');
+  if (paths && program) paths.toRemote(program, true);
   const launch: LaunchConfig = {
     args: strings(raw['args']),
     cwd,
@@ -116,7 +140,11 @@ export function parseLaunch(raw: Record<string, unknown>, ctx: LaunchContext = {
   else if (program) launch.program = program;
   if (recordFrom) launch.recordFrom = recordFrom;
   const python = str(raw['python']);
-  if (python) launch.python = path.resolve(substitute(python, ctx));
+  if (transport && paths) {
+    launch.transport = transport;
+    launch.pathMappings = paths.mappings;
+    launch.python = python ? substitute(python, ctx) : 'python3';
+  } else if (python) launch.python = path.resolve(substitute(python, ctx));
   return launch;
 }
 
@@ -131,7 +159,7 @@ function realOr(p: string): string {
 /** The registry key: one debug session per program (or module) and working directory. */
 export function launchKey(launch: LaunchConfig, real: (p: string) => string = realOr): string {
   const head = launch.module ? `m:${launch.module}` : `f:${real(launch.program ?? '')}`;
-  return `${head}|${launch.cwd}`;
+  return `${head}|${launch.cwd}${launch.transport ? `|${JSON.stringify([launch.transport, launch.pathMappings, launch.python])}` : ''}`;
 }
 
 /** `app.py` for a program launch, `-m app.server` for a module launch. */
@@ -168,6 +196,8 @@ export function debugUri(launch: LaunchConfig, at?: string): string {
   if (launch.cwd) q.set('cwd', launch.cwd);
   if (Object.keys(launch.env).length) q.set('env', JSON.stringify(launch.env));
   if (launch.python) q.set('python', launch.python);
+  if (launch.transport) q.set('transport', JSON.stringify(launch.transport));
+  if (launch.pathMappings) q.set('pathMappings', JSON.stringify(launch.pathMappings));
   if (launch.stopOnEntry) q.set('stopOnEntry', '1');
   if (launch.record) q.set('record', '1');
   if (launch.recordFrom) q.set('recordFrom', launch.recordFrom);
@@ -201,6 +231,8 @@ export function parseDebugUri(query: string): DebugUri {
     stopOnEntry: q.get('stopOnEntry') === '1',
     record: q.get('record') === '1',
     libraryCode: q.get('libraryCode') === '1',
+    ...(q.has('transport') ? { transport: json(q, 'transport') } : {}),
+    ...(q.has('pathMappings') ? { pathMappings: json(q, 'pathMappings') } : {}),
   };
   for (const key of ['program', 'module', 'cwd', 'python', 'breakOnException', 'recordFrom'] as const) {
     const v = q.get(key);
@@ -286,7 +318,7 @@ export function debugRunRequest(input: RunRequestInput): Omit<RunRequest, 'type'
     workspaceRoot: input.workspaceRoot,
     cwd: l.cwd,
     argv: [...l.args],
-    env: { ...input.base.env, ...l.env },
+    env: l.transport ? { ...l.env } : { ...input.base.env, ...l.env },
     projectFiles: [],
     config,
     breakpoints: input.breakpoints,
@@ -306,6 +338,8 @@ export interface DebugDescriptorLaunch {
   cwd: string;
   python: string | null;
   record: boolean;
+  transport?: LaunchTransport;
+  pathMappings?: PathMapping[];
 }
 
 export interface DebugDescriptor {
@@ -332,7 +366,7 @@ export function descriptorFor(input: { socket: string; token: string; pid: numbe
     workspace: input.workspace,
     file: input.file,
     displayName: launchName(l),
-    launch: { program: l.program ?? null, module: l.module ?? null, args: [...l.args], cwd: l.cwd, python: l.python ?? null, record: l.record },
+    launch: { program: l.program ?? null, module: l.module ?? null, args: [...l.args], cwd: l.cwd, python: l.python ?? null, record: l.record, ...(l.transport ? { transport: l.transport, pathMappings: l.pathMappings } : {}) },
     runtimeVersion: input.runtimeVersion,
     started: typeof input.started === 'string' ? input.started : new Date(input.started).toISOString(),
   };
@@ -351,6 +385,7 @@ export function launchReply(launch: LaunchConfig): Record<string, unknown> {
     breakOnException: launch.breakOnException,
     libraryCode: launch.libraryCode,
     record: launch.record,
+    ...(launch.transport ? { transport: launch.transport, pathMappings: launch.pathMappings } : {}),
   };
 }
 

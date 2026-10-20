@@ -25,6 +25,8 @@ import { DebugController, type DebugStartOptions } from './debugController';
 import { appendOutput as appendToBuffer } from './outputBuffer';
 import type { BreakpointSpec, BreakWatchSpec, DebugBreakpointEcho, DebugState, ExceptionMode, LocalVar, LocalsOptions, PausedInfo, StepKind } from './debugState';
 import type { ExecResult } from '../debug/debugExec';
+import type { LaunchConfig } from '../debug/debugSessionState';
+import { transportRunnerOptions } from '../runtime/transportRunner';
 
 export interface RunState {
   runId: string;
@@ -71,6 +73,7 @@ export interface SessionOptions {
   autoLog?: boolean;
   mode?: ProtocolRunMode;
   extraPythonPath?: string[];
+  launch?: LaunchConfig;
 }
 
 export interface SessionEvents {
@@ -140,6 +143,7 @@ export class Session extends EventEmitter<SessionEvents> {
   argvOverride: string[] | undefined;
   cwdOverride: string | undefined;
   envOverride: Record<string, string> | undefined;
+  readonly launch: LaunchConfig | undefined;
 
   /** state of the latest run that produced events (may still be running) */
   state: RunState;
@@ -169,6 +173,7 @@ export class Session extends EventEmitter<SessionEvents> {
     this.document = opts.document;
     this.key = opts.document.uri.toString();
     this.interpreter = opts.interpreter;
+    this.launch = opts.launch;
     this.workspaceRoot = opts.workspaceRoot;
     this.displayName = path.basename(opts.document.fileName) + (opts.document.isUntitled && !/\.py$/.test(opts.document.fileName) ? '.py' : '');
     this.filePath = opts.document.uri.scheme === 'file' ? opts.document.uri.fsPath : path.join(opts.workspaceRoot || os.tmpdir(), this.displayName);
@@ -190,12 +195,18 @@ export class Session extends EventEmitter<SessionEvents> {
     this.on('error', () => undefined);
     const env: Record<string, string> = { ...this.config.env };
     this.runner = new RunnerClient({
-      command: opts.interpreter.path,
-      cwd: opts.runtimeDir,
-      env,
+      ...(opts.launch?.transport
+        ? transportRunnerOptions(opts.launch, opts.runtimeDir, opts.workspaceRoot || path.dirname(this.filePath))
+        : { command: opts.interpreter.path, cwd: opts.runtimeDir, env }),
       version: '1',
       log: (line) => log.info(`[${this.displayName}] ${line}`),
     });
+    if (opts.launch) {
+      this.argvOverride = [...opts.launch.args];
+      this.cwdOverride = opts.launch.cwd;
+      this.envOverride = { ...opts.launch.env };
+      this.libraryCode = opts.launch.libraryCode;
+    }
     this.runner.on('event', (ev) => this.handleEvent(ev));
     this.runner.on('runnerError', (message, detail) => {
       log.error(`runner error (${this.displayName}): ${message}${detail ? `\n${detail}` : ''}`);
@@ -319,9 +330,9 @@ export class Session extends EventEmitter<SessionEvents> {
     const content = this.document.getText();
     const mode = opts.mode ?? this.mode;
     this.config = resolveSessionConfig(this.document.uri, this.workspaceRoot, this.document.uri.scheme === 'file' ? path.dirname(this.document.uri.fsPath) : undefined);
-    const env: Record<string, string> = { ...this.config.env };
+    const env: Record<string, string> = this.launch?.transport ? {} : { ...this.config.env };
     // the per-file install folders go on PYTHONPATH
-    if (this.extraPythonPath.length) env['PYTHONPATH'] = [...this.extraPythonPath, env['PYTHONPATH'] ?? process.env['PYTHONPATH'] ?? ''].filter(Boolean).join(path.delimiter);
+    if (!this.launch?.transport && this.extraPythonPath.length) env['PYTHONPATH'] = [...this.extraPythonPath, env['PYTHONPATH'] ?? process.env['PYTHONPATH'] ?? ''].filter(Boolean).join(path.delimiter);
     const debugExtras = this.debugCtl.requestExtras();
     const request = {
       runId,

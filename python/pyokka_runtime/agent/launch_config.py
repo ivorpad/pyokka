@@ -17,9 +17,9 @@ from typing import Any
 
 from .source import AgentError
 
-PYTHON_TYPES = ("debugpy", "python")
+PYTHON_TYPES = ("debugpy", "python", "pyokka")
 #: the keys ``debug`` applies, and the ones that change nothing about the run
-MAPPED = {"type", "request", "name", "program", "module", "args", "cwd", "env", "envFile", "python", "stopOnEntry", "justMyCode"}
+MAPPED = {"type", "request", "name", "program", "module", "args", "cwd", "env", "envFile", "python", "stopOnEntry", "justMyCode", "transport", "pathMappings", "record", "recordFrom", "libraryCode", "breakOnException"}
 HARMLESS = {"console", "purpose", "presentation", "internalConsoleOptions", "preLaunchTask", "postDebugTask", "redirectOutput", "showReturnValue", "logToFile", "autoReload", "clientOS"}
 #: the interpreter VS Code picked for the window: what `debug` uses when no --python is given
 WINDOW_PYTHON = "${command:python.interpreterPath}"
@@ -140,13 +140,26 @@ def launch_configuration(name: str, start: str, file: str | None = None) -> dict
     def absolute(p: str, base: str) -> str:
         return p if os.path.isabs(p) else os.path.normpath(os.path.join(base, p))
 
-    cwd = absolute(sub(config["cwd"]), workspace) if isinstance(config.get("cwd"), str) else None
+    transport = config.get("transport")
+    path_mappings = config.get("pathMappings")
+    if transport is not None:
+        if not isinstance(transport, dict) or not isinstance(transport.get("command"), str) or not transport["command"].strip() or not isinstance(transport.get("args", []), list) or any(not isinstance(a, str) for a in transport.get("args", [])):
+            raise AgentError("transport needs a command string and an array of string args")
+        transport = {"command": sub(transport["command"]), "args": [sub(a) for a in transport.get("args", [])]}
+        if not isinstance(path_mappings, list) or not path_mappings:
+            raise AgentError("a transport launch needs pathMappings")
+        if any(not isinstance(m, dict) or not isinstance(m.get("localRoot"), str) or not isinstance(m.get("remoteRoot"), str) for m in path_mappings):
+            raise AgentError("pathMappings need localRoot and remoteRoot strings")
+        path_mappings = [{"localRoot": sub(m["localRoot"]), "remoteRoot": sub(m["remoteRoot"])} for m in path_mappings]
+    cwd = sub(config["cwd"]) if transport and isinstance(config.get("cwd"), str) else absolute(sub(config["cwd"]), workspace) if isinstance(config.get("cwd"), str) else None
     env: dict[str, str] = {}
     env_file = config.get("envFile")
     # the Python extension reads ${workspaceFolder}/.env when envFile is not set
     env_path = absolute(sub(env_file), workspace) if isinstance(env_file, str) else os.path.join(workspace, ".env")
-    if os.path.isfile(env_path):
+    if not transport and os.path.isfile(env_path):
         env.update(dotenv(env_path))
+    if transport and env_file is not None:
+        raise AgentError("a transport launch leaves envFile loading to its wrapper", "remove envFile; set explicit overrides with env")
     for k, v in (config.get("env") or {}).items():
         if v is not None:
             env[str(k)] = sub(v)
@@ -157,14 +170,19 @@ def launch_configuration(name: str, start: str, file: str | None = None) -> dict
     return {
         "file": path,
         "name": name,
-        "program": absolute(sub(config["program"]), cwd or workspace) if isinstance(config.get("program"), str) else None,
+        "program": absolute(sub(config["program"]), workspace if transport else cwd or workspace) if isinstance(config.get("program"), str) else None,
         "module": sub(config["module"]) if isinstance(config.get("module"), str) else None,
         "args": args,
         "cwd": cwd,
         "env": env,
         "python": python,
         "stopOnEntry": config.get("stopOnEntry") is True,
-        "libraryCode": config.get("justMyCode") is False,
+        "libraryCode": config.get("justMyCode") is False or config.get("libraryCode") is True,
+        "record": config.get("record") is True,
+        "recordFrom": sub(config["recordFrom"]) if isinstance(config.get("recordFrom"), str) else None,
+        "breakOnException": config.get("breakOnException"),
+        "transport": transport,
+        "pathMappings": path_mappings,
         "ignored": [k for k in config if k not in MAPPED and k not in HARMLESS],
     }
 
@@ -195,6 +213,10 @@ def apply_configuration(args: Any) -> None:
         args.stop_on_entry = True
     if c["libraryCode"]:
         args.library_code = True
+    if c["record"]:
+        args.record = True
+    if c["recordFrom"] and not getattr(args, "record_from", None):
+        args.record_from = c["recordFrom"]
     args._configuration = c
 
 

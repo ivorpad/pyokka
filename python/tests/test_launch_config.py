@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import json
 from pathlib import Path
 
 import pytest
@@ -72,6 +73,32 @@ def test_configuration_becomes_the_launch_and_flags_win(workspace: Path, monkeyp
 
     flags = launch_of("--configuration", "Checkout DE", "--cwd", str(workspace), "--args", "--country", "fr")
     assert flags["cwd"] == str(workspace) and flags["args"] == ["--country", "fr"]
+
+
+def test_container_configuration_keeps_remote_python_and_wrapper_auth(workspace: Path, monkeypatch):
+    from urllib.parse import parse_qs, urlsplit
+    from pyokka_runtime.agent.debug_start import build_uri
+
+    monkeypatch.chdir(workspace)
+    config = {
+        "name": "Podman", "type": "pyokka", "request": "launch",
+        "program": "${workspaceFolder}/src/main.py", "cwd": "/var/task",
+        "python": "/var/lang/bin/python", "record": True,
+        "transport": {"command": "podman", "args": ["exec", "-i", "container", "/var/task/wrapper.sh"]},
+        "pathMappings": [{"localRoot": "${workspaceFolder}", "remoteRoot": "/var/task"}],
+    }
+    (workspace / ".vscode" / "launch.json").write_text(json.dumps({"configurations": [config]}))
+    launch = launch_of("--configuration", "Podman")
+    assert launch["program"] == str(workspace / "src" / "main.py")
+    assert launch["python"] == "/var/lang/bin/python", "a container executable is not resolved on the host"
+    assert launch["cwd"] == "/var/task" and launch["record"] is True
+    assert launch["transport"] == config["transport"]
+    assert launch["pathMappings"] == [{"localRoot": str(workspace), "remoteRoot": "/var/task"}]
+    assert launch["env"] == {}, "the host .env must not override wrapper authentication"
+    assert launch["_line"]["ignored"] == []
+    query = parse_qs(urlsplit(build_uri(launch)).query)
+    assert json.loads(query["transport"][0]) == config["transport"]
+    assert json.loads(query["pathMappings"][0]) == launch["pathMappings"]
 
 
 def test_file_variables_and_modules(workspace: Path, monkeypatch):

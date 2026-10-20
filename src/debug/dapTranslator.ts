@@ -120,7 +120,7 @@ export class DapTranslator {
         return {};
       }
       case 'attach':
-        throw new Error('Pyokka debugs programs it runs; use a launch configuration with "program" or "module"');
+        throw new Error('Attach uses a debugpy DAP listener. Start a Pyokka attach configuration with "connect" in VS Code.');
       case 'configurationDone':
         this.configured = true;
         return {};
