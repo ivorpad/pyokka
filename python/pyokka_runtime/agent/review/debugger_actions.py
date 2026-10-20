@@ -69,7 +69,7 @@ def start_in_debugger(f: dict, pre: dict) -> dict:
         _needs_vscode()
     paths = only_paths(f, repo)
     # --only limits the diff read to its files, untracked ones included, and narrows the agenda before the review
-    # directory is touched: one that leaves no item is refused with the last review intact
+    # directory is touched; one that holds no changed function plans no item and notes it
     change = change_diff(repo, pre["base"], (lambda rel: inside_any(rel, paths)) if paths else None)
     plan, only_notes = narrow(plan_items(repo, change.diff), paths, change.files)
     attach_uses(plan["stops"], repo)  # on the numbered agenda, so a callee on it is named by the stop the person sees

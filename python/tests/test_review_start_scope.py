@@ -135,12 +135,11 @@ def test_a_path_is_a_file_a_directory_or_a_glob_relative_to_the_repository(tmp_p
     assert only_paths({"only": "libs"}, str(repo)) == ["libs"] and only_paths({}, str(repo)) == []
 
 
-def test_only_that_leaves_no_item_is_refused_before_the_last_review_changes(world):
-    _, first = start(world)
-    exc = refusal("start", base=world.base, repo=str(world.repo), dir=str(world.dir), only=["tests", "docs/nothing"])
-    assert "--only tests, docs/nothing leaves no item" in exc.why and "the change's Python files: shopkit/config.py, shopkit/discounts.py" in exc.text
-    assert exc.next_command == "review start --base REF --only PATH"
-    assert Review.load(str(world.dir)).data == first.data and len(world.launches) == 1
+def test_only_that_holds_no_changed_function_plans_an_empty_agenda(world):
+    answer, review = start(world, only=["shopkit/config.py"])
+    assert review.stops == [] and review.data["phase"] == "findings" and not world.fake.added
+    note = [l for l in lines_of(answer) if l.startswith("note: --only shopkit/config.py holds no changed function")]
+    assert note and "set aside without a breakpoint" in note[0]
 
 
 def test_a_path_that_matches_no_changed_file_is_noted(world):

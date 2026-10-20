@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- `review start --only PATH` (MCP `only`) on files with no changed function no longer refuses. It
+  starts the session with an empty agenda, as the same diff without `--only` already did, and a
+  `note:` counts the module-level and test-file changes set aside, so the skill's plan picks the
+  lines with `pyokka break --live FILE:LINE`.
+
 ## 0.6.1
 
 - Restarting a completed recording keeps its launch configuration, including container transport,

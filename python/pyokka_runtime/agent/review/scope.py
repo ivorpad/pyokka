@@ -20,7 +20,7 @@ from typing import Any
 
 from .debugger import describe
 from .render import ONLY_REASON
-from .state import NO_REVIEW_HEADER, Refusal, inside
+from .state import inside
 
 GLOB_CHARS = "*?["
 
@@ -65,29 +65,21 @@ def narrow(plan: dict, paths: list[str], changed_files: list[str] | None = None)
     """``(plan, notes)``: ``plan_items``'s plan with what lies outside every PATH set aside and the rest numbered
     again, and a note for each PATH that matched no changed file, so a typo shows. No PATH: the plan as it is.
     ``changed_files`` is every file of the change before ``--only`` limited the diff that was read, which the
-    refusal and the notes name, since the narrowed plan holds only what was kept.
+    notes name, since the narrowed plan holds only what was kept.
 
-    An ``--only`` that leaves no item is refused: a debug session with no breakpoint shows nothing, and ``start``
-    calls this before it touches the review directory, so the last review stays as it was.
+    An ``--only`` that holds no changed function plans no item, as a diff with none does, and says so in a note:
+    the agenda is the skill's, which may pick a module-level line or read and ``try``, so nothing is refused.
     """
     if not paths:
         return plan, []
     stops = [s for s in plan.get("stops") or [] if isinstance(s, dict)]
     kept = [s for s in stops if inside_any(s.get("file"), paths)]
+    empty = []
     if not kept:
-        them = "it" if len(paths) == 1 else "them"
-        if changed_files is not None:  # the diff read was already limited to PATH: what it left is the change's file names
-            files = sorted(f for f in changed_files if f.endswith(".py"))
-            why = "--only %s leaves no item: no changed function is in a file inside %s" % (", ".join(paths), them)
-            listed = "the change's Python files: %s%s" % (", ".join(files[:12]), ", …" if len(files) > 12 else "") if files else "the change has no Python file, so there is nothing to narrow"
-        else:
-            files = sorted({str(s.get("file")) for s in stops})
-            why = "--only %s leaves no item: none of the %d changed function%s is in a file inside %s" % (", ".join(paths), len(stops), "" if len(stops) == 1 else "s", them)
-            listed = "the agenda's files: %s%s" % (", ".join(files[:12]), ", …" if len(files) > 12 else "") if files else "the diff changes no function, so there is nothing to narrow"
-        raise Refusal(NO_REVIEW_HEADER, why,
-                      "review start --base REF --only PATH",
-                      [listed,
-                       "a PATH is relative to the repository: a file, a directory, or a glob such as shopkit/*.py; module-level and test-file changes are set aside whatever --only says"])
+        aside = [a for a in plan.get("aside") or [] if isinstance(a, dict) and inside_any(a.get("file"), paths)]
+        what = ("%d change%s set aside without a breakpoint (module level or test files; `pyokka break --live FILE:LINE` puts one there)" % (len(aside), "" if len(aside) == 1 else "s")
+                if aside else "read the change and `review try`, or `review ask FILE:LINE --say TEXT` at a line that runs")
+        empty = ["note: --only %s holds no changed function, so the agenda is empty: %s" % (", ".join(paths), what)]
     kept_ids = {id(s) for s in kept}
     left = [{**{k: v for k, v in s.items() if k != "n"}, "reason": ONLY_REASON} for s in stops if id(s) not in kept_ids]
     for i, s in enumerate(kept, 1):
@@ -108,7 +100,7 @@ def narrow(plan: dict, paths: list[str], changed_files: list[str] | None = None)
     notes = ["note: --only %s matched no changed file" % p for p in paths if not any(within(f, p) for f in changed)]
     narrowed = {**plan, "stops": kept, "aside": [*(plan.get("aside") or []), *left], "edges": kept_edges, "aside_edges": left_edges, "only": list(paths), "summary": summary,
                 **({"outside": outside} if outside is not None else {})}
-    return narrowed, notes
+    return narrowed, [*empty, *notes]
 
 
 def untracked_sentence(files: list[str]) -> str:
