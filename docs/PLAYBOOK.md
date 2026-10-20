@@ -406,8 +406,9 @@ def test_total():
 `.agents/skills/pyokka` with `allow_implicit_invocation: true` in `agents/openai.yaml`, so a bare
 prompt may use it, and give the MCP server the project's interpreter
 (`mcp_servers.pyokka.env.PYOKKA_PYTHON = "<dir>/.venv/bin/python"`). A new directory first gets
-Codex's own "Trust this folder?" dialog, which is the harness, not Pyokka. For Claude Code the
-installed skill triggers on its description; `/pyokka` forces it.
+Codex's own "Trust this folder?" dialog, which is the harness, not Pyokka. In Claude Code the
+skill has `disable-model-invocation: true`, so a bare prompt never loads it: put `/pyokka` in
+front of the vague words (`/pyokka debug this`). The words after it can stay vague.
 
 ### "why does this test fail?"
 
@@ -455,6 +456,12 @@ A review begins twice on purpose (`SKILL.md`, "How a turn ends"): the questions 
 the person can answer, and the answer decides the plan. The turns after that are situation 7 and
 situation 8's lifecycle: the plan with its sessions, then `start`, `continue`, `stop`.
 
+What `start` then plans, **shape** from the code: the change includes untracked files, read as new
+(a new module the change adds is on the agenda without a commit). Each item has a `uses:` line, such
+as `uses: parse_money calc.py:4 (stop 1)`, naming the repository code its changed lines call, with no
+breakpoint there. With `--only calc.py` only that file's diff is read, and the plan says what it left
+out: `only: calc.py; outside it, not read: 1 changed file (README.md)`.
+
 Pass: the diff is read before the question, the questions come in one message, and nothing starts
 before the answer. Fail: a `review start` before asking, or a question the diff already answers
 ("which file changed?").
@@ -493,10 +500,68 @@ paused value and line, the source is unchanged, and `pyokka_session` lists no se
 agent's afterwards. Fail: a guess from reading with no pause, a question about which file before
 reading the repository, or a breakpoint left in the list (`pyokka break --live` shows it).
 
+### Claude Code, before and after the vague-request section
+
+`SKILL.md` gained "A vague request": look first, pick the mode from what the look found, say the
+plan in a sentence, run it, answer with the evidence and propose the fix without applying it. The
+same three prompts were run with `claude -p` (Claude Code 2.1.304, no VS Code, so recordings only)
+before and after that change, on the project in `skills/pyokka/evals/files/cart/`: `cart_total`
+loops `range(1, len(items))`, and both tests fail (`assert 5.0 == 11.0`, `assert 5.4 == 10.8`).
+
+To run it yourself, copy that directory somewhere empty, `git init` and commit, put the skill in
+`.claude/skills/pyokka`, and paste each prompt on its own:
+
+```
+/pyokka why does this test fail?
+```
+
+```
+/pyokka debug this
+```
+
+```
+/pyokka review this issue
+```
+
+Precise form of all three, for comparison:
+
+```
+/pyokka debug tests/test_cart.py::test_small_cart: record it with --cwd at the repository root and show me the value of subtotal after the loop.
+```
+
+Expected behaviour after the change, **observed** in six runs (5 to 8 turns each):
+
+1. `git status`, `git diff --stat` and `python -m pytest -q` first; no question.
+2. One sentence of plan ("Two tests fail, so I'm using `debug`. I'll record the first one").
+   "review this issue" found no diff and no issue text, said "I treated the two failing tests as
+   the issue and used debug mode instead of `review`", and went on. One run tried `pyokka debug`
+   first; with no VS Code it said so and recorded instead.
+3. `pyokka run tests/test_cart.py --test test_small_cart --cwd . --save <scratch>/run.json`, then
+   `var`, `values` or `story` on it: `i = 1` at step `#8`, `subtotal = 5.0` at step `#10`.
+4. The answer: `cart.py:18` skips item 0; the evidence lines above; the fix proposed and not
+   applied; what was not verified (the second test was not recorded, the fix was not run).
+
+Before the change, **observed**:
+
+- "why does this test fail?" (two runs): picked `show`, ran `pyokka run` without `--cwd` or
+  through a driver script outside the repository, so `cart.py` was not in the recording
+  (`4 steps, 2 files`). The answer came from the source, and said so.
+- "debug this": tried `pyokka debug`, which needs VS Code, then the same recording without `--cwd`.
+  The answer came from the source.
+- "review this issue": found no diff, asked which issue, and ran nothing.
+
+Pass: the look comes before the plan, no question is asked while a test fails, the answer quotes a
+recorded value from `cart.py` (`i = 1` or `subtotal = 5.0`), and `git status` shows no change to
+tracked files. Fail: a question before the look, a recording without `cart.py` (`2 files`), an
+answer that rests on the source alone, or an edit to `cart.py`. The first after-change run of
+"debug this" applied the fix unasked; step 5 of "A vague request" now says that "debug" and "why"
+ask for the cause, and the three runs after that left `cart.py` alone.
+
 ## Untested in the 2026-10-20 run
 
 Situation 5 (the exception pause) and situation 7 (a live client receiving a spilled result) are
 shapes from the renderer and the unit tests, not observed that day; so is the `review close`
 line of situation 8. Observed: situations 1 to 4, the review refusal of 6, the session listing,
-`finished:` and `stopped:` lines of 8, and all three vague prompts of 9. Run 5 and 7 first when
+`finished:` and `stopped:` lines of 8, and all three vague prompts of 9. The Claude Code runs of 9 used
+recordings only: none of them paused in VS Code. Run 5 and 7 first when
 you check a new build.
