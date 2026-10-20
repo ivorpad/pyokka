@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.5.6
+
 - `package-lock.json` said 0.5.4 while the release said 0.5.5, because `scripts/version.py` never
   wrote it. It now moves the lock's two copies of the number with the other four files, and the
   lock is at 0.5.5. The lock was otherwise in sync: `npm ci` on npm 11 installs it as is (npm 10
