@@ -102,6 +102,7 @@ def add_commands(sub: argparse._SubParsersAction) -> None:
     p.add_argument("step", nargs="?", metavar="STEP", help="the step whose statement made the value (omit with --live: the Time Machine's step)")
     p.add_argument("name", nargs="?", metavar="NAME", help="a name or attribute path (label, self.balance); omit it to explain the statement at STEP")
     p.add_argument("--depth", type=int, default=PROVENANCE_DEPTH, metavar="N", help="levels below the value to expand (default %d, at most %d)" % (PROVENANCE_DEPTH, PROVENANCE_MAX_DEPTH))
+    p.add_argument("--full", action="store_true", help="with --live: also NAME's full value, copied by a replay of the run and checked against the recording. The replay runs the program again in a separate process up to STEP: files it writes are written again, network answers come from the HTTP recording")
 
     p = sub.add_parser("origin", help="where a bad value was made: the chain of steps from the failing statement back across calls and containers, its root marked")
     run_arg(p)
@@ -767,6 +768,11 @@ def _run_command(args: Any, source: RunSource) -> dict:
         if args.step is not None and not str(args.step).lstrip("-").isdigit():
             raise AgentError("STEP must be a step number, got %r" % args.step, "e.g. `why run.json 24 label`: the step first, then the name")
         depth = max(1, min(PROVENANCE_MAX_DEPTH, int(args.depth)))
+        if getattr(args, "full", False):
+            from .full_value import check_request
+
+            check_request(source, (args.name or "").strip())
+            return source.why(int(args.step) if args.step is not None else None, (args.name or "").strip(), depth=depth, full=True)  # type: ignore[call-arg]
         return source.why(int(args.step) if args.step is not None else None, (args.name or "").strip(), depth=depth)
     if cmd == "origin":
         if args.step is None and not is_live(args):

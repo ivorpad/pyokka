@@ -23,6 +23,7 @@ from .origin.text import render_origin
 from .live import stop_reason
 from .render_debug import cut_hint, exec_error, is_debug_reply, local_lines, recording_start_lines, recording_suffix, render_debug_exec, render_debug_state, render_debug_stop, render_record, unseen_run_note, value_line
 from .recording import cut_line
+from .full_value import full_hint, full_lines
 
 MOVE_LABEL = {"into": "into", "over": "over", "out": "out", "back": "back", "backOver": "back-over", "backOut": "back-out"}
 TEXT_MAX = 160
@@ -106,6 +107,7 @@ def render(command: str, result: dict, source: Any, args: Any) -> str:
     }[command]
     lines.extend(fn(result, source, args))
     lines.extend(cut_hint(command, result))  # one line at the end when a live value was cut
+    lines.extend(full_hint(command, result, args, source, why_chars=WHY_VALUE, text_chars=TEXT_MAX))  # and when a recorded one was
     return "\n".join(redact(l) for l in lines) + "\n"
 
 
@@ -509,6 +511,8 @@ def render_why(result: dict, source: Any, args: Any) -> list[str]:
         out.append("… more inputs than %d nodes show; ask why for a node's name at its step" % PROVENANCE_NODES)
     if result.get("conclusion"):
         out.append(str(result["conclusion"]))
+    if isinstance(result.get("full"), dict):
+        out.extend(full_lines(result["full"]))
     return out
 
 

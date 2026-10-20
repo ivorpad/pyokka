@@ -261,13 +261,15 @@ class LiveRun:
                 row["file"] = self.file
         return out
 
-    def why(self, step: int | None, name: str = "", *, depth: int = PROVENANCE_DEPTH) -> dict:
+    def why(self, step: int | None, name: str = "", *, depth: int = PROVENANCE_DEPTH, full: bool = False) -> dict:
         if step is None:
             nav = self.request({"type": "state"}).get("nav") or {}
             if not nav.get("active") or nav.get("step") is None:
                 raise AgentError("the Time Machine is not active, so there is no current step", "give one: `why --live 21 total`; `step --live --to N` starts the Time Machine there")
             step = int(nav["step"])
-        out = self.request({"type": "why", "step": step, "name": name, "depth": depth})
+        out = self.request({"type": "why", "step": step, "name": name, "depth": depth, **({"full": True} if full else {})})
+        if full and not isinstance(out.get("full"), dict):  # 0.7.0 answers the tree and ignores `full`
+            raise AgentError("the VS Code extension is older than this CLI (its why has no full value): install the vsix built from this checkout and run Developer: Reload Window", "the CLI sent why with full, which the installed extension does not serve")
 
         def fill(node: Any) -> None:
             """The session's file where the bridge sent none, on every node with a step and every call."""
