@@ -7,6 +7,11 @@ In order, stopping at the first that applies:
     socket. The window is already answering, which sidesteps the focused-window problem of (c).
 (c) else the URI: ``<code> --open-url vscode://ivor.pyokka/debug?…``, then poll
     ``$PYOKKA_HOME/sessions`` (``~/.pyokka/sessions`` by default) for the descriptor the window writes and connect to it.
+    The URI carries ``windowId`` of the window the command was invoked from when one is known
+    (``vscode_window.py``), so VS Code hands it to that window rather than the focused one.
+
+When the invoking window is known from the terminal or the process tree, (a) and (b) prefer its
+sockets, and (b) takes only its own: a recording in another window would start the debug session there.
 
 Only user-writable paths are involved: that sessions directory and the ``code`` binary the user
 already has. No admin rights, no privileged step.
@@ -38,7 +43,7 @@ CLOCK_SLACK_S = 1.0
 URI_PREFIX = "vscode://ivor.pyokka/debug?"
 
 CODE_MISSING = "cannot find the `code` command"
-CODE_MISSING_HINT = 'install it from VS Code\'s Command Palette ("Shell Command: Install code command in PATH"), or set PYOKKA_CODE to the binary'
+CODE_MISSING_HINT = 'VS Code may not be installed (https://code.visualstudio.com); if it is, install it from VS Code\'s Command Palette ("Shell Command: Install code command in PATH"), or set PYOKKA_CODE to the binary'
 
 EXTENSION_ID = "ivor.pyokka"
 
@@ -48,7 +53,7 @@ TIMEOUT_HINT = (
     "second `debug`. To stop VS Code asking, add `ivor.pyokka` to the setting `extensions.confirmedUriHandlerExtensionIds`. "
     "Then check `pyokka.agentAccess`: with it off the window asks whether to allow agents, and Allow starts this same launch, so the "
     "answer to that question is also followed by `pyokka state --live`. "
-    "Then check that the folder is open in VS Code with the Pyokka extension active: the URI goes to the focused window, and a window "
+    "Then check that the folder is open in VS Code with the Pyokka extension active: the URI goes to the window the agent runs in when Pyokka can tell which, else to the focused window, and a window "
     "that is not running Pyokka cannot answer. The Pyokka output channel logs every URI it received."
 )
 
@@ -132,8 +137,11 @@ def at_text(spec: dict) -> str:
     return str(spec["function"]) if "function" in spec else "%s:%d" % (spec["file"], spec["line"])
 
 
-def build_uri(launch: dict, at: str | list[str] | None = None) -> str:
-    """The ``vscode://ivor.pyokka/debug`` URI of a launch; every value is percent-encoded."""
+def build_uri(launch: dict, at: str | list[str] | None = None, *, window_id: str | None = None) -> str:
+    """The ``vscode://ivor.pyokka/debug`` URI of a launch; every value is percent-encoded.
+
+    ``window_id`` is VS Code's own routing key: its URL router sends a URI with ``windowId=N`` to window N.
+    """
     parts: list[tuple[str, str]] = []
     if launch.get("program"):
         parts.append(("program", str(launch["program"])))
@@ -160,6 +168,8 @@ def build_uri(launch: dict, at: str | list[str] | None = None) -> str:
     for one in ([at] if isinstance(at, str) else list(at or [])):
         if one:
             parts.append(("at", one))  # repeated: every `--at` is set before the program starts
+    if window_id:
+        parts.append(("windowId", str(window_id)))
     return URI_PREFIX + "&".join("%s=%s" % (k, quote(v, safe="")) for k, v in parts)
 
 
@@ -195,15 +205,10 @@ def matches_launch(descriptor: dict, launch: dict) -> bool:
         return str(theirs) == str(program)
 
 
-def find_debug_descriptor(launch: dict, *, since: float | None = None, directory: str | None = None) -> dict | None:
-    """The debug descriptor of this launch, newest first; `since` ignores one written before the request."""
-    for d in list_sessions(directory):
-        if not matches_launch(d, launch):
-            continue
-        if since is not None and not _started_at_or_after(d, since):
-            continue
-        return d
-    return None
+def find_debug_descriptor(launch: dict, *, since: float | None = None, directory: str | None = None, prefer_pid: int | None = None) -> dict | None:
+    """The debug descriptor of this launch, newest first, one in window `prefer_pid` before any other; `since` ignores one written before the request."""
+    found = [d for d in list_sessions(directory) if matches_launch(d, launch) and (since is None or _started_at_or_after(d, since))]
+    return next((d for d in found if prefer_pid is not None and d.get("pid") == prefer_pid), found[0] if found else None)
 
 
 def _started_at_or_after(descriptor: dict, since: float) -> bool:
@@ -217,13 +222,13 @@ def _started_at_or_after(descriptor: dict, since: float) -> bool:
     return stamp >= since - CLOCK_SLACK_S
 
 
-def find_run_descriptor(launch: dict, *, directory: str | None = None) -> dict | None:
-    """A run-all descriptor for the launch's program: route (b), the common case."""
+def find_run_descriptor(launch: dict, *, directory: str | None = None, only_pid: int | None = None) -> dict | None:
+    """A run-all descriptor for the launch's program: route (b), the common case; with `only_pid`, only window `only_pid`'s."""
     program = launch.get("program")
     if not program:
         return None
     for d in list_sessions(directory):
-        if descriptor_kind(d) != "debug" and _same_file(d.get("file"), program):
+        if descriptor_kind(d) != "debug" and _same_file(d.get("file"), program) and (only_pid is None or d.get("pid") == only_pid):
             return d
     return None
 
@@ -237,19 +242,26 @@ def _same_file(a: Any, b: Any) -> bool:
         return str(a) == str(b)
 
 
-def build_route(launch: dict, *, directory: str | None = None) -> tuple[str, dict | None]:
-    """Which route applies: ``('debug', d)``, ``('run', d)`` or ``('uri', None)``."""
-    debug = find_debug_descriptor(launch, directory=directory)
+def build_route(launch: dict, *, directory: str | None = None, caller: tuple[dict | None, str | None] = (None, None)) -> tuple[str, dict | None]:
+    """Which route applies: ``('debug', d)``, ``('run', d)`` or ``('uri', None)``.
+
+    ``caller`` is ``vscode_window.invoking_window``'s answer. A window found by the terminal or the process
+    tree is where the person is, so its sockets come first and a recording elsewhere is not used; one
+    found only by its folder is a guess, which steers the URI and nothing else.
+    """
+    window, how = caller
+    pid = window.get("pid") if window and how in ("terminal", "process") else None
+    debug = find_debug_descriptor(launch, directory=directory, prefer_pid=pid)
     if debug is not None:
         return "debug", debug
-    run = find_run_descriptor(launch, directory=directory)
+    run = find_run_descriptor(launch, directory=directory, only_pid=pid)
     if run is not None:
         return "run", run
     return "uri", None
 
 
 def open_url(uri: str, command: str | None = None) -> None:
-    """Hand the URI to VS Code. Which window answers is VS Code's choice: the focused one."""
+    """Hand the URI to VS Code: window ``windowId`` when the URI names one, else the focused one."""
     command = command or code_command()
     try:
         proc = subprocess.run([command, "--open-url", uri], check=False, capture_output=True, text=True, timeout=30)
@@ -340,12 +352,22 @@ def focus_editor(file: str, line: int) -> bool:
     return True
 
 
-def start_via_uri(launch: dict, at: str | list[str] | None = None, *, timeout: float = POLL_TIMEOUT_S, directory: str | None = None) -> dict:
-    """Route (c): open the URI, poll for the descriptor, return it."""
+def start_via_uri(launch: dict, at: str | list[str] | None = None, *, timeout: float = POLL_TIMEOUT_S, directory: str | None = None, window_id: str | None = None) -> dict:
+    """Route (c): open the URI (aimed at window `window_id` when known), poll for the descriptor, return it.
+
+    With no VS Code running, VS Code is started on the program's repository first, and a failure to start
+    it, or a window that never activates Pyokka, is refused with what to do rather than left to the poll.
+    """
     command = code_command()
     check_extension(command, launch)
+    if not window_id:
+        from .vscode_window import launch_window, list_windows, vscode_running
+
+        if not list_windows() and not vscode_running():
+            # nothing to hand the URI to: `--open-url` alone would start VS Code on whatever it restores
+            window_id = str(launch_window(command, launch).get("windowId") or "") or None
     since = time.time()
-    open_url(build_uri(launch, at), command)
+    open_url(build_uri(launch, at, window_id=window_id), command)
     return poll_for_descriptor(launch, since, timeout=timeout, directory=directory)
 
 
@@ -356,12 +378,16 @@ def open_debug_session(launch: dict, at: str | list[str] | None = None, *, timeo
     pause (or waits for the first one). Route (b) answers on a run socket, so the launch goes with
     the request and the host starts the session.
     """
-    route, descriptor = build_route(launch, directory=directory)
+    from .vscode_window import invoking_window
+
+    caller = invoking_window(launch)
+    route, descriptor = build_route(launch, directory=directory, caller=caller)
     if route == "debug":
         return LiveRun(descriptor or {}), None, route
     if route == "run":
         return LiveRun(descriptor or {}), launch, route
-    return LiveRun(start_via_uri(launch, at, timeout=timeout, directory=directory)), None, route
+    window_id = caller[0].get("windowId") if caller[0] else None
+    return LiveRun(start_via_uri(launch, at, timeout=timeout, directory=directory, window_id=str(window_id) if window_id else None)), None, route
 
 
 __all__ = [
