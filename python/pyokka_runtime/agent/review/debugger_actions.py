@@ -182,7 +182,7 @@ def stop_in_debugger(review: Review, f: dict) -> dict:
              "paused at %s:%s (%s)%s" % (os.path.basename(str(pause.get("file") or "?")), pause.get("line"), pause.get("reason") or "pause", ("  step #%d" % step) if isinstance(step, int) else ""),
              *context,
              "say: %s" % say,
-             "view: VS Code, paused there; the person sees it in the editor"]
+             "view: VS Code, paused there. The editor shows the pause, not the say: write the same words in your message"]
     return result(review, lines, "%s; when they say next, %s --go-on" % (WAIT, CONTINUE), stop=item, step=step, say=say, pause=pause, values=[{"name": a, "text": b} for a, b in values], used=used)
 
 

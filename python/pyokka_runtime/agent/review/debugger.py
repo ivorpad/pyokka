@@ -2,8 +2,9 @@
 
 ``review start`` without ``--full`` plans from ``git diff BASE`` alone, with no run of either tree: one
 item per changed function (its hunks as spans), one per module-level hunk, each with a breakpoint at
-the first statement of its first span (a changed ``def`` line breaks at the first statement of the
-body, a change inside a multi-line statement at that statement). The entry then runs under the
+the first changed statement that decides something, else the first that calls other code, else the
+first statement of its first span (``stop_place.py``; a changed ``def`` line breaks at the first statement
+of the body, a change inside a multi-line statement at that statement). The entry then runs under the
 debugger in the person's VS Code, stopped on entry, with the debugger's own recording on for a
 program (a test runs through its runner as a module launch, which has no recording), and
 the debugger is driven through ``pyokka_debug`` as always, and ``review stop`` records the pause it is at. Every
@@ -22,6 +23,7 @@ from ..sessions import _file_matches, descriptor_kind
 from ..source import AgentError
 from .edges import changed_lines, edges, is_test_file
 from .state import Review, now
+from .stop_place import stop_line
 from .syntax import function_at, parsed
 
 ITEM_KINDS = ("change", "pause")
@@ -129,6 +131,8 @@ def plan_items(repo: str, diff_text: str) -> dict:
         for spans in groups.values():
             spans.sort()
             _, _, line0, fn = spans[0]
+            if fn:  # a stop on what the change decides, not on its first assignment
+                line0 = stop_line(source, [(lo, hi) for lo, hi, _, _ in spans], line0)
             items.append({
                 "kind": "change", "file": file, "line": line0, "function": fn or "",
                 "spans": [[lo, hi] for lo, hi, _, _ in spans],

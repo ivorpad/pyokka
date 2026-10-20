@@ -79,12 +79,17 @@ def run_shell(args: Any, source: Any, out: Any = None) -> int:
         except AgentError as exc:
             _write_error(exc, out, err, as_json)
             continue
+        from .review.reminder import reminder  # a pause at a review stop nobody explained says so (review/reminder.py)
+
+        nudge = reminder(line_args.command, result, source)
         if as_json:
             from .recording import annotate_cut
 
+            if nudge:
+                result["review"] = {k: v for k, v in nudge.items() if k != "lines"}
             out.write(json.dumps(annotate_cut(result), ensure_ascii=False) + "\n")
         else:
-            out.write(render(line_args.command, result, source, line_args) + "\n")
+            out.write(render(line_args.command, result, source, line_args) + ("\n".join(nudge["lines"]) + "\n" if nudge else "") + "\n")
         out.flush()
 
 
