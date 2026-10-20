@@ -270,3 +270,33 @@ def test_the_runtime_takes_out_only_the_hash_seed_the_host_pinned():
     other = {"PYTHONHASHSEED": "7", "PYOKKA_PINNED_HASHSEED": "123"}
     unpin_hash_seed(other)
     assert other == {"PYTHONHASHSEED": "7"}
+
+
+def test_a_request_at_a_pause_runs_off_the_record_and_puts_everything_back():
+    from types import SimpleNamespace
+
+    from pyokka_runtime.inputs import Inputs
+    from pyokka_runtime.offrecord import off_the_record
+
+    inputs = Inputs("record")
+    tracer = SimpleNamespace(quiet=0, inputs=inputs)
+    debugger = SimpleNamespace(tracer=tracer, count=[41])
+    seen = []
+
+    def serve():
+        seen.append((tracer.quiet, inputs.held))
+        debugger.count[0] += 7  # the statements of a function the console called
+        return {"action": "continue"}
+
+    assert off_the_record(debugger, serve) == {"action": "continue"}
+    assert seen == [(1, 1)] and (tracer.quiet, inputs.held, debugger.count) == (0, 0, [41])
+
+    def raises():
+        debugger.count[0] += 1
+        raise ValueError("the console's own error")
+
+    with pytest.raises(ValueError):
+        off_the_record(debugger, raises)
+    assert (tracer.quiet, inputs.held, debugger.count) == (0, 0, [41])
+    # a run that records no inputs, and a debugger without a count, still run quiet
+    assert off_the_record(SimpleNamespace(tracer=SimpleNamespace(quiet=0, inputs=None)), lambda: "served") == "served"

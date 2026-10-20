@@ -501,6 +501,7 @@ class Execution:
             # packages, which is the program running, so the hooks have to be on first.
             tracer.install()
             inputs = for_run(spec, tracer)  # the clock and randomness: kept by a recording run, handed back by a replay
+            tracer.inputs = inputs  # held while the debugger serves a pause (offrecord.py)
             if inputs is not None:
                 inputs.install()
             try:

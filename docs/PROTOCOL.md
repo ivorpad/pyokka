@@ -751,6 +751,16 @@ Replay`. On the first recording in a git workspace the host offers once to add
   `modified`, successful or not, because the runtime cannot know what a statement
   did and one that raised halfway may already have written; from then on it rides
   on every `debug.paused` and on every `locals` reply, until a new run.
+- Every request served while a run is paused (`exec`, `evaluate`, `locals`,
+  `expand`, `complete`, the `watches` action) runs off the recording
+  (`offrecord.py`): the tracer is quiet, so a program function the console calls
+  records no steps, the inputs are held, so its `time.time()` is not the program's
+  read, and the debugger's statement count is put back after it, so the
+  `startedAt` of a recording that begins later is the program's own. A replay runs
+  the program alone; what a console statement wrote is the one thing it cannot
+  repeat, and the full value's summary says so when `modified` was set. Another
+  thread that runs while a request is served loses its steps for that long, as it
+  does while a value's `__repr__` runs.
 - A `function: NAME` breakpoint (`dbgbreakpoints.py`) is resolved by the runtime,
   not the host: a module imported later gets its breakpoint when it loads, which
   an AST scan of the program cannot do for an arbitrary `sys.path` module, and

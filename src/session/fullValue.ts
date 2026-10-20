@@ -211,10 +211,11 @@ export function interpret(
   observation: Observation | undefined,
   locate: Locate,
   ms: number,
-  notes: { inputs: 'handed back' | 'none recorded' | 'run paused'; valuesUntil?: number },
+  notes: { inputs: 'handed back' | 'none recorded' | 'run paused'; valuesUntil?: number; console?: boolean },
 ): FullValueView {
   const base = { key, step: query.step, name: query.name, ms: Math.round(ms) };
-  const view = (status: FullValueStatus, summary: string, extra: Partial<FullValueView> = {}): FullValueView => ({ ...base, status, summary, ...extra });
+  // code typed at a pause ran in the recording only: said after whatever the replay found
+  const view = (status: FullValueStatus, summary: string, extra: Partial<FullValueView> = {}): FullValueView => ({ ...base, status, summary: summary + (notes.console && status !== 'error' ? CONSOLE_NOTE : ''), ...extra });
   if (!result) return view('error', 'The replay ended without an answer. The Pyokka log has what the runtime printed.');
   const matched = result.matched;
   switch (result.status) {
@@ -255,6 +256,9 @@ export function interpret(
   const capped = notes.valuesUntil !== undefined && notes.valuesUntil < query.step ? ` The recording stopped keeping values at step #${notes.valuesUntil} (its limit of ${MAX_LOCALS_ENTRIES.toLocaleString('en-US')} changes), so after it only the path was compared.` : '';
   return view('checked', `The replay took the same ${matched} steps, and ${count} the recording kept on the way came out the same.${KEPT_LIMIT}${own}${capped}${inputsNote(notes.inputs)}`, { value, matched });
 }
+
+/** A recording whose run had code typed in the Debug Console at a pause: the replay ran without it. */
+export const CONSOLE_NOTE = ' Code typed in the Debug Console ran at a pause of this run. A replay runs the program without it, so a value that code changed comes out as the program made it.';
 
 /** What "checked" cannot cover: the comparison stops where the recorder's text of each value stops. */
 export const KEPT_LIMIT = ' Each was compared as far as the recording kept it (by default 120 characters, three levels deep), so a difference deeper in this copy, from a file or a database that changed since, would not show.';

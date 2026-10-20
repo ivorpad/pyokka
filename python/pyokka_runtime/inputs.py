@@ -61,6 +61,7 @@ class Inputs:
         self.reads: list[list[Any]] = []
         self.truncated = False
         self.pos = 0
+        self.held = 0  # reads made while the debugger serves a pause are not the program's (offrecord.py)
         self._undo: list[tuple[Any, str, Any]] = []
 
     def install(self) -> None:
@@ -96,7 +97,7 @@ class Inputs:
         inputs = self
 
         def read(*args: Any) -> Any:
-            if not _from_program():
+            if inputs.held or not _from_program():  # held: code the debugger runs at a pause (offrecord.py)
                 return real(*args)
             label = "%s(%s)" % (name, ", ".join(map(repr, args))) if args else name
             if inputs.mode == "record":

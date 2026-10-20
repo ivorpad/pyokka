@@ -32,6 +32,7 @@ export function sessionFullValue(session: Session, query: FullValueQuery): Promi
     running: session.running,
     paused: !!session.debug.paused,
     transport: !!session.launch?.transport,
+    modified: session.debug.modified,
     locate: (rid) => {
       const loc = st.files.locate(rid);
       return loc ? `${session.displayPath(loc.fileId)}:${loc.range[0]}` : `statement ${rid}`;

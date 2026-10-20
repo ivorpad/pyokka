@@ -196,6 +196,90 @@ runtime('full value, real runtime: str hashing', () => {
   });
 });
 
+runtime('full value, real runtime: code run at a pause', () => {
+  const PROGRAM = 'import time\n\n\ndef helper(x):\n    y = x * 2\n    return y\n\n\ndef main():\n    total = 0\n    for i in range(3):\n        total += helper(i)\n    stamp = time.time()\n    return total, stamp\n\n\nresult = main()\n';
+
+  /** A recording debug run that pauses at main's entry, runs `typed` in the Debug Console there (exec), and continues. */
+  async function pausedRun(file: string, typed: string | undefined): Promise<Awaited<ReturnType<typeof record>>> {
+    const r = runner();
+    await r.start();
+    const req = request(file, `r-pause-${typed ? 'typed' : 'plain'}`);
+    req.config = { ...req.config, debug: true, record: true, stopOnEntry: false, breakOnException: 'uncaught' };
+    req.breakpoints = [{ function: 'main' }];
+    const events: RunEvent[] = [];
+    const done = new Promise<void>((resolve) =>
+      r.on('event', (ev) => {
+        events.push(ev);
+        if (ev.type === 'debug.paused') void (typed ? r.exec(req.runId, typed) : Promise.resolve()).then(() => r.debug(req.runId, { action: 'continue' }));
+        if (ev.type === 'run.finished') resolve();
+      }),
+    );
+    await r.run(req);
+    await done;
+    const trace = [...events].reverse().find((e): e is Extract<RunEvent, { type: 'trace' }> => e.type === 'trace' && !e.partial)!;
+    const steps = decodeSteps(trace.steps);
+    const inputs = events.find((e): e is Extract<RunEvent, { type: 'inputs' }> => e.type === 'inputs');
+    return { req, steps, scopes: new Map(Array.from({ length: steps.length / 4 }, (_, i) => [i, steps[4 * i + 1]!])), locals: events.flatMap((e) => (e.type === 'locals' ? e.entries : [])), logs: events.filter((e): e is LogEvent => e.type === 'log'), inputs: inputs ? { seed: inputs.seed, reads: inputs.reads } : undefined };
+  }
+
+  it('leaves the recording as the program made it: no steps of its own, no clock reads', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pk-full-'));
+    const file = path.join(dir, 'paused.py');
+    fs.writeFileSync(file, PROGRAM);
+    const plain = await pausedRun(file, undefined);
+    // a program function and the clock, called from the console: neither is the program's
+    const typed = await pausedRun(file, 'helper(10)\n__import__("time").time()');
+    expect(Array.from(typed.steps)).toEqual(Array.from(plain.steps));
+    expect(typed.inputs?.reads.map(([label]) => label)).toEqual(['time']);
+    const last = typed.steps.length / 4 - 1;
+    const view = await replayFullValue(source(typed, { modified: true }), { key: 'k', kind: 'at', step: last, name: 'total' });
+    expect(view.status, view.summary).toBe('checked');
+    fs.rmSync(dir, { recursive: true, force: true });
+  }, 60_000);
+
+  it('console code before a recording from a pause leaves the count the recording starts at as the program made it', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pk-full-'));
+    const file = path.join(dir, 'later.py');
+    fs.writeFileSync(file, PROGRAM);
+    const r = runner();
+    await r.start();
+    const req = request(file, 'r-pause-before-recording');
+    req.config = { ...req.config, debug: true, record: true, stopOnEntry: false, recordFrom: { function: 'main' } };
+    req.breakpoints = [{ path: file, line: 17 }, { function: 'main' }];
+    const events: RunEvent[] = [];
+    let pauses = 0;
+    const done = new Promise<void>((resolve) =>
+      r.on('event', (ev) => {
+        events.push(ev);
+        // the first pause is before the recording: the console calls a program function there
+        if (ev.type === 'debug.paused') void (pauses++ === 0 ? r.exec(req.runId, 'helper(10)') : Promise.resolve()).then(() => r.debug(req.runId, { action: 'continue' }));
+        if (ev.type === 'run.finished') resolve();
+      }),
+    );
+    await r.run(req);
+    await done;
+    const trace = [...events].reverse().find((e): e is Extract<RunEvent, { type: 'trace' }> => e.type === 'trace' && !e.partial)!;
+    const steps = decodeSteps(trace.steps);
+    const run = { req, steps, scopes: new Map(Array.from({ length: steps.length / 4 }, (_, i) => [i, steps[4 * i + 1]!])), locals: events.flatMap((e) => (e.type === 'locals' ? e.entries : [])), logs: events.filter((e): e is LogEvent => e.type === 'log'), inputs: undefined };
+    const view = await replayFullValue(source(run, { midRun: true, startedAt: trace.startedAt, modified: true }), { key: 'k', kind: 'at', step: steps.length / 4 - 1, name: 'total' });
+    expect(view.status, view.summary).toBe('checked');
+    fs.rmSync(dir, { recursive: true, force: true });
+  }, 60_000);
+
+  it('a value the console changed comes out as the program made it, and the summary says why', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pk-full-'));
+    const file = path.join(dir, 'paused.py');
+    fs.writeFileSync(file, PROGRAM);
+    const typed = await pausedRun(file, 'total = 99');
+    const last = typed.steps.length / 4 - 1;
+    const view = await replayFullValue(source(typed, { modified: true }), { key: 'k', kind: 'at', step: last, name: 'total' });
+    expect(view.status, view.summary).toBe('differs');
+    expect(view.summary).toContain('Code typed in the Debug Console ran at a pause of this run. A replay runs the program without it');
+    expect(view.difference?.name).toBe('total');
+    fs.rmSync(dir, { recursive: true, force: true });
+  }, 60_000);
+});
+
 /** `random.Random(seed).random() < 0.5`, asked of Python itself so the generator is the program's. */
 async function firstDrawBelowHalf(seed: number): Promise<boolean> {
   const { execFileSync } = await import('node:child_process');

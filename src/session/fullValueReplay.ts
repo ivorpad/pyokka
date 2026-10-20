@@ -38,6 +38,8 @@ export interface ReplaySource {
   paused: boolean;
   /** the session runs over a transport (a container): no local runner to replay in */
   transport: boolean;
+  /** code typed in the Debug Console ran at a pause of the recording run (`DebugState.modified`) */
+  modified?: boolean;
   /** `invoices.py:26` for a statement id of this run */
   locate: (rid: number) => string;
   makeRunner: () => ReplayRunner | undefined;
@@ -138,5 +140,5 @@ export async function replayFullValue(src: ReplaySource, query: FullValueQuery):
   const inputs = src.inputs ? 'handed back' : src.paused && src.running ? 'run paused' : 'none recorded';
   // the recorder stops keeping changes at its cap; the steps past the last one kept are compared by path only
   const valuesUntil = src.locals.length >= MAX_LOCALS_ENTRIES ? src.locals[src.locals.length - 1]!.step : undefined;
-  return interpret(query.key, { step: target, name: query.name }, result, compare, observation, src.locate, Date.now() - started, { inputs, valuesUntil });
+  return interpret(query.key, { step: target, name: query.name }, result, compare, observation, src.locate, Date.now() - started, { inputs, valuesUntil, ...(src.modified ? { console: true } : {}) });
 }
