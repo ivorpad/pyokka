@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.6.1
+
 - Restarting a completed recording keeps its launch configuration, including container transport,
   path mappings, Python, working directory, arguments and environment overrides.
 

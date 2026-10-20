@@ -1,6 +1,6 @@
 [project]
 name = "pyokka-runtime"
-version = "0.6.0"
+version = "0.6.1"
 description = "Pyokka's Python runtime: instrumentation, tracing, value serialization, runner (stdlib only)."
 requires-python = ">=3.12"
 license = "MIT"
