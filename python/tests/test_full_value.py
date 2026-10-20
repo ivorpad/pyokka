@@ -180,7 +180,7 @@ def test_step_with_a_cut_logged_value_names_it(bridge: FakeBridge):
     assert code == 0 and text.splitlines()[-1] == HINT.format(step=11, name="orders")
 
 
-def test_whole_values_and_saved_runs_get_no_hint(bridge: FakeBridge, tmp_path: Path):
+def test_values_kept_whole_and_saved_runs_get_no_hint(bridge: FakeBridge, tmp_path: Path):
     bridge.canned["why"] = {**why_reply(), "root": {**why_reply()["root"], "text": "{'tier': None}"}}
     code, text = pyokka("why", "--live", "41", "order")
     assert code == 0 and "hint:" not in text
