@@ -111,3 +111,34 @@ def test_outside_an_unexplained_stop_of_the_current_review_nothing_is_added(tmp_
     assert reminder("continue", _paused(tmp_path, 6), source) is None  # the recorded review moves its own view
     monkeypatch.setenv("PYOKKA_HOME", str(tmp_path / "nobody"))
     assert reminder("continue", _paused(tmp_path, 6), source) is None  # no review at all
+
+
+def test_the_stop_hook_sends_the_agent_back_once_at_an_unexplained_stop(tmp_path, monkeypatch):
+    import io
+
+    from pyokka_runtime.agent.review import debugger
+    from pyokka_runtime.agent.review.reminder import hook_main
+
+    class Live:
+        def close(self):
+            pass
+
+    where = {"file": str(tmp_path / "repo" / "cart.py"), "line": 6, "reason": "breakpoint"}
+    monkeypatch.setattr(debugger, "connect", lambda review: Live())
+    monkeypatch.setattr(debugger, "current_pause", lambda live: dict(where))
+
+    def hook(stdin):
+        out = io.StringIO()
+        assert hook_main("stop", io.StringIO(stdin), out) == 0  # a hook never fails the turn
+        return out.getvalue()
+
+    _review(tmp_path, monkeypatch)
+    decision = json.loads(hook('{"hook_event_name": "Stop"}'))
+    assert decision["decision"] == "block"
+    assert decision["reason"].startswith("You are ending your turn at a Pyokka review stop. review: this is stop 1 of 2, `total` at cart.py:6")
+    assert hook('{"stop_hook_active": true}') == ""  # sent back once already this turn
+    assert hook("not json") == ""
+    _review(tmp_path, monkeypatch, shown=(1,))
+    assert hook("{}") == ""  # explained: the agent may end its turn and wait for the person
+    monkeypatch.setenv("PYOKKA_HOME", str(tmp_path / "nobody"))
+    assert hook("{}") == ""  # no review at all
