@@ -114,6 +114,7 @@ Each file is for one situation. Open it when the situation is yours, not before.
 | the person works in the browser page (`pyokka web`, http://127.0.0.1:4777/) | [references/pyokka-cli.md](references/pyokka-cli.md#the-browser-page), "The browser page" |
 | the `band` tool (`mcp__pyokka-band__band`) is in your tool list, or `printenv CLAUDECODE` prints `1` | [references/band.md](references/band.md): what the band shows, its actions and the `/pk` keys |
 | a debug command fails, or its help leaves the question open | [references/live-debugger.md](references/live-debugger.md) |
+| a command refuses, nothing pauses after a start, a pause lands on a line you did not set, or an answer looks older than the build | [references/recovery.md](references/recovery.md): the signature, what it means, the one command it asks for |
 | a JSON shape, or an example of a verb over a recording | [references/pyokka-cli.md](references/pyokka-cli.md) |
 | a tool's arguments, or the tool for a CLI command | [references/mcp.md](references/mcp.md) |
 

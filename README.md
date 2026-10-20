@@ -27,7 +27,7 @@ settings and keys follow Quokka's.
 [Install](#install) · [The `pyokka` command](#the-pyokka-command) · [MCP](#mcp) ·
 [The skill](#the-skill) · [In Claude Code](#in-claude-code) · [In a browser](#in-a-browser) ·
 [Use](#use) · [Commands](#commands) · [Settings](#settings) · [Files](#files-pyokka-writes) ·
-[Development](#development) · [Every feature in depth](docs/GUIDE.md)
+[Development](#development) · [Every feature in depth](docs/GUIDE.md) · [Playbook](docs/PLAYBOOK.md)
 
 ## Install
 

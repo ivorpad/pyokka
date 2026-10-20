@@ -242,7 +242,8 @@ def test_a_review_of_one_test_is_never_told_to_record_the_file(started, tmp_path
     assert nxt == "next: wait for the person; they saw this only in chat, so answer in your message; a review of one test stays in chat"
     tool = next(t for t in tool_definitions() if t["name"] == "pyokka_review")
     assert "a review of one test stays in chat" in tool["description"]
-    assert "A review of one test has neither view" in tool["inputSchema"]["properties"]["surface"]["description"] and "stays in chat" in tool["inputSchema"]["properties"]["test"]["description"]
+    # the one-test rule is the recorded review's: the default runs a test under the debugger in VS Code (smoke of 2026-10-20)
+    assert "In a full review one test has neither view" in tool["inputSchema"]["properties"]["surface"]["description"] and "With full: true its review stays in chat" in tool["inputSchema"]["properties"]["test"]["description"]
 
 
 def test_the_notes_and_the_start_lines_name_both_forms():
