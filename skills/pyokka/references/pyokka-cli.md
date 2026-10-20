@@ -266,13 +266,13 @@ needs `--live`. Wherever `var`, `why`, `step` or `context` print a recorded valu
 `hint:` line names this command with the step and the name to give it.
 
 ```sh
-pyokka why --live 41 order --full
-# why order at #41
-# order = {'items': [{...}, {...}], 'tier': 'gold'}   #38 invoices.py:40 invoice_total   def invoice_total(order):
+pyokka why --live 53 order --full     # invoices.py, paused in invoice_total
+# why order at #53
+# order = {'items': [{'qty': 2, 'sku': 'KB-01', 'unit_price': 49.9}, {'qty': 1, 'sku': 'MS-07'…(+39 chars)   #53 invoices.py:40 invoice_total   def invoice_total(order):
 #
 # full value of order: Checked
-# The replay took the same 42 steps, and all 12 values the recording kept on the way came out the same. …
-# replayed in 412 ms: the program ran again in a separate process, so files it writes were written again
+# The replay took the same 55 steps, and all 104 values the recording kept on the way came out the same. …
+# replayed in 363 ms: the program ran again in a separate process, so files it writes were written again
 #   order = {
 #     'tier': 'gold',
 #     'items': [
@@ -281,6 +281,9 @@ pyokka why --live 41 order --full
 #     ],
 #   }
 ```
+
+The recording's text sorts a dict's keys; the copy keeps the program's own order. The step a
+change is read at is the one right after its statement (`full.step`), so it can be one past STEP.
 
 JSON: `full` is `{status, step, name, summary, value?, difference?: {step, name, recorded, replay}, matched?, ms?}`, `value` a value node (`type`, `value`, `props` with `name` and `keyRepr`).
 
