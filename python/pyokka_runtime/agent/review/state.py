@@ -178,9 +178,10 @@ def change_diff(repo: str, base: str, keep: Any = None) -> Change:
     return Change(out, untracked, files)
 
 
-def tree_hash(repo: str) -> str:
+def tree_hash(repo: str, entry: str | None = None) -> str:
     """HEAD, ``git status --porcelain``, the working tree's diff against HEAD and the content of the
-    untracked files, folded into one hash: the review describes this tree and no other."""
+    untracked files, folded into one hash: the review describes this tree and no other. An ``entry`` that git
+    does not see (outside the repository, or ignored) has its content folded in too, so an edit to it counts."""
     h = hashlib.sha256()
     h.update(git(repo, "rev-parse", "HEAD").encode("utf-8"))
     status = [l for l in git(repo, "status", "--porcelain", "--untracked-files=all").splitlines() if not _derived(l[3:])]
@@ -197,7 +198,23 @@ def tree_hash(repo: str) -> str:
                 h.update(hashlib.sha256(fh.read()).digest())
         except OSError:
             continue
+    if entry:
+        path = entry if os.path.isabs(entry) else os.path.join(repo, entry)
+        if not inside(path, repo) or _ignored(repo, path):
+            try:
+                with open(path, "rb") as fh:
+                    h.update(b"entry\0" + hashlib.sha256(fh.read()).digest())
+            except OSError:
+                h.update(b"entry\0missing")
     return h.hexdigest()
+
+
+def _ignored(repo: str, path: str) -> bool:
+    """Whether git ignores ``path``, a file of the repository: its edits never show in ``git status``."""
+    try:
+        return subprocess.run(["git", "-C", repo, "check-ignore", "-q", "--", path], capture_output=True, timeout=60).returncode == 0
+    except (OSError, subprocess.SubprocessError):
+        return False
 
 
 def _derived(rel: str) -> bool:
