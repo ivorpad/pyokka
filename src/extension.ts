@@ -50,6 +50,7 @@ import { setting } from './config/settings';
 import { Narrator } from './features/narrator';
 import { TourHost } from './views/tourPane';
 import { installCliShim } from './features/cliShim';
+import { registerWindowFile } from './agent/windowFile';
 import { GraphProvider } from './features/executionGraph';
 import { buildExceptionReport } from './session/exceptionReport';
 import { walkthroughInputs } from './agent/bridgeSupport';
@@ -152,6 +153,8 @@ export function activate(context: vscode.ExtensionContext): PyokkaApi {
   context.subscriptions.push(...registerDapAdapter(mgr, debugSessions, timeMachine));
   // `vscode://ivor.pyokka/debug?…`: how `pyokka debug FILE` reaches a window with no socket yet
   context.subscriptions.push(registerDebugUriHandler());
+  // which window this is, so that URI reaches the window the agent runs in rather than the focused one
+  context.subscriptions.push(registerWindowFile(context));
   // `name = value` on the paused function's lines during a Debugger pause, read from the frame
   context.subscriptions.push(registerDebugInlineValues());
   // `pyokka` on PATH, pointing at this version's runtime, so an agent never needs the extension's path

@@ -41,6 +41,10 @@ A cold start brings the VS Code window to the front at the first stop (`code --g
 the CLI runs in a terminal and the editor would otherwise move behind it. `--no-focus` or
 `PYOKKA_NO_FOCUS=1` turns that off.
 
+A start goes to the window the agent was invoked from (its integrated terminal, or the extension that
+spawned it), not to whichever window is focused; with no VS Code running it starts VS Code on the
+program's repository first, and says so when VS Code cannot start or the window never activates Pyokka.
+
 Every `pyokka debug` is remembered per directory (`$PYOKKA_HOME/last-debug.json`). When the program
 has exited, `continue --live`, `break --live FILE:LINE` and `restart --live` start that launch
 again and print its first stop, with a first line saying what they re-ran: `break` stops at the
