@@ -140,6 +140,24 @@ describe('Pyokka CLI --live on demo.py', function () {
     assert.ok(j.changes.some((c) => c.line === 18 && c.file === file), `working_dir assigned on line 18: ${JSON.stringify(j.changes)}`);
   });
 
+  it('why --live STEP NAME --full prints the value a replay of the run copied whole', async () => {
+    await api.waitForIdle(session, 60_000);
+    const changes = await cliJson('var', '--live', '--session', 'demo.py', 'rect1');
+    const made = changes.changes.find((c) => c.line === 85);
+    assert.ok(made, `rect1 assigned on line 85: ${JSON.stringify(changes.changes)}`);
+    // the statement made it: the copy is the value right after it, the recording's own steps checked on the way
+    const r = await cli('why', '--live', '--session', 'demo.py', String(made.step), 'rect1', '--full');
+    assert.equal(r.status, 0, r.stderr);
+    assert.match(r.stdout, /^why rect1 at #\d+\n/);
+    assert.match(r.stdout, /\nfull value of rect1: (Checked|Path checked)\n/);
+    assert.match(r.stdout, /\nreplayed in [\d.]+ m?s: the program ran again in a separate process/);
+    assert.match(r.stdout, /\n {2}rect1 = Rectangle\(width=50, height=20, position=Point\(x=10, y=10\)\)\n/);
+    const j = await cliJson('why', '--live', '--session', 'demo.py', String(made.step), 'rect1', '--full');
+    assert.equal(j.full.name, 'rect1');
+    assert.ok(j.full.step > made.step, `read after the statement at #${made.step}: #${j.full.step}`);
+    assert.deepEqual(j.full.value.props.map((p) => p.name), ['width', 'height', 'position']);
+  });
+
   it('watch --live echoes a step taken in the editor', async () => {
     editor = await vscode.window.showTextDocument(doc);
     const child = spawn(python, ['-m', 'pyokka_runtime', 'watch', '--live', '--session', 'demo.py'], { cwd: PY_DIR });
