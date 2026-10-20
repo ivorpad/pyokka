@@ -40,6 +40,7 @@ import { followTimeMachine, replayGivingWay, replaying, replayStarting, stopRepl
 import { DEBUG_TYPE } from './dapShared';
 import type { TimeMachine } from '../timeMachine/navigator';
 import { log } from '../util/log';
+import { parseAttach } from './attachConfig';
 
 export { DEBUG_TYPE } from './dapShared';
 export const LAUNCH_NAME = 'Pyokka: Debug Current File';
@@ -83,6 +84,7 @@ export async function startDebugSession(launch: LaunchConfig, opts: { stopOnEntr
     cwd: launch.cwd,
     ...(Object.keys(launch.env).length ? { env: launch.env } : {}),
     ...(launch.python ? { python: launch.python } : {}),
+    ...(launch.transport ? { transport: launch.transport, pathMappings: launch.pathMappings } : {}),
     stopOnEntry: opts.stopOnEntry ?? launch.stopOnEntry,
     breakOnException: launch.breakOnException,
     libraryCode: launch.libraryCode,
@@ -246,12 +248,15 @@ export class PyokkaDebugAdapter implements vscode.DebugAdapter {
     // lost its session on the first `continue`). It is also where the recording's values are drawn.
     if (!vscode.window.visibleTextEditors.some((e) => e.document === doc)) await vscode.window.showTextDocument(doc, { preview: false, preserveFocus: true });
     const existing = this.mgr.get(doc);
+    if (existing && JSON.stringify([existing.launch?.transport, existing.launch?.pathMappings]) !== JSON.stringify([launch.transport, launch.pathMappings])) {
+      throw new Error(`Stop the Pyokka session on ${existing.displayName} before changing its transport or pathMappings.`);
+    }
     // the replay of the previous run gives way: this debug session shows the Time Machine from now on
     if (existing) await stopReplay(existing, { keepTimeMachine: true });
     if (existing && attached.has(existing)) throw new Error(`${existing.displayName} is already being debugged in another debug session: continue there, or stop it first`);
     if (existing && launch.python && existing.interpreter.path !== launch.python) throw new Error(interpreterRefusal(existing.displayName));
     const recordFrom = recordFromSpec(launch);
-    const session = existing ?? (await this.mgr.start(doc, { debug: true, stopOnEntry: opts.stopOnEntry, ...(recordFrom ? { recordFrom } : {}), ...(launch.python ? { interpreter: launch.python } : {}) }));
+    const session = existing ?? (await this.mgr.start(doc, { debug: true, launch, stopOnEntry: opts.stopOnEntry, ...(recordFrom ? { recordFrom } : {}), ...(launch.python ? { interpreter: launch.python } : {}) }));
     if (!session) throw new Error(`Pyokka could not start a session on ${program}`);
     applyLaunchOverrides(session, launch);
     log.info(`[${session.displayName}] DAP launch${existing ? '' : ' (fresh session: its first run is the paused one)'} (recording)`);
@@ -273,7 +278,7 @@ export class PyokkaDebugAdapter implements vscode.DebugAdapter {
  * `python` is not one of them: it reaches `SessionManager.start` as an option.
  */
 export function applyLaunchOverrides(session: Session, launch: LaunchConfig): void {
-  session.argvOverride = launch.args.length ? [...launch.args] : undefined;
+  session.argvOverride = [...launch.args];
   session.cwdOverride = launch.cwd || undefined;
   session.envOverride = Object.keys(launch.env).length ? { ...launch.env } : undefined;
 }
@@ -395,17 +400,25 @@ export function wrapSession(session: Session, mgr: SessionManager, opts: { debug
   };
 }
 
-/** Registers the debugger type: the inline adapter and the configuration provider. */
+/** Launch/replay use the inline adapter; attach connects directly to debugpy's DAP listener. */
 export function registerDapAdapter(mgr: SessionManager, debugMgr: DebugSessionManager, timeMachine?: TimeMachine): vscode.Disposable[] {
   debugSessions = debugMgr;
   // a file shown in a debug session of its own (recording, or a live `record: false` run of it) gets no replay
   if (timeMachine) followTimeMachine(mgr, (s) => attached.has(s) || [...attachedDebug.keys()].some((ds) => s.document.uri.scheme === 'file' && ds.launch.program === s.document.uri.fsPath));
   return [
     vscode.debug.registerDebugAdapterDescriptorFactory(DEBUG_TYPE, {
-      createDebugAdapterDescriptor: (debugSession) => new vscode.DebugAdapterInlineImplementation(new PyokkaDebugAdapter(mgr, debugMgr, debugSession, timeMachine)),
+      createDebugAdapterDescriptor: (debugSession) => {
+        if (debugSession.configuration.request === 'attach') {
+          const { connect } = parseAttach(debugSession.configuration);
+          return new vscode.DebugAdapterServer(connect.port, connect.host);
+        }
+        return new vscode.DebugAdapterInlineImplementation(new PyokkaDebugAdapter(mgr, debugMgr, debugSession, timeMachine));
+      },
     }),
     vscode.debug.registerDebugConfigurationProvider(DEBUG_TYPE, {
       resolveDebugConfiguration(_folder, config) {
+        // An attach has no local program. Its endpoint may still contain VS Code input variables.
+        if (config.request === 'attach') return config;
         // the Time Machine's own launch (startReplay) is complete as it is
         if (typeof config['replay'] === 'string') return config;
         // F5 on a Python file with no launch.json arrives empty; a launch without `program` means the active file
@@ -438,6 +451,15 @@ export function registerDapAdapter(mgr: SessionManager, debugMgr: DebugSessionMa
           }
         }
         return config;
+      },
+      resolveDebugConfigurationWithSubstitutedVariables(_folder, config) {
+        if (config.request !== 'attach') return config;
+        try {
+          return { ...config, ...parseAttach(config) };
+        } catch (err) {
+          void vscode.window.showErrorMessage(err instanceof Error ? err.message : String(err));
+          return undefined;
+        }
       },
     }),
   ];

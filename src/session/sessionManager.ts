@@ -16,6 +16,8 @@ import { setting } from '../config/settings';
 import { setContext } from '../util/context';
 import { log } from '../util/log';
 import { existsSync, pyokkaHome, shortHash } from '../util/paths';
+import type { LaunchConfig } from '../debug/debugSessionState';
+import { probeTransportInterpreter } from '../runtime/transportRunner';
 
 export interface StartOptions {
   runMode?: RunMode;
@@ -36,6 +38,8 @@ export interface StartOptions {
    * interpreter is not switched under the user: the start is refused instead.
    */
   interpreter?: string;
+  /** Apply launch settings before the first run, including its transport. */
+  launch?: LaunchConfig;
 }
 
 /** What a recording debug start says when the document's session runs in another interpreter. */
@@ -214,9 +218,12 @@ export class SessionManager extends EventEmitter<SessionManagerEvents> {
     }
     if (existing) this.stopSession(existing, false);
     if (!(await this.trustAllowed())) return undefined;
+    const workspaceRoot = this.workspaceRootFor(doc, opts.projectRoot);
     let interpreter: Interpreter;
     try {
-      interpreter = opts.interpreter ? await namedInterpreter(opts.interpreter) : await resolveInterpreter(doc.uri);
+      interpreter = opts.launch?.transport
+        ? await probeTransportInterpreter(opts.launch, workspaceRoot || path.dirname(doc.uri.fsPath))
+        : opts.interpreter ? await namedInterpreter(opts.interpreter) : await resolveInterpreter(doc.uri);
     } catch (err) {
       // as VS Code's debugger does: no usable interpreter asks for one (a launch that named its own keeps its error)
       const picked = !opts.interpreter && err instanceof InterpreterError ? await selectInterpreterCommand(err.reason ?? err.message) : undefined;
@@ -232,9 +239,8 @@ export class SessionManager extends EventEmitter<SessionManagerEvents> {
         return undefined;
       }
     }
-    const workspaceRoot = this.workspaceRootFor(doc, opts.projectRoot);
     const extraPythonPath = this.forFileSitePackages(doc);
-    const session = new Session({ document: doc, interpreter, runtimeDir: this.runtimeDir, workspaceRoot, runMode: opts.runMode, autoLog: opts.autoLog, mode: opts.mode, extraPythonPath });
+    const session = new Session({ document: doc, interpreter, runtimeDir: this.runtimeDir, workspaceRoot, runMode: opts.runMode, autoLog: opts.autoLog, mode: opts.mode, extraPythonPath, launch: opts.launch });
     if (opts.debug) session.debugCtl.activate({ stopOnEntry: opts.stopOnEntry, ...(opts.recordFrom ? { recordFrom: opts.recordFrom } : {}) });
     this.sessions.set(session.key, session);
     this.lastActive = session;

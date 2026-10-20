@@ -9,6 +9,7 @@ import type { Completions, DebugRequest, HostRequest, RunEvent, RunnerMessage, R
 import { NdjsonDecoder, encodeNdjson } from './ndjson';
 import { execResult, type ExecResult } from '../debug/debugExec';
 import { pyokkaHome } from '../util/paths';
+import type { TransportPaths } from './transportPaths';
 
 export interface ReadyInfo {
   pythonVersion: string;
@@ -48,6 +49,10 @@ export interface RunnerClientOptions {
   log?: (line: string) => void;
   maxRestarts?: number;
   requestTimeoutMs?: number;
+  /** A transport bootstrap consumes this before the first NDJSON request. */
+  initialInput?: string;
+  paths?: TransportPaths;
+  commandLabel?: string;
 }
 
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
@@ -108,7 +113,7 @@ export class RunnerClient extends EventEmitter<RunnerClientEvents> {
     } else this.restartAttempts = 0;
     this.lastStart = Date.now();
     const args = this.options.args ?? ['-m', 'pyokka_runtime', 'serve'];
-    this.options.log?.(`spawn ${this.options.command} ${args.join(' ')} (cwd ${this.options.cwd})`);
+    this.options.log?.(`spawn ${this.options.commandLabel ?? `${this.options.command} ${args.join(' ')}`} (cwd ${this.options.cwd})`);
     const proc = spawn(this.options.command, args, {
       cwd: this.options.cwd,
       // PYOKKA_HOME resolved here (`~` expanded) so the runtime and any CLI it starts use the window's directory
@@ -146,6 +151,7 @@ export class RunnerClient extends EventEmitter<RunnerClientEvents> {
       this.failPending(new Error(`Pyokka runner exited (code ${code ?? 'null'}${signal ? `, ${signal}` : ''})`));
       this.emit('exit', code, signal, willRestart);
     });
+    if (this.options.initialInput) proc.stdin?.write(this.options.initialInput);
     const reply = await this.send({ type: 'hello', version: this.options.version ?? '1' }, 20_000);
     if (reply.type !== 'ready') throw new Error(`unexpected handshake reply: ${reply.type}`);
     const info: ReadyInfo = { pythonVersion: reply.pythonVersion, executable: reply.executable, platform: reply.platform, capabilities: reply.capabilities ?? [], runtimeVersion: reply.runtimeVersion };
@@ -164,6 +170,7 @@ export class RunnerClient extends EventEmitter<RunnerClientEvents> {
 
   private handleMessage(msg: RunnerMessage): void {
     if (!msg || typeof msg !== 'object') return;
+    if (this.options.paths) msg = this.options.paths.inbound(msg as unknown as Record<string, unknown>) as unknown as RunnerMessage;
     if (msg.type === 'runner.error') {
       this.emit('runnerError', msg.message, msg.detail);
       return;
@@ -182,6 +189,9 @@ export class RunnerClient extends EventEmitter<RunnerClientEvents> {
     const proc = this.proc;
     if (!proc?.stdin || !this.alive) return Promise.reject(new Error('Pyokka runner is not running'));
     const id = this.nextId++;
+    let message: Record<string, unknown> = { ...body, id };
+    try { message = this.options.paths?.outbound(message) ?? message; }
+    catch (err) { return Promise.reject(err); }
     return new Promise<RunnerMessage>((resolve, reject) => {
       const pending: Pending = { resolve, reject };
       const t = timeoutMs ?? this.options.requestTimeoutMs;
@@ -192,7 +202,7 @@ export class RunnerClient extends EventEmitter<RunnerClientEvents> {
         }, t);
       }
       this.pending.set(id, pending);
-      proc.stdin!.write(encodeNdjson({ ...body, id }), (err) => {
+      proc.stdin!.write(encodeNdjson(message), (err) => {
         if (err) {
           this.pending.delete(id);
           if (pending.timer) clearTimeout(pending.timer);
