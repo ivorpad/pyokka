@@ -82,7 +82,7 @@ def start_in_debugger(f: dict, pre: dict) -> dict:
         "id": "%s-%s" % (os.path.basename(repo.rstrip(os.sep)) or "repo", str(pre["base"])[:7]),
         "repo": repo, "base": pre["base"], "base_ref": pre["base_ref"], "head": pre["head"], "entry": rel, "test": pre.get("test"),
         "argv": list(pre.get("argv") or []), "python": getattr(interp, "path", None), "dir": directory, "created": now(), "mode": "debugger",
-        "phase": "stops" if plan["stops"] else "findings", "tree_hash": tree_hash(repo), "pr": pre.get("pr_from"),
+        "phase": "stops" if plan["stops"] else "findings", "tree_hash": tree_hash(repo, rel), "pr": pre.get("pr_from"),
         "plan": {"stops": plan["stops"], "aside": plan.get("aside", []), "unreached": [], "edges": plan["edges"], "anomalies": [],
                  **({"only": plan["only"], "aside_edges": plan["aside_edges"], "outside": plan.get("outside", [])} if plan.get("only") else {})},
         "shown": [], "skipped": [], "ended": None, "waiting": None, "said": [], "asked": [], "conversation": [], "tries": [], "findings": [], "fix": None,

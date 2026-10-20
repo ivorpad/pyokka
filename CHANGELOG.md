@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- `review start` without `--full` (the review in the debugger) no longer refuses a launcher outside
+  the repository or one the base commit lacks. Both checks ran before the mode was chosen, though
+  only `--full` runs the entry in the base tree. `--full` still refuses both. The repository stays
+  the working directory and the diff, and the launcher's content is folded into the tree hash, so
+  an edit to it invalidates the session.
+
 ## 0.5.6
 
 - `package-lock.json` said 0.5.4 while the release said 0.5.5, because `scripts/version.py` never

@@ -144,7 +144,7 @@ def reproduce(review: Review, fd: dict) -> tuple[bool, str]:
 
 
 def report(review: Review, f: dict) -> dict:
-    current = tree_hash(review.repo)
+    current = tree_hash(review.repo, review.data.get("entry"))
     recorded = str(review.data.get("tree_hash") or "")
     if current != recorded:
         raise review.refuse("the tree at %s changed since start (%s → %s): the review no longer describes it" % (review.repo, recorded[:12], current[:12]), ["start again on the current tree, or put it back (git stash, git checkout) and report"], "review start --base %s" % (review.data.get("base_ref") or review.data.get("base")))
