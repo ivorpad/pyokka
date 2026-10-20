@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from ..protocol import PROVENANCE_DEPTH, PROVENANCE_MAX_DEPTH, PROVENANCE_NODES
+from ..protocol import MAX_LOCALS_ENTRIES, PROVENANCE_DEPTH, PROVENANCE_MAX_DEPTH, PROVENANCE_NODES
 from .history import History
 from .moments import MomentBuilder
 from .why_text import conclusion
@@ -103,18 +103,24 @@ class ProvenanceBuilder:
         return self.from_read(read) if read.get("step") is not None else self.not_yet(name, step, scope_id, file_id)
 
     def not_yet(self, name: str, step: int, scope_id: int, file_id: int) -> dict:
-        """A root name with no value at ``step``: when its scope (or its module) assigns it later, the node
-        says where it first does, so a query one step too early is not mistaken for a value made before the
-        recording; otherwise the leaf. A dotted name falls back to its first segment, as ``root`` does."""
+        """A root name with no value at ``step``. A later assignment in its scope (or its module) says it has
+        none yet only when every earlier value would have been seen: locals recorded from the program's start,
+        under the recorder's cap. Otherwise an earlier value may only have gone unrecorded: a run without
+        locals answers the leaf, and a recording that began at a pause names the later assignment without
+        ruling out a value made before step 0. A dotted name falls back to its first segment, as ``root`` does."""
         later = self.history.first_change_after(name, step, scope_id, file_id)
         if later is None and "." in name:
             later = self.history.first_change_after(name.split(".", 1)[0], step, scope_id, file_id)
-        if later is None:
+        entries = self.run.locals_entries
+        capped = len(entries) >= MAX_LOCALS_ENTRIES and int(entries[-1]["step"]) < step  # past the cap nothing was observed
+        if later is None or not entries or capped:
             return self.leaf(name)
         first = dict(self.history.location(int(later["step"])))
         statement = self.statement(int(later["step"]))
         if statement is not None:
             first["statement"] = statement
+        if getattr(self.run, "mid_run", False):
+            return {"name": str(later["name"]), "beforeRecording": True, "firstAssigned": first}
         return {"name": str(later["name"]), "firstAssigned": first}
 
     # -- a statement's inputs ---------------------------------------------------------------------------------

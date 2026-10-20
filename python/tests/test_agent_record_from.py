@@ -123,6 +123,11 @@ def test_step_zero_and_the_history_chain_say_where_the_recording_started():
     assert recording_start_lines({}) == []
     (leaf,) = flatten_chain({"name": "payload", "beforeRecording": True})
     assert leaf["text"] == "?" and leaf["statement"] == "made before #0, where the recording started"
+    # a later assignment in the recording does not rule out a value made before it began
+    first = {"step": 7, "file": "/w/app.py", "line": 12, "function": "load", "statement": "payload = fetch()"}
+    (both,) = flatten_chain({"name": "payload", "beforeRecording": True, "firstAssigned": first})
+    assert both["text"] == "?" and both["statement"] == "made before #0, where the recording started, or first assigned here: payload = fetch()"
+    assert (both["location"], both["step"]) == ("app.py:12", 7)
 
 
 def test_why_leaf_before_the_recording_says_so():

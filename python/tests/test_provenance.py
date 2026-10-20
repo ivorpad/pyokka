@@ -199,11 +199,12 @@ def test_a_name_with_no_value_yet_says_where_it_is_first_assigned(cases):
     early = cases[("label", PROVENANCE_DEPTH, 23)]["result"]
     first = {"step": 24, "file": "/fixture/main.py", "fileId": 1, "line": 29, "function": "<module>", "scopeId": 0, "statement": "label = helper.describe(total, os.sep)"}
     assert early["step"] == 6 and early["root"] == {"name": "label", "firstAssigned": first} and early["nodes"] == 1 and early["conclusion"] == ""
-    # read as a recording that began at a pause, a name its scope assigns later is still not one made before step 0
-    assert cases[("label", PROVENANCE_DEPTH, 23, "midRun")]["result"]["root"] == early["root"]
+    # read as a recording that began at a pause, nothing tells a name made before step 0 from one its scope
+    # assigns later: the node names the later assignment and keeps the other possibility (review of 0.7.0)
+    assert cases[("label", PROVENANCE_DEPTH, 23, "midRun")]["result"]["root"] == {**early["root"], "beforeRecording": True}
     # the F2 shape: asked at a function's first step, the local its next statement assigns
     text = cases[("text", PROVENANCE_DEPTH, 1, "midRun")]["result"]
-    assert text["step"] == 25 and text["root"] == {"name": "text", "firstAssigned": {"step": 26, "file": "/fixture/helper.py", "fileId": 2, "line": 2, "function": "describe", "scopeId": 5, "statement": 'text = "total" + sep + str(value)'}}
+    assert text["step"] == 25 and text["root"] == {"name": "text", "beforeRecording": True, "firstAssigned": {"step": 26, "file": "/fixture/helper.py", "fileId": 2, "line": 2, "function": "describe", "scopeId": 5, "statement": 'text = "total" + sep + str(value)'}}
     # only a name nothing assigns later is one made before the recording
     assert cases[("nothing_here", PROVENANCE_DEPTH, 23, "midRun")]["result"]["root"] == {"name": "nothing_here", "beforeRecording": True}
 
@@ -289,6 +290,22 @@ def test_text_form_says_why_a_name_has_no_value(fixture_run: Path, tmp_path: Pat
         assert main(["run", str(program), "--save", str(saved), "--no-locals"]) == 0
     code, text = pyokka("why", str(saved), "2")
     assert code == 0 and "  ← width = ?   not recorded: this run recorded no locals" in text.splitlines()
+    # a name assigned before the step, with no value recorded, is never "not assigned yet" (review of 0.7.0)
+    program.write_text("x = 1\ny = 2\nprint(y)\nx = 3  # ?\n", encoding="utf-8")
+    with redirect_stdout(io.StringIO()):
+        assert main(["run", str(program), "--save", str(saved), "--no-locals"]) == 0
+    code, text = pyokka("why", str(saved), "2", "x")
+    assert code == 0 and text.splitlines() == ["why x at #2", "x = ?   not recorded: this run recorded no locals"]
+
+
+def test_a_recording_from_a_pause_keeps_both_possibilities():
+    import types
+
+    from pyokka_runtime.agent.render import _why_node
+
+    first = {"step": 24, "file": "/fixture/main.py", "fileId": 1, "line": 29, "function": "<module>", "scopeId": 0, "statement": "label = helper.describe(total, os.sep)"}
+    line = _why_node({"name": "label", "beforeRecording": True, "firstAssigned": first}, "", types.SimpleNamespace(display_path=os.path.basename), 6)
+    assert line == "label = ?   made before #0, where the recording started, or first assigned at #24 main.py:29 <module>   label = helper.describe(total, os.sep)"
 
 
 # -- the conclusion: the answer in words ---------------------------------------------------------------------------

@@ -125,13 +125,13 @@ describe('provenance', () => {
     expect(json(provenance(program(), { step: 3, name: 'n' }))).toEqual({ name: 'n', step: 3, depth: 5, nodes: 1, truncated: false, recordedLocals: true, root: { name: 'n', firstAssigned: first }, conclusion: '' });
     // a function's first step, before the statement that binds its local (the F2 shape)
     expect(json(provenance(program(), { step: 7, name: 'y' }).root)).toEqual({ name: 'y', firstAssigned: { step: 8, ...at(8, 5, 'double', 1), statement: 'y = x * 2' } });
-    // a recording that began at a pause: the name is assigned after step 0, not before it
-    expect(json(provenance({ ...program(), midRun: true }, { step: 3, name: 'n' }).root)).toEqual({ name: 'n', firstAssigned: first });
+    // a recording that began at a pause cannot rule out a value made before step 0: it names the later assignment and keeps both
+    expect(json(provenance({ ...program(), midRun: true }, { step: 3, name: 'n' }).root)).toEqual({ name: 'n', beforeRecording: true, firstAssigned: first });
     expect(provenance({ ...program(), midRun: true }, { step: 3, name: 'nothing' }).root).toEqual({ name: 'nothing', beforeRecording: true });
-    // the assignment site alone answers when no locals were recorded
+    // without recorded locals an earlier value may only have gone unrecorded: no claim that there is none (review of 0.7.0)
     const bare = program();
     bare.locals = [];
-    expect(json(provenance(bare, { step: 3, name: 'n' }).root)).toEqual({ name: 'n', firstAssigned: first });
+    expect(json(provenance(bare, { step: 3, name: 'n' }).root)).toEqual({ name: 'n' });
     // an assignment in another scope is another name: `y` lives in double
     expect(provenance(program(), { step: 3, name: 'y' }).root).toEqual({ name: 'y' });
   });
@@ -219,6 +219,9 @@ describe('provenance', () => {
     expect(lines.slice(2)).toEqual(['  ← n = ?   not recorded: this run recorded no locals', '  ← box = ?   not recorded: this run recorded no locals', '  · len(str(n))   not stepped', '  · str(n)   not stepped']);
     expect(renderProvenance(provenance(program(), { step: 3, name: 'n' })).split('\n')).toEqual(['why n at #3', 'n  not assigned yet at #3, first assigned at #6 /w/main.py:10 <module>   n = double(total)  # ?']);
     expect(renderProvenance(provenance({ ...program(), midRun: true }, { step: 3, name: 'nothing' })).split('\n')).toEqual(['why nothing at #3', 'nothing = ?   made before #0, where the recording started']);
+    // a recording that began at a pause keeps both possibilities; a run without locals claims neither
+    expect(renderProvenance(provenance({ ...program(), midRun: true }, { step: 3, name: 'n' })).split('\n')).toEqual(['why n at #3', 'n = ?   made before #0, where the recording started, or first assigned at #6 /w/main.py:10 <module>   n = double(total)  # ?']);
+    expect(renderProvenance(provenance({ ...program(), locals: [] }, { step: 3, name: 'n' })).split('\n')).toEqual(['why n at #3', 'n = ?   not recorded: this run recorded no locals']);
     const cut = renderProvenance(provenance(program(), { step: 13, name: '', nodes: 4 })).split('\n');
     expect(cut[0]).toBe('why #13');
     expect(cut[cut.length - 1]).toBe("… more inputs than 60 nodes show; ask why for a node's name at its step");

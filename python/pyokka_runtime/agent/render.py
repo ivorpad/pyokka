@@ -469,7 +469,9 @@ def _why_node(n: dict, prefix: str, source: Any, step: Any = None, recorded_loca
         elif n.get("step") is not None:
             parts.append("%s  assigned here (value not recorded)" % n["name"])
         elif first:
-            parts.append("%s  not assigned yet at #%s, first assigned at #%s %s %s" % (n["name"], step, first.get("step"), _loc(source, first.get("file"), first.get("line")), first.get("function") or "<module>"))
+            where = "#%s %s %s" % (first.get("step"), _loc(source, first.get("file"), first.get("line")), first.get("function") or "<module>")
+            # a recording that began at a pause cannot tell a name made before step 0 from one made later: it says both
+            parts.append("%s = ?%s, or first assigned at %s" % (n["name"], BEFORE_RECORDING, where) if n.get("beforeRecording") else "%s  not assigned yet at #%s, first assigned at %s" % (n["name"], step, where))
         else:
             parts.append("%s = ?%s" % (n["name"], BEFORE_RECORDING if n.get("beforeRecording") else "" if recorded_locals else NOT_RECORDED))
     if n.get("step") is not None:

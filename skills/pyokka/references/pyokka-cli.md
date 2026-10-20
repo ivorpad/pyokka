@@ -242,8 +242,12 @@ pyokka why run.json 124 fused_ranking
 `= ?` is a name nothing recorded, followed by the reason when it is known: `not recorded: this run
 recorded no locals`, or `made before #0, where the recording started` in a run that recorded from a
 pause. `NAME  not assigned yet at #6, first assigned at #24 main.py:29 <module>` is a name its scope
-assigns only after the step you asked about: ask again at that step. `· ... not stepped` is a call
-whose body left no steps.
+assigns only after the step you asked about: ask again at that step. It is said only when the run
+recorded every local from its start. Without locals an earlier value may only have gone unrecorded,
+so the line is `= ?   not recorded: ...`. A recording that began at a pause cannot tell a name made
+before step 0 from one first assigned later, and says both: `= ?   made before #0, where the
+recording started, or first assigned at #24 ...`. `· ... not stepped` is a call whose body left no
+steps.
 JSON: `{name, step, depth, nodes, root: {name, text, step, file, line, function, statement, reads: [...], calls: [{name, entryStep, returnStep, inputs}], opaque, firstAssigned?: {step, file, line, function, statement}, beforeRecording?}, full?}`, nested.
 
 **`why --live STEP NAME --full`** adds the full value of NAME under the tree: the value on the tree's

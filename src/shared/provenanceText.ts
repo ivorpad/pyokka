@@ -45,7 +45,11 @@ function nodeText(n: ProvenanceNode, prefix: string, displayPath: DisplayPath, t
   if (n.name) {
     if (n.text !== undefined) parts.push(`${n.name} = ${oneLine(n.text, WHY_VALUE)}${n.unchanged ? '  (unchanged)' : ''}`);
     else if (n.step !== undefined) parts.push(`${n.name}  assigned here (value not recorded)`);
-    else if (first) parts.push(`${n.name}  not assigned yet at #${tree.step}, first assigned at #${first.step} ${displayPath(first.fileId, first.file)}:${first.line ?? '?'} ${first.function ?? '<module>'}`);
+    else if (first) {
+      const where = `#${first.step} ${displayPath(first.fileId, first.file)}:${first.line ?? '?'} ${first.function ?? '<module>'}`;
+      // a recording that began at a pause cannot tell a name made before step 0 from one made later: it says both
+      parts.push(n.beforeRecording ? `${n.name} = ?${BEFORE_RECORDING}, or first assigned at ${where}` : `${n.name}  not assigned yet at #${tree.step}, first assigned at ${where}`);
+    }
     else parts.push(`${n.name} = ?${n.beforeRecording ? BEFORE_RECORDING : tree.recordedLocals ? '' : NOT_RECORDED}`);
   }
   if (n.step !== undefined) parts.push(`#${n.step} ${displayPath(n.fileId, n.file)}:${n.line ?? '?'} ${n.function ?? '<module>'}`);
