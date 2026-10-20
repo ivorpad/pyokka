@@ -110,15 +110,18 @@ def flatten_chain(node: Any, depth: int = 0, via: str = "root", limit: int = VAL
     """``why``'s tree as an indented list: ``depth`` keeps the shape, ``via`` says how we got here."""
     if not isinstance(node, dict):
         return []
+    # a root name with no value yet at the queried step: the row points at where it is first assigned
+    first = node.get("firstAssigned") if node.get("step") is None and node.get("text") is None and isinstance(node.get("firstAssigned"), dict) else None
+    place = first or node
     out = [{
         "depth": depth,
         "via": via,
         "name": str(node.get("name") or ""),
-        "text": flat(node.get("text"), limit) if node.get("text") is not None else "?",
+        "text": flat(node.get("text"), limit) if node.get("text") is not None else "not assigned yet" if first else "?",
         # a leaf of a recording that began at a pause: the value was made before step 0
-        "statement": "made before #0, where the recording started" if node.get("beforeRecording") else flat(node.get("statement"), 100),
-        "location": "%s:%s" % (os.path.basename(str(node.get("file") or "")), node.get("line")) if node.get("file") else "",
-        "step": node.get("step") if isinstance(node.get("step"), int) else None,
+        "statement": "made before #0, where the recording started" if node.get("beforeRecording") else "first assigned here: %s" % flat(first.get("statement"), 100) if first else flat(node.get("statement"), 100),
+        "location": "%s:%s" % (os.path.basename(str(place.get("file") or "")), place.get("line")) if place.get("file") else "",
+        "step": place.get("step") if isinstance(place.get("step"), int) else None,
     }]
     for read in node.get("reads") or []:
         out.extend(flatten_chain(read, depth + 1, "reads", limit))

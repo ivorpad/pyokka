@@ -239,8 +239,12 @@ pyokka why run.json 124 fused_ranking
 #   ↳ rrf #46–#103 demo.py:60   in rankings = {...}, k = 60
 ```
 
-`= ?` is a name nothing recorded. `· ... not stepped` is a call whose body left no steps.
-JSON: `{name, step, depth, nodes, root: {name, text, step, file, line, function, statement, reads: [...], calls: [{name, entryStep, returnStep, inputs}], opaque}}`, nested.
+`= ?` is a name nothing recorded, followed by the reason when it is known: `not recorded: this run
+recorded no locals`, or `made before #0, where the recording started` in a run that recorded from a
+pause. `NAME  not assigned yet at #6, first assigned at #24 main.py:29 <module>` is a name its scope
+assigns only after the step you asked about: ask again at that step. `· ... not stepped` is a call
+whose body left no steps.
+JSON: `{name, step, depth, nodes, root: {name, text, step, file, line, function, statement, reads: [...], calls: [{name, entryStep, returnStep, inputs}], opaque, firstAssigned?: {step, file, line, function, statement}, beforeRecording?}}`, nested.
 
 **`origin RUN STEP [EXPR] [--depth N]`** follows one bad value back to where it was made, across
 calls and containers, as one chain. Use it on an exception's step (`exceptions RUN` lists them)

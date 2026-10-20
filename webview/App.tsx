@@ -4,7 +4,7 @@ import { canCompare, Compare, compareSides, CompareUnavailable } from './compone
 import { DebugToolbar, NoSession, Rail } from './components/Chrome';
 import { DebuggerView } from './components/Debugger';
 import { DebugSessionView } from './components/DebuggerView';
-import { Details, type DetailsHandle } from './components/Details';
+import { Details, whyKey, type DetailsHandle } from './components/Details';
 import { Diagram } from './components/Diagram';
 import { Entries } from './components/Entries';
 import { Exceptions } from './components/Exceptions';
@@ -14,7 +14,7 @@ import { SettingsView, timeoutLabel } from './components/SettingsView';
 import { Walkthrough } from './components/Walkthrough';
 import { Tour } from './components/Tour';
 import { tourGotoMessage } from './tourView';
-import { VariablePane } from './components/VariablePane';
+import { VariablePane, type WholeValueAsk } from './components/VariablePane';
 import { StoryPane } from './components/StoryPane';
 import { allEntries, entriesForDebugger, initialState, reduce, visibleEntries, type Entry } from './model';
 import { setValueSyntax, syntaxForName } from './format';
@@ -23,6 +23,7 @@ import { orderedSelection, pruneSelection } from './selection';
 import type { HostToWebview, PanelSettings, ValueNode, ViewId } from './src-shared';
 import { copyText, loadPrefs, post, requestId, savePrefs, type UiPrefs } from './vscode';
 import { whyName } from './why';
+import { emptyEntriesText, inspectionLine, runPhase } from './inspection';
 
 export function App() {
   const [state, dispatch] = useReducer(reduce, undefined, () => initialState(loadPrefs()));
@@ -123,6 +124,8 @@ export function App() {
     dispatch({ type: 'whyClose' });
     post({ type: 'why.close' });
   }, []);
+  // "Whole value" exists only where the host replays (the extension announces it in `init`)
+  const askWhole = useMemo(() => (state.features.wholeValue ? (ask: WholeValueAsk) => post({ type: 'wholeValue.query', ...ask }) : undefined), [state.features.wholeValue]);
 
   const compareEnabled = selectedEntries.length === 2 && canCompare(selectedEntries[0], selectedEntries[1]);
   const openCompare = () => {
@@ -174,6 +177,7 @@ export function App() {
 
   const dbg = state.debugger;
   const debuggerActive = !!dbg?.active;
+  const phase = runPhase(state.session.running, dbg);
   const diagramEntry = state.diagramLogId ? all.find((e) => e.logId === state.diagramLogId) ?? null : selectedEntries[0] ?? visible[0] ?? null;
 
   const exceptionsPane = (
@@ -230,7 +234,7 @@ export function App() {
 
   const entriesPane = (bare?: boolean) => (
     <Entries
-      emptyText={state.session.running ? 'RUNNING…' : undefined}
+      emptyText={emptyEntriesText(phase)}
       notice={runNotice}
       entries={visible}
       allEntries={entriesForDebugger(all, dbg)}
@@ -260,6 +264,7 @@ export function App() {
       prefs={state.prefs}
       compareEnabled={selectedEntries.length === 2}
       why={state.why}
+      whyInspection={state.why ? inspectionLine(dbg, state.session.running, state.timeline?.stepCount, state.why.step) : undefined}
       onPrefs={onPrefs}
       onOpen={openLocation}
       onExpand={expand}
@@ -268,6 +273,8 @@ export function App() {
       onDiagram={openDiagram}
       onGoto={(step) => post({ type: 'debugger.goto', step })}
       onCloseWhy={closeWhy}
+      whyWhole={state.why ? state.wholeValues[whyKey(state.why)] : undefined}
+      onWhole={askWhole}
       handle={detailsRef}
     />
   );
@@ -294,6 +301,7 @@ export function App() {
       rightPane = (
         <VariablePane
           view={state.variable}
+          inspection={inspectionLine(dbg, state.session.running, state.timeline?.stepCount)}
           settings={state.sessionSettings ?? state.settings}
           showFileName={state.prefs.showFileName}
           onQuery={queryVariable}
@@ -302,6 +310,8 @@ export function App() {
           onWhy={queryWhy}
           onEnableRecordLocals={() => updateSettings(state.session.name ? 'session' : 'global')({ recordLocals: true })}
           onClose={() => setView('output')}
+          wholeValues={state.wholeValues}
+          onWhole={askWhole}
         />
       );
       break;
@@ -361,6 +371,7 @@ export function App() {
               walkthrough={state.walkthrough}
               selected={state.graphSelection}
               running={state.session.running}
+              paused={phase === 'paused'}
               settings={state.sessionSettings ?? state.settings}
               view={state.graphView}
               hits={state.graphHits}
@@ -424,7 +435,7 @@ export function App() {
           view={state.view}
           debuggerActive={debuggerActive}
           debugSessionActive={!!state.debugSession}
-          running={state.session.running}
+          running={phase === 'running'}
           http={(state.sessionSettings ?? state.settings).http}
           onView={(v) => setView(v)}
           onCommand={onCommand}

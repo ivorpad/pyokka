@@ -61,6 +61,7 @@ order within a file.
     "secrets": { "mask": true, "names": [] },  // mask secrets in the child (see "Secrets" below); names adds words
     "http": "off",              // "off" | "record" | "replay": record the HTTP layer, or answer from the recording (see "HTTP record and replay")
     "httpObserve": true,        // false leaves the HTTP clients untouched: no `http.exchange` rows, no HTTP view
+    "recordInputs": true,       // keep the clock, os.urandom and the random seed the program read (the `inputs` event; see "Replay")
     "debug": false,             // true: the run can pause, step and break (see `debug`), paused before its first statement
     "record": true,             // false: a debugger that records nothing (see "A debug run without a recording"); read only when `debug` is true
     "stopOnEntry": true,        // with debug: false runs to the first breakpoint (or the end) instead of pausing at the first statement
@@ -72,6 +73,7 @@ order within a file.
   "watch": [ { "id": "w1", "exp": "obj.a.b", "range": [30, 8, 30, 15] } ],
   "traceContext": { "step": 1234, "prefetch": 10 },
   "breakpoints": [ { "path": "/abs/project/lib.py", "line": 12, "condition": "n > 3" } ],   // pause there; resolved when the file is instrumented
+  "replay": { "expect": "...", "at": { "step": 52, "expr": "orders" } },   // optional: run again to a recorded step and copy one value (see "Replay")
   "mode": "normal"            // "normal" | "profile" | "snaps"
 }
 ```
@@ -181,6 +183,76 @@ the switch, another thread) gets its scope when it next runs, with whoever
 resumed it as parent. A `print` whose name was looked up before the switch (the
 paused statement's own call) prints as `output`, not as a `log`.
 
+### Replay
+
+`run.replay` runs the program again to a recorded step, checks every step on the
+way, and copies one value whole ("Whole value" in the panel, the bridge's
+`whole`). The host sends the recording run's own request (the same
+`file.content`, `projectFiles`, `markers` and limits, so the instrumentation and
+the steps are the same) to a runner of its own, with no debugger, `breakpoints`,
+`watch` or `traceContext`, `http` `replay` when the run recorded its HTTP answers,
+`timeoutMs` twice the run's (0 stays 0), and:
+
+```jsonc
+"replay": {
+  "expect": "...",                                  // base64 of little-endian int32 pairs (rid, depth), one per step 0..at.step
+  "at": { "step": 52, "expr": "orders" },          // evaluated in that step's frame before its statement runs, copied whole
+  "check": { "step": 52, "name": "orders" },       // optional, at most at.step: the text the recorder would keep for name there
+  "inputs": { "seed": 1234, "reads": [["time", 1792500000.25]] },  // optional: the recording run's `inputs`, handed back in order
+  "startAt": 4512                                   // optional: a recording that began at a pause starts at this statement count (`trace.startedAt`)
+}
+```
+
+The run records as any run does. A driver attached as the recorder's debugger
+compares each step's rid and depth with `expect` and stops the program at the
+first one that differs. At `check.step` it computes the recorder's text for
+`check.name` in that frame (cut and masked as a `locals` change). At `at.step` it
+evaluates `at.expr` with the pure evaluator in that frame and serializes the value
+with depth 30, 5,000 elements and 200,000 characters per string, and no registry,
+so nothing is left to `expand`. What it evaluates runs with the recording held,
+so a `__repr__` in instrumented code records no steps. It then emits one
+`replay.result` and stops the program with an exception that stops it again at
+every later step if the program catches it. The run finishes normally (exit 0,
+no `error` event), so its `trace`, `locals` and `log` up to the stop arrive before
+`run.finished`; the statement at `at.step` has not run, so there is no `locals`
+entry or `log` at or past it. Capability `replay`.
+
+A recording that began at a pause (`recordFrom`, or the `record` action) carries
+`startedAt` on every `trace` event and on the `debug.paused` with
+`recordingStarted: true`: the debugger-mode hooks' statement count at that pause,
+the number of statements that ran before it (a function's entry counts as one).
+`replay.startAt` replays such a recording. The run starts on the debugger's
+non-recording hooks, counting statements and never pausing, armed only for
+`expect`'s step-0 statement; when that statement runs at count `startAt` it makes
+the same switch a `recordFrom` pause makes (a scope for every instrumented frame
+on the stack, the silent locals snapshot, the statement as step 0, `midRun` and
+the same `startedAt` on the replay's trace), and the checks go on from step 1. A
+start point that did not match is `diverged` at step 0 with `matched: 0` and a
+message that starts "the start point did not match": the statement ran at
+another count, the program ended before `startAt`, or step 0's statement or depth
+differs (`expected`, `actual`). A `replay` on a `recordFrom` run without
+`startAt` is refused with an `error` result and the program runs on unattached.
+The request needs no `debug`, `recordFrom` or `breakpoints`: the host sends none.
+
+`config.recordInputs` (default true): a recording run without `replay` wraps,
+for the program's own run, `time.time`, `time.time_ns` and `os.urandom` (so
+`uuid.uuid4`), and seeds the `random` module's shared generator with a fresh
+52-bit seed. A read is kept when its direct caller is not runtime code, as
+`[label, value]`: `time` a float, `time_ns` a decimal string, `urandom(N)` a hex
+string; at most 10,000, then `truncated: true`. One `inputs` event carries them
+before `run.finished`. A replay with `inputs` hands them back in order; one read
+more than the recording has, or one with another label, stops it with status
+`input`. Not covered, and each can make a replay go another way: `datetime`,
+`time.monotonic`, `time.perf_counter`, a `random.Random()` the program seeds
+itself, the `secrets` module, files, sockets that are not HTTP, threads.
+
+The host (src/session/wholeValue.ts) also compares the recording's `locals`
+entries and `log` events before `at.step` (kinds `log`, `value`, `autoLog`,
+`autoExpand`, `logpoint`, `error`; a timing differs every run) with the replay's,
+after replacing `0x…` addresses, and `check.text` with what the recording kept
+at `check.step`. The panel calls the copy checked only when the steps and all of
+those match.
+
 ## Runner → host run events
 
 | type | fields |
@@ -192,8 +264,10 @@ paused statement's own call) prints as `output`, not as a `log`.
 | `error` | `fileId, rid, step, message, errorType, stack: [{fileId, line, col, rid?, function, path}], handled, handledAt?, count?, lastStep?, traceback?` (innermost frame first; `fileId: 0` for frames outside instrumented files; an imported module that did not compile, which has no frame of its own, gets one `<module>` frame at the file and line the compiler named, in place of the import machinery, and `message` is the compiler's text without the `(file, line N)` suffix; `hint`, on the uncaught one only, says to rerun with `--python` and the project's `.venv` interpreter when a `ModuleNotFoundError` was raised on another interpreter in a project with `uv.lock`, `poetry.lock` or `pyproject.toml` and a `.venv`, see `hints.py`). One per exception, all emitted when the run ends: the uncaught one (`handled: false`, `traceback`), then the caught ones aggregated per raise site and handler with where they were caught; see below. Syntax errors in the scratch file arrive as `errorType: "SyntaxError"` with `rid = rangeBase`. |
 | `coverage` | `fileId, states: number[]` (index = local rid; 0 not run, 1 covered, 2 partial, 3 error source, 4 error path, 5 ignored by an ignore hint), `hits: number[]`. Ignored statements are also dropped from `file.instrumented.statements`. |
 | `time` | `rid, n, total, min, max` (ms, floats) |
-| `trace` | `steps: base64(Int32Array quads [rid, scopeId, depth, flags]), scopes: [{scopeId, rid, name, parent, depth, first, last, returned?, returnedTruncated?, returnedLength?, raised?}], truncated`. `returned` is the text of the value the function returned (a bounded repr cut like a `locals` change: `config.maxValueChars` characters, unset 120, then `…(+N chars)` and `returnedTruncated: true`, `returnedLength` as `truncated`/`length` on a change, see "Recording limits"; secrets masked; taken when the frame exits, so a `finally` that returns again wins), `null` when the body ran off its end; `raised` is the exception type the frame left by. A module body has neither; a scope of the final `trace` carries them, a partial delta may not yet. During runs longer than a second the child also sends `trace {partial: true, offset, steps, scopes}` deltas about once a second: the steps since the previous delta (`offset..`) and only the scopes created since then (`last` of earlier scopes is not re-sent; a host assembling deltas derives it from the steps). No deltas are sent once `maxTraceSteps` is reached. The final `trace` without `partial` is complete and authoritative, hosts may ignore the deltas. Scope 0 is the module (`rid` 0 = the whole-file range); imported project modules get their own scope at depth 1, library modules get none (their body is coverage-only, see the runtime notes). A scope's `parent` is the scope of the frame that called, awaited or iterated it (read from the caller frame, see the runtime notes), not the scope that last recorded a step: a task resumed by the event loop or a thread's target has the module as parent (depth 1), so gathered coroutines sit side by side and never under each other. `depth` is `parent`'s depth + 1, for display; the moves (step over / out and their back variants) follow the parent chain, not `depth`. Function entry is a step on the `def` header range with flag 4. Loops record one step on the header per iteration. `midRun: true` on every `trace` of a run whose recording began at a pause (`config.recordFrom`): step 0 is that pause and the ancestors' scopes have `first: 0` with no call site recorded. The final `trace` of a run cut at `maxTraceSteps` also has `cap` (the setting), `stepsRun` (statements the program executed, the same number as `run.finished.stepCount`) and `spentBy: [{path, steps}]`, the five files with the most statement hits over the whole run (see "Recording limits"). |
+| `trace` | `steps: base64(Int32Array quads [rid, scopeId, depth, flags]), scopes: [{scopeId, rid, name, parent, depth, first, last, returned?, returnedTruncated?, returnedLength?, raised?}], truncated`. `returned` is the text of the value the function returned (a bounded repr cut like a `locals` change: `config.maxValueChars` characters, unset 120, then `…(+N chars)` and `returnedTruncated: true`, `returnedLength` as `truncated`/`length` on a change, see "Recording limits"; secrets masked; taken when the frame exits, so a `finally` that returns again wins), `null` when the body ran off its end; `raised` is the exception type the frame left by. A module body has neither; a scope of the final `trace` carries them, a partial delta may not yet. During runs longer than a second the child also sends `trace {partial: true, offset, steps, scopes}` deltas about once a second: the steps since the previous delta (`offset..`) and only the scopes created since then (`last` of earlier scopes is not re-sent; a host assembling deltas derives it from the steps). No deltas are sent once `maxTraceSteps` is reached. The final `trace` without `partial` is complete and authoritative, hosts may ignore the deltas. Scope 0 is the module (`rid` 0 = the whole-file range); imported project modules get their own scope at depth 1, library modules get none (their body is coverage-only, see the runtime notes). A scope's `parent` is the scope of the frame that called, awaited or iterated it (read from the caller frame, see the runtime notes), not the scope that last recorded a step: a task resumed by the event loop or a thread's target has the module as parent (depth 1), so gathered coroutines sit side by side and never under each other. `depth` is `parent`'s depth + 1, for display; the moves (step over / out and their back variants) follow the parent chain, not `depth`. Function entry is a step on the `def` header range with flag 4. Loops record one step on the header per iteration. `midRun: true` on every `trace` of a run whose recording began at a pause (`config.recordFrom`): step 0 is that pause and the ancestors' scopes have `first: 0` with no call site recorded; `startedAt` next to it is the statement count at that pause, where a replay starts (see "Replay"). The final `trace` of a run cut at `maxTraceSteps` also has `cap` (the setting), `stepsRun` (statements the program executed, the same number as `run.finished.stepCount`) and `spentBy: [{path, steps}]`, the five files with the most statement hits over the whole run (see "Recording limits"). |
 | `locals` | `entries: [{step, scopeId, changes: [{name, text, truncated?, length?}]}]` (only when `recordLocals`; `truncated`/`length` as on a `log`, see "Recording limits") |
+| `inputs` | `seed, reads: [[label, value]], truncated?`: once, before `run.finished`, from a recording run with `config.recordInputs` and no `replay` (see "Replay") |
+| `replay.result` | `status: "reached" | "diverged" | "input" | "ended" | "error", step, matched, expected?: {rid, depth}, actual?: {rid, depth}, message?, value?: {data: ValueNode}, missing?, error?, check?: {step, text?, missing?, error?}`, one per `replay` run (see "Replay"). `reached`: `step` is `at.step` and every step matched; `value`, or `missing` (the `NameError` text) or `error`. `diverged`: `step` is the first step that differs, or the first past `expect`. `input`: `step` is the statement that made the read. `ended`: the program finished first, after `step` steps. `error`: refused, with `message`. `check.text` is absent with `missing` (not a local of that frame) or `error` (its repr raised) |
 | `watch` | `watchId, step, valueBag` |
 | `debug.paused` | `step, rid, fileId, line, scopeId, depth, reason: "start" | "breakpoint" | "step" | "watch" | "pause" | "exception", thread: {name, ident}, stack` (innermost first), plus `kind` for a step, `breakpoint` (as echoed by `debug`) and `conditionError?` for a breakpoint, `watch: {id, exp, text}` for a watch, `exception: {type, message, uncaught}` for an exception, `recordingStarted: true` at the pause a `recordFrom` run started recording at. `stack` has two shapes, told apart by which members are present: with a recording `[{scopeId, name, rid, depth}]` from the scope parent chain (a host shows each scope at its range), without one `[{frameId, name, fileId, line, rid?, scopeId?}]` from the frame chain (see below). `thread` is on every pause in both shapes and names the thread that stopped. Emitted before the statement at `step` executes (at an `exception` pause that statement is the one that raised), after the recording so far went out: a partial `trace` up to this step, `time`, and the `locals` entries not sent yet. The run is off the timeout clock until it resumes. While paused, `evaluate` answers in the paused frame and `expand` opens the values it and `locals` returned. `config.breakOnException` (and the `debug` action `exceptions`) says where an exception pauses: `off` never; `uncaught` on the one that ends the run, before the `error` event, with the traceback's innermost user frame as the paused frame, so `evaluate` and `locals` answer from it although it has returned; `raised` there and at every first sighting of an exception in a user file, with the raising frame live and `uncaught: false`, since whether anyone catches it is not known yet (one that nobody catches pauses again at the top, `uncaught: true`). `step`, `rid`, `line` and `stack` are the user statement that raised, which for a raise inside a library or a C call is the statement that made the call. `StopIteration`, `GeneratorExit`, `SystemExit` and `KeyboardInterrupt` never pause, nor does a library frame. After the uncaught pause resumes, the run ends as it would have: exit code 1 and the `error` event with its traceback. |
 | `debug.resumed` | `step, action: "continue" | "step", kind?` |
@@ -828,7 +902,13 @@ after `step` when the statement at `step` made it (the change `var` lists at tha
 `text`, `source`, `logId`, `unchanged`; when several matched names have a row there the exact
 name wins, then the first); else the value `name` had when `step` ran (`var`'s read rule: the
 latest value recorded before the step in the step's scope or its module, `source` `locals` or
-`value`, `step` the statement that made it); else a leaf (`{name}` alone: nothing recorded; `{name, beforeRecording: true}` in a `midRun` recording, whose chain ends at step 0). A
+`value`, `step` the statement that made it); else, when the step's scope or its module assigns
+the name later, `{name, firstAssigned: {step, file, fileId, line, function, scopeId, statement}}`:
+the name has no value yet at `step`, and `firstAssigned` is the first change `var` lists for
+exactly that name after `step` in those scopes (a recorded local, a logged value or an assignment
+site), the producing statement a click moves the Time Machine to; else a leaf (`{name}` alone:
+nothing recorded; `{name, beforeRecording: true}` in a `midRun` recording, whose chain ends at
+step 0, which is said only when nothing in those scopes assigns the name after `step`). A
 dotted `name` with nothing recorded falls back to its first segment by the read rule (`self` for
 `self.balance`), and the node says so by its `name`. An empty `name` explains the statement at
 `step` itself (`{name: "", step, …}`). A `locals` node carries the `logId` of the entry its
@@ -922,6 +1002,7 @@ session's main file. `context`/`values` include `valueBag`s only with
 | `values` | `file, line` | `{values: [...]}` every value logged on that line, by hit |
 | `var` | `name, file?, scope?, limit?` | the variable history above (`file` narrows to one file of the run, `scope` to a function) |
 | `why` | `step, name?, depth?` | the provenance tree above (`name` empty or absent: the statement at `step`; `depth` 1..8, default 5) |
+| `whole` | `step, name` | the value `name` had when `step` began, copied by a replay of the run (see "Replay"): `{status: "checked" \| "path" \| "differs" \| "diverged" \| "unavailable" \| "error", step, name, summary, value?: ValueNode, difference?: {step, name, recorded, replay}, matched?, ms?}`, every text redacted. `unavailable` says why for a run that called the network with HTTP off, began at a pause, runs over a transport or is a module launch. No CLI command or MCP tool yet |
 | `eval` | `expression`, `frameId?` | `{text, valueBag?}` via `evaluate` (no statement of the program is re-run; pure calls run, a user function is refused, see the `evaluate` row); in the paused frame, locals over globals, while a debug run is paused. `frameId` names a frame of the pause, innermost 0; absent means 0 |
 | `expand` | `valueId, queryPath` | `{node}` |
 | `select` | `file, line, endLine?` | `{ok}`; moves the editor selection and reveals it |

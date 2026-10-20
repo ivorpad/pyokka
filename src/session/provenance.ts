@@ -11,7 +11,7 @@
  * body was stepped (the walkthrough's call rules, from `MomentBuilder`) and the calls no stepped
  * scope claimed. Expansion is breadth-first under a depth and a node budget.
  */
-import { PROVENANCE_DEPTH, PROVENANCE_MAX_DEPTH, PROVENANCE_NODES, type LogEvent, type Provenance, type ProvenanceCall, type ProvenanceNode, type StatementBinding, type TraceScope } from '../shared/protocol';
+import { PROVENANCE_DEPTH, PROVENANCE_MAX_DEPTH, PROVENANCE_NODES, type LogEvent, type Provenance, type ProvenanceCall, type ProvenanceFirstAssigned, type ProvenanceNode, type StatementBinding, type TraceScope } from '../shared/protocol';
 import { MomentBuilder } from './moments';
 import { History, VAR_READS, type ValueRecord } from './variableHistory';
 import type { WalkthroughInputs } from './walkthroughShared';
@@ -125,7 +125,22 @@ class ProvenanceBuilder {
     const scopeId = trace.scopeId(step);
     let v = this.history.valueAt(name, step, scopeId, loc?.fileId ?? -1);
     if (v.step === undefined && name.includes('.')) v = this.history.valueAt(name.split('.')[0]!, step, scopeId, loc?.fileId ?? -1);
-    return v.step === undefined ? this.leaf(name) : this.fromRecord(v);
+    return v.step === undefined ? this.notYet(name, step, scopeId, loc?.fileId ?? -1) : this.fromRecord(v);
+  }
+
+  /**
+   * A root name with no value at `step`: when its scope (or its module) assigns it later, the node
+   * says where it first does, so a query one step too early is not mistaken for a value made before
+   * the recording; otherwise the leaf. A dotted name falls back to its first segment, as above.
+   */
+  private notYet(name: string, step: number, scopeId: number, fileId: number): ProvenanceNode {
+    let later = this.history.firstChangeAfter(name, step, scopeId, fileId);
+    if (!later && name.includes('.')) later = this.history.firstChangeAfter(name.split('.')[0]!, step, scopeId, fileId);
+    if (!later) return this.leaf(name);
+    const first: ProvenanceFirstAssigned = { step: later.step, ...this.history.location(later.step) };
+    const statement = this.statement(later.step);
+    if (statement !== undefined) first.statement = statement;
+    return { name: later.name, firstAssigned: first };
   }
 
   /* ----- nodes ----- */

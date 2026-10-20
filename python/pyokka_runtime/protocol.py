@@ -147,6 +147,8 @@ class RunConfig:
     max_trace_steps: int = 999_999
     timeout_ms: int = 30_000
     record_locals: bool = False
+    # a recording run keeps what the program read from the clock and randomness (inputs.py), so a replay can hand it back
+    record_inputs: bool = True
     library_code: bool = False
     library_packages: list[str] = field(default_factory=list)
     # `exclude` / `only` (path globs or dotted module names, `execute.py`): code left out runs at full speed and records nothing
@@ -229,6 +231,7 @@ class RunConfig:
             max_trace_steps=int(cfg.get("maxTraceSteps", 999_999)),
             timeout_ms=int(cfg.get("timeoutMs", 30_000)),
             record_locals=bool(cfg.get("recordLocals", False)),
+            record_inputs=bool(cfg.get("recordInputs", True)),
             library_code=bool(cfg.get("libraryCode", False)),
             library_packages=[str(p) for p in (cfg.get("libraryPackages") or [])],
             exclude=[str(p) for p in (cfg.get("exclude") or []) if str(p).strip()],
@@ -326,10 +329,12 @@ def ev_time(rid: int, n: int, total: float, mn: float, mx: float) -> dict:
     return {"type": "time", "rid": rid, "n": n, "total": total, "min": mn, "max": mx}
 
 
-def ev_trace(steps_b64: str, scopes: list[dict], truncated: bool, *, partial: bool = False, offset: int = 0, mid_run: bool = False) -> dict:
+def ev_trace(steps_b64: str, scopes: list[dict], truncated: bool, *, partial: bool = False, offset: int = 0, mid_run: bool = False, started_at: int | None = None) -> dict:
     out: dict[str, Any] = {"type": "trace", "steps": steps_b64, "scopes": scopes, "truncated": truncated}
     if mid_run:
         out["midRun"] = True  # the recording started at a pause (`recordFrom`): step 0 is not the program's start
+        if started_at is not None:
+            out["startedAt"] = started_at  # the debugger's statement count at that pause: where a replay switches (replay.py)
     if partial:
         out["partial"] = True
         out["offset"] = offset

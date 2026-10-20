@@ -4,6 +4,7 @@
  * The webview is a pure view: all state it renders is pushed by the host.
  */
 import type { CompletionItem, LogEvent, ErrorEvent, HttpMode, HttpTable, TraceCap, TraceScope, ValueNode, ValueBag, StackFrame, VariableHistory, Provenance } from './protocol';
+import type { PanelFeatures, WholeValueView } from './replayProtocol';
 import type { ExecutionGraph } from '../session/executionGraphTypes';
 import type { GraphPhase } from '../session/executionGraphPhases';
 import type { ExceptionReport } from '../session/exceptionReportTypes';
@@ -387,7 +388,8 @@ export interface ExceptionsPanel extends ExceptionReport {
 }
 
 export type HostToWebview =
-  | { type: 'init'; theme: 'dark' | 'light' | 'hc'; settings: PanelSettings; sessionName: string | null }
+  /** `features`: what this host answers beyond the common messages (the browser page sends none) */
+  | { type: 'init'; theme: 'dark' | 'light' | 'hc'; settings: PanelSettings; sessionName: string | null; features?: PanelFeatures }
   | { type: 'session'; name: string | null; /** the language values are spelled in (absent: python) */ language?: 'python' | 'javascript'; running: boolean; durationMs?: number; runMode: PanelSettings['runMode']; settings?: PanelSettings; /** the last run was killed by the run timeout after this many ms */ timedOutMs?: number; /** the last run answered HTTP from a recording */ replayed?: boolean }
   | { type: 'entries.reset' }
   | { type: 'entries.append'; entries: PanelEntry[] }
@@ -425,6 +427,9 @@ export type HostToWebview =
   | { type: 'story'; story: StoryPanel | null }
   /** the Details pane's "why" tree: the query (tree null while it computes), then the answer; null clears it */
   | { type: 'why'; view: WhyView | null }
+  /** a whole value a replay copied (`pending` first, then the answer); `wholeValue.reset` drops them all (another run) */
+  | { type: 'wholeValue'; view: WholeValueView }
+  | { type: 'wholeValue.reset' }
   /** the Execution Diagram view: null until a run finished; resent when a package is unrolled */
   | { type: 'executionGraph'; graph: ExecutionGraphPanel | null }
   /** the call stack at the Time Machine's step as node ids (innermost first; each frame's running statement, when it has a node, precedes the frame's scope), at most every 50 ms; [] when inactive */
@@ -502,6 +507,12 @@ export type WebviewToHost =
   | { type: 'why.query'; step: number; name: string; logId?: string }
   /** the Details pane closed the tree: the host forgets the query (no more refreshes after a run) */
   | { type: 'why.close' }
+  /**
+   * "Whole value": replay the run and copy `name` whole. `change`: the value a Variable pane row
+   * recorded (the host finds the step that kept it); `at`: the value at `step`, the Why tree's.
+   * The host answers with `wholeValue` under the same `key`.
+   */
+  | { type: 'wholeValue.query'; key: string; kind: 'change' | 'at'; step: number; name: string; scopeId?: number; text?: string }
   /** unroll a package node of the Execution Diagram into its functions (`collapse` folds it back) */
   | { type: 'executionGraph.expand'; nodeId: string; collapse?: boolean }
   /** the Execution Diagram opened (or a run finished while it was open) without a graph: build and send it (`pyokka.diagram.build`) */

@@ -33,7 +33,7 @@ USE_FORK = use_fork(os.environ, sys.platform)  # fork on Linux, a fresh interpre
 KILL_GRACE_S = 2.0
 # What a child's typed reply is called on the way out to the host.
 _REPLY_TYPE = {"evaluate.result": "evaluated", "complete.result": "completed", "exec.result": "executed"}
-CAPABILITIES = ["monitoring", "expand", "evaluate", "shadow", "source", "bindings", "libraryCode", "watch", "recordLocals", "profile", "snaps", "plugins", "partialTrace", "logpoints", "markers", "debug", "complete", "record", "module", "exec", "recordFrom", "definition"]
+CAPABILITIES = ["monitoring", "expand", "evaluate", "shadow", "source", "bindings", "libraryCode", "watch", "recordLocals", "profile", "snaps", "plugins", "partialTrace", "logpoints", "markers", "debug", "complete", "record", "module", "exec", "recordFrom", "definition", "replay"]
 
 
 class Writer:

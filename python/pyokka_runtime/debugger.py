@@ -390,12 +390,12 @@ class Debugger(ExceptionPauseMixin, RecordPauseMixin):
             self.pause_requested = False
             self.pauses += 1
             if self._records_here(rid):
-                scope = t.start_recording(frame, rid, scope)
+                scope = t.start_recording(frame, rid, scope, count=n)
+                extra = {**extra, "recordingStarted": True, "startedAt": n}
                 n = 0
-                extra = {**extra, "recordingStarted": True}
             self.paused_at = (n, rid, scope)
             self._reason = reason
-            self._extra = {k: v for k, v in extra.items() if k != "recordingStarted"}
+            self._extra = {k: v for k, v in extra.items() if k not in ("recordingStarted", "startedAt")}
             self.frames = dbgframes.frame_chain(t, frame) if frame is not None else []
             self._flush()
             begin = getattr(self.control, "begin_pause", None)

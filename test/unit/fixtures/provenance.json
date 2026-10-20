@@ -2388,6 +2388,117 @@
     },
     "conclusion": "absent is None at #39 (main.py:38). The else arm ran: count > 50 was false, since count is 10."
    }
+  },
+  {
+   "file": "main.py",
+   "line": 23,
+   "occurrence": "first",
+   "name": "label",
+   "depth": 5,
+   "step": 6,
+   "result": {
+    "name": "label",
+    "step": 6,
+    "depth": 5,
+    "nodes": 1,
+    "truncated": false,
+    "recordedLocals": true,
+    "root": {
+     "name": "label",
+     "firstAssigned": {
+      "step": 24,
+      "file": "/fixture/main.py",
+      "fileId": 1,
+      "line": 29,
+      "function": "<module>",
+      "scopeId": 0,
+      "statement": "label = helper.describe(total, os.sep)"
+     }
+    },
+    "conclusion": ""
+   }
+  },
+  {
+   "file": "main.py",
+   "line": 23,
+   "occurrence": "first",
+   "name": "label",
+   "depth": 5,
+   "step": 6,
+   "result": {
+    "name": "label",
+    "step": 6,
+    "depth": 5,
+    "nodes": 1,
+    "truncated": false,
+    "recordedLocals": true,
+    "root": {
+     "name": "label",
+     "firstAssigned": {
+      "step": 24,
+      "file": "/fixture/main.py",
+      "fileId": 1,
+      "line": 29,
+      "function": "<module>",
+      "scopeId": 0,
+      "statement": "label = helper.describe(total, os.sep)"
+     }
+    },
+    "conclusion": ""
+   },
+   "midRun": true
+  },
+  {
+   "file": "helper.py",
+   "line": 1,
+   "occurrence": "last",
+   "name": "text",
+   "depth": 5,
+   "step": 25,
+   "result": {
+    "name": "text",
+    "step": 25,
+    "depth": 5,
+    "nodes": 1,
+    "truncated": false,
+    "recordedLocals": true,
+    "root": {
+     "name": "text",
+     "firstAssigned": {
+      "step": 26,
+      "file": "/fixture/helper.py",
+      "fileId": 2,
+      "line": 2,
+      "function": "describe",
+      "scopeId": 5,
+      "statement": "text = \"total\" + sep + str(value)"
+     }
+    },
+    "conclusion": ""
+   },
+   "midRun": true
+  },
+  {
+   "file": "main.py",
+   "line": 23,
+   "occurrence": "first",
+   "name": "nothing_here",
+   "depth": 5,
+   "step": 6,
+   "result": {
+    "name": "nothing_here",
+    "step": 6,
+    "depth": 5,
+    "nodes": 1,
+    "truncated": false,
+    "recordedLocals": true,
+    "root": {
+     "name": "nothing_here",
+     "beforeRecording": true
+    },
+    "conclusion": ""
+   },
+   "midRun": true
   }
  ]
 }

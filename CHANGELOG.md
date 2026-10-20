@@ -2,6 +2,58 @@
 
 ## Unreleased
 
+- Whole value: a Variable pane row whose value the recorder kept, and the Why tree's header,
+  have a tree button that runs the program again in a runner of its own up to that step and
+  copies the value whole (30 levels, 5,000 items per container, 200,000 characters per string,
+  where a recorded local keeps 120 characters three levels deep). The copy opens in the pane, and
+  opening it moves nothing. The replay sends the run's own request, checks every step's statement
+  and depth against the recording and stops at the first one that differs. The host also compares
+  every value the recording kept on the way, and everything it logged, with what the replay
+  recorded at the same steps. The copy reads Checked only when all of them match; otherwise the
+  pane names the step where the replay went another way (no copy), or the first value that came
+  out different (the copy is still shown, marked). On invoices.py the whole `orders` comes back
+  with Ben's `'1,299.00'` as a string, where the recording kept
+  `{'Ana': {'items': [{...}, {...}], ...}…(+323 chars)`.
+
+- A recording run keeps what the program read from outside it: `time.time` and `time.time_ns`
+  readings, `os.urandom` bytes (so `uuid.uuid4`) and the seed of the `random` module, as an
+  `inputs` event. A replay hands them back in order, and a read the recording does not have stops
+  it with that reason. `pyokka.timeMachine.recordInputs` (on by default) turns it off. Not
+  covered yet: `datetime.now`, `perf_counter`, a `random.Random()` the program seeds itself,
+  files, database drivers and threads; a replay that differs because of one says where.
+
+- A run that called the network with HTTP off is not replayed: the pane says how many requests
+  it made and asks for HTTP Record, whose answers a replay then uses without opening a connection.
+  A replay gets twice the Run Timeout and says so when it runs out. On the 1,000,003-statement loop
+  of `scripts/bench-debug.py` a replay to step 1,000 took 0.2 s and to step 999,998 3.8 s, against
+  3.7 s to record. Past the recorder's 100,000 changes the steps are compared by path only, and
+  the summary says so. The bridge answers `whole` with the same view; there is no CLI command yet.
+
+- A recording that began at a pause (`--record-from NAME`, `--record-from FILE:LINE`, or
+  `pyokka record --live` at a later pause) keeps where it began, `startedAt`, the debugger's
+  statement count at that pause. A replay of it runs the program unrecorded, at the debugger's
+  speed, to that statement and records from there, so Whole value works on it too; a start point
+  that does not match says so instead of answering. A recording made before this version kept no
+  start point and says to record again. A module launch (a test through its runner), a container
+  session and the browser page cannot be replayed yet.
+
+- The Variable pane and the Why tree say where the run is and which step they show: "Paused ·
+  inspecting step 59" at a debug pause, "Paused at step 59 · inspecting step 12" behind it,
+  "Replaying · step 12 of 81" in a finished run. A paused recording run reads PAUSED in the
+  entries, the Execution Diagram and the Time Machine header instead of RUNNING…
+
+- A name the Why tree is asked about before its scope assigns it says "not assigned yet at #13,
+  first assigned at #14 invoices.py:16 parse_price" and links to that step. A recording that began
+  at a pause said "made before #0, where the recording started" for a value first assigned at
+  step 1; that line now appears only when nothing assigns the name later. A `?` in a run that
+  recorded no locals says so.
+
+- The Debugger view of a session that records nothing says so under its launch line, before
+  anyone looks for a value, and names what records: Debug Current File (Recording),
+  `pyokka debug FILE --record` or `--record-from NAME`; a module launch is told to launch the file
+  instead. Show Variable History and Why This Value say the same for a plain, module or attached
+  session.
+
 ## 0.6.1
 
 - Restarting a completed recording keeps its launch configuration, including container transport,

@@ -34,6 +34,7 @@ import { Snaps } from './features/snaps';
 import { ShadowValues } from './features/shadowValues';
 import { StartView } from './features/startView';
 import { pickVariableName, pickWhyTarget } from './features/variableHistory';
+import { historyGapMessage } from './features/historyGap';
 import { registerValueCommands } from './features/valueCommands';
 import { waitForIdle, waitForNextRun } from './session/wait';
 import { AgentBridge } from './agent/bridge';
@@ -276,6 +277,12 @@ export function activate(context: vscode.ExtensionContext): PyokkaApi {
     const s = active();
     if (!s) void vscode.window.showInformationMessage('Pyokka: no active session. Start one with "Pyokka: Start on Current File" (Cmd/Ctrl+K Q).');
     return s;
+  };
+  // the history commands: a debug session that keeps no history says so instead of "no active session"
+  const requireHistorySession = (): Session | undefined => {
+    const gap = active() ? undefined : historyGapMessage(debugSessions);
+    if (gap) void vscode.window.showInformationMessage(gap);
+    return gap ? undefined : requireSession();
   };
   const cursorLine = (s: Session): number | undefined => {
     const editor = vscode.window.activeTextEditor;
@@ -520,12 +527,12 @@ export function activate(context: vscode.ExtensionContext): PyokkaApi {
     await tour.narrate(s);
   });
   reg('pyokka.showVariableHistory', async (arg) => {
-    const s = requireSession();
+    const s = requireHistorySession();
     const name = s && (await pickVariableName(s, arg));
     if (s && name) await panel.showVariable(s, name);
   });
   reg('pyokka.whyValue', async (arg) => {
-    const s = requireSession();
+    const s = requireHistorySession();
     const target = s && (await pickWhyTarget(s, arg));
     if (s && target) await panel.showWhy(s, target.step, target.name);
   });

@@ -453,21 +453,28 @@ def render_var(result: dict, source: Any, args: Any) -> list[str]:
 
 # a leaf of a recording that began at a pause (`--record-from`): its value was made before step 0
 BEFORE_RECORDING = "   made before #0, where the recording started"
+# a leaf of a run that recorded no locals: why nothing answers for the name
+NOT_RECORDED = "   not recorded: this run recorded no locals"
 
 
-def _why_node(n: dict, prefix: str, source: Any) -> str:
+def _why_node(n: dict, prefix: str, source: Any, step: Any = None, recorded_locals: bool = True) -> str:
+    """One node line; ``step`` is the queried step (a name with no value yet there says so)."""
     parts = []
+    first = n.get("firstAssigned") if n.get("step") is None and n.get("text") is None and isinstance(n.get("firstAssigned"), dict) else None
     if n.get("name"):
         if n.get("text") is not None:
             parts.append("%s = %s%s" % (n["name"], _one_line(n["text"], WHY_VALUE), "  (same object)" if n.get("unchanged") else ""))
         elif n.get("step") is not None:
             parts.append("%s  assigned here (value not recorded)" % n["name"])
+        elif first:
+            parts.append("%s  not assigned yet at #%s, first assigned at #%s %s %s" % (n["name"], step, first.get("step"), _loc(source, first.get("file"), first.get("line")), first.get("function") or "<module>"))
         else:
-            parts.append("%s = ?%s" % (n["name"], BEFORE_RECORDING if n.get("beforeRecording") else ""))
+            parts.append("%s = ?%s" % (n["name"], BEFORE_RECORDING if n.get("beforeRecording") else "" if recorded_locals else NOT_RECORDED))
     if n.get("step") is not None:
         parts.append("#%s %s %s" % (n["step"], _loc(source, n.get("file"), n.get("line")), n.get("function") or "<module>"))
-    if n.get("statement"):
-        parts.append(_one_line(n["statement"], WHY_STATEMENT))
+    statement = first.get("statement") if first else n.get("statement")
+    if statement:
+        parts.append(_one_line(statement, WHY_STATEMENT))
     return prefix + "   ".join(parts) + ("  …" if n.get("cut") else "")
 
 
@@ -485,10 +492,11 @@ def render_why(result: dict, source: Any, args: Any) -> list[str]:
     """The twin of ``src/shared/provenanceText.ts``: the header, one line per node depth-first (its reads,
     then its calls, then its opaque calls), the truncation note. Keep the two identical."""
     out = ["why %s at #%s" % (result["name"], result["step"]) if result.get("name") else "why #%s" % result["step"]]
+    recorded_locals = result.get("recordedLocals") is not False
 
     def walk(n: dict, level: int) -> None:
         pad = "  " * level
-        out.append(pad + _why_node(n, "← " if level else "", source))
+        out.append(pad + _why_node(n, "← " if level else "", source, result.get("step"), recorded_locals))
         for r in n.get("reads") or []:
             walk(r, level + 1)
         for c in n.get("calls") or []:

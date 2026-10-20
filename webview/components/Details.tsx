@@ -17,6 +17,9 @@ import { buildWhyDocument, type WhyLine } from '../why';
 import { formatRepr } from '../src-shared';
 import { IconButton, MenuButton, type MenuItem } from './ui';
 import { ValueTable } from './ValueTable';
+import type { WholeValueView } from '../../src/shared/replayProtocol';
+import type { WholeValueAsk } from './VariablePane';
+import { WholeValue } from './WholeValue';
 
 export interface DetailsHandle {
   focus(): void;
@@ -30,6 +33,8 @@ export interface DetailsProps {
   compareEnabled: boolean;
   /** the "why" tree shown instead of the entries until it is closed */
   why: WhyView | null;
+  /** with a why tree: the run's phase and the step the tree explains (inspection.ts), while the Time Machine is on */
+  whyInspection?: string;
   onPrefs: (patch: Partial<UiPrefs>) => void;
   onOpen: (fileId: number, line: number, col: number, sideView: boolean) => void;
   onExpand: (entry: Entry, node: ValueNode) => void;
@@ -39,9 +44,18 @@ export interface DetailsProps {
   /** Time Machine to a step (a tree's node or call line; starts it when needed) */
   onGoto: (step: number) => void;
   onCloseWhy: () => void;
+  /** with a why tree: the whole value of its name at its step, once asked for (`whyKey`) */
+  whyWhole?: WholeValueView;
+  /** absent: the host has no replay (the browser page) */
+  onWhole?: (ask: WholeValueAsk) => void;
   /** rows to mark in the tables, by entry logId: the loop's current item */
   tableMarks?: Record<string, number>;
   handle?: Ref<DetailsHandle>;
+}
+
+/** The pane's key for the whole value a why tree asks for: its name at its step. */
+export function whyKey(why: Pick<WhyView, 'step' | 'name'>): string {
+  return `at:${why.step}:${why.name}`;
 }
 
 interface DetailLine extends Omit<WhyLine, 'kind'> {
@@ -362,15 +376,29 @@ export function Details(props: DetailsProps) {
             </>
           )}
         </span>
+        {why && props.whyInspection && <span class="pk-inspection">{props.whyInspection}</span>}
         <span class="pk-toolbar">
           {!why && props.compareEnabled && <IconButton icon="diff" title="Compare selected values" onClick={props.onCompare} />}
           {!why && <IconButton icon="type-hierarchy-sub" title="Show as diagram" disabled={props.entries.length === 0} onClick={props.onDiagram} />}
           <IconButton icon="search" title="Find" active={findOpen} onClick={toggleFind} />
           <IconButton icon="copy" title="Copy with highlighting" onClick={copyAll} />
           <MenuButton icon="ellipsis" title="More" items={menuItems} />
+          {why && why.name && props.onWhole && (
+            <IconButton
+              icon="list-tree"
+              title={`Whole value of ${why.name} at #${why.step}: replays the run in a separate process up to this step and copies all of it (network answers come from the HTTP recording; files it writes are written again)`}
+              spin={props.whyWhole?.status === 'pending'}
+              onClick={() => props.onWhole!({ key: whyKey(why), kind: 'at', step: why.step, name: why.name })}
+            />
+          )}
           {why && <IconButton icon="close" title="Back to entries" onClick={props.onCloseWhy} />}
         </span>
       </header>
+      {why && props.whyWhole && (
+        <div class="pk-why-whole">
+          <WholeValue key={`${props.whyWhole.key}:${props.whyWhole.status}`} view={props.whyWhole} />
+        </div>
+      )}
       {!why && tables.length > 0 && (
         <div class={`pk-details-tables${emptyUnderTables ? ' pk-details-tables--only' : ''}`}>
           {tables.map(({ entry, model, name }) => {

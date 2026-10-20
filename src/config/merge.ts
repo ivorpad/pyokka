@@ -90,6 +90,8 @@ export function toRunConfig(merged: ConfigObject): RunConfig {
     secrets: { mask: typeof sec['mask'] === 'boolean' ? (sec['mask'] as boolean) : true, names: Array.isArray(sec['names']) ? (sec['names'] as unknown[]).map(String) : [] },
     http: cfg.http === 'record' || cfg.http === 'replay' ? cfg.http : 'off',
     httpObserve: typeof cfg.httpObserve === 'boolean' ? cfg.httpObserve : true,
+    // the runtime's default is true: only an explicit false reaches the request
+    ...(tm['recordInputs'] === false ? { recordInputs: false } : {}),
   };
 }
 

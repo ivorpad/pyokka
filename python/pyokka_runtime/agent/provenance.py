@@ -100,7 +100,22 @@ class ProvenanceBuilder:
         read = self.history.value_at(name, step, scope_id, file_id)
         if read.get("step") is None and "." in name:
             read = self.history.value_at(name.split(".", 1)[0], step, scope_id, file_id)
-        return self.from_read(read) if read.get("step") is not None else self.leaf(name)
+        return self.from_read(read) if read.get("step") is not None else self.not_yet(name, step, scope_id, file_id)
+
+    def not_yet(self, name: str, step: int, scope_id: int, file_id: int) -> dict:
+        """A root name with no value at ``step``: when its scope (or its module) assigns it later, the node
+        says where it first does, so a query one step too early is not mistaken for a value made before the
+        recording; otherwise the leaf. A dotted name falls back to its first segment, as ``root`` does."""
+        later = self.history.first_change_after(name, step, scope_id, file_id)
+        if later is None and "." in name:
+            later = self.history.first_change_after(name.split(".", 1)[0], step, scope_id, file_id)
+        if later is None:
+            return self.leaf(name)
+        first = dict(self.history.location(int(later["step"])))
+        statement = self.statement(int(later["step"]))
+        if statement is not None:
+            first["statement"] = statement
+        return {"name": str(later["name"]), "firstAssigned": first}
 
     # -- a statement's inputs ---------------------------------------------------------------------------------
     def reads(self, step: int) -> list[dict]:

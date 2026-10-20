@@ -2,6 +2,9 @@
  * Types for the extension host <-> Python runner NDJSON protocol.
  * Source of truth: docs/PROTOCOL.md. Keep both in sync.
  */
+import type { InputsEvent, ReplayRequest, ReplayResultEvent } from './replayProtocol';
+
+export type { InputsEvent, InputsRecord, ReplayRequest, ReplayResultEvent, ReplayStatus } from './replayProtocol';
 
 /** [startLine (1-based), startCol (0-based), endLine, endCol] */
 export type Range4 = [number, number, number, number];
@@ -45,6 +48,8 @@ export interface RunConfig {
   http: HttpMode;
   /** observe the HTTP clients in every run (one `http.exchange` row per request); false leaves them untouched: no rows, no HTTP view */
   httpObserve: boolean;
+  /** keep what a recording run's program read from outside it (the clock, os.urandom, the random seed) so a replay can hand it back; default true */
+  recordInputs?: boolean;
   /** start paused at the first statement; the run can then pause, step and break (the `debug` request) */
   debug?: boolean;
   /**
@@ -113,6 +118,8 @@ export interface RunRequest {
   traceContext?: { step: number; prefetch: number };
   /** pause here; resolved to statements when their file is instrumented (a debug run) */
   breakpoints?: DebugBreakpointSpec[];
+  /** run again to a recorded step, checking every step on the way, and copy one value whole (docs/PROTOCOL.md, "Replay") */
+  replay?: ReplayRequest;
   mode: RunMode;
 }
 
@@ -332,6 +339,19 @@ export interface ProvenanceNode {
   cut?: boolean;
   /** a leaf of a recording that began mid-run (`recordFrom`): the value was made before step 0, where nothing was recorded */
   beforeRecording?: boolean;
+  /** a root leaf whose name has no value yet at the queried step: the first change after it in the step's scope or its module */
+  firstAssigned?: ProvenanceFirstAssigned;
+}
+
+/** Where a name that does not exist yet at the queried step is first assigned: the producing statement's step and location, as a node carries them. */
+export interface ProvenanceFirstAssigned {
+  step: number;
+  file?: string;
+  fileId?: number;
+  line?: number;
+  function?: string;
+  scopeId?: number;
+  statement?: string;
 }
 
 export interface Provenance {
@@ -630,6 +650,8 @@ export interface TraceEvent extends RunEventBase {
   offset?: number;
   /** the recording began at a pause (`recordFrom`): step 0 is that pause, and nothing before it was recorded */
   midRun?: boolean;
+  /** with `midRun`: the debugger's statement count at that pause, where a replay starts recording (`replay.startAt`) */
+  startedAt?: number;
   /** final event of a run cut at `maxTraceSteps`: the cap, the steps the program ran, and the files that ran most of them */
   cap?: number;
   stepsRun?: number;
@@ -762,6 +784,8 @@ export type RunEvent =
   | HttpExchangeEvent
   | DebugPausedEvent
   | DebugResumedEvent
+  | InputsEvent
+  | ReplayResultEvent
   | RunFinishedEvent;
 
 export type RunnerMessage =

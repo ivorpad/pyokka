@@ -22,9 +22,12 @@ export interface WhyDocument {
   lines: WhyLine[];
 }
 
-/** Where the location sits in a node line (`   #23 main.py:28 <module>   statement`) or a call line (`↳ f #25–#27 helper.py:1   in …`). */
+/**
+ * Where the location sits in a node line (`   #23 main.py:28 <module>   statement`, or `first assigned
+ * at #1 main.py:3 <module>` for a name with no value yet) or a call line (`↳ f #25–#27 helper.py:1   in …`).
+ */
 function locationSpan(text: string, kind: 'node' | 'call', step: number): [number, number] | undefined {
-  const m = (kind === 'node' ? new RegExp(`(?:^\\s*(?:← )?|\\s{3})#${step} `) : new RegExp(`#${step}–#\\d+ `)).exec(text);
+  const m = (kind === 'node' ? new RegExp(`(?:^\\s*(?:← )?|\\s{3}|first assigned at )#${step} `) : new RegExp(`#${step}–#\\d+ `)).exec(text);
   if (!m) return undefined;
   const start = m.index + m[0].indexOf('#');
   const end = start + text.slice(start).search(/\s{2,}|$/);

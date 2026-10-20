@@ -82,6 +82,15 @@ describe('buildWhyDocument', () => {
     expect(withConclusion.text.split('\n').pop()).toBe("label is 'total/35.0' at #24 (main.py:29). helper.describe(total, os.sep) returned 'total/35.0'.");
     expect(withConclusion.lines[withConclusion.lines.length - 1]?.link).toBeUndefined();
   });
+  it('links a name with no value yet to where it is first assigned', () => {
+    const notYet: Provenance = { name: 'expected', step: 0, depth: 5, nodes: 1, truncated: false, recordedLocals: true, root: { name: 'expected', firstAssigned: { step: 1, file: 'schema.py', fileId: 3, line: 207, function: 'test_knn', scopeId: 0, statement: 'expected = _knn_tuning_from_index_body(expected_index_body)' } } };
+    const d = buildWhyDocument({ step: 0, name: 'expected', tree: notYet });
+    const lines = d.text.split('\n');
+    expect(lines[1]).toBe('expected  not assigned yet at #0, first assigned at #1 schema.py:207 test_knn   expected = _knn_tuning_from_index_body(expected_index_body)');
+    expect(d.lines[1]).toMatchObject({ kind: 'node', step: 1, link: { fileId: 3, line: 207, col: 0 } });
+    const [start, end] = d.lines[1]!.linkSpan!;
+    expect(lines[1]!.slice(start, end)).toBe('#1 schema.py:207 test_knn');
+  });
   it('says it is looking the value up until the host answers, and shows the host error instead of a tree', () => {
     expect(buildWhyDocument({ step: 21, name: 'total', tree: null })).toEqual({ text: 'LOOKING UP…', lines: [{ kind: 'wait' }] });
     const error = 'No run yet: run the file first (save, or Re-execute).';
@@ -130,5 +139,9 @@ describe('Why buttons', () => {
     expect(html).toContain('data-tip="Why this value at #12"');
     expect(html).toContain('data-tip="Why this value at #40"');
     expect(html).toMatch(/pk-variable-row.*?data-tip="Why this value at #12"[^>]*><i class="codicon codicon-question"/);
+    expect(html).not.toContain('pk-inspection');
+    // with the Time Machine on, the header says where the run is and which step the pane shows
+    const inspecting = render(<VariablePane view={view} inspection="Paused at step 59 · inspecting step 12" settings={{ ...DEFAULT_SETTINGS, recordLocals: true }} showFileName={false} onQuery={noop} onGoto={noop} onOpen={noop} onWhy={noop} onEnableRecordLocals={noop} onClose={noop} />);
+    expect(inspecting).toMatch(/pk-pane-title">VARIABLE.*?<span class="pk-inspection">Paused at step 59 · inspecting step 12<\/span>/);
   });
 });

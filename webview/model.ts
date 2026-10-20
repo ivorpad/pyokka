@@ -1,6 +1,7 @@
 /** Panel state: everything the host pushes plus local UI state, driven by a reducer. */
 import type { CompletionItem, StackFrame, ValueNode } from '../src/shared/protocol';
 import type { DebuggerState, DebugSessionPanel, ExceptionsPanel, ExecutionGraphPanel, HostToWebview, HttpPanel, PanelEntry, PanelSettings, PreviewCaller, StoryPanel, TimelineModel, TourPanel, VariableView, ViewId, WalkthroughPanel, WhyView } from '../src/shared/webviewProtocol';
+import type { PanelFeatures, WholeValueView } from '../src/shared/replayProtocol';
 import { spliceNode } from './format';
 import type { DebugOutputChunk } from './src-shared';
 import { EMPTY_SELECTION, pruneSelection, type Selection } from './selection';
@@ -111,6 +112,10 @@ export interface PanelState {
   http: HttpPanel | null;
   /** the Details pane's "why" tree: the queried step and name and the host's answer (tree null while it computes) */
   why: WhyView | null;
+  /** whole values replayed for the Variable pane and the Why tree, by the pane's key; a new run empties it */
+  wholeValues: Record<string, WholeValueView>;
+  /** what the host answers beyond the common messages (`init`) */
+  features: PanelFeatures;
   selection: Selection;
   /** which entries are hidden by the filter, keyed `${fileId}:${line}` */
   hiddenLines: Set<string>;
@@ -174,6 +179,8 @@ export function initialState(prefs: UiPrefs = DEFAULT_PREFS): PanelState {
     story: null,
     http: null,
     why: null,
+    wholeValues: {},
+    features: {},
     selection: EMPTY_SELECTION,
     hiddenLines: new Set(),
     filterMode: false,
@@ -303,7 +310,7 @@ function reduceHost(state: PanelState, m: HostToWebview): PanelState {
     case 'init':
       // a (re)bind: the host pushes the bound session's debugger state right after, and an unbound
       // panel has no Time Machine, so never keep the previous session's flag
-      return { ...withSettings(state, m.settings), ready: true, theme: m.theme, session: { ...state.session, name: m.sessionName }, debugger: null, variable: null, http: null, why: null, view: state.view === 'debugger' ? 'output' : state.view };
+      return { ...withSettings(state, m.settings), ready: true, theme: m.theme, session: { ...state.session, name: m.sessionName }, debugger: null, variable: null, http: null, why: null, wholeValues: {}, features: m.features ?? {}, view: state.view === 'debugger' ? 'output' : state.view };
     case 'theme':
       return { ...state, theme: m.theme };
     case 'settings':
@@ -449,6 +456,10 @@ function reduceHost(state: PanelState, m: HostToWebview): PanelState {
       return { ...state, story: m.story, view: !m.story && state.view === 'story' ? 'output' : state.view };
     case 'http':
       return { ...state, http: m.panel };
+    case 'wholeValue':
+      return { ...state, wholeValues: { ...state.wholeValues, [m.view.key]: m.view } };
+    case 'wholeValue.reset':
+      return Object.keys(state.wholeValues).length ? { ...state, wholeValues: {} } : state;
     case 'why': {
       if (!m.view) return { ...state, why: null };
       // a query and its answer show the Details pane; a refresh of the shown tree (the same query after a re-run) leaves the view alone

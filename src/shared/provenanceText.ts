@@ -11,6 +11,8 @@ export const WHY_STATEMENT = 80;
 export const WHY_INPUT = 60;
 /** after a leaf of a recording that began at a pause (`--record-from`): its value was made before step 0 */
 export const BEFORE_RECORDING = '   made before #0, where the recording started';
+/** after a leaf of a run that recorded no locals: why nothing answers for the name */
+export const NOT_RECORDED = '   not recorded: this run recorded no locals';
 
 export interface ProvenanceLine {
   text: string;
@@ -31,15 +33,24 @@ export function oneLine(text: string | undefined, limit: number): string {
 
 export type DisplayPath = (fileId: number | undefined, file: string | undefined) => string;
 
-function nodeText(n: ProvenanceNode, prefix: string, displayPath: DisplayPath): string {
+/** The tree's own facts a node line needs: the queried step (a name with no value yet there says so) and whether locals were recorded. */
+interface TreeFacts {
+  step: number;
+  recordedLocals: boolean;
+}
+
+function nodeText(n: ProvenanceNode, prefix: string, displayPath: DisplayPath, tree: TreeFacts): string {
   const parts: string[] = [];
+  const first = n.step === undefined && n.text === undefined ? n.firstAssigned : undefined;
   if (n.name) {
     if (n.text !== undefined) parts.push(`${n.name} = ${oneLine(n.text, WHY_VALUE)}${n.unchanged ? '  (unchanged)' : ''}`);
     else if (n.step !== undefined) parts.push(`${n.name}  assigned here (value not recorded)`);
-    else parts.push(`${n.name} = ?${n.beforeRecording ? BEFORE_RECORDING : ''}`);
+    else if (first) parts.push(`${n.name}  not assigned yet at #${tree.step}, first assigned at #${first.step} ${displayPath(first.fileId, first.file)}:${first.line ?? '?'} ${first.function ?? '<module>'}`);
+    else parts.push(`${n.name} = ?${n.beforeRecording ? BEFORE_RECORDING : tree.recordedLocals ? '' : NOT_RECORDED}`);
   }
   if (n.step !== undefined) parts.push(`#${n.step} ${displayPath(n.fileId, n.file)}:${n.line ?? '?'} ${n.function ?? '<module>'}`);
-  if (n.statement) parts.push(oneLine(n.statement, WHY_STATEMENT));
+  const statement = first ? first.statement : n.statement;
+  if (statement) parts.push(oneLine(statement, WHY_STATEMENT));
   return prefix + parts.join('   ') + (n.cut ? '  …' : '');
 }
 
@@ -53,9 +64,12 @@ function callText(c: ProvenanceCall, displayPath: DisplayPath): string {
 /** The lines of a tree: the header, then each node depth-first (its reads, then its calls, then its opaque calls), then the truncation note. */
 export function provenanceLines(p: Provenance, displayPath: DisplayPath = (_, file) => file ?? '<unknown>'): ProvenanceLine[] {
   const out: ProvenanceLine[] = [{ text: p.name ? `why ${p.name} at #${p.step}` : `why #${p.step}`, kind: 'header', indent: 0 }];
+  const tree: TreeFacts = { step: p.step, recordedLocals: p.recordedLocals !== false };
   const walk = (n: ProvenanceNode, level: number): void => {
     const pad = '  '.repeat(level);
-    out.push({ text: pad + nodeText(n, level ? '← ' : '', displayPath), kind: 'node', indent: level, step: n.step, fileId: n.fileId, line: n.line });
+    // a name with no value yet links to where it is first assigned
+    const target = n.step === undefined && n.text === undefined && n.firstAssigned ? n.firstAssigned : n;
+    out.push({ text: pad + nodeText(n, level ? '← ' : '', displayPath, tree), kind: 'node', indent: level, step: target.step, fileId: target.fileId, line: target.line });
     for (const r of n.reads ?? []) walk(r, level + 1);
     for (const c of n.calls ?? []) out.push({ text: pad + '  ' + callText(c, displayPath), kind: 'call', indent: level + 1, step: c.entryStep, fileId: c.fileId, line: c.line });
     for (const o of n.opaque ?? []) out.push({ text: `${pad}  · ${o}   not stepped`, kind: 'opaque', indent: level + 1 });

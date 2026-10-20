@@ -6,7 +6,7 @@ import * as vscode from 'vscode';
 import * as path from 'node:path';
 import * as os from 'node:os';
 import { EventEmitter } from 'node:events';
-import type { Completions, CoverageEvent, ErrorEvent, HttpExchangeEvent, HttpMode, LocalsEvent, LogEvent, OutputEvent, Range4, RunEvent, RunFinishedEvent, RunMode as ProtocolRunMode, StatementBinding, TimeEvent, WatchEvent } from '../shared/protocol';
+import type { Completions, CoverageEvent, ErrorEvent, HttpExchangeEvent, HttpMode, InputsRecord, LocalsEvent, LogEvent, OutputEvent, Range4, RunEvent, RunFinishedEvent, RunMode as ProtocolRunMode, RunRequest, StatementBinding, TimeEvent, WatchEvent } from '../shared/protocol';
 import { decodeSteps } from '../shared/protocol';
 import { RunnerClient } from '../runtime/runnerClient';
 import { runtimeLanguage } from '../runtime/language';
@@ -45,6 +45,8 @@ export interface RunState {
   tracePartialScopes?: PartialScopes;
   /** the recording began at a pause (`recordFrom`): step 0 is that pause, not the program's start */
   midRun?: boolean;
+  /** with `midRun`: the debugger's statement count at that pause, where a replay starts recording */
+  startedAt?: number;
   locals: LocalsEvent['entries'];
   /** statement bindings per file (what each statement assigns and reads), fetched from the runner on first use (variableQuery.ts) */
   bindings: Map<number, Promise<ReadonlyMap<number, StatementBinding> | undefined>>;
@@ -54,6 +56,10 @@ export interface RunState {
   http: HttpExchangeEvent[];
   finished: RunFinishedEvent | undefined;
   mode: ProtocolRunMode;
+  /** the request this run was started with: a replay sends it again (wholeValueReplay.ts) */
+  request?: Omit<RunRequest, 'type' | 'id'>;
+  /** what the program read from outside it (the `inputs` event), handed back by a replay */
+  inputs?: InputsRecord;
 }
 
 function appendOutput(st: RunState, text: string): void {
@@ -144,6 +150,8 @@ export class Session extends EventEmitter<SessionEvents> {
   cwdOverride: string | undefined;
   envOverride: Record<string, string> | undefined;
   readonly launch: LaunchConfig | undefined;
+  /** how a replay starts a runner like this session's (wholeValueReplay.ts); undefined over a transport */
+  private readonly sideRunnerOptions: { command: string; cwd: string; env: Record<string, string> } | undefined;
 
   /** state of the latest run that produced events (may still be running) */
   state: RunState;
@@ -201,6 +209,7 @@ export class Session extends EventEmitter<SessionEvents> {
       version: '1',
       log: (line) => log.info(`[${this.displayName}] ${line}`),
     });
+    this.sideRunnerOptions = opts.launch?.transport ? undefined : { command: opts.interpreter.path, cwd: opts.runtimeDir, env };
     if (opts.launch) {
       this.argvOverride = [...opts.launch.args];
       this.cwdOverride = opts.launch.cwd;
@@ -354,6 +363,7 @@ export class Session extends EventEmitter<SessionEvents> {
     const finished = new Promise<RunFinishedEvent>((resolve) => this.pendingFinish.set(runId, resolve));
     // the new state becomes visible on `run.started`; keep the old one for stale rendering
     const incoming = emptyRunState(runId, content, mode);
+    incoming.request = request;
     this.incoming.set(runId, incoming);
     this.status = 'running';
     this.emit('statusChanged');
@@ -451,6 +461,7 @@ export class Session extends EventEmitter<SessionEvents> {
         }
         let scopes = ev.scopes;
         if (ev.midRun) st.midRun = true;
+        if (ev.startedAt !== undefined) st.startedAt = ev.startedAt;
         if (ev.partial) {
           // mid-run delta covering steps offset.. ; keep the pieces so a killed run still has a trace
           const offset = (ev.offset ?? 0) * 4;
@@ -488,6 +499,9 @@ export class Session extends EventEmitter<SessionEvents> {
       }
       case 'locals':
         st.locals.push(...ev.entries);
+        break;
+      case 'inputs':
+        st.inputs = { seed: ev.seed, reads: ev.reads, ...(ev.truncated ? { truncated: true } : {}) };
         break;
       case 'watch': {
         const w = this.watches.find((x) => x.id === ev.watchId);
@@ -877,6 +891,12 @@ export class Session extends EventEmitter<SessionEvents> {
     const m = this.markers.byId(e.markerId);
     if (!m || m.transient) return false;
     return !e.changeId || e.changeId === m.changeId;
+  }
+
+  /** A runner of its own for one replay, started like this session's; the caller disposes it. Undefined over a transport. */
+  newSideRunner(): RunnerClient | undefined {
+    const o = this.sideRunnerOptions;
+    return o ? new RunnerClient({ ...o, version: '1', maxRestarts: 0, log: (line) => log.info(`[${this.displayName} replay] ${line}`) }) : undefined;
   }
 
   displayPath(fileId: number): string {

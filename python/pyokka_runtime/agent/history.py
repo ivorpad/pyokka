@@ -296,6 +296,15 @@ class History:
                 add(row)
         return sorted(rows.values(), key=lambda r: (int(r["step"]), str(r["name"])))
 
+    def first_change_after(self, name: str, step: int, scope_id: int, file_id: int) -> dict | None:
+        """The first change ``var`` lists for exactly ``name`` after ``step``, in the step's scope or its module:
+        where a name with no value yet at ``step`` gets one."""
+        scopes = {scope_id} | self.module_scopes(file_id)
+        for row in self.rows(name):  # ascending by step
+            if row["name"] == name and int(row["step"]) > step and int(row["scopeId"]) in scopes:
+                return row
+        return None
+
     def build(self, name: str, *, file_id: int | None = None, scope: str | None = None, limit: int = VAR_CAP) -> dict:
         ordered = self.rows(name)
         if file_id is not None:

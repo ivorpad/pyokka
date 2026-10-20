@@ -69,7 +69,14 @@ def child_main(request: dict, write: Callable[[bytes], None], ctl_fd: int) -> No
     spec = RunSpec.from_request(request)
     execution = Execution(spec, emit)
     control = ControlChannel(ctl_fd, emit)
-    execution.on_tracer = lambda tracer: control.attach_debugger(execution, tracer, request)
+    replay = request.get("replay")
+    if isinstance(replay, dict):
+        from .replay import attach_replay
+
+        # a replay checks every step against a recording and pauses nowhere: no debugger, even for a debug request
+        execution.on_tracer = lambda tracer: attach_replay(tracer, replay)
+    else:
+        execution.on_tracer = lambda tracer: control.attach_debugger(execution, tracer, request)
     install_step_streams(emit, lambda: execution.tracer)
     devnull = os.open(os.devnull, os.O_RDONLY)
     os.dup2(devnull, 0)

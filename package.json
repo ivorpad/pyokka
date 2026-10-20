@@ -1939,6 +1939,11 @@
           "default": false,
           "markdownDescription": "Record every changed local variable at every step: the Variable pane lists where a name changed with its values, and the Time Machine shows Step Variables. Costs CPU on hot loops; the runtime keeps at most 100 000 entries per run. Also a per-session toggle in the panel Settings (\"Record Variable Changes\"); without it the Variable pane knows only logged values and assignment sites."
         },
+        "pyokka.timeMachine.recordInputs": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Keep what a recorded run read from outside the program: `time.time` and `time.time_ns` readings, `os.urandom` bytes (so `uuid.uuid4` too) and the seed of the `random` module. \"Whole value\" in the Variable pane and the Why tree replays the run with them, so it takes the same steps. Turn it off if a program misbehaves with those functions wrapped; a replay then reads the clock and random numbers fresh and says so."
+        },
         "pyokka.installPackageCommand": {
           "type": "string",
           "default": "",

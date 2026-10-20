@@ -21,7 +21,7 @@
  * what the host already knows: elapsed, bytes, and when the last byte came.
  */
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { breakpointRows, launchSummary, reasonIcon, watchArg, watchBadge, watchValue, type WatchMode } from '../debuggerView';
+import { breakpointRows, historyGap, launchSummary, reasonIcon, watchArg, watchBadge, watchValue, type WatchMode } from '../debuggerView';
 import { activity, buildRows, duration, rowsText, size, visibleRows, type OutputRow } from '../outputLines';
 import type { SgrStyle } from '../ansi';
 import type { DebugSessionPanel, ValueNode, ViewId } from '../src-shared';
@@ -108,6 +108,7 @@ export function DebugSessionView({ state, onOpen, onWatchAdd, onWatchRemove, onB
       <div class="pk-debug-launch" title={state.launchTitle}>
         {launchSummary(state.launch)}
       </div>
+      <HistoryNote gap={historyGap(state.launch)} />
       {state.modified && (
         <div class="pk-dbg-warn">
           <Icon name="warning" />
@@ -294,6 +295,28 @@ function useRunClock(hostElapsed: number, running: boolean): number {
     return () => clearInterval(id);
   }, [running]);
   return anchor.current.elapsed + (running ? Math.max(0, Date.now() - anchor.current.at) : 0);
+}
+
+/**
+ * That this launch keeps no history and what gets one, before anyone looks for a value: the
+ * Variable pane and Why answer from a recording, and this session has none (`historyGap`).
+ */
+function HistoryNote({ gap }: { gap: ReturnType<typeof historyGap> }) {
+  if (!gap) return null;
+  return (
+    <div class="pk-dbg-history" role="note">
+      <Icon name="info" />
+      {gap === 'module' ? (
+        <span>
+          No history: a module launch cannot record, because a recording runs on a file. Debug the file itself with Debug Current File (Recording), or <code>pyokka debug FILE --record</code>, to get the Time Machine, variable history and Why.
+        </span>
+      ) : (
+        <span>
+          No history: this launch records nothing, so there is no Time Machine, variable history or Why. Debug Current File (Recording) or <code>pyokka debug FILE --record</code> gets them. <code>--record-from NAME</code> records only from that pause on.
+        </span>
+      )}
+    </div>
+  );
 }
 
 /** How quiet counts as worth pointing out: past this the idle reading is highlighted. */

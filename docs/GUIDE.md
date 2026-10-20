@@ -455,7 +455,12 @@ Code's Call Stack, Variables and debug toolbar over the same session; clicking
 a frame there scopes the variables and the Debug Console to it. The status bar reads
 `Debugger: paused at app.py:42 (breakpoint)`, or `Debugger: running`. When the
 program exits the session is disposed and the panel goes back to the view it
-was showing before.
+was showing before. Under the launch line the view says that this launch keeps
+no history (no Time Machine, variable history or Why) and what does: Debug
+Current File (Recording), `pyokka debug FILE --record`, or `--record-from NAME`;
+a module launch cannot record, so it names the file instead. Show Variable
+History and Why This Value say the same in a plain, module or attached session
+instead of "no active session".
 
 While the program is running the sections are ordered by what is live: output
 leads and takes the free space, because a watch has no value until a stop (it
@@ -705,7 +710,38 @@ there, a read name becomes the next query. Attribute paths work
 `acct.deposit(x)`). It knows logged values and assignment sites out of the box
 (a row reads "assigned here (value not recorded)" when only the source knows);
 "Record Variable Changes" in the panel Settings records every change on the
-next run.
+next run. While the Time Machine is on, the header says where the run is and
+which step the pane shows: "Paused · inspecting step 59" at a debug pause,
+"Paused at step 59 · inspecting step 12" once you move behind it, "Replaying ·
+step 12 of 81" in a finished run. The Why tree's header says the same for the
+step it explains.
+
+**Whole value.** A Variable pane row whose value the recorder kept has a tree
+button, and so does the Why tree's header. It runs the program again in a runner
+of its own up to that step, with the run's file, its recorded HTTP answers and the
+clock readings and random seed the run had, checks every step against the
+recording, and copies the value whole: 30 levels deep, 5,000 items per
+container and 200,000 characters per string, where the recording keeps 120
+characters three levels deep. The copy opens under the row, and opening it moves
+nothing. "Checked" means the replay took the same steps and every value the
+recording kept on the way, and everything it printed, came out the same. "Path
+checked" means nothing was recorded on the way to compare with. "Differs" names
+the first value that came out different and still shows the copy. "Went another
+way" names the step where the replay left the recording, and there is no copy. A
+run that called the network with HTTP off is not replayed: it asks for HTTP
+Record first, so a replay never calls an API again. Files and databases the
+program writes are written again. A replay costs about what the recording took
+to reach the step: 0.2 s for step 1,000 and 3.8 s for step 999,998 of the
+million-statement loop in `scripts/bench-debug.py`, against 3.7 s to record it.
+It gets twice the Run Timeout. Past the recorder's 100,000 changes only the path
+is compared, and the summary says so. A recording that began at a pause
+(`--record-from`, `pyokka record --live`) replays too: the program runs
+unrecorded, at the debugger's speed, to the statement the recording began at, and
+records from there; a start point that does not match says so. A review of a
+program records the whole run and replays the same way. A module launch (a test
+through its runner), a container session and the browser page cannot be replayed
+yet. `pyokka.timeMachine.recordInputs` (on by default) turns off the clock and
+randomness recording for a program that misbehaves with them wrapped.
 
 **Why is this value here?** The "Why" button on an entry or on a Variable pane
 row (the hover has the same link, and "Pyokka: Why This Value" takes the name
@@ -714,7 +750,10 @@ value, the names it read with the values they had at that moment, the
 statements that made those, five levels back, plus the functions the statement
 called with their arguments and result. Calls that were not stepped (builtins,
 library code, a dataclass constructor) show as leaves. A line moves the Time
-Machine to its step.
+Machine to its step. A name asked about before its scope assigns it says "not
+assigned yet at #0, first assigned at #1" and links to that step, rather than
+claiming the value was made before the recording; a `?` says why when the run
+recorded no locals.
 
 **Execution diagram.** "Pyokka: Show Execution Diagram" (also the rail's More
 menu and the Time Machine toolbar) draws the run at the level of detail you ask

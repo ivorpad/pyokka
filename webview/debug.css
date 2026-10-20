@@ -302,6 +302,24 @@
 .pk-dbg-error .codicon {
   color: var(--vscode-editorError-foreground, #f85149);
 }
+/* what this launch does not keep (HistoryNote): muted, one short paragraph under the launch line */
+.pk-dbg-history {
+  flex: none;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0 8px 4px;
+  padding: 2px 6px;
+  border-left: 2px solid var(--pk-dim);
+  color: var(--pk-dim);
+  font-size: 11px;
+}
+.pk-dbg-history .codicon {
+  margin-top: 1px;
+}
+.pk-dbg-history code {
+  font-family: var(--pk-mono);
+}
 
 /* ---------- sections and their headers ---------- */
 
