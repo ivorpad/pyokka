@@ -6,6 +6,7 @@ from __future__ import annotations
 from typing import Any
 
 from ..render import _one_line
+from .uses import uses_text
 
 VALUE_WIDTH = 100
 CODE_LINES = 40
@@ -240,7 +241,10 @@ def plan_lines(review: Any, with_stops: bool = True) -> list[str]:
         stops = review.stops
         out.append("stops (%d):" % len(stops) if stops else "stops: none planned (`review ask FILE:LINE --say TEXT` stops at any line that ran)")
         ended = isinstance(review.data.get("ended"), dict)
-        out.extend(stop_line(s, shown, skipped, ended) for s in stops)
+        for s in stops:
+            out.append(stop_line(s, shown, skipped, ended))
+            if s.get("uses"):
+                out.append("      " + uses_text(s["uses"]))
         if stops:
             agenda = ["shown %s" % (", ".join(str(n) for n in sorted(shown)) or "none"), "skipped %s" % (", ".join(str(n) for n in sorted(skipped)) or "none"), "remaining %s" % (", ".join(str(n) for n in review.remaining()) or "none")]
             if review.waiting is not None:

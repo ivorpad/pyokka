@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- `review start` plans the whole change. Untracked files are part of it, read as added ones
+  (`git ls-files --others --exclude-standard`, so ignored files stay out), and the plan names them;
+  before, a new module never reached the agenda and `--only NEWFILE` was refused, which led an agent on
+  2026-10-20 to propose a temporary copy of the repository with a temporary Git baseline. Each item now
+  lists the repository code its changed lines call, under `uses:` with `file:line` and a stop number
+  when the callee is on the agenda, printed in the plan and at the stop; no breakpoint is set for them.
+  `--only` limits the diff read to its files, by name, so a change's configuration outside them is never
+  read, and lists the changed files it left out. The page server's command line is read with `ps -ww`,
+  so a long path no longer makes a running server look stopped.
+
 ## 0.5.5
 
 - The `pyokka_review` tool's `test` and `surface` descriptions and `review.md`'s Surfaces section said

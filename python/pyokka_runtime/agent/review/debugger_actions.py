@@ -58,6 +58,7 @@ def start_in_debugger(f: dict, pre: dict) -> dict:
     """
     from .scope import inside_any, narrow, only_paths, untracked_sentence
     from .session import session_lines
+    from .uses import attach_uses
     from .start import _check_vscode, _prepare
     from .view import close_previous
 
@@ -71,6 +72,7 @@ def start_in_debugger(f: dict, pre: dict) -> dict:
     # directory is touched: one that leaves no item is refused with the last review intact
     change = change_diff(repo, pre["base"], (lambda rel: inside_any(rel, paths)) if paths else None)
     plan, only_notes = narrow(plan_items(repo, change.diff), paths, change.files)
+    attach_uses(plan["stops"], repo)  # on the numbered agenda, so a callee on it is named by the stop the person sees
     if change.untracked:
         plan["summary"] = {**plan["summary"], "untracked": change.untracked, "text": "%s %s" % (plan["summary"]["text"], untracked_sentence(change.untracked))}
     close_previous(directory)
