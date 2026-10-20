@@ -3,9 +3,11 @@
 ## Unreleased
 
 - `review start --only PATH` (MCP `only`) on files with no changed function no longer refuses. It
-  starts the session with an empty agenda, as the same diff without `--only` already did, and a
-  `note:` counts the module-level and test-file changes set aside, so the skill's plan picks the
-  lines with `pyokka break --live FILE:LINE`.
+  starts the session with an empty agenda, as the same diff without `--only` already did.
+- An empty agenda in a review in the debugger (`start`, `state`, `view`) no longer suggests
+  `review ask`, which that review refuses. Its `stops: none planned` line names the same route as
+  `ask`'s refusal: `pyokka break --live FILE:LINE`, `pyokka continue --live`, then
+  `review stop --say TEXT`.
 
 ## 0.6.1
 

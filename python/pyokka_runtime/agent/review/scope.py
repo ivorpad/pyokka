@@ -64,22 +64,16 @@ def inside_any(file: Any, paths: list[str]) -> bool:
 def narrow(plan: dict, paths: list[str], changed_files: list[str] | None = None) -> tuple[dict, list[str]]:
     """``(plan, notes)``: ``plan_items``'s plan with what lies outside every PATH set aside and the rest numbered
     again, and a note for each PATH that matched no changed file, so a typo shows. No PATH: the plan as it is.
-    ``changed_files`` is every file of the change before ``--only`` limited the diff that was read, which the
-    notes name, since the narrowed plan holds only what was kept.
+    ``changed_files`` is every file of the change before ``--only`` limited the diff that was read: the plan's
+    ``outside`` lists the ones outside every PATH, and a PATH that matches none of them gets its note.
 
-    An ``--only`` that holds no changed function plans no item, as a diff with none does, and says so in a note:
-    the agenda is the skill's, which may pick a module-level line or read and ``try``, so nothing is refused.
+    An ``--only`` that holds no changed function plans no item, as a diff with none does, and is not refused:
+    the skill may break on a module-level line, or read the change and ``try``.
     """
     if not paths:
         return plan, []
     stops = [s for s in plan.get("stops") or [] if isinstance(s, dict)]
     kept = [s for s in stops if inside_any(s.get("file"), paths)]
-    empty = []
-    if not kept:
-        aside = [a for a in plan.get("aside") or [] if isinstance(a, dict) and inside_any(a.get("file"), paths)]
-        what = ("%d change%s set aside without a breakpoint (module level or test files; `pyokka break --live FILE:LINE` puts one there)" % (len(aside), "" if len(aside) == 1 else "s")
-                if aside else "read the change and `review try`, or `review ask FILE:LINE --say TEXT` at a line that runs")
-        empty = ["note: --only %s holds no changed function, so the agenda is empty: %s" % (", ".join(paths), what)]
     kept_ids = {id(s) for s in kept}
     left = [{**{k: v for k, v in s.items() if k != "n"}, "reason": ONLY_REASON} for s in stops if id(s) not in kept_ids]
     for i, s in enumerate(kept, 1):
@@ -100,7 +94,7 @@ def narrow(plan: dict, paths: list[str], changed_files: list[str] | None = None)
     notes = ["note: --only %s matched no changed file" % p for p in paths if not any(within(f, p) for f in changed)]
     narrowed = {**plan, "stops": kept, "aside": [*(plan.get("aside") or []), *left], "edges": kept_edges, "aside_edges": left_edges, "only": list(paths), "summary": summary,
                 **({"outside": outside} if outside is not None else {})}
-    return narrowed, [*empty, *notes]
+    return narrowed, notes
 
 
 def untracked_sentence(files: list[str]) -> str:

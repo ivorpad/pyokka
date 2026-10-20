@@ -146,7 +146,7 @@ def git(repo: str, *args: str, check: bool = True) -> str:
 class Change(NamedTuple):
     diff: str  # the unified diff, the untracked files as added ones
     untracked: list[str]  # the untracked files in it
-    files: list[str]  # every changed and untracked file, before ``keep``, for a refusal that names them
+    files: list[str]  # every changed and untracked file, before ``keep``: --only's ``outside`` and its no-match notes
 
 
 def change_diff(repo: str, base: str, keep: Any = None) -> Change:

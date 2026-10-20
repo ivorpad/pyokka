@@ -20,7 +20,7 @@ from ..render import _one_line
 from ..source import AgentError
 from .actions import names_a_value
 from .debugger import CONTINUE, abs_file, adhoc_item, connect, current_pause, item_at, mark_ended, open_debug, pause_values, plan_items, recorded
-from .render import fact_text, plan_lines, value_lines, where
+from .render import STOP_AT_LINE, fact_text, plan_lines, value_lines, where
 from .state import FINDING_ADD, WAIT, Refusal, Review, change_diff, current_note, now, result, tree_hash
 
 STOP_SAY = "review stop --say TEXT"
@@ -68,8 +68,8 @@ def start_in_debugger(f: dict, pre: dict) -> dict:
     else:
         _needs_vscode()
     paths = only_paths(f, repo)
-    # --only limits the diff read to its files, untracked ones included, and narrows the agenda before the review
-    # directory is touched; one that holds no changed function plans no item and notes it
+    # --only limits the diff read to its files, untracked ones included, and narrows the agenda; files that hold no
+    # changed function plan an empty one, as a diff without one does
     change = change_diff(repo, pre["base"], (lambda rel: inside_any(rel, paths)) if paths else None)
     plan, only_notes = narrow(plan_items(repo, change.diff), paths, change.files)
     attach_uses(plan["stops"], repo)  # on the numbered agenda, so a callee on it is named by the stop the person sees
@@ -246,9 +246,7 @@ def view_in_debugger(review: Review, f: dict) -> dict:
 def not_in_debugger(review: Review, action: str) -> Refusal:
     """``ask`` and ``look`` are the debugger's own commands when it runs the review."""
     if action == "ask":
-        return review.refuse("ask is the debugger's job in this review: set a breakpoint and run to it, then record the pause",
-                             ["`pyokka break --live FILE:LINE` then `pyokka continue --live` (MCP pyokka_debug {\"action\": \"break\", ...} then continue), then review stop --say TEXT; a line already passed in a recording session: `pyokka step --live --to STEP`"],
-                             STOP_SAY)
+        return review.refuse("ask is the debugger's job in this review: set a breakpoint and run to it, then record the pause", [STOP_AT_LINE], STOP_SAY)
     return review.refuse("look is the debugger's job in this review: evaluate in the paused frame",
                          ["`pyokka eval --live EXPR` (MCP pyokka_value with live) reads the frame; `pyokka locals --live` lists it"],
                          STOP_SAY)

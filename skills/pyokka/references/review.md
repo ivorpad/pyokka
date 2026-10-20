@@ -29,9 +29,6 @@ boundary, size). Items that share an exerciser form a session. Show the plan wit
 wait: one session now or several is their word, and each session is a `start` with its exerciser
 in its own `--dir`, since a second `start` in the same directory removes the first session's work.
 The plan lives in your message and your scratch directory, never in the repository or the review directory.
-A session whose files hold no changed function (constants, imports, module-level code, tests) still
-starts, with an empty agenda and a note: put your plan's lines on it with `pyokka break --live FILE:LINE`
-and record each pause with `review ask FILE:LINE --say TEXT`, or read the change and `review try`.
 
 `pyokka review stop [N] --say TEXT` records the pause the debugger is at as a stop: the item it belongs to
 (an uncaught exception or a breakpoint of your own becomes an item), the frame's values, your text. It
@@ -160,3 +157,7 @@ next one. In chat, explain the stop's printed context in your message.
   tries and findings. One `--dir` per session, such as `$PYOKKA_HOME/reviews/<repo>-<base7>-<k>`,
   and the plan itself in your scratch directory: a directory with content and no `review.json`
   is refused by `start`.
+- A session whose files hold no changed function (constants, imports, module-level code, tests)
+  still starts, with an empty agenda. Put your plan's lines on it with `pyokka break --live
+  FILE:LINE`, reach each with `pyokka continue --live` and record it with `review stop --say TEXT`,
+  or read the change and `review try`.

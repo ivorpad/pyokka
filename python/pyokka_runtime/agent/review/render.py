@@ -12,6 +12,8 @@ VALUE_WIDTH = 100
 CODE_LINES = 40
 #: the reason ``start --only`` gives the items and edge candidates it sets aside (``scope.narrow``)
 ONLY_REASON = "outside --only"
+#: how a review in the debugger stops at a line that is no item: ``ask``'s refusal says it, and an empty agenda
+STOP_AT_LINE = "`pyokka break --live FILE:LINE` then `pyokka continue --live` (MCP pyokka_debug {\"action\": \"break\", ...} then continue), then review stop --say TEXT; a line already passed in a recording session: `pyokka step --live --to STEP`"
 
 
 def render_review(result: dict, source: Any, args: Any) -> list[str]:
@@ -239,7 +241,8 @@ def plan_lines(review: Any, with_stops: bool = True) -> list[str]:
     out: list[str] = []
     if with_stops:
         stops = review.stops
-        out.append("stops (%d):" % len(stops) if stops else "stops: none planned (`review ask FILE:LINE --say TEXT` stops at any line that ran)")
+        none = ("stops: none planned; to stop at any line: " + STOP_AT_LINE) if review.data.get("mode") == "debugger" else "stops: none planned (`review ask FILE:LINE --say TEXT` stops at any line that ran)"
+        out.append("stops (%d):" % len(stops) if stops else none)
         ended = isinstance(review.data.get("ended"), dict)
         for s in stops:
             out.append(stop_line(s, shown, skipped, ended))
@@ -293,4 +296,4 @@ def conversation_lines(review: Any) -> list[str]:
     return out
 
 
-__all__ = ["ONLY_REASON", "only_line", "render_review", "text", "side_text", "fact_text", "stop_values", "value_pairs", "steps_text", "where", "item_status", "stop_line", "value_lines", "edge_line", "unreached_span", "unreached_line", "try_lines", "repro_text", "finding_place", "finding_lines", "plan_lines", "conversation_entry", "conversation_lines"]
+__all__ = ["ONLY_REASON", "STOP_AT_LINE", "only_line", "render_review", "text", "side_text", "fact_text", "stop_values", "value_pairs", "steps_text", "where", "item_status", "stop_line", "value_lines", "edge_line", "unreached_span", "unreached_line", "try_lines", "repro_text", "finding_place", "finding_lines", "plan_lines", "conversation_entry", "conversation_lines"]

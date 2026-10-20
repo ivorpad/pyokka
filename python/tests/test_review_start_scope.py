@@ -138,8 +138,10 @@ def test_a_path_is_a_file_a_directory_or_a_glob_relative_to_the_repository(tmp_p
 def test_only_that_holds_no_changed_function_plans_an_empty_agenda(world):
     answer, review = start(world, only=["shopkit/config.py"])
     assert review.stops == [] and review.data["phase"] == "findings" and not world.fake.added
-    note = [l for l in lines_of(answer) if l.startswith("note: --only shopkit/config.py holds no changed function")]
-    assert note and "set aside without a breakpoint" in note[0]
+    lines = lines_of(answer)
+    assert "set aside, no breakpoint (1): shopkit/config.py:11" in lines
+    none = next(l for l in lines if l.startswith("stops: none planned"))
+    assert "review stop --say TEXT" in none and "review ask" not in none  # a review in the debugger refuses ask
 
 
 def test_a_path_that_matches_no_changed_file_is_noted(world):
