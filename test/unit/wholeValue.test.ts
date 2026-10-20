@@ -152,7 +152,8 @@ describe('what the pane says', () => {
   it('checked: same steps, every value on the way and the value itself the same', () => {
     const v = interpret('k', { step: 14, name: 'orders' }, reached({ check: { step: 14, text: obs.text } }), { compared: 5 }, obs, where, 412, { inputs: 'handed back' });
     expect(v.status).toBe('checked');
-    expect(v.summary).toBe('The replay took the same 14 steps, and all 6 values the recording kept on the way came out the same.');
+    // and it says how far "the same" goes: the recorder's text of each value, not the whole copy
+    expect(v.summary).toBe('The replay took the same 14 steps, and all 6 values the recording kept on the way came out the same. Each was compared as far as the recording kept it (by default 120 characters, three levels deep), so a difference deeper in this copy, from a file or a database that changed since, would not show.');
     expect(v.value?.type).toBe('dict');
     expect(v.ms).toBe(412);
   });

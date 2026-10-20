@@ -89,7 +89,7 @@ describe('a replay for a whole value', () => {
     expect(sent.replay?.inputs).toEqual({ seed: 42, reads: [['time', 1792500000.25]] });
     expect(new Int32Array(Uint8Array.from(Buffer.from(sent.replay!.expect, 'base64')).buffer).length).toBe(2 * 5);
     expect(view).toMatchObject({ key: 'change:3:0:orders', status: 'checked', step: 4, name: 'orders', matched: 4 });
-    expect(view.summary).toBe('The replay took the same 4 steps, and all 2 values the recording kept on the way came out the same.');
+    expect(view.summary).toMatch(/^The replay took the same 4 steps, and all 2 values the recording kept on the way came out the same\. Each was compared as far as the recording kept it/);
     expect(runner.disposed).toBe(true);
   });
 

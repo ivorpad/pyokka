@@ -11,9 +11,11 @@
   every value the recording kept on the way, and everything it logged, with what the replay
   recorded at the same steps. The copy reads Checked only when all of them match; otherwise the
   pane names the step where the replay went another way (no copy), or the first value that came
-  out different (the copy is still shown, marked). On invoices.py the whole `orders` comes back
-  with Ben's `'1,299.00'` as a string, where the recording kept
-  `{'Ana': {'items': [{...}, {...}], ...}…(+323 chars)`.
+  out different (the copy is still shown, marked). Checked reaches only as far as the recording
+  kept each value, 120 characters three levels deep by default, and the summary says so: a
+  difference deeper in the copy, from a file or a database that changed since, would not show. On
+  invoices.py the whole `orders` comes back with Ben's `'1,299.00'` as a string, where the
+  recording kept `{'Ana': {'items': [{...}, {...}], ...}…(+323 chars)`.
 
 - A recording run keeps what the program read from outside it: `time.time` and `time.time_ns`
   readings, `os.urandom` bytes (so `uuid.uuid4`) and the seed of the `random` module, as an

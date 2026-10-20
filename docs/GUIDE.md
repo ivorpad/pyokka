@@ -724,7 +724,10 @@ recording, and copies the value whole: 30 levels deep, 5,000 items per
 container and 200,000 characters per string, where the recording keeps 120
 characters three levels deep. The copy opens under the row, and opening it moves
 nothing. "Checked" means the replay took the same steps and every value the
-recording kept on the way, and everything it printed, came out the same. "Path
+recording kept on the way, and everything it printed, came out the same, as far
+as the recording kept each value: a difference deeper than its 120 characters
+and three levels, from a file or a database that changed since, would not show,
+and the summary says so. "Path
 checked" means nothing was recorded on the way to compare with. "Differs" names
 the first value that came out different and still shows the copy. "Went another
 way" names the step where the replay left the recording, and there is no copy. A

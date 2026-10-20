@@ -234,8 +234,11 @@ export function interpret(
   const own = itself ? '' : ` The recording kept no text of ${query.name} itself to compare with.`;
   // past the recorder's cap on changes nothing was kept: those steps were compared by the path alone
   const capped = notes.valuesUntil !== undefined && notes.valuesUntil < query.step ? ` The recording stopped keeping values at step #${notes.valuesUntil} (its limit of ${MAX_LOCALS_ENTRIES.toLocaleString('en-US')} changes), so after it only the path was compared.` : '';
-  return view('checked', `The replay took the same ${matched} steps, and ${count} the recording kept on the way came out the same.${own}${capped}${inputsNote(notes.inputs)}`, { value, matched });
+  return view('checked', `The replay took the same ${matched} steps, and ${count} the recording kept on the way came out the same.${KEPT_LIMIT}${own}${capped}${inputsNote(notes.inputs)}`, { value, matched });
 }
+
+/** What "checked" cannot cover: the comparison stops where the recorder's text of each value stops. */
+export const KEPT_LIMIT = ' Each was compared as far as the recording kept it (by default 120 characters, three levels deep), so a difference deeper in this copy, from a file or a database that changed since, would not show.';
 
 function inputsNote(inputs: 'handed back' | 'none recorded' | 'run paused'): string {
   if (inputs === 'none recorded') return ' No outside inputs were recorded for this run, so the clock and random numbers were read fresh.';
