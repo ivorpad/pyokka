@@ -3,7 +3,7 @@
   "displayName": "Pyokka",
   "publisher": "ivor",
   "description": "Python playground in your editor: live values, coverage, and a time-travel debugger with an interactive timeline.",
-  "version": "0.5.5",
+  "version": "0.5.6",
   "repository": {
     "type": "git",
     "url": "https://github.com/ivorpad/pyokka.git"
