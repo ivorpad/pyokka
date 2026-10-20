@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.6.0
+
 - Container launches accept `transport` and `pathMappings`. Pyokka starts its matching runtime
   through `podman exec -i`, `docker exec -i` or an authentication wrapper, maps source locations
   back to the editor, and supports recording. The CLI reads the same launch configuration.
