@@ -440,7 +440,7 @@ pkg = json.load(open(pkg_path)) if pkg_path.exists() else {}
 base = {
     'name': 'pyokka', 'displayName': 'Pyokka', 'publisher': 'ivor',
     'description': 'Python playground in your editor: live values, coverage, and a time-travel debugger with an interactive timeline.',
-    'version': '0.5.7', 'license': 'MIT', 'engines': {'vscode': '^1.93.0'},
+    'version': '0.6.0', 'license': 'MIT', 'engines': {'vscode': '^1.93.0'},
     'repository': {'type': 'git', 'url': 'https://github.com/ivorpad/pyokka.git'},
     'categories': ['Debuggers', 'Testing', 'Other'], 'keywords': ['python', 'scratchpad', 'playground', 'REPL', 'time travel'],
     'activationEvents': ['onLanguage:python', 'onStartupFinished', 'onUri'], 'main': './dist/extension.js', 'icon': 'media/logo.png',
