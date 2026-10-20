@@ -492,15 +492,18 @@ pyokka review close
 pyokka review state
 ```
 
-- Without `--full`, `start` plans from `git diff BASE` alone: one item per changed function, a
-  breakpoint at the first statement of its first changed span (a changed `def` header breaks in the
-  body), and starts the entry under the debugger in the person's VS Code, stopped on entry, with the
+- Without `--full`, `start` plans from `git diff BASE` and the untracked files (read as added,
+  ignored files left out) alone: one item per changed function, a breakpoint at the first statement
+  of its first changed span (a changed `def` header breaks in the body), a `uses:` line of the
+  repository code its changed lines call (no breakpoint), and starts the entry under the debugger in the person's VS Code, stopped on entry, with the
   debugger's recording on for a program (a test runs through its runner, which has no recording).
   Nothing of base is run. The debugger is then driven as always (`continue --live`, `step`, `eval`,
   `break`); `stop [N] --say TEXT` records the pause the session is at, refused when the text names
   none of the frame's values or when the program is running or ended; `ask` and `look` are refused
   with the debugger's commands; `skip` removes the breakpoint; `view vscode` starts the program
   again with the remaining items' breakpoints; `finding add` takes a recorded pause near its line.
+  `--only PATH...` limits the diff read to those files, directories or globs; the plan lists the
+  changed files outside them, which were not read.
   `--surface page|chat` implies `--full`, and a `start` with no VS Code to reach refuses and names
   `--full`.
 - With `--full`, `start` opens the person's view after recording: VS Code by default (a recording session on the entry, run to its end, whose Time Machine the stops move), `--surface page` for the browser page (a `pyokka web` process the review stops at `report` or `close`), `--surface chat` for none; its `view:` line says what opened or why not. A review of one `--test` has no view and stays in chat: both commands run the test file as a program, another run than the test's, so no hint names them for it and `stop --surface vscode|page` on it is refused.

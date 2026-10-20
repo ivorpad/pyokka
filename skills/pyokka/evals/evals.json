@@ -58,6 +58,64 @@
     "Did not claim a provenance chain for a pause that recorded nothing behind it",
     "Stopped the debug session when finished, leaving no paused program holding the port"
    ]
+  },
+  {
+   "id": 4,
+   "name": "vague-why-test-fails",
+   "prompt": "why does this test fail?",
+   "expected_output": "A short chat answer: the cause, the recorded value that shows it, the proposed fix, what is not verified.",
+   "files": [
+    "evals/files/cart/cart.py",
+    "evals/files/cart/tests/test_cart.py",
+    "evals/files/cart/tests/__init__.py",
+    "evals/files/cart/pytest.ini"
+   ],
+   "assertions": [
+    "Ran the tests or read git status before it planned, and asked the person nothing",
+    "Recorded or paused tests/test_cart.py::test_small_cart through Pyokka (run --test or debug --test) with --cwd at the project root, so cart.py is in the recording",
+    "The answer names cart.py:18, `range(1, len(items))`, and a recorded value that shows the first item missing (`i = 1` on the first pass, or `subtotal = 5.0`)",
+    "Proposed the fix without editing cart.py, and git status shows no change to tracked files",
+    "Left no Pyokka process, breakpoint or debug session running"
+   ]
+  },
+  {
+   "id": 5,
+   "name": "vague-debug-this",
+   "prompt": "debug this",
+   "expected_output": "A short chat answer: the cause, the recorded value that shows it, the proposed fix, what is not verified.",
+   "files": [
+    "evals/files/cart/cart.py",
+    "evals/files/cart/tests/test_cart.py",
+    "evals/files/cart/tests/__init__.py",
+    "evals/files/cart/pytest.ini"
+   ],
+   "assertions": [
+    "Ran the tests or read git status before it planned, and asked the person nothing",
+    "Recorded or paused tests/test_cart.py::test_small_cart through Pyokka (run --test or debug --test) with --cwd at the project root, so cart.py is in the recording",
+    "The answer names cart.py:18, `range(1, len(items))`, and a recorded value that shows the first item missing (`i = 1` on the first pass, or `subtotal = 5.0`)",
+    "Proposed the fix without editing cart.py, and git status shows no change to tracked files",
+    "Left no Pyokka process, breakpoint or debug session running"
+   ]
+  },
+  {
+   "id": 6,
+   "name": "vague-review-issue",
+   "prompt": "review this issue",
+   "expected_output": "A short chat answer: the cause, the recorded value that shows it, the proposed fix, what is not verified.",
+   "files": [
+    "evals/files/cart/cart.py",
+    "evals/files/cart/tests/test_cart.py",
+    "evals/files/cart/tests/__init__.py",
+    "evals/files/cart/pytest.ini"
+   ],
+   "assertions": [
+    "Ran the tests or read git status before it planned, and asked the person nothing",
+    "Said that there is no diff or issue text and that it treats the failing tests as the issue, in debug mode, instead of asking which issue",
+    "Recorded or paused tests/test_cart.py::test_small_cart through Pyokka (run --test or debug --test) with --cwd at the project root, so cart.py is in the recording",
+    "The answer names cart.py:18, `range(1, len(items))`, and a recorded value that shows the first item missing (`i = 1` on the first pass, or `subtotal = 5.0`)",
+    "Proposed the fix without editing cart.py, and git status shows no change to tracked files",
+    "Left no Pyokka process, breakpoint or debug session running"
+   ]
   }
  ]
 }

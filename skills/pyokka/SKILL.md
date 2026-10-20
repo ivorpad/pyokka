@@ -27,10 +27,36 @@ leaves the question open.
 
 With no mode, pick by the verb the user used. "Step", "break", "pause", "run to", "does it stop
 in" is `debug`. "Walk me through", "teach me", "explain as we go" with the user at the editor is
-`explain`. "Show me", "why is", "how does", "what did the library do" is `show`. "Review", "PR",
-"diff", "what did this change break" is `review`. A request to see stepping gets real pauses in
-the editor, through `debug`; a review the person wants to watch is still `review`, whose stops
-move their view. If two fit, ask which.
+`explain`. "Show me", "how does", "what did the library do" is `show`. "Review", "PR", "diff",
+"what did this change break" is `review`. A request to see stepping gets real pauses in the
+editor, through `debug`; a review the person wants to watch is still `review`, whose stops move
+their view.
+
+## A vague request
+
+The person need not know a mode, a verb or a flag. "Debug this", "why does this test fail?" or
+"look at this issue with Pyokka" is enough. Find the target before you plan:
+
+1. Look first. Read `git status` and `git diff --stat`, the file or issue text the person gave,
+   and run the test suite once (`python -m pytest -q` or the project's own command) when there is
+   one. A traceback or a failing test names the target.
+2. Pick the mode from what you found. A failing test, a traceback or a bug report is `debug`:
+   reproduce it, then look where it goes wrong. Pending changes with no failure are `review`. A
+   "how" or "why" question with nothing failing is `show`. If two still fit, take the first of
+   these and say which.
+3. Say the plan in one or two sentences, sized to the question. One failing test is one
+   recording or one pause, the value that is wrong, and the line that makes it. Build a page only
+   when the person asks for one.
+4. Run it. For a test, `pyokka run tests/test_x.py --test NAME --cwd REPO --save RUN` records it
+   without VS Code, and `pyokka debug tests/test_x.py --test NAME --at FUNCTION` pauses it in VS
+   Code. `--cwd REPO` makes the project's own modules count as its code; without it only the test
+   file's directory is recorded.
+5. Answer with the evidence: the cause, the step or stop and the value that show it, the fix as
+   a proposal, and what you did not verify. "Debug" and "why" ask for the cause, not a change:
+   edit the source only when the person asked for a fix.
+
+Ask only when the look finds no target (no failing test, no diff, nothing named) or when two
+readings would run different code. Never ask the person which command or flag to use.
 
 ## How a turn ends
 
@@ -41,7 +67,7 @@ in five cases:
 
 - The mode is `explain` or `review` and the person is watching. One stop per message, or as many
   as they ask for, each explained from what its move printed, then their turn.
-- Two modes fit the request.
+- The look finds no target, or two readings of the request would run different code.
 - Only the person can supply what is missing: a database or service no test reaches, the
   agent-access prompt in VS Code, which of two readings they meant, whether to keep a process you
   started.

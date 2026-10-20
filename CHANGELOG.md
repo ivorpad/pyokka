@@ -32,6 +32,18 @@
   window whose folder holds the program, and only then the focused one. With no VS Code running it
   starts VS Code on the program's repository and waits for that window, and it says so plainly when
   VS Code is missing, fails to start, or its window never activates Pyokka.
+- The skill handles a vague request ("debug this", "why does this test fail?", "review this issue")
+  without debugger words from the person. `SKILL.md` gains "A vague request": run the tests and read
+  `git status` first, pick the mode from what that finds, say the plan in a sentence, record the
+  failing test with `--cwd` at the project root so the project's own modules are in the recording,
+  and answer with the recorded value and the fix as a proposal. Two modes that fit no longer stop
+  the agent for a question. Before the change, Claude Code answered all three from the source
+  alone or asked which issue; after it, six runs quoted `i = 1` or `subtotal = 5.0` from a
+  recording. Three evals and their project (`skills/pyokka/evals/files/cart/`) cover the prompts,
+  and `docs/PLAYBOOK.md` situation 9 has the Claude Code runs. It also corrects the playbook: Claude
+  Code loads the skill only on `/pyokka`, since `SKILL.md` sets `disable-model-invocation`.
+  `review.md`, `pyokka-cli.md` and the playbook describe `review start` as it now plans: untracked
+  files included, `--only` limiting the diff read, a `uses:` line per item.
 
 ## 0.5.5
 
