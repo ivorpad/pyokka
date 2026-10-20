@@ -29,9 +29,9 @@ import { buildStory, paintStory, storyRowOf, storyTarget, STORY_PATH, type Story
 /** What the page needs from its bridge connection (web/link.ts). */
 export interface Link {
   send(msg: PageToBridge): void;
-  request(body: RequestBody): Promise<RunnerMessage>;
+  request(body: RequestBody, signal?: AbortSignal): Promise<RunnerMessage>;
   /** a request for the live debugger's run */
-  debugRequest(body: RequestBody): Promise<RunnerMessage>;
+  debugRequest(body: RequestBody, signal?: AbortSignal): Promise<RunnerMessage>;
 }
 
 export interface CodeDecorations {
@@ -88,6 +88,7 @@ interface Nav {
   showCallStack: boolean;
   selectedFrame: number;
   codePreview: boolean;
+  showGuide: boolean;
   echo: boolean;
   autoPlaying: boolean;
 }
@@ -114,7 +115,7 @@ export class PageHost {
   run: RunData | null = null;
   /** a run that began but has sent nothing yet: the previous run stays on screen until it does */
   private incoming: RunData | null = null;
-  readonly nav: Nav = { active: false, step: -1, showCallStack: false, selectedFrame: 0, codePreview: true, echo: true, autoPlaying: false };
+  readonly nav: Nav = { active: false, step: -1, showCallStack: false, selectedFrame: 0, codePreview: true, echo: true, showGuide: true, autoPlaying: false };
   settings: PanelSettings = { ...BROWSER_SETTINGS };
   theme: 'dark' | 'light' = 'dark';
   narration: { text: string; line: number; path: string } | null = null;
@@ -132,6 +133,11 @@ export class PageHost {
   private autoPlayTimer: ReturnType<typeof setInterval> | undefined;
   /** the Time Machine was asked for before the trace arrived: start it when it does */
   private startWhenTraced: { step?: number; line?: number } | null = null;
+  private requestSequence = 0;
+  private readonly unresolvedRuns = new Map<string, string | undefined>();
+  get runRequestPending(): boolean { return this.unresolvedRuns.size > 0; }
+  profilePending = false;
+  private readonly requestedRuns = new Map<string, { resolve: () => void; reject: (error: Error) => void }>();
   private readonly finishWaiters: (() => void)[] = [];
   /** called on every change an agent could ask about */
   onChange: () => void = () => {};
@@ -178,7 +184,7 @@ export class PageHost {
       pauseHistory: (name) => this.pauseVariableHistory(name),
     });
     this.debug = new DebugHost(
-      { send: (m) => this.link.send(m), debugRequest: (body) => this.link.debugRequest(body) },
+      { send: (m) => this.link.send(m), debugRequest: (body, signal) => this.link.debugRequest(body, signal) },
       (m) => this.post(m),
       () => this.main,
       (path, line) => this.revealPath(path, line),
@@ -246,11 +252,21 @@ export class PageHost {
         }
         break;
       case 'run.begin':
+        for (const [id, runId] of this.unresolvedRuns) {
+          if (runId && runId !== msg.runId) {
+            this.unresolvedRuns.delete(id);
+            this.requestedRuns.get(id)?.reject(new Error('requested run was superseded; read state before retrying'));
+          } else if (id === msg.requestId) this.unresolvedRuns.set(id, msg.runId);
+        }
         this.incoming = emptyRun(msg.runId, msg.content);
         this.pushSession(true);
         break;
       case 'event':
         this.onEvent(msg.event);
+        break;
+      case 'run.error':
+        this.unresolvedRuns.delete(msg.requestId);
+        this.requestedRuns.get(msg.requestId)?.reject(new Error(msg.message));
         break;
       case 'runner.error':
         (this.incoming ?? this.run)?.runnerErrors.push(msg.message);
@@ -322,6 +338,7 @@ export class PageHost {
         this.pushExceptions();
         this.panes.runFinished();
         this.afterFinish();
+        for (const [id, runId] of this.unresolvedRuns) if (runId === ev.runId) { this.unresolvedRuns.delete(id); this.requestedRuns.get(id)?.resolve(); }
         break;
       default:
         break;
@@ -359,14 +376,21 @@ export class PageHost {
   }
 
   /** Resolves once no run is in flight (at once when none is). */
-  idle(timeoutMs = 30_000): Promise<void> {
+  idle(timeoutMs = 30_000, signal?: AbortSignal): Promise<void> {
+    if (signal?.aborted) return Promise.reject(new Error('command cancelled'));
     if (!this.incoming && !this.run?.running) return Promise.resolve();
-    return new Promise((resolve) => {
-      const t = setTimeout(resolve, timeoutMs);
-      this.finishWaiters.push(() => {
-        clearTimeout(t);
-        resolve();
-      });
+    return new Promise((resolve, reject) => {
+      const cleanup = (): void => {
+        clearTimeout(timer);
+        signal?.removeEventListener('abort', aborted);
+        const index = this.finishWaiters.indexOf(done);
+        if (index >= 0) this.finishWaiters.splice(index, 1);
+      };
+      const done = (): void => { cleanup(); resolve(); };
+      const aborted = (): void => { cleanup(); reject(new Error('command cancelled')); };
+      const timer = setTimeout(() => { cleanup(); reject(new Error('waiting for recording timed out')); }, timeoutMs);
+      this.finishWaiters.push(done);
+      signal?.addEventListener('abort', aborted, { once: true });
     });
   }
 
@@ -562,10 +586,10 @@ export class PageHost {
    * Show the Variable History view for `name` (else the name under the code pane's cursor; with
    * neither, the view's input box asks), as the extension's Show Variable History command does.
    */
-  showVariableHistory(name?: string): void {
+  async showVariableHistory(name?: string, strict = false, signal?: AbortSignal): Promise<void> {
     const query = name?.trim() || this.code.expressionAtCursor?.();
     this.post({ type: 'showView', view: 'variable' });
-    if (query) void this.panes.queryVariable(query);
+    if (query) await this.panes.queryVariable(query, strict, signal);
   }
 
   updateSettings(patch: Partial<PanelSettings>): void {
@@ -592,10 +616,42 @@ export class PageHost {
   }
 
   /** Run the file again (the buffer when `content` is given), with the watches around the Time Machine's step. */
-  rerun(content?: string): void {
+  rerun(content?: string, requestId?: string): void {
     const watch = this.panes.watchRequests();
     const traceContext = this.nav.active && watch.length ? { step: this.nav.step, prefetch: 10 } : null;
-    this.link.send({ type: 'run', ...(content === undefined ? {} : { content }), watch, traceContext });
+    this.link.send({ type: 'run', ...(requestId === undefined ? {} : { requestId }), ...(content === undefined ? {} : { content }), watch, traceContext });
+  }
+
+  /** Invocation completion includes the matching terminal event's state updates. */
+  rerunAndWait(signal?: AbortSignal): Promise<void> {
+    const requestId = `page-${crypto.randomUUID()}-${++this.requestSequence}`;
+    return new Promise((resolve, reject) => {
+      const finish = (error?: Error): void => {
+        clearTimeout(timer);
+        signal?.removeEventListener('abort', aborted);
+        this.requestedRuns.delete(requestId);
+        if (error) reject(error);
+        else resolve();
+      };
+      // Allow bridge startup/transport overhead beyond the configured runtime deadline.
+      const timer = setTimeout(() => finish(new Error('requested run timed out; outcome unknown, read state before retrying')), this.commandTimeoutMs());
+      const aborted = (): void => finish(new Error('cancelled; requested run outcome unknown, read state before retrying'));
+      this.requestedRuns.set(requestId, { resolve: () => finish(), reject: finish });
+      if (signal?.aborted) { this.requestedRuns.delete(requestId); finish(new Error('command cancelled before dispatch')); return; }
+      signal?.addEventListener('abort', aborted, { once: true });
+      this.unresolvedRuns.set(requestId, undefined);
+      try { this.rerun(undefined, requestId); } catch (error) { this.unresolvedRuns.delete(requestId); finish(error instanceof Error ? error : new Error(String(error))); }
+    });
+  }
+
+  commandTimeoutMs(): number {
+    const runtime = this.settings.runTimeoutMs;
+    return Math.min(300_000, Number.isFinite(runtime) && runtime > 0 ? runtime + 5_000 : 35_000);
+  }
+
+  connectionChanged(connected: boolean): void {
+    this.connected = connected;
+    if (!connected) for (const waiter of this.requestedRuns.values()) waiter.reject(new Error('bridge disconnected; requested run outcome unknown'));
   }
 
   /* ---------- pushing state to the panel ---------- */
@@ -743,6 +799,7 @@ export class PageHost {
       showCallStack: nav.showCallStack,
       codePreview: nav.codePreview,
       echo: nav.echo,
+      showGuide: nav.showGuide,
       watches: this.panes.watchRows(step),
       locals,
     };
@@ -903,6 +960,10 @@ export class PageHost {
         return;
       case 'toggleCodePreview':
         this.nav.codePreview = !this.nav.codePreview;
+        this.pushDebugger();
+        return;
+      case 'toggleGuide':
+        this.nav.showGuide = !this.nav.showGuide;
         this.pushDebugger();
         return;
     }
@@ -1219,14 +1280,27 @@ export class PageHost {
   private readonly profileWaiters: ((p: BridgeProfile) => void)[] = [];
 
   /** Profile, resolved with the bridge's answer. */
-  profileRun(): Promise<BridgeProfile> {
-    return new Promise((resolve) => {
-      this.profileWaiters.push(resolve);
-      this.profile();
+  profileRun(signal?: AbortSignal): Promise<BridgeProfile> {
+    return new Promise((resolve, reject) => {
+      const cleanup = (): void => {
+        clearTimeout(timer);
+        signal?.removeEventListener('abort', aborted);
+        const index = this.profileWaiters.indexOf(done);
+        if (index >= 0) this.profileWaiters.splice(index, 1);
+      };
+      const done = (profile: BridgeProfile): void => { cleanup(); resolve(profile); };
+      const aborted = (): void => { cleanup(); reject(new Error('cancelled; profile outcome unknown, read state before retrying')); };
+      const timer = setTimeout(() => { cleanup(); reject(new Error('profile timed out; outcome unknown, read state before retrying')); }, this.commandTimeoutMs());
+      if (signal?.aborted) { cleanup(); reject(new Error('command cancelled before dispatch')); return; }
+      this.profileWaiters.push(done);
+      signal?.addEventListener('abort', aborted, { once: true });
+      this.profilePending = true;
+      try { this.profile(); } catch (error) { this.profilePending = false; cleanup(); reject(error); }
     });
   }
 
   private onProfile(p: BridgeProfile): void {
+    this.profilePending = false;
     this.lastProfile = p;
     for (const w of this.profileWaiters.splice(0)) w(p);
     if (p.error || !p.summary) {
@@ -1256,7 +1330,7 @@ export class PageHost {
 
   /** the bridge's answer to View Recent Files (main.tsx shows the list) */
   /** the Scratchpad (web/scratchpad.ts), set by main.tsx; the agent's `scratchpad` commands go here */
-  onScratchpad?: (command: import('./scratchpadProtocol').ScratchCommand) => Promise<import('./scratchpadProtocol').ScratchState>;
+  onScratchpad?: (command: import('./scratchpadProtocol').ScratchCommand, options?: { signal?: AbortSignal; onDispatch?: () => void }) => Promise<import('./scratchpadProtocol').ScratchState>;
   onRecent: (files: RecentFile[]) => void = (files) => this.notice(files.map((f) => f.path).join('\n') || 'no recent files', 'info');
 
   /** Make a recent file the main one: the bridge switches, says hello again, and runs it. */

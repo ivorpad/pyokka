@@ -9,6 +9,8 @@ from ..render import _one_line
 
 VALUE_WIDTH = 100
 CODE_LINES = 40
+#: the reason ``start --only`` gives the items and edge candidates it sets aside (``scope.narrow``)
+ONLY_REASON = "outside --only"
 
 
 def render_review(result: dict, source: Any, args: Any) -> list[str]:
@@ -94,8 +96,18 @@ def where(item: dict) -> str:
     return ("%s %s" % (loc, item["function"])) if item.get("function") else loc
 
 
-def stop_line(stop: dict, shown: set[int], skipped: dict[int, str] | None = None) -> str:
+def item_status(n: Any, shown: set[int], skipped: dict[int, str] | None, ended: bool = False) -> str:
+    if n in shown:
+        return "shown"
+    if skipped and n in skipped:
+        return "skipped: %s" % _one_line(skipped[n], 80)
+    return "never paused at" if ended else "pending"
+
+
+def stop_line(stop: dict, shown: set[int], skipped: dict[int, str] | None = None, ended: bool = False) -> str:
     n = stop.get("n")
+    if stop.get("spans") is not None:  # a debugger item: a breakpoint, not a recorded step
+        return "  %s. %s  %s  %s  (%s)" % (n, stop.get("kind"), where(stop), _one_line(fact_text(stop.get("fact")), VALUE_WIDTH), item_status(n, shown, skipped, ended))
     mark = "  (shown)" if n in shown else ("  (skipped: %s)" % _one_line(skipped[n], 80) if skipped and n in skipped else "")
     return "  %s. %s  %s  %s  %s%s" % (n, stop.get("kind"), where(stop), _one_line(fact_text(stop.get("fact")), VALUE_WIDTH), steps_text(stop), mark)
 
@@ -181,7 +193,10 @@ def repro_text(repro: Any) -> str:
 
 
 def finding_place(f: dict) -> str:
-    """``step #57 parse_money``, or for a changed line head never ran, ``never ran in head; reproduced by t3``."""
+    """``step #57 parse_money``, ``at the pause on orders.py:30 parse_orders`` (the debugger), or for a changed line head never ran, ``never ran in head; reproduced by t3``."""
+    pause = f.get("pause")
+    if isinstance(pause, dict) and f.get("step") is None:
+        return "at the pause on %s:%s%s" % (pause.get("file"), pause.get("line"), (" %s" % pause["function"]) if pause.get("function") else "")
     if f.get("unreached") or f.get("step") is None:
         return "never ran in head; reproduced by %s" % ((f.get("repro") or {}).get("id") if isinstance(f.get("repro"), dict) else "?")
     at = f.get("step_at") or {}
@@ -199,6 +214,18 @@ def finding_lines(f: dict) -> list[str]:
     return out
 
 
+def only_line(plan: dict) -> str | None:
+    """The filter ``start --only`` applied, as ``start``, ``state`` and ``view`` print it; None for a review without one."""
+    paths = [str(p) for p in plan.get("only") or []]
+    if not paths:
+        return None
+    left = [a for a in plan.get("aside") or [] if isinstance(a, dict) and a.get("reason") == ONLY_REASON]
+    edges = [e for e in plan.get("aside_edges") or [] if isinstance(e, dict)]
+    listed = " (%s%s)" % (", ".join("%s:%s" % (a.get("file"), a.get("line")) for a in left[:8]), ", …" if len(left) > 8 else "") if left else ""
+    return "only: %s; outside %s, set aside with no breakpoint: %d item%s%s, %d edge candidate%s" % (
+        ", ".join(paths), "it" if len(paths) == 1 else "them", len(left), "" if len(left) == 1 else "s", listed, len(edges), "" if len(edges) == 1 else "s")
+
+
 def plan_lines(review: Any, with_stops: bool = True) -> list[str]:
     """The stops (shown ones marked), the unreached spans and the edge candidates, as ``start`` and ``state`` print them."""
     plan = review.plan
@@ -208,12 +235,21 @@ def plan_lines(review: Any, with_stops: bool = True) -> list[str]:
     if with_stops:
         stops = review.stops
         out.append("stops (%d):" % len(stops) if stops else "stops: none planned (`review ask FILE:LINE --say TEXT` stops at any line that ran)")
-        out.extend(stop_line(s, shown, skipped) for s in stops)
+        ended = isinstance(review.data.get("ended"), dict)
+        out.extend(stop_line(s, shown, skipped, ended) for s in stops)
         if stops:
             agenda = ["shown %s" % (", ".join(str(n) for n in sorted(shown)) or "none"), "skipped %s" % (", ".join(str(n) for n in sorted(skipped)) or "none"), "remaining %s" % (", ".join(str(n) for n in review.remaining()) or "none")]
             if review.waiting is not None:
                 agenda.append("waiting for the person since stop %d" % review.waiting)
+            if ended:
+                agenda.append("the program ended (exit %s)" % (review.data.get("ended") or {}).get("exit"))
             out.append("agenda: " + " · ".join(agenda))
+        only = only_line(plan)
+        if only:
+            out.append(only)
+        aside = [a for a in (plan.get("aside") or []) if isinstance(a, dict) and a.get("reason") != ONLY_REASON]
+        if aside:
+            out.append("set aside, no breakpoint (%d): %s%s" % (len(aside), ", ".join("%s:%s" % (a.get("file"), a.get("line")) for a in aside[:8]), ", …" if len(aside) > 8 else ""))
     unreached = plan.get("unreached") or []
     out.append("unreached changed lines (%d):" % len(unreached) if unreached else "unreached changed lines: none")
     out.extend(unreached_line(u) for u in unreached)
@@ -249,4 +285,4 @@ def conversation_lines(review: Any) -> list[str]:
     return out
 
 
-__all__ = ["render_review", "text", "side_text", "fact_text", "stop_values", "value_pairs", "steps_text", "where", "stop_line", "value_lines", "edge_line", "unreached_span", "unreached_line", "try_lines", "repro_text", "finding_place", "finding_lines", "plan_lines", "conversation_entry", "conversation_lines"]
+__all__ = ["ONLY_REASON", "only_line", "render_review", "text", "side_text", "fact_text", "stop_values", "value_pairs", "steps_text", "where", "item_status", "stop_line", "value_lines", "edge_line", "unreached_span", "unreached_line", "try_lines", "repro_text", "finding_place", "finding_lines", "plan_lines", "conversation_entry", "conversation_lines"]

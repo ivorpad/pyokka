@@ -735,9 +735,10 @@ export class Session extends EventEmitter<SessionEvents> {
    * Ask the finished run's child for the current value of a side-effect-free expression.
    * Nothing is re-executed. The result is registered by id (not listed) so hover links work.
    * Undefined when there is no finished run, a run is in flight, or the expression is not
-   * evaluable (a call to a function of the program's own, an unknown name).
+   * evaluable (a call to a function of the program's own, an unknown name). `textLen` is an agent's
+   * text length at a pause (the bridge's); the editor's watches and hovers send none and keep 200.
    */
-  async evaluateLive(expression: string, line?: number, opts: { frameId?: number } = {}): Promise<LogEvent | undefined> {
+  async evaluateLive(expression: string, line?: number, opts: { frameId?: number; textLen?: number } = {}): Promise<LogEvent | undefined> {
     if (!expression.trim()) return undefined; // an empty watch field would come back as a SyntaxError
     // a paused debug run answers in the paused frame (the runner routes `evaluate` there)
     const paused = this.debugCtl.snapshot().paused;

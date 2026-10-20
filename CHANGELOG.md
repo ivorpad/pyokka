@@ -2,6 +2,108 @@
 
 ## Unreleased
 
+## 0.5.4
+
+- `review stop` in the debugger prints the change at the pause: the item's removed lines with base's
+  numbers and its added lines with head's, `>` on the paused one, then the frame's locals that those
+  lines use before the other locals, each text as the runtime sent it. Nothing is evaluated for it;
+  only plain names on the changed lines count, so a call or a property never runs. The recorded
+  item's breakpoint is removed, so a function called in a loop pauses once. In the smoke test of
+  2026-10-19 the agent read the source with `sed` before its first stop, and the stop record cut
+  `policy` at 100 characters after the debugger had shown 200.
+- `review start` plans in about 3 seconds where it took 20 on a langchain range (66 files, 7,410
+  changed lines): the planner parsed each changed file once per span and the edge scan walked a file's
+  whole tree once per node. Both now list a file's functions once (`review/syntax.py`), and the
+  repository scan keeps no trees and skips files that can define no attribute. The agenda, the
+  set-aside items and the edge candidates are unchanged, byte for byte.
+- `review start` names the interpreter it chose (`python:` and its source) and the debug session file
+  (`session:`), so the agent neither reads the build files nor asks `pyokka_session` for them.
+  `--only PATH …` (MCP `only`) sets every changed function outside the named files, directories or
+  globs aside before numbering. `skip N [N …]` (MCP `ns`) drops several items in one call, all or
+  none. `close` and `report` remove the review's breakpoints from VS Code. The smoke test of
+  2026-10-19 made 56 single skips and seven setup commands before its first stop.
+- At a live pause the agent reads a value up to 2,000 characters instead of 200 (`--text-len N`, MCP
+  `text_len`, 0 for all of it); a value still cut lists its first 20 fields under it, and a hint
+  names how to read the rest. The editor's hover and Variables view keep 200. `pyokka_debug`
+  `continue` and `pause` take `whole_block` (CLI `--scope`) to lift the 60-line block cap.
+- An MCP tool result over 8,000 characters (`PYOKKA_MCP_MAX_CHARS`) is written whole to
+  `<pyokka home>/tool-results/` (the temp directory when the home is not writable) and the reply
+  keeps its first lines, its last lines with `next:`, and the path with how to read a range; a JSON
+  result becomes a small JSON object with the path and a head. In the smoke test one `start` result
+  of 65,050 characters was 64 percent of all tool text the model received.
+- Browser scratchpads preserve edited drafts before replacement, including reopen from the
+  toolbar. Failed saves keep the draft available. Requested reruns wait for their own completed
+  state, and history/provenance tools wait for their panel update. The variable-history tool
+  opens its populated panel from both Output and the Time Machine.
+- WebMCP uses the published browser types and corrects the tools' content and mutation hints.
+  Large replies now return a summary and cursor within 1,500 serialized characters. The new
+  read-only `pyokka_result` retrieves retained details without repeating the action; CLI and
+  HTTP result shapes are unchanged.
+- WebMCP cancellation stops undispatched work and retires owned waits. Dispatched work reports
+  an unknown outcome until confirmed; scratchpad cancellation does not claim Python stopped.
+  Explicit save recovery uses the original version check to avoid duplicate draft versions.
+- `pyokka review view --surface vscode|page|chat` (MCP `pyokka_review {action: "view"}`) opens the
+  person's view after `start`, when `start` opened none or they moved: the review records the entry in
+  VS Code as its own run, or serves the page. Every hint of a review that named `pyokka debug ENTRY
+  --record` or `pyokka web ENTRY` names it now, and the `pyokka_debug` description, the
+  `pyokka_session` notes and the skill say that the review opens and moves its view itself: a session
+  started outside it is another run, which the review does not move. A field review on 0.5.3
+  (2026-10-17) had the agent read "a review of one test stays in chat" and start a debug session of
+  the test to get a VS Code view anyway; in a Codex harness on the 0.5.3 text, one run in three did
+  the same, another reviewed a test file as a program through `--entry`.
+- `review start` without `main.py` names the repository's test files and `--test FILE::NAME` as the
+  next command; a test file as `--entry` is refused with the tests it defines, since run as a program
+  it defines them and runs none. A review of one test says in its `view:` line to tell the person
+  before the first stop, and names no command as the reason it stays in chat.
+- `pyokka debug` with `--test NAME`, `--cwd`, `--python`, `--args` or `--env` and no FILE or
+  `--module` is refused: it read the current pause of whatever session was open and answered a start
+  with a finished recording of another file. `--test tests/test_x.py::test_b` with no FILE takes the
+  file from the node id. A debug start that ran to its end with no breakpoint and no recording says so
+  after `finished:`. `review stop --surface chat` says the stop prints in the conversation.
+- A module launch from an agent on a repository that is not an open folder (`review start --test
+  FILE::NAME`, `pyokka debug --module pytest`) ran to its end without a pause: the window named its
+  first folder as the project, nothing under the repository counted as project code, and nothing was
+  instrumented. The project of a launch is now the folder that holds it, else its cwd, in the
+  extension and in the runtime alike. `-m pytest` with `--library-code` paused nowhere either, since
+  pytest's `__main__` ran as a quiet library import that lasted the whole run; a module launch's
+  target is now instrumented as the program.
+- `review start` goes on when `$PYOKKA_HOME/reviews/current` cannot be written (a sandbox that allows
+  the workspace and /tmp only) and says to pass `--dir`; before, it crashed with a traceback. The
+  agenda is the changed functions of the program's files: changes at module level and in test files
+  are set aside, listed without a breakpoint (a langchain range planned 355 items, 321 of those kinds).
+- `review start` no longer refuses an entry with uncommitted changes. Head is the working tree as
+  it stands: that is what head records, what `fix` copies and what `tree_hash` pins, so nothing
+  needed the entry committed. A review of in-progress work, where the entry or the test named as
+  `--test` is among the edited files, was refused and told to commit or stash first.
+- The review method begins before `start`: read the change, ask the person in one question call
+  (Claude Code's AskUserQuestion, else in the conversation) what it is for, which areas first and
+  where to watch, then plan the changed functions by area with an exerciser each, show the plan
+  with its split and take their word on one session or several, one `start` per session in its
+  own `--dir`. The skill, its review reference and the MCP `review` prompt say so, and SKILL.md's
+  "How a turn ends" lets a review's turn end on that question. `docs/design/review-mode.md`
+  carries the contract for the tool's part, not yet built: `plan` from the source diff, `start
+  --session K`, `--head REF`, a tree hash per session, `state` and `report` across sessions. The
+  plan `start` builds today is one run's footprint: a changed file the one entry never imports is
+  in neither its stops nor its unreached lines.
+- The Time Machine's Timeline Guide can be hidden and shown again: the eye button in its pane's
+  toolbar, or the command `Pyokka: Show/Hide Timeline Guide`. Hidden, the pane keeps its header and
+  the width goes to LOGS (a details pane keeps it). The choice is per session, like the step echo
+  and the code preview.
+- The review runs in the debugger by default. `review start --base REF` plans one item per changed
+  function from the diff and starts the entry under the debugger in the person's VS Code, paused on
+  entry with a breakpoint on each item, the debugger's recording on for a program; nothing of base is
+  run or materialised. The debugger is driven as always (`pyokka_debug continue`, `step`, `eval`,
+  `break`), and `review stop [N] --say TEXT` records the pause it is at, refused when the text names
+  none of the frame's values; a pause outside every item (an uncaught exception, the person's own
+  breakpoint) becomes an item. `skip` removes the breakpoint, `view vscode` starts the program again
+  with the remaining breakpoints, `ask` and `look` are refused with the debugger's own commands, and
+  `finding add` takes a pause recorded near its line (or a step of the recording; a line never paused
+  at takes a try once the program ended). `--full` is the recorded review of 0.5.x, unchanged, and
+  `--surface page|chat` implies it, since the debugger lives in VS Code; a `start` with no VS Code to
+  reach refuses and names `--full`. The 0.5.3 rule that the review does not move a debugger session
+  now holds for the recorded review only. The person's word: the review is a workflow to debug or
+  review code, and the debugger is part of it.
+
 ## 0.5.3
 
 - A review of one `--test` is never told to record the test file. `stop --surface vscode` on it was

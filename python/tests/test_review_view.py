@@ -54,23 +54,23 @@ def test_chat_opens_nothing_and_a_test_review_stays_in_chat(tmp_path, monkeypatc
     # a review of one test: whatever surface was asked, chat, and the reason names no command that runs the file
     for surface in ("vscode", "auto", "page", "chat"):
         state, lines = view.open_view(data_for(tmp_path, test="tests/test_x.py::test_x"), {"surface": surface})
-        assert state["why"] == "test" and lines[0].startswith("view: chat. A review of one test (tests/test_x.py::test_x) has no recording session in VS Code and no page")
-        assert "another run than the test's" in lines[0] and "--record" not in lines[0] and "--cwd" not in lines[0] and "MCP:" not in lines[0]
+        assert state["why"] == "test" and lines[0].startswith("view: chat. A review of one test (tests/test_x.py::test_x) stays in chat: no VS Code session and no page can show it")
+        assert "would be another run, which the review does not move" in lines[0] and lines[0].endswith("Say so to the person before the first stop; your text is the review.")
+        assert "--record" not in lines[0] and "pyokka debug" not in lines[0] and "MCP:" not in lines[0]
 
 
-def test_the_start_hints_carry_the_reviews_arguments_and_name_no_file_run_for_a_test(monkeypatch):
+def test_the_start_hints_are_the_reviews_own_view_command_and_name_no_file_run_for_a_test(monkeypatch):
     monkeypatch.setattr(view, "code_found", lambda: "found at /usr/bin/code")
-    vs, page = view.start_hints("/w/demo.py", "/w", ["--fast", "3"])
-    assert vs.startswith('pyokka debug /w/demo.py --record --cwd /w --args --fast 3 (MCP: pyokka_debug {"action": "start", "file": "/w/demo.py", "record": true, "cwd": "/w", "args": ["--fast", "3"]})')
-    assert page == 'pyokka web /w/demo.py --cwd /w (MCP: pyokka_page {"action": "open", "file": "/w/demo.py", "cwd": "/w"}), then open its URL in one browser tab'
-    vs, _ = view.start_hints("/w/demo.py", "/w")
-    assert "--args" not in vs and '"args"' not in vs
-    assert view.data_hints({"repo": "/w", "entry": "demo.py", "argv": ["-v"]})[0].startswith("pyokka debug /w/demo.py --record --cwd /w --args -v (MCP:")
-    # the field case: a stop on a review of one test must never be told to record the test file, which runs its imports and definitions, not the test
+    vs, page = view.start_hints()
+    assert vs == 'review view vscode (MCP: pyokka_review {"action": "view", "surface": "vscode"}) records the entry in VS Code as the review\'s run; VS Code needs the pyokka.agentAccess setting on and the code command (found at /usr/bin/code)'
+    assert page == 'review view page (MCP: pyokka_review {"action": "view", "surface": "page"}) serves the page; have the person open its URL in one browser tab'
+    assert view.data_hints({"repo": "/w", "entry": "demo.py", "argv": ["-v"]}) == (vs, page)
+    assert "pyokka debug" not in vs and "pyokka_debug" not in vs and "pyokka web" not in page
+    # the field cases: a review of one test is never told to record the test file, and no hint names another tool's session
     note = view.one_test_note("tests/test_x.py::test_x")
-    assert view.start_hints("/w/tests/test_x.py", "/w", [], "tests/test_x.py::test_x") == (note, note)
+    assert view.start_hints("tests/test_x.py::test_x") == (note, note)
     assert view.data_hints({"repo": "/w", "entry": "tests/test_x.py", "test": "tests/test_x.py::test_x"}) == (note, note)
-    assert note.startswith("a review of one test (tests/test_x.py::test_x) has no recording session in VS Code and no page") and "--record" not in note and "--cwd" not in note and "MCP:" not in note
+    assert note.startswith("a review of one test (tests/test_x.py::test_x) stays in chat: no VS Code session and no page can show it") and "--record" not in note and "pyokka" not in note
 
 
 def test_start_checks_no_view_for_a_review_of_one_test(monkeypatch):

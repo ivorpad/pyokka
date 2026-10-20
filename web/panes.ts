@@ -136,12 +136,12 @@ export class Panes {
     if (this.variableName && (always || this.host.pauseHistory(this.variableName))) void this.pushVariable();
   }
 
-  queryVariable(name: string): Promise<void> {
+  queryVariable(name: string, strict = false, signal?: AbortSignal): Promise<void> {
     this.variableName = name.trim() || undefined;
-    return this.pushVariable();
+    return this.pushVariable(strict, signal);
   }
 
-  private async pushVariable(): Promise<void> {
+  private async pushVariable(strict = false, signal?: AbortSignal): Promise<void> {
     const name = this.variableName;
     if (!name) {
       this.host.post({ type: 'variable', view: { name: '', history: null } });
@@ -159,11 +159,13 @@ export class Panes {
     this.host.post({ type: 'variable', view: { name, history: null } });
     try {
       const history = await this.variableHistory(name);
+      if (signal?.aborted) throw new Error('command cancelled');
       if (this.variableName !== name) return;
       if (!history) return this.host.post({ type: 'variable', view: { name, history: null, error: 'No execution trace yet: run the file first.' } });
       this.host.post({ type: 'variable', view: { name, history: { ...history, changes: history.changes.map((c) => ({ ...c, file: this.host.displayPath(c.fileId) })) } } });
     } catch (err) {
-      if (this.variableName === name) this.host.post({ type: 'variable', view: { name, history: null, error: err instanceof Error ? err.message : String(err) } });
+      if (!signal?.aborted && this.variableName === name) this.host.post({ type: 'variable', view: { name, history: null, error: err instanceof Error ? err.message : String(err) } });
+      if (strict) throw err;
     }
   }
 
@@ -223,18 +225,18 @@ export class Panes {
 
   /* ---------- why ---------- */
 
-  queryWhy(step: number, name: string, logId?: string): Promise<void> {
+  queryWhy(step: number, name: string, logId?: string, strict = false, signal?: AbortSignal): Promise<void> {
     const run = this.host.run;
     const entry = logId ? run?.logsById.get(logId) : undefined;
     this.whyTarget = { step: entry && run?.trace ? stepOfEntry(run.trace, entry) : step, name: name.trim() };
-    return this.pushWhy();
+    return this.pushWhy(strict, signal);
   }
 
   closeWhy(): void {
     this.whyTarget = undefined;
   }
 
-  private async pushWhy(): Promise<void> {
+  private async pushWhy(strict = false, signal?: AbortSignal): Promise<void> {
     const target = this.whyTarget;
     if (!target) return;
     const { step, name } = target;
@@ -245,11 +247,13 @@ export class Panes {
     this.host.post({ type: 'why', view: { step, name, tree: null } });
     try {
       const tree = await this.provenance(step, name);
+      if (signal?.aborted) throw new Error('command cancelled');
       if (this.whyTarget !== target) return;
       if (!tree) return fail(this.host.busy() ? 'A run is in flight; the tree follows it.' : 'No execution trace yet: run the file first.');
       this.host.post({ type: 'why', view: { step, name, tree: withDisplayPathsTree(tree, (fileId) => this.host.displayPath(fileId)) } });
     } catch (err) {
-      if (this.whyTarget === target) fail(err instanceof Error ? err.message : String(err));
+      if (!signal?.aborted && this.whyTarget === target) fail(err instanceof Error ? err.message : String(err));
+      if (strict) throw err;
     }
   }
 
@@ -473,12 +477,18 @@ export class Panes {
     return this.watches.map((w) => ({ id: w.id, exp: w.exp }));
   }
 
-  addWatch(exp: string): void {
+  addWatch(exp: string, rerun = true): boolean {
     const trimmed = exp.trim();
-    if (!trimmed || this.watches.some((w) => w.exp === trimmed)) return;
+    if (!trimmed || this.watches.some((w) => w.exp === trimmed)) return false;
     this.watches.push({ id: `w-${Date.now().toString(36)}-${++this.watchCounter}`, exp: trimmed, values: new Map() });
-    this.requestWatchWindow(true);
+    if (rerun) this.requestWatchWindow(true);
+    else {
+      this.requestedStep = this.host.nav.step;
+      if (this.watchTimer) clearTimeout(this.watchTimer);
+      this.watchTimer = undefined;
+    }
     this.host.pushDebugger();
+    return true;
   }
 
   removeWatch(id: string): void {

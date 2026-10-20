@@ -25,7 +25,7 @@ from typing import Any
 from ...home import pyokka_home
 from ..source import AgentError
 
-ACTIONS = ("start", "stop", "ask", "skip", "look", "try", "finding", "fix", "report", "state", "close")
+ACTIONS = ("start", "view", "stop", "ask", "skip", "look", "try", "finding", "fix", "report", "state", "close")
 PHASES = ("stops", "findings", "reported")
 SURFACES = ("auto", "page", "vscode", "chat")
 SEVERITIES = ("blocker", "major", "minor")
@@ -65,10 +65,23 @@ def current_path() -> str:
     return os.path.join(reviews_home(), "current")
 
 
-def set_current(directory: str) -> None:
-    os.makedirs(reviews_home(), exist_ok=True)
-    with open(current_path(), "w", encoding="utf-8") as fh:
-        fh.write(os.path.abspath(directory) + "\n")
+def set_current(directory: str) -> bool:
+    """Remember ``directory`` as the current review; False when the reviews home cannot be written (a sandbox that
+    lets the agent write its workspace and /tmp only), in which case every command of the review needs ``--dir``."""
+    try:
+        os.makedirs(reviews_home(), exist_ok=True)
+        with open(current_path(), "w", encoding="utf-8") as fh:
+            fh.write(os.path.abspath(directory) + "\n")
+    except OSError:
+        return False
+    return True
+
+
+def current_note(directory: str) -> list[str]:
+    """``set_current``, and the line ``start`` prints when the pointer could not be written."""
+    if set_current(directory):
+        return []
+    return ["note: %s is not writable, so this review is not the current one; pass --dir %s to each of its commands" % (reviews_home(), directory)]
 
 
 def current_dir() -> str | None:
@@ -161,8 +174,9 @@ def _derived(rel: str) -> bool:
 # -- the state file --------------------------------------------------------------------------------------------------
 
 class Review:
-    """``review.json`` in memory: ``{id, repo, base, head, entry, test, dir, created, phase, tree_hash,
-    plan: {stops, unreached, edges}, shown, skipped, waiting, asked, conversation, tries, findings, fix, summary}``."""
+    """``review.json`` in memory: ``{id, repo, base, head, entry, test, dir, created, mode, phase, tree_hash,
+    plan: {stops, unreached, edges}, shown, skipped, waiting, asked, conversation, tries, findings, fix, summary}``; a
+    review the debugger runs (``mode: debugger``) also keeps ``ended`` (the run's end)."""
 
     def __init__(self, directory: str, data: dict) -> None:
         self.dir = os.path.abspath(directory)
@@ -298,6 +312,14 @@ class Review:
 
     def next_command(self) -> str:
         """The one command that applies now; while the person has the floor, what to run once they say next."""
+        if self.data.get("mode") == "debugger":
+            if isinstance(self.data.get("ended"), dict) or not self.remaining():
+                return self.after_stops()
+            from .debugger import CONTINUE
+
+            if self.waiting is not None:
+                return "%s; when they say next, %s --go-on" % (WAIT, CONTINUE)
+            return CONTINUE
         remaining = self.remaining()
         if remaining:
             if self.waiting is not None:
@@ -316,4 +338,4 @@ def result(review: Review | None, lines: list[str], next_command: str | None = N
     return {"kind": "review", "header": header, "lines": [str(l) for l in lines], "next": nxt, **extra}
 
 
-__all__ = ["ACTIONS", "PHASES", "SURFACES", "SEVERITIES", "STATE_FILE", "START", "WAIT", "FINDING_ADD", "NO_REVIEW_HEADER", "Refusal", "Review", "result", "reviews_home", "current_path", "set_current", "current_dir", "resolve_dir", "default_dir", "inside", "now", "next_id", "git", "tree_hash"]
+__all__ = ["ACTIONS", "PHASES", "SURFACES", "SEVERITIES", "STATE_FILE", "START", "WAIT", "FINDING_ADD", "NO_REVIEW_HEADER", "Refusal", "Review", "result", "reviews_home", "current_path", "set_current", "current_note", "current_dir", "resolve_dir", "default_dir", "inside", "now", "next_id", "git", "tree_hash"]

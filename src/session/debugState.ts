@@ -102,6 +102,9 @@ export interface LocalVar {
   valueBag?: ValueBag;
   /** the value's type name, sent with `namesOnly` (no text, no value bag) */
   type?: string;
+  /** asked with `textLen` and still cut: up to 20 `[name, text]` pairs (`.attr`, `['key']`, `[0]`), and how many more */
+  fields?: [string, string][];
+  fieldsMore?: number;
 }
 
 /** Which variables `locals` answers (docs/PROTOCOL.md, `locals`): a frame, a scope, some names, names only. */
@@ -110,6 +113,8 @@ export interface LocalsOptions {
   scope?: 'local' | 'global' | 'all';
   names?: string[];
   namesOnly?: boolean;
+  /** an agent's text length (the bridge's `textLen`; 0 is all of it); absent for the editor, which keeps 200 */
+  textLen?: number;
 }
 
 /** The runtime's `locals` request fields of `opts`, the ones that are set. */
@@ -119,6 +124,7 @@ export function localsRequest(opts: LocalsOptions): Record<string, unknown> {
     ...(opts.scope ? { scope: opts.scope } : {}),
     ...(opts.names?.length ? { names: opts.names } : {}),
     ...(opts.namesOnly ? { namesOnly: true } : {}),
+    ...(opts.textLen !== undefined ? { limits: { textLen: opts.textLen } } : {}),
   };
 }
 

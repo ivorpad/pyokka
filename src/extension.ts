@@ -472,6 +472,10 @@ export function activate(context: vscode.ExtensionContext): PyokkaApi {
     const s = active();
     if (s) timeMachine.toggleEcho(s);
   });
+  reg('pyokka.toggleTimelineGuide', () => {
+    const s = active();
+    if (s) timeMachine.toggleGuide(s);
+  });
   reg('pyokka.addWatchExpression', async (arg) => {
     const a = (arg && typeof arg === 'object' ? arg : {}) as { exp?: string; range?: Range4; sessionKey?: string; fileId?: number };
     const s = (a.sessionKey && mgr.getByKey(a.sessionKey)) || active();

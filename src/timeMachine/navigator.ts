@@ -380,6 +380,11 @@ export class TimeMachine implements vscode.Disposable {
     this.sink?.pushDebugger(session);
   }
 
+  toggleGuide(session: Session): void {
+    session.nav.showGuide = !session.nav.showGuide;
+    this.sink?.pushDebugger(session);
+  }
+
   /* ---------- watches (watches.ts) ---------- */
 
   addWatch(session: Session, exp: string, range?: Range4, fileId?: number): void {
@@ -486,6 +491,7 @@ export class TimeMachine implements vscode.Disposable {
       showCallStack: nav.showCallStack,
       codePreview: nav.codePreview,
       echo: nav.echo,
+      showGuide: nav.showGuide,
       watches,
       locals,
     };

@@ -56,7 +56,7 @@ import threading
 import types
 from typing import Any
 
-from . import dbgbreakpoints, dbgframes, secrets
+from . import dbgbreakpoints, dbgframes, dbgtext, secrets
 from .dbgexceptions import ExceptionPauseMixin
 from .record_from import RecordPauseMixin
 from .protocol import EXCEPTION_MODE_DEFAULT
@@ -502,19 +502,21 @@ class Debugger(ExceptionPauseMixin, RecordPauseMixin):
         return "d:%d" % Debugger._serial
 
     def evaluate(self, expression: str, frame: Any, limits: dict | None = None) -> dict:
-        """A pure expression in the paused frame, locals over globals (the rule is in ``pure.py``)."""
+        """A pure expression in the paused frame, locals over globals (the rule is in ``pure.py``); ``limits.textLen`` as in ``dbgtext``."""
         tree = ast.parse(expression.strip(), mode="eval")
         value = eval_pure(tree.body, frame.f_globals, frame.f_locals, "<pyokka-debug>")
-        return {"text": secrets.current.mask_text(expression_name(expression), value, short_repr(value)), "valueBag": self.tracer._bag(value, self.value_key(), 1, "value", expression)}
+        text, _cut = dbgtext.shown(expression_name(expression), value, dbgtext.text_len(limits))
+        return {"text": text, "valueBag": self.tracer._bag(value, self.value_key(), 1, "value", expression)}
 
-    def locals(self, frame: Any, scope: str | None = None, names: list[str] | None = None, names_only: bool = False) -> list[dict]:
+    def locals(self, frame: Any, scope: str | None = None, names: list[str] | None = None, names_only: bool = False, limits: dict | None = None) -> list[dict]:
         """The paused frame's variables, masked, each with a value bag `expand` can open.
 
         ``scope``: None is the frame's ``f_locals`` (a closure's free variables included); ``local``
         the function's own names (parameters, locals, cells); ``global`` the module-level values the
         program bound (not the names its module had before it ran, nor functions, classes and
         modules); ``all`` ``f_locals`` plus those globals. ``names`` keeps only those; ``names_only``
-        answers ``{name, type, text: ""}`` without reading values into text.
+        answers ``{name, type, text: ""}`` without reading values into text. ``limits.textLen`` is an
+        agent's longer text, with the ``fields`` of a value it still cuts (``dbgtext``).
         """
         if scope not in (None, "local", "global", "all"):
             raise ValueError("scope must be local, global or all, got %r" % scope)
@@ -536,6 +538,7 @@ class Debugger(ExceptionPauseMixin, RecordPauseMixin):
                     continue
                 pairs.append((name, val))
         wanted = set(names) if names else None
+        limit = dbgtext.text_len(limits)
         out = []
         for name, val in pairs:
             if wanted is not None and name not in wanted:
@@ -544,5 +547,5 @@ class Debugger(ExceptionPauseMixin, RecordPauseMixin):
                 out.append({"name": name, "type": type(val).__name__, "text": ""})
                 continue
             # a function's source rides along for the page's hover (read here, at a pause, never per step)
-            out.append({"name": name, "text": secrets.current.mask_text(name, val, short_repr(val)), "valueBag": self.tracer._bag(val, self.value_key(), 1, "value", name, function_source=True)})
+            out.append({"name": name, **dbgtext.local_text(name, val, limit), "valueBag": self.tracer._bag(val, self.value_key(), 1, "value", name, function_source=True)})
         return out

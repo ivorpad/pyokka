@@ -30,6 +30,8 @@ export interface SliceOptions {
   scope?: boolean;
   /** include `valueBag` on values */
   valueBag?: boolean;
+  /** a stop's live locals at this text length (the request's `textLen`); recorded values keep theirs */
+  textLen?: number;
 }
 
 export interface SliceLocation {

@@ -1,10 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { LOG_PATH, PageHost, PROFILE_PATH } from '../../web/pageHost';
 import { runAgentCommand, webMcpTools } from '../../web/agent';
 import type { BridgeFile } from '../../web/bridgeProtocol';
 import type { HostToWebview } from '../../src/shared/webviewProtocol';
 import type { RunnerMessage, StatementBinding } from '../../src/shared/protocol';
 import type { TourDoc } from '../../src/session/tourTypes';
+import { initialState, reduce } from '../../webview/model';
 import { FakeLink, MAIN, SOURCE, runEvents, setup } from './webPageFakes';
 
 describe('PageHost', () => {
@@ -79,7 +80,7 @@ describe('PageHost', () => {
   it('declares WebMCP tools that run the same commands', async () => {
     const { host, link } = setup();
     const tools = webMcpTools(host, link);
-    expect(tools.map((t) => t.name)).toEqual(['pyokka_state', 'pyokka_goto', 'pyokka_step', 'pyokka_line', 'pyokka_say', 'pyokka_run', 'pyokka_eval', 'pyokka_var', 'pyokka_why', 'pyokka_watch', 'pyokka_breakpoint', 'pyokka_story', 'pyokka_profile', 'pyokka_debug', 'pyokka_scratchpad']);
+    expect(tools.map((t) => t.name)).toEqual(['pyokka_state', 'pyokka_goto', 'pyokka_step', 'pyokka_line', 'pyokka_say', 'pyokka_run', 'pyokka_eval', 'pyokka_var', 'pyokka_why', 'pyokka_watch', 'pyokka_breakpoint', 'pyokka_story', 'pyokka_profile', 'pyokka_debug', 'pyokka_scratchpad', 'pyokka_result']);
     const step = tools.find((t) => t.name === 'pyokka_step')!;
     const out = await step.execute({ kind: 'into' });
     expect(JSON.parse(out.content[0]!.text)).toMatchObject({ moved: true });
@@ -107,6 +108,21 @@ const tick = () => new Promise((r) => setTimeout(r, 0));
 const last = <T extends HostToWebview['type']>(panel: HostToWebview[], type: T) => panel.filter((m): m is Extract<HostToWebview, { type: T }> => m.type === type).pop();
 
 describe('PageHost views', () => {
+  it.each([false, true])('opens the WebMCP variable history result in the panel (Time Machine: %s)', async (timeMachine) => {
+    const { host, link, panel } = setup();
+    link.replies.push({ type: 'bindings', id: 1, statements: BINDINGS });
+    if (timeMachine) host.start({ step: 4 });
+
+    const tool = webMcpTools(host, link).find((candidate) => candidate.name === 'pyokka_var')!;
+    const answer = await tool.run({ name: 's' });
+    const shown = panel.reduce((state, message) => reduce(state, { type: 'host', message }), initialState());
+
+    expect(answer).toMatchObject({ name: 's', changes: [expect.objectContaining({ text: '3' })] });
+    expect(shown.view).toBe('variable');
+    expect(shown.variable?.name).toBe('s');
+    expect(shown.variable?.history?.changes).toEqual([expect.objectContaining({ step: 3, line: 2, text: '3' })]);
+  });
+
   it('answers the Variable History view from the recorded locals and the bindings', async () => {
     const { host, link, panel } = setup();
     link.replies.push({ type: 'bindings', id: 1, statements: BINDINGS });
@@ -504,4 +520,234 @@ describe('peek', () => {
     // nothing was evaluated
     expect(link.debugRequests.some((r) => r.type === 'evaluate')).toBe(false);
   });
+});
+
+
+describe('requested rerun lifecycle', () => {
+  it('waits through a delayed acknowledgment and returns only its completed state', async () => {
+    const { host, link, feed } = setup();
+    let settled = false;
+    const answer = runAgentCommand(host, link, { action: 'run' }).then((value) => { settled = true; return value; });
+    await new Promise((resolve) => setTimeout(resolve, 180));
+    expect(settled).toBe(false);
+    const request = link.sent.find((m) => m.type === 'run') as { requestId: string };
+    expect(request.requestId).toEqual(expect.any(String));
+    feed({ type: 'run.begin', runId: 'unrelated', reason: 'disk', content: SOURCE });
+    for (const event of runEvents('unrelated')) feed({ type: 'event', event });
+    expect(settled).toBe(false);
+    feed({ type: 'run.begin', runId: 'requested', requestId: request.requestId, reason: 'edit', content: SOURCE });
+    const events = runEvents('requested');
+    for (const event of events.slice(0, -1)) feed({ type: 'event', event });
+    expect(settled).toBe(false);
+    feed({ type: 'event', event: events.at(-1)! });
+    expect(await answer).toMatchObject({ runId: 'requested', running: false });
+  });
+
+  it('installs its waiter before a synchronous bridge acknowledgment', async () => {
+    const { host, link, feed } = setup();
+    link.send = (msg) => {
+      link.sent.push(msg);
+      if (msg.type !== 'run') return;
+      feed({ type: 'run.begin', runId: 'sync', requestId: msg.requestId, reason: 'edit', content: SOURCE });
+      for (const event of runEvents('sync')) feed({ type: 'event', event });
+    };
+    expect(await runAgentCommand(host, link, { action: 'run' })).toMatchObject({ runId: 'sync' });
+  });
+
+  it('rejects launch failure, disconnect, supersession and completion timeout', async () => {
+    vi.useFakeTimers();
+    try {
+      for (const failure of ['launch', 'disconnect', 'superseded', 'timeout']) {
+        const { host, link, feed } = setup();
+        const answer = runAgentCommand(host, link, { action: 'run' });
+        const rejected = expect(answer).rejects.toThrow(/launch failed|disconnected|superseded|timed out/);
+        await Promise.resolve();
+        const request = link.sent.find((m) => m.type === 'run') as { requestId: string };
+        if (failure === 'launch') feed({ type: 'run.error', requestId: request.requestId, message: 'launch failed' });
+        else {
+          feed({ type: 'run.begin', runId: 'requested', requestId: request.requestId, reason: 'edit', content: SOURCE });
+          if (failure === 'disconnect') host.connectionChanged(false);
+          if (failure === 'superseded') feed({ type: 'run.begin', runId: 'other', reason: 'disk', content: SOURCE });
+          if (failure === 'timeout') await vi.advanceTimersByTimeAsync(40_000);
+        }
+        await rejected;
+        for (const event of runEvents('requested')) feed({ type: 'event', event });
+      }
+    } finally { vi.useRealTimers(); }
+  });
+});
+
+
+it.each(['var', 'why'] as const)('awaits the displayed %s query and exposes presentation failures', async (action) => {
+  const { host, link } = setup();
+  link.replies.push({ type: 'bindings', id: 1, statements: BINDINGS });
+  let release!: () => void;
+  const delayed = new Promise<void>((resolve) => { release = resolve; });
+  if (action === 'var') host.panes.queryVariable = () => delayed;
+  else host.panes.queryWhy = () => delayed;
+  let finished = false;
+  const command = action === 'var' ? { action, name: 's' } : { action, name: 's', step: 4 };
+  const answer = runAgentCommand(host, link, command).then(() => { finished = true; });
+  await tick();
+  expect(finished).toBe(false);
+  release();
+  await answer;
+  if (action === 'var') host.panes.queryVariable = async () => { throw new Error('presentation failed'); };
+  else host.panes.queryWhy = async () => { throw new Error('presentation failed'); };
+  await expect(runAgentCommand(host, link, command)).rejects.toThrow('presentation failed');
+});
+
+
+describe('command cancellation', () => {
+  it('prevents already-cancelled commands and later phases after an initial idle wait', async () => {
+    const { host, link, feed, code } = setup();
+    const cancelled = new AbortController(); cancelled.abort();
+    await expect(runAgentCommand(host, link, { action: 'say', text: 'never' }, { signal: cancelled.signal })).rejects.toThrow(/cancel/i);
+    expect(code.narration).toBeNull();
+    feed({ type: 'run.begin', runId: 'busy', reason: 'disk', content: SOURCE });
+    const controller = new AbortController();
+    const answer = runAgentCommand(host, link, { action: 'goto', step: 2, say: 'never' }, { signal: controller.signal });
+    controller.abort();
+    await expect(answer).rejects.toThrow(/cancel/i);
+    for (const event of runEvents('busy')) feed({ type: 'event', event });
+    await tick();
+    expect(code.narration).toBeNull();
+    expect(host.nav.active).toBe(false);
+    await runAgentCommand(host, link, { action: 'say', text: 'later' });
+    expect(code.narration?.text).toBe('later');
+  });
+
+  it('bounds a never-replying profile and keeps mutations blocked while status and confirmed completion work', async () => {
+    vi.useFakeTimers();
+    try {
+      const { host, link, feed } = setup();
+      host.notice = () => {};
+      const answer = runAgentCommand(host, link, { action: 'profile' });
+      const rejected = expect(answer).rejects.toThrow(/timed out.*unknown/);
+      await vi.advanceTimersByTimeAsync(40_000);
+      await rejected;
+      await expect(runAgentCommand(host, link, { action: 'say', text: 'conflicting' })).rejects.toThrow(/pending|unknown/);
+      expect(await runAgentCommand(host, link, { action: 'state' })).toMatchObject({ runId: 'w-1' });
+      feed({ type: 'profile', profile: { error: 'stopped' } });
+      await runAgentCommand(host, link, { action: 'say', text: 'recovered' });
+    } finally { vi.useRealTimers(); }
+  });
+
+  it('retires cancelled rerun waits but retains the mutation lease until its late completion', async () => {
+    const { host, link, feed } = setup();
+    const controller = new AbortController();
+    const answer = runAgentCommand(host, link, { action: 'run' }, { signal: controller.signal });
+    await tick();
+    const request = link.sent.find((m) => m.type === 'run') as { requestId: string };
+    controller.abort();
+    await expect(answer).rejects.toThrow(/cancel.*unknown/);
+    expect((host as unknown as { requestedRuns: Map<string, unknown> }).requestedRuns.size).toBe(0);
+    await expect(runAgentCommand(host, link, { action: 'clear' })).rejects.toThrow(/pending|unknown/);
+    expect(await runAgentCommand(host, link, { action: 'state' })).toBeDefined();
+    feed({ type: 'run.begin', runId: 'late', requestId: request.requestId, reason: 'edit', content: SOURCE });
+    for (const event of runEvents('late')) feed({ type: 'event', event });
+    await runAgentCommand(host, link, { action: 'clear' });
+  });
+});
+
+
+it('keeps a cancelled watch rerun blocked through failed recovery until its terminal event', async () => {
+  const { host, link, feed } = setup();
+  const controller = new AbortController();
+  const answer = runAgentCommand(host, link, { action: 'watch', exp: 'a + b' }, { signal: controller.signal });
+  await tick();
+  const request = link.sent.find((m) => m.type === 'run') as { requestId: string };
+  expect(request.requestId).toEqual(expect.any(String));
+  controller.abort();
+  await expect(answer).rejects.toThrow(/cancel.*unknown/);
+  await expect(runAgentCommand(host, link, { action: 'stop' })).rejects.toThrow(/stop sent.*unknown/);
+  expect(link.sent).toContainEqual({ type: 'stop' });
+  await expect(runAgentCommand(host, link, { action: 'run' })).rejects.toThrow(/pending|unknown/);
+  feed({ type: 'run.begin', requestId: request.requestId, runId: 'watch', reason: 'edit', content: SOURCE });
+  for (const event of runEvents('watch')) feed({ type: 'event', event });
+  await runAgentCommand(host, link, { action: 'clear' });
+});
+
+it('gives simultaneous page invocations distinct request identifiers and finite unlimited-run deadlines', async () => {
+  const one = setup(), two = setup();
+  one.host.settings.runTimeoutMs = 0;
+  two.host.settings.runTimeoutMs = Number.POSITIVE_INFINITY;
+  expect(one.host.commandTimeoutMs()).toBe(35_000);
+  expect(two.host.commandTimeoutMs()).toBe(35_000);
+  const first = one.host.rerunAndWait();
+  const second = two.host.rerunAndWait();
+  const a = one.link.sent.find((m) => m.type === 'run') as { requestId: string };
+  const b = two.link.sent.find((m) => m.type === 'run') as { requestId: string };
+  expect(a.requestId).not.toBe(b.requestId);
+  one.feed({ type: 'run.error', requestId: a.requestId, message: 'refused' });
+  two.feed({ type: 'run.error', requestId: b.requestId, message: 'refused' });
+  await expect(first).rejects.toThrow('refused');
+  await expect(second).rejects.toThrow('refused');
+});
+
+it('cancels a debugger request that never replies, keeps status usable, and accepts an explicit confirmed stop', async () => {
+  const { host, link, feed } = setup();
+  feed({ type: 'debug.begin', runId: 'd-never', content: SOURCE });
+  for (const event of runEvents('d-never').slice(0, 2)) feed({ type: 'debug.event', event });
+  feed({ type: 'debug.event', event: { runId: 'd-never', seq: 3, type: 'debug.paused', step: 2, rid: 1, fileId: 1, line: 1, scopeId: 0, depth: 0, reason: 'step', stack: [] } });
+  await tick();
+  link.debugRequest = () => new Promise(() => {});
+  const controller = new AbortController();
+  const answer = runAgentCommand(host, link, { action: 'debug', op: 'step' }, { signal: controller.signal });
+  controller.abort();
+  await expect(answer).rejects.toThrow(/cancel.*unknown/);
+  await expect(runAgentCommand(host, link, { action: 'clear' })).rejects.toThrow(/pending|unknown/);
+  // Read state without waiting for missing locals or moving the pause.
+  expect(await runAgentCommand(host, link, { action: 'state' })).toBeDefined();
+  const stopping = runAgentCommand(host, link, { action: 'debug', op: 'stop' });
+  feed({ type: 'debug.end', runId: 'd-never' });
+  await stopping;
+  await runAgentCommand(host, link, { action: 'clear' });
+});
+
+it('keeps an unacknowledged cancelled run unresolved after reconnect and resets only local bookkeeping on a fresh page', async () => {
+  const { host, link, feed } = setup();
+  const controller = new AbortController();
+  const answer = runAgentCommand(host, link, { action: 'run' }, { signal: controller.signal });
+  await tick();
+  controller.abort();
+  await expect(answer).rejects.toThrow(/unknown/);
+  await expect(runAgentCommand(host, link, { action: 'stop' })).rejects.toThrow(/reload the page/);
+  host.connectionChanged(false);
+  host.connectionChanged(true);
+  feed({ type: 'hello', file: MAIN, runtime: { command: 'fake', ready: null }, watch: true, canNarrate: false });
+  feed({ type: 'run.begin', runId: 'replay', reason: 'start', content: SOURCE });
+  for (const event of runEvents('replay')) feed({ type: 'event', event });
+  expect(host.runRequestPending).toBe(true);
+  await expect(runAgentCommand(host, link, { action: 'clear' })).rejects.toThrow(/unknown/);
+  const fresh = setup();
+  expect(fresh.host.runRequestPending).toBe(false);
+  await runAgentCommand(fresh.host, fresh.link, { action: 'clear' });
+  // Recreating a page clears its bookkeeping. It does not stop a previously dispatched runtime.
+});
+
+it('reports a confirmed producing action as completed when delivery is cancelled just after its finish', async () => {
+  const { host, link, feed } = setup();
+  const controller = new AbortController();
+  const answer = runAgentCommand(host, link, { action: 'run' }, { signal: controller.signal });
+  await tick();
+  const request = link.sent.find((message) => message.type === 'run') as { requestId: string };
+  feed({ type: 'run.begin', runId: 'done', requestId: request.requestId, reason: 'edit', content: SOURCE });
+  for (const event of runEvents('done')) feed({ type: 'event', event });
+  controller.abort();
+  await expect(answer).rejects.toMatchObject({ outcome: 'completed' });
+  expect(host.runRequestPending).toBe(false);
+  await runAgentCommand(host, link, { action: 'clear' });
+});
+
+it('cleans the debugger stop waiter when a runtime control request refuses', async () => {
+  const { host, link, feed } = setup();
+  feed({ type: 'debug.begin', runId: 'refusal', content: SOURCE });
+  for (const event of runEvents('refusal').slice(0, 2)) feed({ type: 'debug.event', event });
+  feed({ type: 'debug.event', event: { runId: 'refusal', seq: 3, type: 'debug.paused', step: 2, rid: 1, fileId: 1, line: 1, scopeId: 0, depth: 0, reason: 'step', stack: [] } });
+  await tick();
+  host.notice = () => {};
+  link.debugRequest = async () => ({ type: 'error', id: 1, message: 'step refused' });
+  await expect(runAgentCommand(host, link, { action: 'debug', op: 'step' })).rejects.toThrow('step refused');
+  expect((host.debug as unknown as { pauseWaiters: unknown[] }).pauseWaiters.length).toBe(0);
 });

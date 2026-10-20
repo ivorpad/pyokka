@@ -194,22 +194,12 @@ def entry_of(head_json: Any) -> str:
     return str(_head_meta(head_json).get("file") or "")
 
 
-def start_commands(head_json: Any) -> tuple[str, str]:
-    """The commands that open a surface on the entry, for a note that found none: a VS Code session (``--record``, so the stops move its Time Machine in any order once it finished) and the page."""
-    entry = entry_of(head_json) or "ENTRY"
-    root = str(_head_meta(head_json).get("workspaceRoot") or os.path.dirname(entry) or "REPO")
-    return "pyokka debug %s --record --cwd %s" % (entry, root), "pyokka web %s --cwd %s" % (entry, root)
-
-
 def start_hints_of(head_json: Any) -> tuple[str, str]:
-    """``start_commands`` with each command's MCP call beside it, run with the head recording's arguments, and what VS Code
-    needs (``view.start_hints``); for a review of one test, why there is no view instead."""
+    """``view.start_hints`` for a stop's head recording: the review's own commands that open a view (VS Code, the page), or for
+    a review of one test why there is none. No other tool is named: a session started outside the review is another run."""
     from .view import start_hints
 
-    meta = _head_meta(head_json)
-    entry = entry_of(head_json) or "ENTRY"
-    root = str(meta.get("workspaceRoot") or os.path.dirname(entry) or "REPO")
-    return start_hints(entry, root, meta.get("argv"), meta.get("test"))
+    return start_hints(_head_meta(head_json).get("test"))
 
 
 def head_steps(head_json: Any) -> int | None:
@@ -225,7 +215,7 @@ def head_steps(head_json: Any) -> int | None:
 def no_session_note(session: str | None, head_json: Any) -> str:
     """The note of a ``--surface vscode`` stop with no session to move: which file was looked for and the command that starts one."""
     which = ("matches %s" % session) if session else ("on %s" % (os.path.basename(entry_of(head_json)) or "the entry"))
-    return "no live VS Code session %s; start one on the entry: %s; then stop again with the same n" % (which, start_hints_of(head_json)[0])
+    return "no live VS Code session %s; open the review's: %s; then stop again with the same n" % (which, start_hints_of(head_json)[0])
 
 
 def _same_file(a: str | None, b: str | None) -> bool:
@@ -339,7 +329,7 @@ def _another_run(live: LiveRun, head_json: Any) -> str | None:
     if count <= 0 or count == expected:
         return None
     return ("the VS Code recording on %s is another run: %d steps, the review's head run has %d (other arguments or cwd, a changed file, library code recorded, or the editor's step cap), so its step numbers are not the review's; "
-            "start one as the review recorded it: %s; then stop again with the same n" % (os.path.basename(entry_of(head_json)) or "the entry", count, expected, start_hints_of(head_json)[0]))
+            "record the review's run instead: %s; then stop again with the same n" % (os.path.basename(entry_of(head_json)) or "the entry", count, expected, start_hints_of(head_json)[0]))
 
 
 def move_to(stop: dict, say: str | None, surface: str | None, port: int | None, session: str | None, head_json: Any) -> dict:
@@ -387,4 +377,4 @@ def move_to(stop: dict, say: str | None, surface: str | None, port: int | None, 
         return {"surface": chosen, "moved": False, "note": "%s%s" % (exc.message, (": " + exc.hint) if exc.hint else "")}
 
 
-__all__ = ["SURFACES", "condition_for", "default_port", "detect", "detect_vscode", "entry_of", "head_steps", "http_json", "is_literal", "move_to", "no_session_note", "page_is_open", "page_state", "start_commands", "start_hints_of", "stop_file"]
+__all__ = ["SURFACES", "condition_for", "default_port", "detect", "detect_vscode", "entry_of", "head_steps", "http_json", "is_literal", "move_to", "no_session_note", "page_is_open", "page_state", "start_hints_of", "stop_file"]

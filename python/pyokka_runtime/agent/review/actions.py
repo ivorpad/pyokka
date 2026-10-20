@@ -50,10 +50,20 @@ def run(fields: dict) -> dict:
             raise Refusal(NO_REVIEW_HEADER, exc.message, START, [exc.hint] if exc.hint else None) from None
     review = Review.load(resolve_dir(fields.get("dir")))
     try:
+        if review.data.get("mode") == "debugger" and action in ("stop", "ask", "skip", "look", "view"):
+            from . import debugger_actions
+
+            if action in ("ask", "look"):
+                raise debugger_actions.not_in_debugger(review, action)
+            return getattr(debugger_actions, action + "_in_debugger")(review, fields)
         if action == "stop":
             return stop(review, fields)
         if action == "ask":
             return ask(review, fields)
+        if action == "view":
+            from .view import open_later
+
+            return open_later(review, fields)
         if action == "try":
             return try_(review, fields)
         if action == "finding":
@@ -83,6 +93,9 @@ def review_dispatch(args: Any, out: Any = None, err: Any = None) -> int:
     err = err or sys.stderr
     fields = dict(vars(args))
     as_json = bool(fields.pop("json", False))
+    word = fields.pop("surface_word", None)  # `review view vscode`: the surface as a word, as every hint writes it
+    if word and not fields.get("surface"):
+        fields["surface"] = word
     try:
         if not fields.get("action"):
             raise Refusal(NO_REVIEW_HEADER, "review needs an action", START, ["actions: " + ", ".join(ACTIONS) + "; `pyokka review ACTION --help` lists its flags"])
@@ -190,6 +203,9 @@ def _port(f: dict) -> int:
         return DEFAULT_PORT
 
 
+CHAT_NOTE = "the stop prints in the conversation; your text is the review"
+
+
 def move_view(review: Review, stop_: dict, say: str, f: dict) -> dict:
     """Move the person's view to the stop through ``surfaces`` (A2); never fatal: the stop prints whatever the surface did."""
     surface = str(f.get("surface") or "auto")
@@ -202,13 +218,13 @@ def move_view(review: Review, stop_: dict, say: str, f: dict) -> dict:
         return {"surface": "chat", "moved": False, "note": "no surfaces module in this build; nothing moved"}
     try:
         if surface == "chat":
-            return {"surface": "chat", "moved": False, "note": "chat: nothing to move"}
+            return {"surface": "chat", "moved": False, "note": CHAT_NOTE}
         res = surfaces.move_to(stop_, say, surface, port, session, review.path("head.json"))  # auto and vscode are resolved there
         if not isinstance(res, dict):
             res = {"surface": surface, "moved": bool(res), "note": ""}
         res.setdefault("surface", surface)
         if not res.get("moved") and not res.get("note") and res.get("surface") == "chat":
-            res["note"] = "chat: nothing to move"
+            res["note"] = CHAT_NOTE
         return res
     except Exception as exc:  # noqa: BLE001  a bridge that fails must not lose the stop
         return {"surface": surface, "moved": False, "note": "%s: %s" % (type(exc).__name__, exc)}
@@ -222,10 +238,10 @@ def unavailable(asked: str, move: dict) -> bool:
 
 
 def refuse_unavailable(review: Review, asked: str, move: dict, again: str) -> Refusal:
-    """The refusal of a stop or ask whose asked surface has nothing to move: the stop stays unshown and ``next:`` starts the
-    surface, then runs ``again`` (the command without its --surface) on it. A review of one test has no surface to start,
-    since both commands run the file and not the test, so its ``next:`` is ``again`` in chat."""
-    from .view import data_hints, one_test_note
+    """The refusal of a stop or ask whose asked surface has nothing to move: the stop stays unshown and ``next:`` opens the
+    review's view (``review view``), then runs ``again`` (the command without its --surface) on it. A review of one test has
+    no view to open, so its ``next:`` is ``again`` in chat."""
+    from .view import VIEW_PAGE, VIEW_VSCODE, one_test_note
 
     test = review.data.get("test")
     if test:
@@ -233,29 +249,24 @@ def refuse_unavailable(review: Review, asked: str, move: dict, again: str) -> Re
                              ["the person is not watching this stop; it is still unshown",
                               "a review of one test stays in chat: pass surface chat (or auto) and explain the stop in your message"],
                              "%s --surface chat" % again)
-    vs, page = data_hints(review.data)
     why = str(move.get("note") or "nothing answers").split("; ")[0]
     return review.refuse("surface %s is not available, so nothing was shown: %s" % (asked, why),
                          ["the person is not watching this stop; it is still unshown",
                           "to explain it in the conversation instead, pass surface chat (auto takes the first view that answers)"],
-                         "%s; then %s --surface %s" % (vs if asked == "vscode" else page, again, asked))
-
-
-def data_hints_vs(review: Review) -> str:
-    from .view import data_hints
-
-    return data_hints(review.data)[0]
+                         "%s; then %s --surface %s" % (VIEW_VSCODE if asked == "vscode" else VIEW_PAGE, again, asked))
 
 
 def only_in_chat(review: Review, lead: str, hinted: bool = False) -> str:
     """The tail of ``next:`` when auto fell to chat: ``lead`` ("the person saw this stop only in chat, so explain it") completed
-    with what starts VS Code for the next one. A review of one test has no view to start, and chat is where it stays; with
-    ``hinted`` the view line already named the run to start (a session that recorded another run), so it is not repeated."""
+    with the review's command that opens VS Code for the next one. A review of one test has no view to open, and chat is where
+    it stays; with ``hinted`` the view line already named it (a session that recorded another run), so it is not repeated."""
+    from .view import VIEW_VSCODE
+
     if review.data.get("test"):
         return "%s in your message; a review of one test stays in chat" % lead
     if hinted:
         return "%s in your message; the view line names the run to start in VS Code" % lead
-    return "%s in your message. To show the next one in VS Code first run %s" % (lead, data_hints_vs(review))
+    return "%s in your message. To show the next one in VS Code first run %s" % (lead, VIEW_VSCODE)
 
 
 def _fell_to_chat(f: dict, move: dict) -> bool:

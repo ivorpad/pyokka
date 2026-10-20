@@ -69,7 +69,7 @@ describe('Rail', () => {
 });
 
 describe('DebugToolbar', () => {
-  const state: DebuggerState = { active: true, autoPlaying: false, currentStep: 3, canStep: { into: true, back: true, over: true, backOver: true, out: false, backOut: false }, echoSteps: [], showCallStack: false, codePreview: true, echo: true, watches: [] };
+  const state: DebuggerState = { active: true, autoPlaying: false, currentStep: 3, canStep: { into: true, back: true, over: true, backOver: true, out: false, backOut: false }, echoSteps: [], showCallStack: false, codePreview: true, echo: true, showGuide: true, watches: [] };
   it('closes the Time Machine; the red Stop is on the debug toolbar', () => {
     const html = render(<DebugToolbar state={state} session={{ name: 'a.py', running: false, runMode: 'auto' }} onAction={noop} onStop={noop} />);
     expect(html).not.toContain('codicon-debug-stop');

@@ -267,6 +267,9 @@ describe('DebugSession', () => {
     runner.locals = [{ name: 'payload', text: "{'q': 'a'}" }];
     expect(await ds.debugLocals({ frameId: 2 })).toEqual([{ name: 'payload', text: "{'q': 'a'}" }]);
     expect(runner.actions.at(-1)).toEqual({ action: 'locals', frameId: 2 });
+    // an agent's longer texts ride as the runtime's limits; the Variables view's request above has none
+    await ds.debugLocals({ frameId: 2, textLen: 2000 });
+    expect(runner.actions.at(-1)).toEqual({ action: 'locals', frameId: 2, limits: { textLen: 2000 } });
     await ds.debugStep('over');
     expect(runner.actions.at(-1)).toEqual({ action: 'step', kind: 'over' });
     ds.dispose();

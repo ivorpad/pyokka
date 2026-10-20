@@ -330,7 +330,7 @@ export class AgentBridge implements vscode.Disposable {
         if (!expression) throw new BridgeError('eval needs expression', 'send {expression: "name.attr"}');
         await awaitIdle(session);
         if (!session.debug.paused && (!session.state.finished || session.state.finished.stopped)) throw new BridgeError('no finished run to evaluate against', 'run the file first (save, or Re-execute), or pause a debug run');
-        const ev = await session.evaluateLive(expression);
+        const ev = await session.evaluateLive(expression, undefined, { textLen: int(req.textLen) });
         if (!ev) throw new BridgeError(`not evaluable: ${expression}`, 'pure calls run (builtins like len, sorted, isinstance; non-mutating methods of str, dict, list, tuple, set); a user function and an unknown name are refused');
         return { text: redact(ev.text), valueBag: ev.valueBag ? redactValueBag(ev.valueBag) : undefined, logId: ev.logId };
       }

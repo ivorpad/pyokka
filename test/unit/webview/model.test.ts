@@ -56,7 +56,7 @@ describe('reducer', () => {
   });
   it('auto-shows the debugger view and returns to output when it stops', () => {
     let s = seeded();
-    const dbg = { active: true, autoPlaying: false, currentStep: 2, canStep: { into: true, back: true, over: true, backOver: true, out: false, backOut: false }, echoSteps: [], showCallStack: false, codePreview: true, echo: true, watches: [] };
+    const dbg = { active: true, autoPlaying: false, currentStep: 2, canStep: { into: true, back: true, over: true, backOver: true, out: false, backOut: false }, echoSteps: [], showCallStack: false, codePreview: true, echo: true, showGuide: true, watches: [] };
     s = reduce(s, { type: 'host', message: { type: 'debugger', state: dbg } });
     expect(s.view).toBe('debugger');
     s = reduce(s, { type: 'host', message: { type: 'debugger', state: { ...dbg, active: false } } });
@@ -64,7 +64,7 @@ describe('reducer', () => {
   });
   it('forgets the Time Machine state when the host re-binds (init), so a stopped session leaves no stop button', () => {
     let s = seeded();
-    const dbg = { active: true, autoPlaying: false, currentStep: 2, canStep: { into: true, back: true, over: true, backOver: true, out: false, backOut: false }, echoSteps: [], showCallStack: false, codePreview: true, echo: true, watches: [] };
+    const dbg = { active: true, autoPlaying: false, currentStep: 2, canStep: { into: true, back: true, over: true, backOver: true, out: false, backOut: false }, echoSteps: [], showCallStack: false, codePreview: true, echo: true, showGuide: true, watches: [] };
     s = reduce(s, { type: 'host', message: { type: 'debugger', state: dbg } });
     expect(s.view).toBe('debugger');
     s = reduce(s, { type: 'host', message: { type: 'init', theme: s.theme, settings: s.settings, sessionName: null } });
@@ -79,7 +79,7 @@ describe('reducer', () => {
     const history = { name: 'acct', changes: [], total: 0, truncated: false, recordedLocals: false };
     s = reduce(s, { type: 'host', message: { type: 'variable', view: { name: 'acct', history } } });
     expect(s.variable?.history).toBe(history);
-    const dbg = { active: true, autoPlaying: false, currentStep: 2, canStep: { into: true, back: true, over: true, backOver: true, out: false, backOut: false }, echoSteps: [], showCallStack: false, codePreview: true, echo: true, watches: [] };
+    const dbg = { active: true, autoPlaying: false, currentStep: 2, canStep: { into: true, back: true, over: true, backOver: true, out: false, backOut: false }, echoSteps: [], showCallStack: false, codePreview: true, echo: true, showGuide: true, watches: [] };
     s = reduce(s, { type: 'host', message: { type: 'debugger', state: dbg } });
     expect(s.view).toBe('variable');
     s = reduce(s, { type: 'host', message: { type: 'variable', view: { name: '', history: null } } });
@@ -98,7 +98,7 @@ describe('reducer', () => {
     expect(s.why?.tree).toBe(tree);
     expect(s.view).toBe('output');
     // a click on a node starts the Time Machine: the tree follows into the debugger view, where a new query stays
-    const dbg = { active: true, autoPlaying: false, currentStep: 21, canStep: { into: true, back: true, over: true, backOver: true, out: false, backOut: false }, echoSteps: [], showCallStack: false, codePreview: true, echo: true, watches: [] };
+    const dbg = { active: true, autoPlaying: false, currentStep: 21, canStep: { into: true, back: true, over: true, backOver: true, out: false, backOut: false }, echoSteps: [], showCallStack: false, codePreview: true, echo: true, showGuide: true, watches: [] };
     s = reduce(s, { type: 'host', message: { type: 'debugger', state: dbg } });
     expect(s.view).toBe('debugger');
     s = reduce(s, { type: 'host', message: { type: 'why', view: { step: 20, name: 'acct', tree: null } } });
@@ -145,7 +145,7 @@ describe('reducer', () => {
     let s = seeded();
     s = reduce(s, { type: 'host', message: { type: 'showView', view: 'run-diagram' } });
     expect(s.view).toBe('run-diagram');
-    const dbg = { active: true, autoPlaying: false, currentStep: 2, canStep: { into: true, back: true, over: true, backOver: true, out: false, backOut: false }, echoSteps: [], showCallStack: false, codePreview: true, echo: true, watches: [] };
+    const dbg = { active: true, autoPlaying: false, currentStep: 2, canStep: { into: true, back: true, over: true, backOver: true, out: false, backOut: false }, echoSteps: [], showCallStack: false, codePreview: true, echo: true, showGuide: true, watches: [] };
     s = reduce(s, { type: 'host', message: { type: 'debugger', state: dbg } });
     expect(s.view).toBe('run-diagram');
     s = reduce(s, { type: 'host', message: { type: 'debugger', state: { ...dbg, active: false } } });
@@ -160,7 +160,7 @@ describe('reducer', () => {
     const panel = { runId: 'r1', running: false, count: 1, truncated: false, totals: { requests: 1, bytes: 10, ms: 5, misses: 0, missAttempts: 0 }, finished: null, requests: [] };
     s = reduce(s, { type: 'host', message: { type: 'http', panel } });
     expect(s.http).toBe(panel);
-    const dbg = { active: true, autoPlaying: false, currentStep: 2, canStep: { into: true, back: true, over: true, backOver: true, out: false, backOut: false }, echoSteps: [], showCallStack: false, codePreview: true, echo: true, watches: [] };
+    const dbg = { active: true, autoPlaying: false, currentStep: 2, canStep: { into: true, back: true, over: true, backOver: true, out: false, backOut: false }, echoSteps: [], showCallStack: false, codePreview: true, echo: true, showGuide: true, watches: [] };
     s = reduce(s, { type: 'host', message: { type: 'debugger', state: dbg } });
     expect(s.view).toBe('http');
     s = reduce(s, { type: 'host', message: { type: 'debugger', state: { ...dbg, active: false } } });

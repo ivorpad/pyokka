@@ -171,7 +171,7 @@ It loads only when asked by name: `/pyokka debug`, `/pyokka explain`, `/pyokka s
 | `debug` | pauses a running program at a function or line, steps it, reads or sets the frame; answers in chat |
 | `explain` | walks a person through a run in their editor, one line and a few sentences per message |
 | `show` | investigates a recording or a pause and hands over a code-history page |
-| `review` | reviews a change as a guided debug session: records base and head, plans the stops, moves the person's view to each one, refuses a finding without a reproduction |
+| `review` | reviews a change as a guided debug session: a breakpoint per changed function, the entry under the debugger in VS Code, each pause recorded, a finding refused without a pause and a reproduction (`--full` records base and head and plans from the comparison) |
 
 It finds the `pyokka` command by itself. Its code-history pages need Node.
 
@@ -180,11 +180,13 @@ The skill sets no model or effort of its own. Its reader-turn runs so far used S
 GPT-6 family and has not been run on them; `docs/design/skill-model-compat.md` has the sources and
 the ten-minute checks.
 
-`review` is the mode for a pull request or a diff. `pyokka review start --base REF` records the base
-and head trees through the entry file, compares the two runs and plans the stops: the steps where
-behaviour changed, the changed lines no run reached, the edge cases worth trying. `review stop N
---say TEXT` moves the person's view (the browser page, a VS Code session, or chat) to a stop and
-refuses an explanation that names none of its values; `review try` reproduces a claim in the
+`review` is the mode for a pull request or a diff. `pyokka review start --base REF` plans one item
+per changed function from the diff and starts the entry under the debugger in your VS Code, paused
+on entry with a breakpoint on each item; the debugger is driven as always, and `review stop --say
+TEXT` records the pause it is at, refusing an explanation that names none of the frame's values.
+`--full` records the base and head trees instead, compares the two runs and plans the stops where
+behaviour changed, and `review stop N --say TEXT` then moves the person's view (the browser page, a
+VS Code recording, or chat) to a stop; `review try` reproduces a claim in the
 Scratchpad's sandbox; `review finding add` refuses a finding without a step and a reproduction;
 `review fix --patch` tries the fix on a copy; `review report` re-runs every reproduction before it
 prints. Nothing is written inside the repository: the review lives under `$PYOKKA_HOME/reviews/`.
@@ -354,7 +356,7 @@ pyokka exec --live SOURCE [--frame N]   run a statement in the paused frame: an 
 pyokka shell --live [--session NAME] [--json]   one command per stdin line over one connection: the one-shot words without --live, each result as the one-shot prints it
 pyokka history RUN [--at STEP|F:L] [--var NAME] [--why STEP NAME] [--pause] --out PATH [--prose PATH] [--pad N] [--limit K] [--append]   the data behind a code-history page: the source each checkpoint needs, the values as of it, and the command that reproduces them
 pyokka web FILE [--port N] [--cwd DIR] [--open] [--no-run] [--python PATH]   the browser page; `pyokka web ctl COMMAND` drives it, `pyokka web -h` lists the commands
-pyokka review start --base REF [--repo DIR] [--entry FILE | --test NODEID] [--pr FILE] [--dir DIR]   review a change as a guided debug session; then review stop N --say TEXT, ask, try, finding add, fix, report, state
+pyokka review start --base REF [--repo DIR] [--entry FILE | --test NODEID] [--full] [--pr FILE] [--dir DIR]   review a change as a guided debug session; then pyokka continue --live to each item and review stop --say TEXT at the pause (--full: review stop N moves the view), ask, try, finding add, fix, report, state
 pyokka mcp                            the commands as MCP tools, on stdin/stdout
 ```
 

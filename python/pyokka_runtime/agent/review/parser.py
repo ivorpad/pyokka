@@ -11,7 +11,7 @@ import argparse
 
 from .state import SEVERITIES, SURFACES
 
-HELP = "review a change as a guided debug session: start records base and head and plans the stops; stop N --say TEXT shows one (it must name a value there); ask, try, finding add, fix, report, state. Every answer starts with the review's header and ends with a next: line"
+HELP = "review a change as a guided debug session: start plans a breakpoint per changed function and starts the entry under the debugger in VS Code, paused on entry (--full records base and head and plans from the comparison instead); the debugger is driven as always, and stop [N] --say TEXT records the pause it is at (the text must name a value of the frame); skip, try, finding add, fix, report, state. Every answer starts with the review's header and ends with a next: line"
 
 
 def add_review_parser(sub: argparse._SubParsersAction) -> None:
@@ -37,15 +37,23 @@ def add_review_parser(sub: argparse._SubParsersAction) -> None:
     g = s.add_mutually_exclusive_group()
     g.add_argument("--entry", metavar="FILE", help="the file both trees run (default: main.py at the repo root)")
     g.add_argument("--test", metavar="NODEID", help="one test to run instead, as FILE::NAME (a pytest node id or a unittest name)")
+    s.add_argument("--full", action="store_true", help="record base and head to their ends and plan the stops from the comparison (the page and chat surfaces imply it); without it the entry starts under the debugger in VS Code, paused on entry with a breakpoint on each changed function, and stop records the pauses you reach with the debugger")
+    s.add_argument("--only", nargs="+", action="extend", metavar="PATH", help="keep the changed functions in these files, directories or globs (relative to the repo; the flag repeats): the rest, and their edge candidates, are set aside before numbering, with no breakpoint; refused with --full")
     s.add_argument("--pr", metavar="FILE", help="the PR text (default: pr.md at the repo root, else the commit messages base..head)")
-    s.add_argument("--python", metavar="P", help="the interpreter that runs the trees (default: as `pyokka run` picks it)")
+    s.add_argument("--python", metavar="P", help="the interpreter that runs the trees (default: as `pyokka run` picks it; start's python: line names the one it chose and why)")
     s.add_argument("--surface", choices=list(SURFACES), default=None, help="what start opens for the person: auto and vscode record the entry in VS Code (the stops move its Time Machine), page serves the browser page, chat opens nothing (default auto, else $PYOKKA_REVIEW_SURFACE)")
     s.add_argument("--port", type=int, default=None, metavar="P", help="--surface page: the page's port (default $PYOKKA_PORT, else 4777)")
     dir_arg(s)
     s.add_argument("args", nargs="*", metavar="ARGS", help="arguments for the program, after --")
 
+    v = acts.add_parser("view", help="open the person's view after start, when start opened none or they moved: vscode records the entry in VS Code as the review's run (the stops move its Time Machine), page serves the browser page, chat closes the page")
+    v.add_argument("surface_word", nargs="?", choices=list(SURFACES), default=None, metavar="SURFACE", help="the same as --surface, the way the hints say it (`review view vscode`)")
+    v.add_argument("--surface", choices=list(SURFACES), default=None, help="vscode (what auto means), page or chat (default auto, else $PYOKKA_REVIEW_SURFACE)")
+    v.add_argument("--port", type=int, default=None, metavar="P", help="--surface page: the page's port (default $PYOKKA_PORT, else 4777)")
+    dir_arg(v)
+
     st = acts.add_parser("stop", help="show one stop: move the person's view there, print it with the explanation, then wait for them")
-    st.add_argument("n", type=int, metavar="N", help="the stop's number in the plan (any remaining one: the plan is an agenda the person reorders)")
+    st.add_argument("n", type=int, nargs="?", default=None, metavar="N", help="the stop's number in the plan (any remaining one: the plan is an agenda the person reorders); when the debugger runs the review, `stop --say TEXT` records the pause it is at and N only checks it is that item")
     st.add_argument("--go-on", dest="go_on", action="store_true", help="the person said next since the last stop; every stop after the first needs it")
     view_args(st)
 
@@ -53,9 +61,9 @@ def add_review_parser(sub: argparse._SubParsersAction) -> None:
     a.add_argument("line", metavar="FILE:LINE")
     view_args(a)
 
-    k = acts.add_parser("skip", help="set agenda item N aside with the person's reason; state lists shown, skipped and remaining")
-    k.add_argument("n", type=int, metavar="N")
-    k.add_argument("--why", metavar="TEXT", help="the reason the person gave")
+    k = acts.add_parser("skip", help="set agenda items aside with the person's reason, several in one call; state lists shown, skipped and remaining")
+    k.add_argument("ns", type=int, nargs="+", metavar="N", help="the items' numbers in the plan; one that is not in it or was shown already refuses them all")
+    k.add_argument("--why", metavar="TEXT", help="the reason the person gave, for every N")
     dir_arg(k)
 
     lk = acts.add_parser("look", help="what is X here: a pure expression over the values recorded at the current (or --step) step, without moving anything")
@@ -97,7 +105,7 @@ def add_review_parser(sub: argparse._SubParsersAction) -> None:
     r.add_argument("--tour", nargs="?", const=True, metavar="FILE", help="also write the review as a tour of head.json for render-tour.cjs: the stops shown as its picks, the says as its prose, at FILE or DIR/tour.json (never inside the repository)")
     dir_arg(r)
 
-    c = acts.add_parser("close", help="stop the page server start opened (report does it too); the VS Code recording stays")
+    c = acts.add_parser("close", help="stop the page server start opened and remove the review's breakpoints from VS Code while its debug session answers (report does both too); the VS Code recording stays")
     dir_arg(c)
 
     z = acts.add_parser("state", help="the header, the plan with shown stops marked, findings, tries, and next:")

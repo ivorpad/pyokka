@@ -1,0 +1,538 @@
+[
+  {
+    "name": "Read multiple history pages without repeating history",
+    "messages": [
+      {
+        "role": "model",
+        "type": "functioncall",
+        "name": "pyokka_var",
+        "arguments": {
+          "name": "counter"
+        }
+      },
+      {
+        "role": "user",
+        "type": "functionresponse",
+        "name": "pyokka_var",
+        "response": {
+          "result": {
+            "bounded": true,
+            "tool": "pyokka_var",
+            "outcome": "completed",
+            "summary": {
+              "name": "counter",
+              "changes": 3
+            },
+            "cursor": "s1.root.0",
+            "expires_in_ms": 300000
+          }
+        }
+      },
+      {
+        "role": "user",
+        "type": "message",
+        "content": "Read all three changes from that captured result."
+      }
+    ],
+    "expectedCall": [
+      {
+        "functionName": "pyokka_result",
+        "arguments": {
+          "cursor": "s1.root.0"
+        },
+        "mockOutput": {
+          "kind": "object",
+          "entries": [
+            {
+              "key": "changes",
+              "value": {
+                "ref": "s1.changes.0",
+                "kind": "array",
+                "total_count": 3
+              }
+            }
+          ],
+          "page_size": 1,
+          "total_count": 1,
+          "next_cursor": null
+        }
+      },
+      {
+        "functionName": "pyokka_result",
+        "arguments": {
+          "cursor": "s1.changes.0"
+        },
+        "mockOutput": {
+          "kind": "array",
+          "items": [
+            1,
+            2
+          ],
+          "page_size": 2,
+          "total_count": 3,
+          "next_cursor": "s1.changes.2"
+        }
+      },
+      {
+        "functionName": "pyokka_result",
+        "arguments": {
+          "cursor": "s1.changes.2"
+        },
+        "mockOutput": {
+          "kind": "array",
+          "items": [
+            3
+          ],
+          "page_size": 1,
+          "total_count": 3,
+          "next_cursor": null
+        }
+      }
+    ]
+  },
+  {
+    "name": "Read a live result captured before current pause changed",
+    "messages": [
+      {
+        "role": "model",
+        "type": "functioncall",
+        "name": "pyokka_debug",
+        "arguments": {
+          "op": "step",
+          "kind": "over"
+        }
+      },
+      {
+        "role": "user",
+        "type": "functionresponse",
+        "name": "pyokka_debug",
+        "response": {
+          "result": {
+            "bounded": true,
+            "tool": "pyokka_debug",
+            "outcome": "completed",
+            "summary": {
+              "source": "live",
+              "runId": "r1",
+              "step": 12,
+              "paused": true
+            },
+            "cursor": "s2.root.0",
+            "expires_in_ms": 300000
+          }
+        }
+      },
+      {
+        "role": "user",
+        "type": "message",
+        "content": "The person moved the debugger again. Read the captured step 12 result, keeping the current pause alone."
+      }
+    ],
+    "expectedCall": [
+      {
+        "functionName": "pyokka_result",
+        "arguments": {
+          "cursor": "s2.root.0"
+        }
+      }
+    ]
+  },
+  {
+    "name": "Read captured recording state",
+    "messages": [
+      {
+        "role": "model",
+        "type": "functioncall",
+        "name": "pyokka_state",
+        "arguments": {}
+      },
+      {
+        "role": "user",
+        "type": "functionresponse",
+        "name": "pyokka_state",
+        "response": {
+          "result": {
+            "bounded": true,
+            "tool": "pyokka_state",
+            "outcome": "completed",
+            "summary": {
+              "source": "recording",
+              "runId": "r1",
+              "step": 5
+            },
+            "cursor": "s3.root.0",
+            "expires_in_ms": 300000
+          }
+        }
+      },
+      {
+        "role": "user",
+        "type": "message",
+        "content": "Read the details of that state."
+      }
+    ],
+    "expectedCall": [
+      {
+        "functionName": "pyokka_result",
+        "arguments": {
+          "cursor": "s3.root.0"
+        }
+      }
+    ]
+  },
+  {
+    "name": "Read long story text chunks with escaped Unicode",
+    "messages": [
+      {
+        "role": "model",
+        "type": "functioncall",
+        "name": "pyokka_result",
+        "arguments": {
+          "cursor": "s4.root.0"
+        }
+      },
+      {
+        "role": "user",
+        "type": "functionresponse",
+        "name": "pyokka_result",
+        "response": {
+          "result": {
+            "kind": "object",
+            "entries": [
+              {
+                "key": "text",
+                "value": {
+                  "ref": "s4.text.0",
+                  "kind": "string",
+                  "total_count": 7
+                }
+              }
+            ],
+            "page_size": 1,
+            "total_count": 1,
+            "next_cursor": null
+          }
+        }
+      },
+      {
+        "role": "user",
+        "type": "message",
+        "content": "Read the entire story text exactly."
+      }
+    ],
+    "expectedCall": [
+      {
+        "functionName": "pyokka_result",
+        "arguments": {
+          "cursor": "s4.text.0"
+        },
+        "mockOutput": {
+          "kind": "string",
+          "text": "a\"\\\n",
+          "offset": 0,
+          "page_size": 4,
+          "total_count": 7,
+          "next_cursor": "s4.text.4"
+        }
+      },
+      {
+        "functionName": "pyokka_result",
+        "arguments": {
+          "cursor": "s4.text.4"
+        },
+        "mockOutput": {
+          "kind": "string",
+          "text": "😀bc",
+          "offset": 4,
+          "page_size": 3,
+          "total_count": 7,
+          "next_cursor": null
+        }
+      }
+    ]
+  },
+  {
+    "name": "Read scratchpad result without executing again",
+    "messages": [
+      {
+        "role": "model",
+        "type": "functioncall",
+        "name": "pyokka_scratchpad",
+        "arguments": {
+          "op": "run"
+        }
+      },
+      {
+        "role": "user",
+        "type": "functionresponse",
+        "name": "pyokka_scratchpad",
+        "response": {
+          "result": {
+            "bounded": true,
+            "tool": "pyokka_scratchpad",
+            "outcome": "completed",
+            "summary": {
+              "id": "draft1",
+              "revision": 9,
+              "status": "done",
+              "liveExecutionChanged": false
+            },
+            "cursor": "s5.root.0",
+            "expires_in_ms": 300000
+          }
+        }
+      },
+      {
+        "role": "user",
+        "type": "message",
+        "content": "Inspect the retained experiment result. Do not run it again."
+      }
+    ],
+    "expectedCall": [
+      {
+        "functionName": "pyokka_result",
+        "arguments": {
+          "cursor": "s5.root.0"
+        }
+      }
+    ]
+  },
+  {
+    "name": "Read full error without repeating failed action",
+    "messages": [
+      {
+        "role": "model",
+        "type": "functioncall",
+        "name": "pyokka_run",
+        "arguments": {}
+      },
+      {
+        "role": "user",
+        "type": "functionresponse",
+        "name": "pyokka_run",
+        "response": {
+          "result": {
+            "bounded": true,
+            "isError": true,
+            "tool": "pyokka_run",
+            "outcome": "failed",
+            "error": "Run failed; full error retained.",
+            "code": "RUN_FAILED",
+            "retryable": false,
+            "summary": {
+              "runId": "r2"
+            },
+            "cursor": "s6.root.0",
+            "expires_in_ms": 300000
+          }
+        }
+      },
+      {
+        "role": "user",
+        "type": "message",
+        "content": "Read the complete captured failure details."
+      }
+    ],
+    "expectedCall": [
+      {
+        "functionName": "pyokka_result",
+        "arguments": {
+          "cursor": "s6.root.0"
+        }
+      }
+    ]
+  },
+  {
+    "name": "Repeat a cursor without consuming it",
+    "messages": [
+      {
+        "role": "model",
+        "type": "functioncall",
+        "name": "pyokka_result",
+        "arguments": {
+          "cursor": "s7.locals.0"
+        }
+      },
+      {
+        "role": "user",
+        "type": "functionresponse",
+        "name": "pyokka_result",
+        "response": {
+          "result": {
+            "kind": "array",
+            "items": [
+              1,
+              2
+            ],
+            "page_size": 2,
+            "total_count": 3,
+            "next_cursor": "s7.locals.2"
+          }
+        }
+      },
+      {
+        "role": "user",
+        "type": "message",
+        "content": "Show that same first page again."
+      }
+    ],
+    "expectedCall": [
+      {
+        "functionName": "pyokka_result",
+        "arguments": {
+          "cursor": "s7.locals.0"
+        },
+        "mockOutput": {
+          "kind": "array",
+          "items": [
+            1,
+            2
+          ],
+          "page_size": 2,
+          "total_count": 3,
+          "next_cursor": "s7.locals.2"
+        }
+      }
+    ]
+  },
+  {
+    "name": "Expired cursor must not repeat producing action",
+    "messages": [
+      {
+        "role": "model",
+        "type": "functioncall",
+        "name": "pyokka_result",
+        "arguments": {
+          "cursor": "s8.root.0"
+        }
+      },
+      {
+        "role": "user",
+        "type": "functionresponse",
+        "name": "pyokka_result",
+        "response": {
+          "result": {
+            "isError": true,
+            "error": "Retained details expired or were evicted. This read did not repeat the action.",
+            "code": "RESULT_UNAVAILABLE",
+            "retryable": false
+          }
+        }
+      },
+      {
+        "role": "user",
+        "type": "message",
+        "content": "Stop reading. Explain that those captured details are unavailable; do not rerun anything."
+      }
+    ],
+    "expectedCall": []
+  },
+  {
+    "name": "Malformed cursor must not guess a producing action",
+    "messages": [
+      {
+        "role": "model",
+        "type": "functioncall",
+        "name": "pyokka_result",
+        "arguments": {
+          "cursor": "not a supplied cursor"
+        }
+      },
+      {
+        "role": "user",
+        "type": "functionresponse",
+        "name": "pyokka_result",
+        "response": {
+          "result": {
+            "isError": true,
+            "error": "Use an exact cursor supplied by a previous large result.",
+            "code": "INVALID_CURSOR",
+            "retryable": false
+          }
+        }
+      },
+      {
+        "role": "user",
+        "type": "message",
+        "content": "I have no supplied cursor. Explain what is missing without running anything."
+      }
+    ],
+    "expectedCall": []
+  },
+  {
+    "name": "Cancelled continuation can be read later without action dispatch",
+    "messages": [
+      {
+        "role": "model",
+        "type": "functioncall",
+        "name": "pyokka_result",
+        "arguments": {
+          "cursor": "s9.root.0"
+        }
+      },
+      {
+        "role": "user",
+        "type": "functionresponse",
+        "name": "pyokka_result",
+        "response": {
+          "result": {
+            "isError": true,
+            "error": "Reading was cancelled; retained details were not changed.",
+            "code": "CANCELLED",
+            "retryable": false
+          }
+        }
+      },
+      {
+        "role": "user",
+        "type": "message",
+        "content": "Read that retained result now, using the same cursor."
+      }
+    ],
+    "expectedCall": [
+      {
+        "functionName": "pyokka_result",
+        "arguments": {
+          "cursor": "s9.root.0"
+        }
+      }
+    ]
+  },
+  {
+    "name": "Capacity failure preserves known completion",
+    "messages": [
+      {
+        "role": "model",
+        "type": "functioncall",
+        "name": "pyokka_profile",
+        "arguments": {}
+      },
+      {
+        "role": "user",
+        "type": "functionresponse",
+        "name": "pyokka_profile",
+        "response": {
+          "result": {
+            "bounded": true,
+            "isError": true,
+            "tool": "pyokka_profile",
+            "outcome": "completed",
+            "summary": {
+              "totalMs": 12
+            },
+            "error": "The action completed; full details exceed retention capacity and cannot be read with a cursor.",
+            "code": "RESULT_TOO_LARGE",
+            "retryable": false,
+            "cursor": null
+          }
+        }
+      },
+      {
+        "role": "user",
+        "type": "message",
+        "content": "Explain the known outcome and missing details. Do not run it again."
+      }
+    ],
+    "expectedCall": []
+  }
+]

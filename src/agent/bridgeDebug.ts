@@ -283,7 +283,7 @@ export class BridgeDebug {
   private async pauseExtras(session: Session, info: PausedInfo, opts: SliceOptions): Promise<Record<string, unknown>> {
     let locals: LocalVar[] = [];
     try {
-      locals = await session.debugLocals();
+      locals = await session.debugLocals(opts.textLen !== undefined ? { textLen: opts.textLen } : undefined);
     } catch {
       locals = []; // the run resumed or ended between the pause and this request
     }

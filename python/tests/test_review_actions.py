@@ -141,7 +141,7 @@ def started(shop, tmp_path_factory) -> SimpleNamespace:
     with pytest.MonkeyPatch.context() as mp:
         mp.setenv("PYOKKA_HOME", str(home))
         install_fakes(mp)
-        answer = actions.run({"action": "start", "base": shop.base, "repo": str(shop.repo), "dir": str(directory)})
+        answer = actions.run({"action": "start", "base": shop.base, "repo": str(shop.repo), "dir": str(directory), "full": True})
     return SimpleNamespace(dir=directory, answer=answer, home=home, repo=shop.repo, base=shop.base)
 
 
@@ -233,19 +233,20 @@ def test_start_refuses_a_bad_ref_a_dir_inside_the_repo_and_a_tree_without_git(sh
     assert "needs --base" in refusal("start", repo=str(shop.repo), dir=str(tmp_path / "r3")).why
 
 
-def test_start_refuses_an_uncommitted_entry_and_a_missing_one(tmp_path, fakes):
-    repo = tmp_path / "small"
-    repo.mkdir()
-    (repo / "main.py").write_text("print('v1')\n")
-    git(repo, "init", "-q", "-b", "main")
-    for key, value in (("user.email", "r@example.com"), ("user.name", "R"), ("commit.gpgsign", "false")):
-        git(repo, "config", key, value)
-    git(repo, "add", "-A")
-    git(repo, "commit", "-q", "-m", "one")
-    (repo / "main.py").write_text("print('v2')\n")
-    exc = refusal("start", base="HEAD", repo=str(repo), dir=str(tmp_path / "r"))
-    assert "main.py has uncommitted changes" in exc.why
-    exc = refusal("start", base="HEAD", repo=str(repo), entry="other.py", dir=str(tmp_path / "r"))
+def test_start_reviews_an_uncommitted_entry_and_refuses_a_missing_one(started, tmp_path, fakes, monkeypatch):
+    """Head is the working tree as it stands: an edited, uncommitted main.py is reviewed as it is, and tree_hash pins it."""
+    r = fresh(started, tmp_path, copy_repo=True)
+    main = Path(r.repo) / "main.py"
+    main.write_text(main.read_text() + "# edited in the working tree, not committed\n")
+    assert git(Path(r.repo), "status", "--porcelain", "--", "main.py").strip().startswith("M ")
+    monkeypatch.setenv("PYOKKA_HOME", str(tmp_path / "home"))
+    answer = run("start", base=r.base, repo=str(r.repo), dir=str(tmp_path / "r"), surface="chat")
+    lines = render_text(answer).rstrip("\n").split("\n")
+    assert lines[0].startswith("review repo-copy-") and lines[-1] == "next: review stop 1 --say TEXT", lines
+    state = json.loads((tmp_path / "r" / "review.json").read_text())
+    assert state["entry"] == "main.py" and state["tree_hash"] == tree_hash(str(r.repo))
+    assert "# edited in the working tree" in git(Path(r.repo), "diff", r.base, "--", "main.py")  # the change is part of what the review compares
+    exc = refusal("start", base=r.base, repo=str(r.repo), entry="other.py", dir=str(tmp_path / "r2"))
     assert "no file" in exc.why
 
 

@@ -101,6 +101,10 @@ def finding(review: Review, f: dict) -> dict:
     what = str(f.get("what") or "add")
     if what != "add":
         raise review.refuse("finding %s is not an action; `finding add` records one" % what, next_command=FINDING_ADD)
+    if review.data.get("mode") == "debugger":
+        from .debugger_findings import finding_in_debugger
+
+        return finding_in_debugger(review, f)
     wanted = (("--file", "file"), ("--line", "line"), ("--severity", "severity"), ("--title", "title"), ("--repro", "repro"), ("--fix", "fix"))
     missing = [flag for flag, key in wanted if f.get(key) in (None, "")]
     if f.get("step") in (None, "") and not (f.get("file") and f.get("line")):

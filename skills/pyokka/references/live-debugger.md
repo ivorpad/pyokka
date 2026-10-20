@@ -174,11 +174,11 @@ Lines that ran in other functions have nothing, because nothing kept them; that 
 ## Moving and reading
 
 ```
-pyokka continue --live [--no-wait | --until EXPR | --to FILE:LINE]
+pyokka continue --live [--no-wait | --until EXPR | --to FILE:LINE] [--scope]
 pyokka step --live --into|--over|--out [--count N]
-pyokka pause --live [--no-wait]
-pyokka locals --live [--frame N] [--scope local|global|all] [--names-only] [--name NAME]...
-pyokka eval --live EXPR [--frame N]
+pyokka pause --live [--no-wait] [--scope]
+pyokka locals --live [--frame N] [--scope local|global|all] [--names-only] [--name NAME]... [--text-len N]
+pyokka eval --live EXPR [--frame N] [--text-len N]
 pyokka break --live [FILE:LINE ...] [--when EXPR] [--log-message TEXT] [--at NAME] [--remove F:L]
                     [--clear] [--list] [--on-exception off|uncaught|raised]
 pyokka watches --live [--add EXPR [--break-when change|true]] [--remove ID] [--list]

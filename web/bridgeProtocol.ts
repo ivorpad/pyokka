@@ -131,10 +131,12 @@ export type BridgeToPage =
   | { type: 'event'; event: RunEvent }
   | { type: 'reply'; id: number; reply: RunnerMessage }
   | { type: 'runner.error'; message: string; detail?: string }
+  /** a requested run could not launch; the token belongs only to that page invocation */
+  | { type: 'run.error'; requestId: string; runId?: string; message: string }
   | { type: 'runtime'; runtime: RuntimeInfo }
   | { type: 'agent'; id: number; command: AgentCommand }
   /** a run the bridge started and the content it ran, sent before the runtime's first event */
-  | { type: 'run.begin'; runId: string; content: string; reason: string }
+  | { type: 'run.begin'; runId: string; content: string; reason: string; requestId?: string }
   | { type: 'saved'; path: string }
   | { type: 'narration'; narration: BridgeNarration }
   | { type: 'tour'; tour: BridgeTour }
@@ -149,7 +151,7 @@ export type BridgeToPage =
 
 export type PageToBridge =
   /** run the file; `watch` and `traceContext` stay for later runs (a save, a settings change) until the next `run` */
-  | { type: 'run'; content?: string; watch?: WatchRequest[]; traceContext?: { step: number; prefetch: number } | null }
+  | { type: 'run'; requestId?: string; content?: string; watch?: WatchRequest[]; traceContext?: { step: number; prefetch: number } | null }
   /** change the run config for this and every later run (the panel's Settings view), then re-run */
   | { type: 'config'; patch: ConfigPatch }
   | { type: 'stop' }

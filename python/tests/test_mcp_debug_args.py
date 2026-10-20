@@ -1,9 +1,11 @@
-"""``pyokka_debug start`` with ``args``: the words reach the real parser and the launch carries them."""
+"""``pyokka_debug start`` with ``args``: the words reach the real parser and the launch carries them.
+
+Also ``whole_block`` on ``continue`` and ``pause``, and ``text_len`` on ``locals`` and a live ``eval``."""
 
 from __future__ import annotations
 
 from pyokka_runtime.agent.commands import debug_launch
-from pyokka_runtime.agent.mcp import words_debug
+from pyokka_runtime.agent.mcp import words_debug, words_value
 from pyokka_runtime.agent.shell import build_parser
 
 
@@ -43,3 +45,21 @@ def test_start_without_args_still_parses(tmp_path):
     app.write_text("pass\n")
     args = parse(words_debug({"action": "start", "file": str(app)}))
     assert debug_launch(args)["args"] == []
+
+
+def test_whole_block_is_scope_on_continue_and_pause_and_nothing_on_status():
+    for action in ("continue", "pause"):
+        words = words_debug({"action": action, "whole_block": True})
+        assert "--scope" in words and parse(words).scope is True, action
+        assert parse(words_debug({"action": action})).scope is False, action
+    # status prints the state, which carries no block: the whole block at a pause is pyokka_step's
+    assert "--scope" not in words_debug({"action": "status", "whole_block": True})
+
+
+def test_text_len_reaches_locals_and_a_live_eval():
+    args = parse(words_debug({"action": "locals", "names": ["policy"], "text_len": 5000}))
+    assert (args.name, args.text_len) == (["policy"], 5000)
+    assert parse(words_debug({"action": "locals", "text_len": 0})).text_len == 0, "0 asks for all of it"
+    assert parse(words_debug({"action": "locals"})).text_len is None, "unset: the commands send their 2,000"
+    args = parse(words_value({"action": "eval", "live": True, "expression": "policy", "text_len": 4000}))
+    assert (args.expression, args.text_len, args.live) == ("policy", 4000, True)

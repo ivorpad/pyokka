@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import ast
 import textwrap
 from pathlib import Path
 
+from pyokka_runtime.agent.review.debugger import breakable_line
 from pyokka_runtime.agent.review.edges import changed_lines, edges, is_test_file, render_edges
+from pyokka_runtime.agent.review.syntax import function_at
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures" / "review"
 
@@ -138,3 +141,59 @@ def test_each_rule_fires_on_its_construct_and_not_on_the_exceptions(tmp_path: Pa
     assert by_kind["empty loop"][0]["what"] == "`for r in rows`: call work with rows empty and with one element; check the value the loop leaves behind (total)"
     assert [r["id"] for r in rows] == ["E%d" % i for i in range(1, len(rows) + 1)]
     assert rows[0]["kind"] in ("attribute", "except path")  # rank 0 first
+
+
+def test_the_function_named_is_the_innermost_def_around_the_line(tmp_path: Path):
+    # each file's functions are listed once and asked per line (a walk per node took 12 s on a langchain plan,
+    # 2026-10-20); the rule stays: the def that starts last among those holding the line, the first in walk order on a tie
+    tree, diff = _tree(tmp_path, {
+        "pkg/nest.py": """
+            LIMIT = 3 if len("ab") > 1 else 4
+
+
+            def outer(rows, n):
+                def inner(x):
+                    return x / n
+                total = sum(inner(r) for r in rows)
+                return total > LIMIT
+            """,
+    })
+    named = {(r["kind"], r["line"]): r["function"] for r in edges(diff, tree)}
+    assert named[("zero divisor", 6)] == "inner"  # inside the nested def
+    assert named[("boundary", 8)] == "outer"  # past the nested def's end, still inside outer
+    assert named[("boundary", 1)] == "<module>"
+    assert named[("new parameter", 4)] == "outer" and named[("new parameter", 5)] == "inner"  # a def's own line is inside it
+    source = (tmp_path / "pkg" / "nest.py").read_text(encoding="utf-8")
+    assert [breakable_line(source, lo, lo) for lo in (1, 5, 7, 8)] == [(1, None), (6, "inner"), (7, "outer"), (8, "outer")]
+    a, b = ast.parse("def a():\n    pass\n").body[0], ast.parse("def b():\n    pass\n").body[0]  # both on lines 1-2: a tie
+    assert function_at([a, b], 2) == "a" and function_at([b, a], 2) == "b"  # type: ignore[list-item]
+
+
+def test_a_file_that_can_define_no_attribute_is_never_parsed(tmp_path: Path, monkeypatch):
+    # the scan for attribute names keeps no tree and skips text without `class` and `self` (2026-10-20); a self.x store in
+    # a function outside any class still defines x, and so does a fullwidth self, which only a non-ASCII text can hold
+    tree, diff = _tree(tmp_path, {
+        "pkg/work.py": """
+            def work(settings):
+                return settings.extra + settings.wide + settings.missing
+            """,
+    })
+    texts = {
+        "helpers.py": "def attach(self):\n    self.extra = 1\n",
+        "wide.py": "def attach(ｓｅｌｆ):\n    ｓｅｌｆ.wide = 1\n",
+        "plain.py": "def double(x):\n    return x * 2\n",
+    }
+    for name, text in texts.items():
+        (tmp_path / "pkg" / name).write_text(text, encoding="utf-8")
+    seen: list[str] = []
+    parse = ast.parse
+
+    def recording(source, *args, **kwargs):
+        seen.append(source)
+        return parse(source, *args, **kwargs)
+
+    monkeypatch.setattr(ast, "parse", recording)
+    rows = edges(diff, tree)
+    assert [r["what"].split("`")[1] for r in rows if r["kind"] == "attribute"] == ["settings.missing"]
+    assert texts["helpers.py"] in seen and texts["wide.py"] in seen
+    assert texts["plain.py"] not in seen

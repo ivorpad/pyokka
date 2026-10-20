@@ -33,6 +33,9 @@ from .source import AgentError, display_path
 SESSIONS_ENV = "PYOKKA_SESSIONS_DIR"
 CONNECT_TIMEOUT_S = 5.0
 WATCH_VALUES = 6
+#: the text length the commands ask a live pause for (``textLen``, the runtime's ``limits.textLen``); a request
+#: without it gets the editor's 200, which cut a 256-character dataclass local in the smoke test of 2026-10-19
+LIVE_TEXT_LEN = 2000
 #: what a debug session answers for the verbs that read a recording (docs/PROTOCOL.md, 4.2)
 RECORDING_HINT = 'start the debug session with recording (`pyokka debug FILE --record`, or "Pyokka: Debug Current File (Recording)"), or read a run-all session of the file'
 
@@ -88,6 +91,13 @@ def list_sessions(directory: str | None = None) -> list[dict]:
 
 #: the host's answer to a request type it does not know: `unknown request "recording"`
 OLD_EXTENSION = re.compile(r"""^unknown request ["']([^"']*)["']$""")
+
+
+def _asking(req: dict, text_len: int | None) -> dict:
+    """``req`` with ``textLen`` when the caller wants that much of each value at a live pause (0: all of it); an older host ignores it."""
+    if text_len is not None:
+        req["textLen"] = int(text_len)
+    return req
 
 
 class LiveRun:
@@ -159,7 +169,7 @@ class LiveRun:
         out["live"] = {"pid": self.descriptor.get("pid"), "descriptor": self.descriptor.get("descriptor"), "workspace": self.workspace_root}
         return out
 
-    def context(self, *, step: int | None = None, file: str | None = None, line: int | None = None, scope: bool = False) -> dict:
+    def context(self, *, step: int | None = None, file: str | None = None, line: int | None = None, scope: bool = False, text_len: int | None = None) -> dict:
         req: dict[str, Any] = {"type": "context"}
         if step is not None:
             req["step"] = step
@@ -169,10 +179,10 @@ class LiveRun:
             req["line"] = line
         if scope:
             req["scope"] = True
-        return self._slice(self.request(req))
+        return self._slice(self.request(_asking(req, text_len)))
 
-    def step(self, step: int | None = None, *, kind: str | None = None, to: int | None = None, scope: bool = False, count: int | None = None) -> dict:
-        extra: dict[str, Any] = {"scope": True} if scope else {}
+    def step(self, step: int | None = None, *, kind: str | None = None, to: int | None = None, scope: bool = False, count: int | None = None, text_len: int | None = None) -> dict:
+        extra: dict[str, Any] = _asking({"scope": True} if scope else {}, text_len)
         if count is not None and count > 1:
             extra["count"] = count  # N stops in a row; the reply is the last one
         if to is not None:
@@ -193,11 +203,11 @@ class LiveRun:
             v.setdefault("file", self._file_of(file))
         return {"file": self._file_of(file), "line": line, "values": values}
 
-    def eval(self, expression: str, *, frame: int | None = None) -> dict:
+    def eval(self, expression: str, *, frame: int | None = None, text_len: int | None = None) -> dict:
         req: dict[str, Any] = {"type": "eval", "expression": expression}
         if frame:
             req["frameId"] = frame
-        reply = self.request(req)
+        reply = self.request(_asking(req, text_len))
         return {"expression": expression, "text": reply.get("text"), "valueBag": reply.get("valueBag"), "logId": reply.get("logId")}
 
     def expand(self, value_id: str, query_path: list[str]) -> dict:
@@ -317,23 +327,24 @@ class LiveRun:
         raise AgentError("release is for the kept runner of a saved run", "a live session belongs to VS Code; stop it there")
 
     # -- debugging: the pause -------------------------------------------------------------------------------
-    def debug(self, *, stop_on_entry: bool = False, launch: dict | None = None) -> dict:
+    def debug(self, *, stop_on_entry: bool = False, launch: dict | None = None, text_len: int | None = None) -> dict:
         """Start (or read) a debug session of this file; the reply is the first stop.
 
         On a ``kind: "debug"`` socket a paused session answers its current pause and a running one
         is refused, so "start the debugger" twice never loses the pause an agent is reading. On a
         run socket the host starts the session and the reply is its first stop (route (b) of 3.10).
         Without ``stop_on_entry`` the run goes to the first breakpoint and pauses before the first
-        statement only when none is set.
+        statement only when none is set. ``text_len``, here and on every verb that answers with a
+        pause, asks for that much of each value (``LIVE_TEXT_LEN`` from the commands); None keeps 200.
         """
-        req = self._debug_request("debug", stop_on_entry)
+        req = _asking(self._debug_request("debug", stop_on_entry), text_len)
         if launch is not None:
             req["launch"] = launch
         return self._stop(self.request(req))
 
-    def restart(self, *, stop_on_entry: bool = False) -> dict:
+    def restart(self, *, stop_on_entry: bool = False, text_len: int | None = None) -> dict:
         """Stop the program and start it again; the reply is the first stop of the new run."""
-        return self._stop(self.request(self._debug_request("restart", stop_on_entry)))
+        return self._stop(self.request(_asking(self._debug_request("restart", stop_on_entry), text_len)))
 
     def stop(self) -> dict:
         """End the debug run. A run-all session and its recording stay; a debug session is gone."""
@@ -346,12 +357,13 @@ class LiveRun:
             req["stopOnEntry"] = True
         return req
 
-    def continue_(self, *, no_wait: bool = False, until: str | None = None, to: tuple[str, int] | None = None) -> dict:
+    def continue_(self, *, no_wait: bool = False, until: str | None = None, to: tuple[str, int] | None = None, scope: bool = False, text_len: int | None = None) -> dict:
         """Resume; the reply is the next stop.
 
         ``no_wait`` answers ``{resumed: true}`` at once instead of waiting for it. ``until`` runs to
         the first moment an expression is true (a one-shot break-when watch the host removes after
-        the stop), ``to`` runs to a line through the run-to-line breakpoint.
+        the stop), ``to`` runs to a line through the run-to-line breakpoint. ``scope`` lifts the
+        stop's 60-line block cap and gives the output window, as on ``step``.
         """
         req: dict[str, Any] = {"type": "continue"}
         if no_wait:
@@ -360,7 +372,9 @@ class LiveRun:
             req["until"] = until
         if to is not None:
             req["to"] = {"file": to[0], "line": to[1]}
-        return self._stop(self.request(req))
+        if scope:
+            req["scope"] = True
+        return self._stop(self.request(_asking(req, text_len)))
 
     def exec(self, source: str, *, frame: int | None = None) -> dict:
         """Run a statement in the paused frame: an assignment, a call, an import, a block.
@@ -377,9 +391,9 @@ class LiveRun:
             out["location"] = self._paused_location()  # the text form says where the program still is
         return out
 
-    def record(self) -> dict:
+    def record(self, *, text_len: int | None = None) -> dict:
         """Record from the current pause on; the reply is the same pause as step 0, or ``already`` with the pause."""
-        return self._stop(self.request({"type": "record"}))
+        return self._stop(self.request(_asking({"type": "record"}, text_len)))
 
     def _paused_location(self) -> dict | None:
         """``{file, line}`` of the current pause, from ``state``; None when nothing is paused."""
@@ -392,15 +406,18 @@ class LiveRun:
             return None
         return {"file": paused.get("file"), "line": paused.get("line")}
 
-    def pause(self, *, no_wait: bool = False) -> dict:
+    def pause(self, *, no_wait: bool = False, scope: bool = False, text_len: int | None = None) -> dict:
         """Pause at the next statement; ``no_wait`` answers ``{requested: true}`` without waiting.
 
         A server can sit in ``accept()`` for minutes, so a ten-minute wait is worse than a second call.
+        ``scope`` is ``continue``'s.
         """
         req: dict[str, Any] = {"type": "pause"}
         if no_wait:
             req["noWait"] = True
-        return self._stop(self.request(req))
+        if scope:
+            req["scope"] = True
+        return self._stop(self.request(_asking(req, text_len)))
 
     def _stop(self, reply: dict) -> dict:
         """A stop reply: the slice of the frontier step plus ``paused``, or ``finished`` when the run ended."""
@@ -433,7 +450,7 @@ class LiveRun:
             req["list"] = True
         return self.request(req)
 
-    def locals(self, *, value_bag: bool = False, frame: int | None = None, scope: str | None = None, names_only: bool = False, names: list[str] | None = None) -> dict:
+    def locals(self, *, value_bag: bool = False, frame: int | None = None, scope: str | None = None, names_only: bool = False, names: list[str] | None = None, text_len: int | None = None) -> dict:
         req: dict[str, Any] = {"type": "locals"}
         if value_bag:
             req["valueBag"] = True
@@ -445,7 +462,7 @@ class LiveRun:
             req["namesOnly"] = True
         if names:
             req["names"] = list(names)
-        return self.request(req)
+        return self.request(_asking(req, text_len))
 
     def watch(self, on_event: Callable[[dict], None], on_watching: Callable[[], None] | None = None) -> None:
         """``watch`` once (then ``on_watching``), and hand every streamed event over until the bridge closes or Ctrl-C."""
@@ -545,4 +562,4 @@ def watch_line(event: dict, source: Any, one_line: Callable[..., str]) -> str:
     return str(kind)
 
 
-__all__ = ["LiveRun", "SESSIONS_ENV", "sessions_dir", "list_sessions", "pick_session", "prefer_kind", "descriptor_kind", "read_descriptor", "watch_line", "stop_reason", "NO_SESSION", "NO_SESSION_HINT", "DEBUG_VERBS", "RUN_VERBS", "EITHER_VERBS", "substitution_note"]
+__all__ = ["LIVE_TEXT_LEN", "LiveRun", "SESSIONS_ENV", "sessions_dir", "list_sessions", "pick_session", "prefer_kind", "descriptor_kind", "read_descriptor", "watch_line", "stop_reason", "NO_SESSION", "NO_SESSION_HINT", "DEBUG_VERBS", "RUN_VERBS", "EITHER_VERBS", "substitution_note"]

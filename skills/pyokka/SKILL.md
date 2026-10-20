@@ -1,6 +1,6 @@
 ---
 name: pyokka
-description: 'Debug, explain, review or show what Python code does, with a recording or a live debugger the person watches (Pyokka). Use it when asked to step, break, pause, walk through, review a PR or diff, or show why a value is what it is. Modes: debug, explain, show, review. `debug` pauses a running program at a function or line, steps it and reads the frame; `explain` walks a person through a run in their editor or on the browser page, one line per message; `show` investigates a recording or a pause and delivers a page where every value comes from a command; `review` records the base and head trees, stops where behaviour changed and refuses a finding without a step and a reproduction.'
+description: 'Debug, explain, review or show what Python code does, with a recording or a live debugger the person watches (Pyokka). Use it when asked to step, break, pause, walk through, review a PR or diff, or show why a value is what it is. Modes: debug, explain, show, review. `debug` pauses a running program at a function or line, steps it and reads the frame; `explain` walks a person through a run in their editor or on the browser page, one line per message; `show` investigates a recording or a pause and delivers a page where every value comes from a command; `review` plans a breakpoint per changed function, runs the entry under the debugger, records each pause and refuses a finding without a pause and a reproduction.'
 argument-hint: debug | explain | show | review [what to look at]
 disable-model-invocation: true
 ---
@@ -23,20 +23,21 @@ leaves the question open.
 | `debug` | pause a running program, step it, read or set the frame, check a breakpoint | the stops you saw, in chat, then clean up | [references/debug.md](references/debug.md) |
 | `explain` | teach a person a file while they watch their editor or the browser page | one line and a few sentences per message, their turn after each | [references/explain.md](references/explain.md) |
 | `show` | answer how or why with evidence someone will read or keep | a tour or a code-history page, plus a short finding in chat | [references/show.md](references/show.md) |
-| `review` | review a change as a guided debug session: stops where behaviour changed, each finding reproduced before it counts | the stops the person saw, then the report | [references/review.md](references/review.md) |
+| `review` | review a change as a guided debug session: the change read and the person asked what it is for, a plan over all of it, the entry under the debugger with a breakpoint per changed function, each pause recorded and each finding reproduced before it counts | the stops the person saw, then the report | [references/review.md](references/review.md) |
 
 With no mode, pick by the verb the user used. "Step", "break", "pause", "run to", "does it stop
 in" is `debug`. "Walk me through", "teach me", "explain as we go" with the user at the editor is
 `explain`. "Show me", "why is", "how does", "what did the library do" is `show`. "Review", "PR",
 "diff", "what did this change break" is `review`. A request to see stepping gets real pauses in
-the editor, through `debug`. If two fit, ask which.
+the editor, through `debug`; a review the person wants to watch is still `review`, whose stops
+move their view. If two fit, ask which.
 
 ## How a turn ends
 
 Run the next command instead of asking whether to. A turn ends with what was asked for, never with
 a plan, a question about work already requested ("Shall I start the debugger?") or a promise of
 the next step. A one-line offer of a follow-up after the deliverable is fine. A turn ends earlier
-in four cases:
+in five cases:
 
 - The mode is `explain` or `review` and the person is watching. One stop per message, or as many
   as they ask for, each explained from what its move printed, then their turn.
@@ -46,6 +47,10 @@ in four cases:
   started.
 - The next command would change something that is theirs: the paused program's state (an
   `exec --live` that assigns), a breakpoint they set, their session.
+- A review begins, twice. You have read the change and ask the person, in one question call,
+  what it is for, which areas first and where to watch; then their turn. You show the plan with
+  its split into sessions; then their word on one or several
+  ([references/review.md](references/review.md)).
 
 The person's explicit instruction beats this skill. If they ask for what it advises against (a
 `run.json` in their repository, a page committed), do it and say what it holds.

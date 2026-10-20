@@ -254,6 +254,7 @@ export interface DebuggerState {
   showCallStack: boolean;
   codePreview: boolean;
   echo: boolean;
+  showGuide: boolean;
   /** `text` alone (no value bag) is a recorded variable's value as of the step, `note` where it was recorded; `needsRun` offers one run of the file to record the value */
   watches: { id: string; exp: string; valueBag?: ValueBag; text?: string; note?: string; error?: string; needsRun?: boolean; step?: number }[];
   locals?: { name: string; text: string }[];
@@ -447,7 +448,7 @@ export type WebviewToHost =
   | { type: 'command'; command: string; args?: unknown[] }
   | { type: 'settings.update'; patch: Partial<PanelSettings>; scope: 'session' | 'global' }
   | { type: 'debugger.goto'; step: number }
-  | { type: 'debugger.action'; action: 'stepInto' | 'stepBackInto' | 'stepOver' | 'stepBackOver' | 'stepOut' | 'stepBackOut' | 'runToLine' | 'runBackToLine' | 'stop' | 'start' | 'autoPlay' | 'pause' | 'toggleCallStack' | 'toggleEcho' | 'toggleCodePreview' }
+  | { type: 'debugger.action'; action: 'stepInto' | 'stepBackInto' | 'stepOver' | 'stepBackOver' | 'stepOut' | 'stepBackOut' | 'runToLine' | 'runBackToLine' | 'stop' | 'start' | 'autoPlay' | 'pause' | 'toggleCallStack' | 'toggleEcho' | 'toggleCodePreview' | 'toggleGuide' }
   | { type: 'debugger.previewRequest'; step: number }
   | { type: 'debugger.selectFrame'; index: number }
   /** the debugger's toolbar and pane (docs/HANDOFF-debugger.md): resume, pause at the next statement, execute a step at the frontier, stop debugging */

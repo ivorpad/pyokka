@@ -10,12 +10,19 @@ from __future__ import annotations
 
 from typing import Any
 
-from .live import stop_reason
-from .recording import cut_line
+from ..values import value_chars
+from .live import LIVE_TEXT_LEN, stop_reason
+from .recording import CUT_RE, cut_line
 
 OUTPUT_LINES = 20
 OUTPUT_LINES_SCOPE = 200
 STACK_FRAMES = 8
+#: what `cut_line` keeps for its own `…(+N chars)` mark (its `limit - 16`)
+_CUT_MARK = 16
+#: the commands whose text can carry a live pause's values, the only ones `cut_hint` reads
+_PAUSE_READS = frozenset({"locals", "eval", "continue", "pause", "step", "context", "debug", "restart", "record"})
+#: the line after a live output that cut a value: the two ways to read the rest of it
+CUT_HINT = 'hint: a value was cut: `pyokka locals --live --name NAME --text-len N` shows more of it, 0 all of it (MCP: pyokka_debug {"action": "locals", "names": ["NAME"], "text_len": N}), and a slice such as `pyokka eval --live \'NAME[2000:4000]\'` the rest of a long string'
 
 
 def _loc(source: Any, file: Any, line: Any) -> str:
@@ -27,8 +34,55 @@ def _one_line(text: Any, limit: int = 160) -> str:
     return cut_line(text, limit, strip=True)
 
 
+def value_line(text: Any, text_len: int | None = None) -> str:
+    """A value read at a live pause, or evaluated, as the runtime cut it: never cut a second time here.
+
+    The runtime cuts at ``LIVE_TEXT_LEN`` (or the ``--text-len`` asked for, clamped as the runtime
+    clamps it) and marks the cut ``…(+N chars)``, and ``cut_line`` keeps 16 characters for that mark,
+    so the line takes the runtime's length plus those 16. At 2,000 a cut dataclass's 2,014-character
+    text would otherwise lose 15 characters to a second cut. Never less than ``LIVE_TEXT_LEN``: a
+    saved run's ``eval`` ignores ``--text-len`` and answers at 200."""
+    return cut_line(text, max(LIVE_TEXT_LEN, value_chars(text_len, LIVE_TEXT_LEN)) + _CUT_MARK, strip=True)
+
+
+def cut_hint(command: str, result: dict) -> list[str]:
+    """``CUT_HINT`` once, when a live pause's local or a live evaluation in ``result`` carries the cut mark.
+
+    The recorded ``values`` of a slice are left out: how long they are was settled when the run was
+    recorded (``--max-value-chars``), and neither route reaches them."""
+    if command not in _PAUSE_READS:
+        return []
+    texts = [v.get("text") for v in result.get("locals") or [] if isinstance(v, dict)] if isinstance(result.get("locals"), list) else []
+    if command == "eval":
+        texts.append(result.get("text"))
+    return [CUT_HINT] if any(isinstance(t, str) and CUT_RE.search(t) for t in texts) else []
+
+
+def local_lines(v: dict, indent: str, text_len: int | None = None) -> list[str]:
+    """``name = text`` of a local at a live pause, then each field of a cut value under it, and how many it left out."""
+    out = ["%s%s = %s" % (indent, v.get("name"), value_line(v.get("text"), text_len))]
+    for pair in v.get("fields") or []:
+        if isinstance(pair, (list, tuple)) and len(pair) == 2:
+            out.append("%s  %s = %s" % (indent, pair[0], value_line(pair[1])))
+    more = v.get("fieldsMore")
+    if isinstance(more, int) and more > 0:
+        out.append("%s  … %d more" % (indent, more))
+    return out
+
+
 RECORDING_STARTED = "; recording starts here, step 0"
 NOT_RECORDING_YET = "not recording yet: nothing before this pause was kept; `record --live` records from here (a `--record-from` run starts by itself at its pause)"
+UNSEEN_RUN = "no stop: nothing was set to pause it (no `--at NAME|FILE:LINE`, MCP: at) and it did not record (`--record`), so the run went to its end unseen; a breakpoint pauses the next one, a recording can be stepped through after it ends"
+
+
+def unseen_run_note(args: Any) -> list[str]:
+    """``UNSEEN_RUN`` after ``finished:`` when a ``debug`` start ran to its end with no breakpoint and no recording: a line that
+    says why there was no stop, since ``finished: exit 0, 0 steps`` alone reads as if the program had done nothing."""
+    if getattr(args, "command", None) != "debug" or not getattr(args, "_route", None):
+        return []
+    if getattr(args, "at", None) or getattr(args, "also_at", None) or getattr(args, "record", False) or getattr(args, "record_from", None) or getattr(args, "stop_on_entry", False):
+        return []
+    return [UNSEEN_RUN]
 
 
 def recording_suffix(paused: Any) -> str:
@@ -194,7 +248,7 @@ def _locals_lines(result: dict) -> list[str]:
     rows = [v for v in variables if isinstance(v, dict)]
     if not rows:
         return ["locals: (none)"]
-    return ["locals:", *["  %s = %s" % (v.get("name"), _one_line(v.get("text"))) for v in rows]]
+    return ["locals:", *[line for v in rows for line in local_lines(v, "  ")]]
 
 
 def _output_lines(output: Any, scope: bool = False) -> list[str]:
@@ -296,4 +350,4 @@ def _other_state(other: dict) -> str:
     return "finished, %s steps" % steps if steps else "no finished run yet"
 
 
-__all__ = ["exec_error", "is_debug_reply", "render_debug_exec", "render_debug_state", "render_debug_stop"]
+__all__ = ["CUT_HINT", "UNSEEN_RUN", "cut_hint", "exec_error", "is_debug_reply", "local_lines", "render_debug_exec", "render_debug_state", "render_debug_stop", "unseen_run_note", "value_line"]

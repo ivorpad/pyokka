@@ -141,6 +141,9 @@ export async function debuggerAction(tm: TimeMachine, s: Session, action: Debugg
     case 'toggleCodePreview':
       tm.toggleCodePreview(s);
       return;
+    case 'toggleGuide':
+      tm.toggleGuide(s);
+      return;
     default:
       return;
   }

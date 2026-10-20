@@ -6,7 +6,7 @@ export class BridgeLink {
   private ws: WebSocket | undefined;
   private nextId = 1;
   private readonly pending = new Map<number, (reply: RunnerMessage) => void>();
-  private queue: string[] = [];
+  private queue: { text: string; failed?: (error: unknown) => void }[] = [];
   private retry = 0;
 
   constructor(
@@ -23,8 +23,13 @@ export class BridgeLink {
     ws.onopen = () => {
       this.retry = 0;
       this.onStatus(true);
-      for (const text of this.queue) ws.send(text);
-      this.queue = [];
+      while (this.queue.length) {
+        const queued = this.queue.shift()!;
+        try { ws.send(queued.text); } catch (error) {
+          if (queued.failed) queued.failed(error);
+          else throw error;
+        }
+      }
     };
     ws.onmessage = (ev) => {
       let msg: BridgeToPage;
@@ -54,26 +59,42 @@ export class BridgeLink {
   }
 
   send(msg: PageToBridge): void {
+    this.dispatch(msg);
+  }
+
+  private dispatch(msg: PageToBridge, failed?: (error: unknown) => void): void {
     const text = JSON.stringify(msg);
     if (this.ws?.readyState === WebSocket.OPEN) this.ws.send(text);
-    else if (msg.type !== 'state') this.queue.push(text);
+    else if (msg.type !== 'state') this.queue.push({ text, failed });
   }
 
   /** A host request relayed to the runtime; resolves with its reply, an `error` reply included. */
-  request(body: RequestBody): Promise<RunnerMessage> {
-    const id = this.nextId++;
-    return new Promise((resolve) => {
-      this.pending.set(id, resolve);
-      this.send({ type: 'request', id, body });
-    });
+  request(body: RequestBody, signal?: AbortSignal): Promise<RunnerMessage> {
+    return this.relay('request', body, signal);
   }
 
   /** The same, for the live debugger's run (its own runtime). */
-  debugRequest(body: RequestBody): Promise<RunnerMessage> {
+  debugRequest(body: RequestBody, signal?: AbortSignal): Promise<RunnerMessage> {
+    return this.relay('debug.request', body, signal);
+  }
+
+  private relay(type: 'request' | 'debug.request', body: RequestBody, signal?: AbortSignal): Promise<RunnerMessage> {
+    if (signal?.aborted) return Promise.reject(new Error('bridge request cancelled before dispatch'));
     const id = this.nextId++;
-    return new Promise((resolve) => {
-      this.pending.set(id, resolve);
-      this.send({ type: 'debug.request', id, body });
+    const message: PageToBridge = { type, id, body };
+    const text = JSON.stringify(message);
+    return new Promise((resolve, reject) => {
+      const cleanup = (): void => {
+        this.pending.delete(id);
+        signal?.removeEventListener('abort', aborted);
+        const index = this.queue.findIndex(queued => queued.text === text);
+        if (index >= 0) this.queue.splice(index, 1);
+      };
+      const aborted = (): void => { cleanup(); reject(new Error('bridge request cancelled; dispatched work may still continue')); };
+      this.pending.set(id, (reply) => { cleanup(); resolve(reply); });
+      signal?.addEventListener('abort', aborted, { once: true });
+      const failed = (error: unknown): void => { cleanup(); reject(error); };
+      try { this.dispatch(message, failed); } catch (error) { failed(error); }
     });
   }
 }

@@ -378,7 +378,7 @@ export class DebugSession extends EventEmitter<DebugSessionEvents> {
     return (reply['locals'] as LocalVar[] | undefined) ?? [];
   }
 
-  async evaluate(expression: string, opts: { frameId?: number } = {}): Promise<{ text: string; valueBag?: ValueBag } | undefined> {
+  async evaluate(expression: string, opts: { frameId?: number; textLen?: number } = {}): Promise<{ text: string; valueBag?: ValueBag } | undefined> {
     if (!expression.trim()) return undefined;
     const runner = this.runner;
     if (!runner || !this.runId || !this.state.paused) return undefined;

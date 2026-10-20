@@ -165,11 +165,11 @@ describe('BridgeServer', () => {
     server = undefined;
   });
 
-  async function start(): Promise<{ url: string; port: number; file: string }> {
+  async function start(runtime = fake): Promise<{ url: string; port: number; file: string }> {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pkw-'));
     const file = path.join(dir, 'scratch.py');
     fs.writeFileSync(file, 'print("ok")\n');
-    server = new BridgeServer({ file, port: 0, host: '127.0.0.1', runtime: `"${process.execPath}" "${fake}"`, python: 'python3', watch: false, open: false, distDir: dir, stateDir: dir });
+    server = new BridgeServer({ file, port: 0, host: '127.0.0.1', runtime: `"${process.execPath}" "${runtime}"`, python: 'python3', watch: false, open: false, distDir: dir, stateDir: dir });
     await server.start();
     const port = Number(new URL(server.url).port);
     return { url: server.url, port, file };
@@ -198,6 +198,68 @@ describe('BridgeServer', () => {
       ws.onerror = () => reject(new Error('websocket failed'));
     });
   }
+
+  it('echoes a requested run token without carrying it into later runs or replay', async () => {
+    const { port } = await start();
+    const page = await connect(port);
+    await page.next((m) => m.type === 'event' && m.event.type === 'run.finished');
+    page.ws.send(JSON.stringify({ type: 'run', requestId: 'page-request-1', content: 'print("requested")\n' }));
+    const begin = await page.next((m) => m.type === 'run.begin' && m.runId === 'w-2');
+    expect(begin).toMatchObject({ requestId: 'page-request-1', runId: 'w-2', reason: 'page' });
+    await page.next((m) => m.type === 'event' && m.event.runId === 'w-2' && m.event.type === 'run.finished');
+
+    const late = await connect(port);
+    expect(await late.next((m) => m.type === 'run.begin')).not.toHaveProperty('requestId');
+    page.ws.send(JSON.stringify({ type: 'config', patch: { autoLog: false } }));
+    expect(await page.next((m) => m.type === 'run.begin' && m.runId === 'w-3')).not.toHaveProperty('requestId');
+    await page.next((m) => m.type === 'event' && m.event.runId === 'w-3' && m.event.type === 'run.finished');
+    await server!.run('disk');
+    expect(await page.next((m) => m.type === 'run.begin' && m.runId === 'w-4')).not.toHaveProperty('requestId');
+    await page.next((m) => m.type === 'event' && m.event.runId === 'w-4' && m.event.type === 'run.finished');
+    page.ws.send(JSON.stringify({ type: 'run' }));
+    expect(await page.next((m) => m.type === 'run.begin' && m.runId === 'w-5')).not.toHaveProperty('requestId');
+    page.ws.close();
+    late.ws.close();
+  });
+
+  it('identifies a refused launch by request token while retaining legacy runner errors', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pkw-refuse-'));
+    const runtime = path.join(dir, 'refuse.cjs');
+    // Keep the real runner transport; this runtime refuses each run at its acknowledgment.
+    fs.writeFileSync(runtime, `const readline = require('node:readline');
+const send = m => process.stdout.write(JSON.stringify(m) + '\\n');
+readline.createInterface({ input: process.stdin }).on('line', line => {
+  const m = JSON.parse(line);
+  if (m.type === 'hello') send({ type: 'ready', id: m.id, capabilities: [] });
+  else if (m.type === 'run') send({ type: 'error', id: m.id, message: 'launch refused' });
+  else if (m.type === 'shutdown') process.exit(0);
+  else send({ type: 'ok', id: m.id });
+});`);
+    const { port } = await start(runtime);
+    const page = await connect(port);
+    await page.next((m) => m.type === 'runner.error');
+    page.ws.send(JSON.stringify({ type: 'run', requestId: 'failed-request' }));
+    await page.next((m) => m.type === 'run.begin' && m.runId === 'w-2');
+    // A round-trip request also ensures the launch failure messages reached the page.
+    page.ws.send(JSON.stringify({ type: 'request', id: 17, body: { type: 'expand', runId: 'w-2', valueId: 'v1', queryPath: [] } }));
+    await page.next((m) => m.type === 'reply' && m.id === 17);
+    expect(page.messages).toContainEqual({ type: 'run.error', requestId: 'failed-request', runId: 'w-2', message: 'launch refused' });
+    expect(page.messages.filter((m) => m.type === 'runner.error')).toHaveLength(2);
+    expect(page.messages.filter((m) => m.type === 'run.error')).toHaveLength(1);
+    page.ws.close();
+  });
+
+  it('identifies a requested launch held back by the live debugger without beginning it', async () => {
+    const { port } = await start();
+    const page = await connect(port);
+    await page.next((m) => m.type === 'event' && m.event.type === 'run.finished');
+    page.ws.send(JSON.stringify({ type: 'debug.start', breakpoints: [], exceptions: 'uncaught' }));
+    await page.next((m) => m.type === 'debug.event' && m.event.type === 'debug.paused');
+    await server!.run('settings', undefined, 'held-request');
+    expect(await page.next((m) => m.type === 'run.error')).toEqual({ type: 'run.error', requestId: 'held-request', message: expect.stringMatching(/live debug run is active/) });
+    expect(page.messages.filter((m) => m.type === 'run.begin')).toHaveLength(1);
+    page.ws.close();
+  });
 
   it('relays a run of any runtime to the page, replies to requests, and refuses other origins', async () => {
     const { port, file } = await start();

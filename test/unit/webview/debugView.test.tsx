@@ -28,7 +28,7 @@ const model: TimelineModel = {
   truncated: false,
 };
 
-const base: DebuggerState = { active: true, autoPlaying: false, currentStep: 4, canStep: { into: true, back: true, over: true, backOver: true, out: false, backOut: false }, echoSteps: [], showCallStack: false, codePreview: false, echo: false, watches: [] };
+const base: DebuggerState = { active: true, autoPlaying: false, currentStep: 4, canStep: { into: true, back: true, over: true, backOver: true, out: false, backOut: false }, echoSteps: [], showCallStack: false, codePreview: false, echo: false, showGuide: true, watches: [] };
 
 const num = (id: string, v: string): ValueNode => ({ type: 'number', value: v, id, queryPath: [] });
 const row = (i: number, path: string, score: string, patron: string | null): ValueNode & { name: string } => ({
@@ -104,6 +104,15 @@ describe('DebuggerView while a debug run is paused', () => {
     expect(html).not.toContain('pk-local-name');
     expect(html).not.toContain('Show call stack');
     expect(html).toContain('TIMELINE GUIDE');
+  });
+  it('hides the Timeline Guide behind its eye button and keeps the header to bring it back', () => {
+    expect(view(base)).toContain('pk-guide-swatch');
+    expect(view(base)).toContain('Hide timeline guide');
+    const hidden = view({ ...base, showGuide: false });
+    expect(hidden).not.toContain('pk-guide-swatch');
+    expect(hidden).toContain('TIMELINE GUIDE');
+    expect(hidden).toContain('Show timeline guide');
+    expect(hidden).toContain('is-hidden');
   });
 });
 
