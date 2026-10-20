@@ -744,7 +744,17 @@ records from there; a start point that does not match says so. A review of a
 program records the whole run and replays the same way. A module launch (a test
 through its runner), a container session and the browser page cannot be replayed
 yet. `pyokka.timeMachine.recordInputs` (on by default) turns off the clock and
-randomness recording for a program that misbehaves with them wrapped.
+randomness recording for a program that misbehaves with them wrapped. A session
+also fixes one seed for Python's string hashing, which every interpreter
+otherwise picks at random, so a set of strings iterates in the run's order in
+the replay too; the program does not see it in its environment, and a
+`PYTHONHASHSEED` you set yourself is kept. Code typed in the Debug Console at a
+pause leaves no steps and no clock readings in the recording, and when it
+changed a value the summary says the replay ran without it. The Why header's
+button replays the value on the tree's first line: the value the step made, read
+right after its statement, when the step made it. Agents get the same copy with
+`pyokka why --live STEP NAME --full` (MCP: `pyokka_value` `why` with
+`full: true`).
 
 **Why is this value here?** The "Why" button on an entry or on a Variable pane
 row (the hover has the same link, and "Pyokka: Why This Value" takes the name

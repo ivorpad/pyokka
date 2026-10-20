@@ -2,6 +2,35 @@
 
 ## Unreleased
 
+- Whole value is now Full value: the button, its tooltip and the guide say so.
+
+- Agents get the full value: `pyokka why --live STEP NAME --full` prints the why tree, then the
+  value on its first line copied by a replay of the run, with the panel's status label, its
+  summary and the value as indented Python-like text (`--json` gives the view; MCP:
+  `pyokka_value` `why` with `full: true`). Wherever `var`, `why`, `step` or `context` print a
+  recorded value that was cut, a `hint:` line names the command with the step and the name to
+  give it. The replay runs the program again, so the flag's help, the hint, the tool's description
+  and the line after the label say so, and `pyokka_value` is no longer marked read-only. A saved
+  run is refused: it has no runner to replay in. The bridge's `why` takes `full`; 0.7.0's `whole`
+  request is still answered for one release.
+
+- Full value fixes from a review of 0.7.0. A change was sometimes read at the start of its own
+  step, which holds the value from before it, and that older value could read Checked; a change
+  is now read where its snapshot came from. The Why header replayed the value from before its
+  step's statement when that statement made the value; it now replays the value on the tree's
+  first line. A program that iterates a set of strings replayed in another order (every
+  interpreter salts string hashing with its own seed), so a session now pins one seed for its
+  runs and their replays and takes it back out of the program's environment. Code typed in the
+  Debug Console at a pause left steps and clock readings in the recording, and before a
+  `--record-from` start it moved the statement the replay starts at; requests served at a pause
+  now run off the recording, and a console write is named in the summary.
+
+- `why` said "not assigned yet at #2, first assigned at #3" for a name assigned at #0 whose value
+  was not recorded, which is every run without recorded locals, the default. It now says so only
+  when every local was recorded from the start; otherwise `x = ?   not recorded`. A recording that
+  began at a pause says both: "made before #0, where the recording started, or first assigned at
+  #3".
+
 ## 0.7.0
 
 - Whole value: a Variable pane row whose value the recorder kept, and the Why tree's header,

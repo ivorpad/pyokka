@@ -30,7 +30,7 @@ ALL = (SKILL / "SKILL.md").read_text(encoding="utf-8") + "\n" + REFERENCE
 #: flags every command over a run shares, documented once
 SHARED = {"-h", "--help", "--json", "--live", "--session"}
 #: variables the build and the test harness set, not a user or an agent
-INTERNAL_VARS = {"PYOKKA_REEXEC", "PYOKKA_E2E", "PYOKKA_BUILD"}
+INTERNAL_VARS = {"PYOKKA_REEXEC", "PYOKKA_E2E", "PYOKKA_BUILD", "PYOKKA_PINNED_HASHSEED"}  # the last: host to runtime, gone before the program starts
 
 
 def synopses(text: str, name: str) -> str:
