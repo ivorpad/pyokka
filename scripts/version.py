@@ -36,6 +36,10 @@ ROOT = Path(__file__).resolve().parent.parent
 # or a dependency pin. Group 2 is the number; groups 1 and 3 are put back unchanged.
 FILES = [
     ('package.json', re.compile(r'^(  "version": ")(\d+\.\d+\.\d+)(")', re.M)),
+    # npm writes the number twice, at the top and on the root package; a stale copy
+    # is harmless to npm ci but shows up as a diff the next time anyone runs npm install
+    ('package-lock.json', re.compile(r'^(  "version": ")(\d+\.\d+\.\d+)(")', re.M)),
+    ('package-lock.json', re.compile(r'^(    "": \{\n      "name": "pyokka",\n      "version": ")(\d+\.\d+\.\d+)(")', re.M)),
     ('python/pyproject.toml', re.compile(r'^(version = ")(\d+\.\d+\.\d+)(")', re.M)),
     ('python/pyokka_runtime/__init__.py', re.compile(r'^(__version__ = ")(\d+\.\d+\.\d+)(")', re.M)),
     # the fallback the manifest generator falls back on when package.json is missing.
@@ -75,7 +79,8 @@ def write(version: str) -> list[str]:
         if new == text:
             continue
         target.write_text(new)
-        changed.append(path)
+        if path not in changed:
+            changed.append(path)
     return changed
 
 
