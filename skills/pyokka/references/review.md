@@ -95,7 +95,7 @@ the person to let VS Code open the `ivor.pyokka` URI. An explicit `--surface vsc
 Pyokka session and no `code` command is refused before recording. `--surface page` serves `pyokka web` on
 `--port` and opens the browser tab; `start` checks the port before it records and refuses a taken
 one. The review stops that server at `report` or `review close` (the VS Code recording stays).
-`--surface chat`, or `$PYOKKA_REVIEW_SURFACE=chat`, opens nothing. A review of one `--test` stays in
+`--surface chat`, or `$PYOKKA_REVIEW_SURFACE=chat`, opens nothing. A `--full` review of one `--test` stays in
 chat whatever surface was asked: a VS Code session or a page runs a file as a program and not a
 test, and a debug session of the test is another run, which the review does not move; a `stop
 --surface vscode` or `page` on it is refused with `next:` the same stop in chat. When the view the

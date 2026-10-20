@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+## 0.5.5
+
+- The `pyokka_review` tool's `test` and `surface` descriptions and `review.md`'s Surfaces section said
+  a review of one test stays in chat. That is the `--full` review's rule; the default runs the test
+  under the debugger in VS Code, as the smoke of 2026-10-20 did, and the texts now say so. The skill
+  gains `references/recovery.md`, each failure signature with what it means and the one command it
+  asks for, read when a command refuses, nothing pauses or a pause lands where nothing was set.
+  `docs/PLAYBOOK.md` is the person's checklist: nine situations with prompts for Codex and Claude
+  Code, the observed lines, pass and fail, and three bare prompts run for real on 2026-10-20.
+
 ## 0.5.4
 
 - `review stop` in the debugger prints the change at the pause: the item's removed lines with base's
