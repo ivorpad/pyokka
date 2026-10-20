@@ -111,19 +111,19 @@ Two things move it:
   `vsce package`, `--install-extension` or `esbuild.mjs --production` and bumps before it runs, so
   the vsix carries the new number rather than the previous release's. It skips `scripts/release.sh`,
   which bumps on its own, and `scripts/check.sh`, whose plain esbuild run is not a build anyone installs.
-- `scripts/release.sh` does the whole pass: bump, `check.sh`, cut `## Unreleased` in `CHANGELOG.md`
-  into a `## X.Y.Z` section, build, install, commit, annotated tag, push, and `gh release create` with
-  the vsix attached. It refuses a dirty tree and refuses a release with no commits behind it.
+- `scripts/release.sh` does the whole pass: `check.sh`, bump (relocking `python/uv.lock`, which
+  records the project's own version), cut `## Unreleased` in `CHANGELOG.md` into a `## X.Y.Z`
+  section, build, install, commit, annotated tag, push, and `gh release create` with the vsix
+  attached. It refuses a dirty tree and refuses a release with no commits behind it.
 
-There are two repositories. `origin` is the private `ivorpad/pyokka-dev`, with the whole history;
-`release.sh` pushes, tags and creates the GitHub release there. The public `ivorpad/pyokka`, which
-the README's install command downloads from, gets a snapshot of the tagged tree: clone it, replace
-its tree with `git archive vX.Y.Z`, commit "Pyokka X.Y.Z" on top of its `main` under the GitHub
-noreply address, tag, push, and `gh release create vX.Y.Z pyokka-X.Y.Z.vsix --repo ivorpad/pyokka`.
-Grep the snapshot for home-directory and temp paths, the git email and API keys before the push;
-GitHub push protection refuses a commit holding a token-shaped string, which is why the redaction
-fixture spells Slack tokens `<xox>`. The cut changelog section is the release body on both, so the
-notes are the ones written while the work happened.
+There is one repository. `origin` is the public `ivorpad/pyokka`, the one the README's install
+command downloads from, and `release.sh` pushes, tags and creates the GitHub release there. Every
+push is public, so the checkout commits under the GitHub noreply address (`git config user.email
+52452+ivorpad@users.noreply.github.com`), and GitHub push protection refuses a commit holding a
+token-shaped string, which is why the redaction fixture spells Slack tokens `<xox>`. The cut
+changelog section is the release body, so the notes are the ones written while the work happened.
+Until 0.5.5 the code lived in the private `ivorpad/pyokka-dev`, which keeps that history, and this
+repository got one snapshot commit per release.
 
 ## Quirks
 
