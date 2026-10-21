@@ -20,3 +20,4 @@ docs/reference/quokka/
 
 # Screenshots the e2e UI pass writes (PYOKKA_UI_PASS=1)
 docs/reference/pyokka-live/
+docs/HANDOFF*.md
