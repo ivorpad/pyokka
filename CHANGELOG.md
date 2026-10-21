@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.8.0
+
 - `pyokka run --follow-objects` (also `debug --follow-objects` and `review start --follow-objects`, MCP
   `follow_objects`, launch.json `followObjects`) records each
   change at the statement that made it, a change in place included, and gives it to every other
