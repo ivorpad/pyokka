@@ -20,6 +20,11 @@ python/**
 .claude/**
 skills/**
 AGENTS.md
+CLAUDE.md
+.agents/**
+skills-lock.json
+tasks/**
+prototypes/**
 .vscode-test.libdiag.mjs
 *.vsix
 **/.vscode/**
