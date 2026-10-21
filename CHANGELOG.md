@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.9.0
+
 - `var`, `why`, Variable History and the Why card no longer count a read as a change. `print(pyokka)`
   and a bare `pyokka` log the value `pyokka` already had; `var pyokka` lists only the assignment on
   line 9, and `why` at a later step starts there. A logged value that differs from the known one

@@ -8,4 +8,4 @@ Modules:
     protocol    - message constructors shared by runner and tests
 """
 
-__version__ = "0.8.0"
+__version__ = "0.9.0"
