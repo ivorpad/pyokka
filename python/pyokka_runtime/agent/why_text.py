@@ -141,6 +141,9 @@ def _call(root: dict, calls: list[dict]) -> str:
     for call in calls:
         if call.get("result") is None:
             continue
+        # a function the statement called more than once (a comprehension, a loop): one result is not the value
+        if sum(1 for c in calls if c.get("name") == call.get("name")) > 1:
+            continue
         text = "%s returned %s" % (_call_text(str(root.get("statement") or ""), str(call.get("name"))), clip(call["result"]))
         for arg in call.get("inputs") or []:
             if isinstance(arg, dict) and arg.get("text") is not None and str(arg["text"]) in NONE_OR_EMPTY:

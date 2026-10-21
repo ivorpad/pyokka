@@ -400,6 +400,9 @@ def test_conclusion_states_the_value_then_one_cause_per_rule():
     # 3: a stepped call with its return, and the first None or empty argument
     calls = [{"name": "describe", "result": "'total/35.0'", "inputs": [{"name": "value", "text": "35.0"}, {"name": "sep", "text": "''"}]}]
     assert conclusion(tree(calls=calls)) == "label is 'total/35.0' at #24 (main.py:29). helper.describe(total, os.sep) returned 'total/35.0' with sep = ''."
+    # 3: a function called more than once (a comprehension) has no one result that is the value
+    twice = [{"name": "kind", "result": "<class 'str'>", "inputs": []}, {"name": "kind", "result": "<class 'float'>", "inputs": []}]
+    assert conclusion(tree(name="types", text="[<class 'str'>, <class 'float'>]", statement="types = [kind(c) for c in cols]", calls=twice)) == "types is [<class 'str'>, <class 'float'>] at #24 (main.py:29)."
     # 4: a plain copy of one recorded read
     assert conclusion(tree(name="copy_of_label", statement="copy_of_label = label", reads=[_read("label", "'total/35.0'", 20, 12)])) == "copy_of_label is 'total/35.0' at #24 (main.py:29). It copies label, which has been 'total/35.0' since #20 (main.py:12)."
     # 5: a lookup that gave None from a recorded container, the key count when the repr is whole

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- `why`'s conclusion no longer names one call's result as the value when the statement called the
+  same function more than once. `coltypes = [_column_type(c) for c in cols]` read
+  `_column_type(...) returned <class 'str'>`, the first column's type; it now says what the statement
+  read.
 - The Why pane opens with a summary card above the tree, in one of three states, each sentence
   built from the tree's own values and checked against it before it is shown:
   - **Change found:** `bo['lines'][0], the same object as line, was changed at #23 promo.py:4 in

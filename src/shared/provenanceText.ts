@@ -205,6 +205,8 @@ function callTextIn(statement: string, name: string): string {
 function calledValue(root: ProvenanceNode, calls: ProvenanceCall[]): string {
   for (const call of calls) {
     if (call.result === undefined) continue;
+    // a function the statement called more than once (a comprehension, a loop): one result is not the value
+    if (calls.filter((c) => c.name === call.name).length > 1) continue;
     let text = `${callTextIn(root.statement ?? '', call.name)} returned ${clip(call.result)}`;
     const empty = call.inputs.find((a) => a.text !== undefined && NONE_OR_EMPTY.has(String(a.text)));
     if (empty) text += ` with ${empty.name} = ${empty.text}`;
