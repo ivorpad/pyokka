@@ -371,11 +371,20 @@ export class History {
   /** Every change row of `name` from the three sources, merged by step and matched name; unordered, without reads. */
   private rows(name: string): VariableChange[] {
     const rows = new Map<string, VariableChange>();
-    const add = (row: VariableChange): void => {
+    const recordedIn = new Map<string, number>(); // a locals row's key -> the scope whose entry made it
+    const add = (row: VariableChange, scope?: number): void => {
       const key = `${row.step}:${row.name}`;
       const have = rows.get(key);
-      if (!have) rows.set(key, row);
-      else if (row.logId && !have.logId) have.logId = row.logId;
+      if (!have) {
+        rows.set(key, row);
+        if (scope !== undefined) recordedIn.set(key, scope);
+      } else if (scope !== undefined && recordedIn.get(key) === scope) {
+        // the same frame recorded the name twice at one step: a statement a yield or an await split in two
+        // (`d["got"] = yield d.pop("seed")`), closed again after the resume. The later one is its value after.
+        have.text = row.text;
+        if (row.shared) have.shared = row.shared;
+        else delete have.shared;
+      } else if (row.logId && !have.logId) have.logId = row.logId;
     };
     // 1. recorded locals, attributed to the statement that bound the name
     for (const entry of this.inputs.locals) {
@@ -385,7 +394,7 @@ export class History {
         const row = this.row(this.madeAt(entry.step, entry.scopeId, ch.name), ch.name, ch.text, 'locals');
         const shared = this.shared(entry.step, entry.scopeId, ch.name);
         if (shared) row.shared = shared;
-        add(row);
+        add(row, entry.scopeId);
       }
     }
     // 2. logged values whose context is the name (or a path under it)

@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- `why` follows a parameter back to the call that passed it. `charge`'s `order` at #34 now reads
+  `passed bo at #33 main.py:12 main`, and the walk goes on to the statement that last changed `bo`:
+  #23, `line["qty"] += 1` in `bulk_bonus`, in a `--follow-objects` recording, or #15, where `bo`
+  still had qty 1, in a default one. Nodes carry it as `argument`. The link comes from the call
+  site's source: methods (the receiver is `self`), keywords, `*args`/`**kwargs`, `super().__init__`,
+  inherited `__init__`, `__new__`, property getters, functions kept in a variable and a function
+  called twice in one statement (`add(double(1), double(2))`). When the source does not say which
+  argument it was there is none: callbacks (`sorted(rows, key=f)`, `map(f, xs)`), decorator
+  wrappers, dunders Python calls itself, defaults. On eight standard-library modules 1,471 of 1,854
+  parameters link, with no wrong argument found (docs/PROTOCOL.md, "Provenance").
+- `--follow-objects` no longer loses what a generator or coroutine does after it resumes: a `for`
+  loop's target after the `yield` that ended its body (`i` read 0, 0, 0 for 0, 1, 2), the value
+  `got = yield total` received, and `v` in `v = await fetch(k)`. A statement split by a yield is
+  closed again after the resume, and `var` lists its value after.
+
 ## 0.8.0
 
 - `pyokka run --follow-objects` (also `debug --follow-objects` and `review start --follow-objects`, MCP

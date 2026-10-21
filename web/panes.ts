@@ -8,7 +8,7 @@
  * src/timeMachine/watches.ts without vscode.
  */
 import { indexBindings, matchesName, variableHistory } from '../src/session/variableHistory';
-import { provenance, stepOfEntry } from '../src/session/provenance';
+import { provenance, stepOfEntry, withDisplayPaths } from '../src/session/provenance';
 import { buildExecutionGraph, graphStack } from '../src/session/executionGraph';
 import type { ExecutionGraph, GraphNode } from '../src/session/executionGraphTypes';
 import { buildPhases } from '../src/session/executionGraphPhases';
@@ -17,7 +17,7 @@ import { buildHttpTable } from '../src/session/httpTable';
 import { buildTourPanel, resumeFor, resumeStop, type TourResume } from '../src/session/tourPanel';
 import { pickLocal } from '../src/features/hoverLocals';
 import { renderValueNode } from '../src/views/valueText';
-import type { LogEvent, Provenance, ProvenanceNode, StatementBinding, ValueBag, VariableHistory, WatchEvent, WatchRequest } from '../src/shared/protocol';
+import type { LogEvent, StatementBinding, ValueBag, VariableHistory, WatchEvent, WatchRequest } from '../src/shared/protocol';
 import type { DebuggerState, ExecutionGraphPanel, HostToWebview, TourPanel } from '../src/shared/webviewProtocol';
 import type { WalkthroughInputs } from '../src/session/walkthroughShared';
 import type { BridgeFile, BridgeNarration, BridgeTour, PageToBridge, RequestBody } from './bridgeProtocol';
@@ -250,7 +250,7 @@ export class Panes {
       if (signal?.aborted) throw new Error('command cancelled');
       if (this.whyTarget !== target) return;
       if (!tree) return fail(this.host.busy() ? 'A run is in flight; the tree follows it.' : 'No execution trace yet: run the file first.');
-      this.host.post({ type: 'why', view: { step, name, tree: withDisplayPathsTree(tree, (fileId) => this.host.displayPath(fileId)) } });
+      this.host.post({ type: 'why', view: { step, name, tree: withDisplayPaths(tree, (fileId) => this.host.displayPath(fileId)) } });
     } catch (err) {
       if (!signal?.aborted && this.whyTarget === target) fail(err instanceof Error ? err.message : String(err));
       if (strict) throw err;
@@ -603,17 +603,6 @@ export class Panes {
     }
     this.host.post({ type: 'watch.completions', requestId, prefix, items });
   }
-}
-
-/** The why tree with display paths on every node and call (whyPane.ts's withDisplayPaths). */
-export function withDisplayPathsTree(tree: Provenance, displayPath: (fileId: number) => string): Provenance {
-  const node = (n: ProvenanceNode): ProvenanceNode => ({
-    ...n,
-    ...(n.fileId !== undefined ? { file: displayPath(n.fileId) } : {}),
-    ...(n.reads ? { reads: n.reads.map(node) } : {}),
-    ...(n.calls ? { calls: n.calls.map((c) => ({ ...c, file: displayPath(c.fileId) })) } : {}),
-  });
-  return { ...tree, root: node(tree.root) };
 }
 
 /** The text an entry shows in full: its value tree rendered, else its text. */

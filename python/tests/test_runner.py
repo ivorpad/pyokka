@@ -380,7 +380,7 @@ def test_bindings_request_is_stateless(client):
     assert reply["type"] == "bindings" and reply["id"] == rid
     assert reply["statements"] == [
         {"line": 1, "col": 0, "assigns": ["x"], "reads": []},
-        {"line": 2, "col": 0, "assigns": ["i"], "reads": ["x"], "loop": 3, "calls": ["range(x)"]},
+        {"line": 2, "col": 0, "assigns": ["i"], "reads": ["x"], "loop": 3, "calls": ["range(x)"], "args": [{"callee": "range", "positional": [{"text": "x", "names": ["x"]}]}]},
         {"line": 3, "col": 4, "assigns": ["y"], "reads": ["i"]},
     ]
     client.send(type="bindings", source="def (:\n")

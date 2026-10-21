@@ -442,13 +442,13 @@ class ExactTracer:
                     self._touch(st, frame, name)
 
     def _returned(self, st: _Frame, frame: Any, arg: Any) -> None:
-        """A traced frame returned (or yielded) ``arg``: close its open statement."""
+        """A traced frame returned (or yielded) ``arg``: close its open statement. A yield or an await leaves it open
+        again: the frame comes back to the same statement, and what it does then (the rest of ``v = await f(k)``,
+        ``got = yield total``) is that statement's, closed again at the frame's next step or its return."""
         if st.step is not None and not isinstance(arg, PRIM):
             self._index(arg, st.step)  # `return {"lines": [TEMPLATE]}`: where a returned container starts to hold what it holds
         self._close(st, frame)
-        if frame.f_code.co_flags & _RESUMABLE:
-            st.step = None  # a yield: the frame comes back, and its next statement step reopens it
-        else:
+        if not frame.f_code.co_flags & _RESUMABLE:
             self.frames.pop(id(frame), None)
 
     def _touch(self, st: _Frame, frame: Any, name: str) -> None:

@@ -486,6 +486,9 @@ def _why_node(n: dict, prefix: str, source: Any, mixed: bool = False, step: Any 
     statement = first.get("statement") if first else n.get("statement")
     if statement:
         parts.append(_one_line(statement, WHY_STATEMENT))
+    arg = n.get("argument")
+    if isinstance(arg, dict):
+        parts.append("passed %s at #%s %s %s" % (_one_line(arg.get("text"), WHY_INPUT), arg.get("step"), _loc(source, arg.get("file"), arg.get("line")), arg.get("function") or "<module>"))
     shared = _shared_text(n["shared"], source) if n.get("shared") else ""
     if shared:
         parts.append("[%s]" % shared)

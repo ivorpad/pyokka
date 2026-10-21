@@ -1,0 +1,3053 @@
+{
+ "cases": [
+  {
+   "call": "C(x, y)",
+   "scope": "__init__",
+   "name": "a",
+   "values": {},
+   "made": null,
+   "index": 0,
+   "entered": 1,
+   "params": {
+    "positional": [
+     "self",
+     "a",
+     "b"
+    ],
+    "defaults": 1,
+    "owner": "C",
+    "binds": "self"
+   },
+   "args": [
+    {
+     "callee": "C",
+     "positional": [
+      {
+       "text": "x",
+       "names": [
+        "x"
+       ]
+      },
+      {
+       "text": "y",
+       "names": [
+        "y"
+       ]
+      }
+     ]
+    }
+   ],
+   "argument": {
+    "text": "x",
+    "names": [
+     "x"
+    ]
+   }
+  },
+  {
+   "call": "C(x, y)",
+   "scope": "__init__",
+   "name": "self",
+   "values": {},
+   "made": null,
+   "index": 0,
+   "entered": 1,
+   "params": {
+    "positional": [
+     "self",
+     "a",
+     "b"
+    ],
+    "defaults": 1,
+    "owner": "C",
+    "binds": "self"
+   },
+   "args": [
+    {
+     "callee": "C",
+     "positional": [
+      {
+       "text": "x",
+       "names": [
+        "x"
+       ]
+      },
+      {
+       "text": "y",
+       "names": [
+        "y"
+       ]
+      }
+     ]
+    }
+   ],
+   "argument": null
+  },
+  {
+   "call": "C(x)",
+   "scope": "__init__",
+   "name": "b",
+   "values": {},
+   "made": null,
+   "index": 0,
+   "entered": 1,
+   "params": {
+    "positional": [
+     "self",
+     "a",
+     "b"
+    ],
+    "defaults": 1,
+    "owner": "C",
+    "binds": "self"
+   },
+   "args": [
+    {
+     "callee": "C",
+     "positional": [
+      {
+       "text": "x",
+       "names": [
+        "x"
+       ]
+      }
+     ]
+    }
+   ],
+   "argument": null
+  },
+  {
+   "call": "super().__init__(q)",
+   "scope": "__init__",
+   "name": "a",
+   "values": {},
+   "made": null,
+   "index": 0,
+   "entered": 1,
+   "params": {
+    "positional": [
+     "self",
+     "a",
+     "b"
+    ],
+    "defaults": 1,
+    "owner": "C",
+    "binds": "self"
+   },
+   "args": [
+    {
+     "callee": "super",
+     "positional": []
+    },
+    {
+     "callee": "__init__",
+     "receiver": {
+      "text": "super()",
+      "names": []
+     },
+     "positional": [
+      {
+       "text": "q",
+       "names": [
+        "q"
+       ]
+      }
+     ]
+    }
+   ],
+   "argument": {
+    "text": "q",
+    "names": [
+     "q"
+    ]
+   }
+  },
+  {
+   "call": "C.__init__(o, q)",
+   "scope": "__init__",
+   "name": "self",
+   "values": {},
+   "made": null,
+   "index": 0,
+   "entered": 1,
+   "params": {
+    "positional": [
+     "self",
+     "a",
+     "b"
+    ],
+    "defaults": 1,
+    "owner": "C",
+    "binds": "self"
+   },
+   "args": [
+    {
+     "callee": "__init__",
+     "receiver": {
+      "text": "C",
+      "names": [
+       "C"
+      ]
+     },
+     "positional": [
+      {
+       "text": "o",
+       "names": [
+        "o"
+       ]
+      },
+      {
+       "text": "q",
+       "names": [
+        "q"
+       ]
+      }
+     ]
+    }
+   ],
+   "argument": {
+    "text": "o",
+    "names": [
+     "o"
+    ]
+   }
+  },
+  {
+   "call": "C.__init__(o, q)",
+   "scope": "__init__",
+   "name": "a",
+   "values": {},
+   "made": null,
+   "index": 0,
+   "entered": 1,
+   "params": {
+    "positional": [
+     "self",
+     "a",
+     "b"
+    ],
+    "defaults": 1,
+    "owner": "C",
+    "binds": "self"
+   },
+   "args": [
+    {
+     "callee": "__init__",
+     "receiver": {
+      "text": "C",
+      "names": [
+       "C"
+      ]
+     },
+     "positional": [
+      {
+       "text": "o",
+       "names": [
+        "o"
+       ]
+      },
+      {
+       "text": "q",
+       "names": [
+        "q"
+       ]
+      }
+     ]
+    }
+   ],
+   "argument": {
+    "text": "q",
+    "names": [
+     "q"
+    ]
+   }
+  },
+  {
+   "call": "Sub(x)",
+   "scope": "__init__",
+   "name": "a",
+   "values": {
+    "Sub": "<class 'mod.Sub'>"
+   },
+   "made": "Sub",
+   "index": 0,
+   "entered": 1,
+   "params": {
+    "positional": [
+     "self",
+     "a",
+     "b"
+    ],
+    "defaults": 1,
+    "owner": "C",
+    "binds": "self"
+   },
+   "args": [
+    {
+     "callee": "Sub",
+     "positional": [
+      {
+       "text": "x",
+       "names": [
+        "x"
+       ]
+      }
+     ]
+    }
+   ],
+   "argument": {
+    "text": "x",
+    "names": [
+     "x"
+    ]
+   }
+  },
+  {
+   "call": "Sub(x)",
+   "scope": "__init__",
+   "name": "a",
+   "values": {
+    "Sub": "<class 'mod.Sub'>"
+   },
+   "made": "Other",
+   "index": 0,
+   "entered": 1,
+   "params": {
+    "positional": [
+     "self",
+     "a",
+     "b"
+    ],
+    "defaults": 1,
+    "owner": "C",
+    "binds": "self"
+   },
+   "args": [
+    {
+     "callee": "Sub",
+     "positional": [
+      {
+       "text": "x",
+       "names": [
+        "x"
+       ]
+      }
+     ]
+    }
+   ],
+   "argument": null
+  },
+  {
+   "call": "Sub(x)",
+   "scope": "__init__",
+   "name": "a",
+   "values": {
+    "Sub": "<class 'mod.Sub'>"
+   },
+   "made": null,
+   "index": 0,
+   "entered": 1,
+   "params": {
+    "positional": [
+     "self",
+     "a",
+     "b"
+    ],
+    "defaults": 1,
+    "owner": "C",
+    "binds": "self"
+   },
+   "args": [
+    {
+     "callee": "Sub",
+     "positional": [
+      {
+       "text": "x",
+       "names": [
+        "x"
+       ]
+      }
+     ]
+    }
+   ],
+   "argument": null
+  },
+  {
+   "call": "kind(x)",
+   "scope": "__init__",
+   "name": "a",
+   "values": {
+    "kind": "<class 'mod.Sub'>"
+   },
+   "made": "Sub",
+   "index": 0,
+   "entered": 1,
+   "params": {
+    "positional": [
+     "self",
+     "a",
+     "b"
+    ],
+    "defaults": 1,
+    "owner": "C",
+    "binds": "self"
+   },
+   "args": [
+    {
+     "callee": "kind",
+     "positional": [
+      {
+       "text": "x",
+       "names": [
+        "x"
+       ]
+      }
+     ]
+    }
+   ],
+   "argument": {
+    "text": "x",
+    "names": [
+     "x"
+    ]
+   }
+  },
+  {
+   "call": "C(x)",
+   "scope": "__new__",
+   "name": "a",
+   "values": {},
+   "made": null,
+   "index": 0,
+   "entered": 1,
+   "params": {
+    "positional": [
+     "cls",
+     "a",
+     "b"
+    ],
+    "defaults": 1,
+    "owner": "C",
+    "binds": "cls"
+   },
+   "args": [
+    {
+     "callee": "C",
+     "positional": [
+      {
+       "text": "x",
+       "names": [
+        "x"
+       ]
+      }
+     ]
+    }
+   ],
+   "argument": {
+    "text": "x",
+    "names": [
+     "x"
+    ]
+   }
+  },
+  {
+   "call": "C(x)",
+   "scope": "__new__",
+   "name": "cls",
+   "values": {},
+   "made": null,
+   "index": 0,
+   "entered": 1,
+   "params": {
+    "positional": [
+     "cls",
+     "a",
+     "b"
+    ],
+    "defaults": 1,
+    "owner": "C",
+    "binds": "cls"
+   },
+   "args": [
+    {
+     "callee": "C",
+     "positional": [
+      {
+       "text": "x",
+       "names": [
+        "x"
+       ]
+      }
+     ]
+    }
+   ],
+   "argument": {
+    "text": "C",
+    "names": [
+     "C"
+    ]
+   }
+  },
+  {
+   "call": "C.__new__(k, x)",
+   "scope": "__new__",
+   "name": "cls",
+   "values": {},
+   "made": null,
+   "index": 0,
+   "entered": 1,
+   "params": {
+    "positional": [
+     "cls",
+     "a",
+     "b"
+    ],
+    "defaults": 1,
+    "owner": "C",
+    "binds": "cls"
+   },
+   "args": [
+    {
+     "callee": "__new__",
+     "receiver": {
+      "text": "C",
+      "names": [
+       "C"
+      ]
+     },
+     "positional": [
+      {
+       "text": "k",
+       "names": [
+        "k"
+       ]
+      },
+      {
+       "text": "x",
+       "names": [
+        "x"
+       ]
+      }
+     ]
+    }
+   ],
+   "argument": {
+    "text": "k",
+    "names": [
+     "k"
+    ]
+   }
+  },
+  {
+   "call": "C.__new__(k, x)",
+   "scope": "__new__",
+   "name": "a",
+   "values": {},
+   "made": null,
+   "index": 0,
+   "entered": 1,
+   "params": {
+    "positional": [
+     "cls",
+     "a",
+     "b"
+    ],
+    "defaults": 1,
+    "owner": "C",
+    "binds": "cls"
+   },
+   "args": [
+    {
+     "callee": "__new__",
+     "receiver": {
+      "text": "C",
+      "names": [
+       "C"
+      ]
+     },
+     "positional": [
+      {
+       "text": "k",
+       "names": [
+        "k"
+       ]
+      },
+      {
+       "text": "x",
+       "names": [
+        "x"
+       ]
+      }
+     ]
+    }
+   ],
+   "argument": {
+    "text": "x",
+    "names": [
+     "x"
+    ]
+   }
+  },
+  {
+   "call": "super().__new__(cls, x)",
+   "scope": "__new__",
+   "name": "a",
+   "values": {},
+   "made": null,
+   "index": 0,
+   "entered": 1,
+   "params": {
+    "positional": [
+     "cls",
+     "a",
+     "b"
+    ],
+    "defaults": 1,
+    "owner": "C",
+    "binds": "cls"
+   },
+   "args": [
+    {
+     "callee": "super",
+     "positional": []
+    },
+    {
+     "callee": "__new__",
+     "receiver": {
+      "text": "super()",
+      "names": []
+     },
+     "positional": [
+      {
+       "text": "cls",
+       "names": [
+        "cls"
+       ]
+      },
+      {
+       "text": "x",
+       "names": [
+        "x"
+       ]
+      }
+     ]
+    }
+   ],
+   "argument": {
+    "text": "x",
+    "names": [
+     "x"
+    ]
+   }
+  },
+  {
+   "call": "n = o.size + 1",
+   "scope": "size",
+   "name": "self",
+   "values": {},
+   "made": null,
+   "index": 0,
+   "entered": 1,
+   "params": {
+    "positional": [
+     "self"
+    ],
+    "owner": "C",
+    "binds": "self",
+    "property": true
+   },
+   "args": [
+    {
+     "callee": "size",
+     "receiver": {
+      "text": "o",
+      "names": [
+       "o"
+      ]
+     },
+     "positional": [],
+     "attribute": true
+    }
+   ],
+   "argument": {
+    "text": "o",
+    "names": [
+     "o"
+    ]
+   }
+  },
+  {
+   "call": "n = o.size + p.size",
+   "scope": "size",
+   "name": "self",
+   "values": {},
+   "made": null,
+   "index": 1,
+   "entered": 2,
+   "params": {
+    "positional": [
+     "self"
+    ],
+    "owner": "C",
+    "binds": "self",
+    "property": true
+   },
+   "args": [
+    {
+     "callee": "size",
+     "receiver": {
+      "text": "o",
+      "names": [
+       "o"
+      ]
+     },
+     "positional": [],
+     "attribute": true
+    },
+    {
+     "callee": "size",
+     "receiver": {
+      "text": "p",
+      "names": [
+       "p"
+      ]
+     },
+     "positional": [],
+     "attribute": true
+    }
+   ],
+   "argument": {
+    "text": "p",
+    "names": [
+     "p"
+    ]
+   }
+  },
+  {
+   "call": "n = o.size()",
+   "scope": "size",
+   "name": "self",
+   "values": {},
+   "made": null,
+   "index": 0,
+   "entered": 1,
+   "params": {
+    "positional": [
+     "self"
+    ],
+    "owner": "C",
+    "binds": "self",
+    "property": true
+   },
+   "args": [
+    {
+     "callee": "size",
+     "receiver": {
+      "text": "o",
+      "names": [
+       "o"
+      ]
+     },
+     "positional": []
+    }
+   ],
+   "argument": null
+  },
+  {
+   "call": "o.m(1, 2, 3, k=4, z=5)",
+   "scope": "m",
+   "name": "self",
+   "values": {},
+   "made": null,
+   "index": 0,
+   "entered": 1,
+   "params": {
+    "positional": [
+     "self",
+     "x"
+    ],
+    "vararg": "rest",
+    "keywordOnly": [
+     "k"
+    ],
+    "kwarg": "kw",
+    "owner": "C",
+    "binds": "self"
+   },
+   "args": [
+    {
+     "callee": "m",
+     "receiver": {
+      "text": "o",
+      "names": [
+       "o"
+      ]
+     },
+     "positional": [
+      {
+       "text": "1",
+       "names": []
+      },
+      {
+       "text": "2",
+       "names": []
+      },
+      {
+       "text": "3",
+       "names": []
+      }
+     ],
+     "keywords": [
+      {
+       "text": "4",
+       "names": [],
+       "name": "k"
+      },
+      {
+       "text": "5",
+       "names": [],
+       "name": "z"
+      }
+     ]
+    }
+   ],
+   "argument": {
+    "text": "o",
+    "names": [
+     "o"
+    ]
+   }
+  },
+  {
+   "call": "o.m(1, 2, 3, k=4, z=5)",
+   "scope": "m",
+   "name": "x",
+   "values": {},
+   "made": null,
+   "index": 0,
+   "entered": 1,
+   "params": {
+    "positional": [
+     "self",
+     "x"
+    ],
+    "vararg": "rest",
+    "keywordOnly": [
+     "k"
+    ],
+    "kwarg": "kw",
+    "owner": "C",
+    "binds": "self"
+   },
+   "args": [
+    {
+     "callee": "m",
+     "receiver": {
+      "text": "o",
+      "names": [
+       "o"
+      ]
+     },
+     "positional": [
+      {
+       "text": "1",
+       "names": []
+      },
+      {
+       "text": "2",
+       "names": []
+      },
+      {
+       "text": "3",
+       "names": []
+      }
+     ],
+     "keywords": [
+      {
+       "text": "4",
+       "names": [],
+       "name": "k"
+      },
+      {
+       "text": "5",
+       "names": [],
+       "name": "z"
+      }
+     ]
+    }
+   ],
+   "argument": {
+    "text": "1",
+    "names": []
+   }
+  },
+  {
+   "call": "o.m(1, 2, 3, k=4, z=5)",
+   "scope": "m",
+   "name": "rest",
+   "values": {},
+   "made": null,
+   "index": 0,
+   "entered": 1,
+   "params": {
+    "positional": [
+     "self",
+     "x"
+    ],
+    "vararg": "rest",
+    "keywordOnly": [
+     "k"
+    ],
+    "kwarg": "kw",
+    "owner": "C",
+    "binds": "self"
+   },
+   "args": [
+    {
+     "callee": "m",
+     "receiver": {
+      "text": "o",
+      "names": [
+       "o"
+      ]
+     },
+     "positional": [
+      {
+       "text": "1",
+       "names": []
+      },
+      {
+       "text": "2",
+       "names": []
+      },
+      {
+       "text": "3",
+       "names": []
+      }
+     ],
+     "keywords": [
+      {
+       "text": "4",
+       "names": [],
+       "name": "k"
+      },
+      {
+       "text": "5",
+       "names": [],
+       "name": "z"
+      }
+     ]
+    }
+   ],
+   "argument": {
+    "text": "2, 3",
+    "names": []
+   }
+  },
+  {
+   "call": "o.m(1, 2, 3, k=4, z=5)",
+   "scope": "m",
+   "name": "k",
+   "values": {},
+   "made": null,
+   "index": 0,
+   "entered": 1,
+   "params": {
+    "positional": [
+     "self",
+     "x"
+    ],
+    "vararg": "rest",
+    "keywordOnly": [
+     "k"
+    ],
+    "kwarg": "kw",
+    "owner": "C",
+    "binds": "self"
+   },
+   "args": [
+    {
+     "callee": "m",
+     "receiver": {
+      "text": "o",
+      "names": [
+       "o"
+      ]
+     },
+     "positional": [
+      {
+       "text": "1",
+       "names": []
+      },
+      {
+       "text": "2",
+       "names": []
+      },
+      {
+       "text": "3",
+       "names": []
+      }
+     ],
+     "keywords": [
+      {
+       "text": "4",
+       "names": [],
+       "name": "k"
+      },
+      {
+       "text": "5",
+       "names": [],
+       "name": "z"
+      }
+     ]
+    }
+   ],
+   "argument": {
+    "text": "4",
+    "names": []
+   }
+  },
+  {
+   "call": "o.m(1, 2, 3, k=4, z=5)",
+   "scope": "m",
+   "name": "kw",
+   "values": {},
+   "made": null,
+   "index": 0,
+   "entered": 1,
+   "params": {
+    "positional": [
+     "self",
+     "x"
+    ],
+    "vararg": "rest",
+    "keywordOnly": [
+     "k"
+    ],
+    "kwarg": "kw",
+    "owner": "C",
+    "binds": "self"
+   },
+   "args": [
+    {
+     "callee": "m",
+     "receiver": {
+      "text": "o",
+      "names": [
+       "o"
+      ]
+     },
+     "positional": [
+      {
+       "text": "1",
+       "names": []
+      },
+      {
+       "text": "2",
+       "names": []
+      },
+      {
+       "text": "3",
+       "names": []
+      }
+     ],
+     "keywords": [
+      {
+       "text": "4",
+       "names": [],
+       "name": "k"
+      },
+      {
+       "text": "5",
+       "names": [],
+       "name": "z"
+      }
+     ]
+    }
+   ],
+   "argument": {
+    "text": "z=5",
+    "names": []
+   }
+  },
+  {
+   "call": "o.m(x=[i for i in items])",
+   "scope": "m",
+   "name": "x",
+   "values": {},
+   "made": null,
+   "index": 0,
+   "entered": 1,
+   "params": {
+    "positional": [
+     "self",
+     "x"
+    ],
+    "vararg": "rest",
+    "keywordOnly": [
+     "k"
+    ],
+    "kwarg": "kw",
+    "owner": "C",
+    "binds": "self"
+   },
+   "args": [
+    {
+     "callee": "m",
+     "receiver": {
+      "text": "o",
+      "names": [
+       "o"
+      ]
+     },
+     "positional": [],
+     "keywords": [
+      {
+       "text": "[i for i in items]",
+       "names": [
+        "items"
+       ],
+       "name": "x"
+      }
+     ],
+     "unordered": true
+    }
+   ],
+   "argument": {
+    "text": "[i for i in items]",
+    "names": [
+     "items"
+    ]
+   }
+  },
+  {
+   "call": "C.m(o, 1)",
+   "scope": "m",
+   "name": "self",
+   "values": {},
+   "made": null,
+   "index": 0,
+   "entered": 1,
+   "params": {
+    "positional": [
+     "self",
+     "x"
+    ],
+    "vararg": "rest",
+    "keywordOnly": [
+     "k"
+    ],
+    "kwarg": "kw",
+    "owner": "C",
+    "binds": "self"
+   },
+   "args": [
+    {
+     "callee": "m",
+     "receiver": {
+      "text": "C",
+      "names": [
+       "C"
+      ]
+     },
+     "positional": [
+      {
+       "text": "o",
+       "names": [
+        "o"
+       ]
+      },
+      {
+       "text": "1",
+       "names": []
+      }
+     ]
+    }
+   ],
+   "argument": {
+    "text": "o",
+    "names": [
+     "o"
+    ]
+   }
+  },
+  {
+   "call": "C.m(o, 1)",
+   "scope": "m",
+   "name": "x",
+   "values": {},
+   "made": null,
+   "index": 0,
+   "entered": 1,
+   "params": {
+    "positional": [
+     "self",
+     "x"
+    ],
+    "vararg": "rest",
+    "keywordOnly": [
+     "k"
+    ],
+    "kwarg": "kw",
+    "owner": "C",
+    "binds": "self"
+   },
+   "args": [
+    {
+     "callee": "m",
+     "receiver": {
+      "text": "C",
+      "names": [
+       "C"
+      ]
+     },
+     "positional": [
+      {
+       "text": "o",
+       "names": [
+        "o"
+       ]
+      },
+      {
+       "text": "1",
+       "names": []
+      }
+     ]
+    }
+   ],
+   "argument": {
+    "text": "1",
+    "names": []
+   }
+  },
+  {
+   "call": "mod.C.m(o, 1)",
+   "scope": "m",
+   "name": "x",
+   "values": {},
+   "made": null,
+   "index": 0,
+   "entered": 1,
+   "params": {
+    "positional": [
+     "self",
+     "x"
+    ],
+    "vararg": "rest",
+    "keywordOnly": [
+     "k"
+    ],
+    "kwarg": "kw",
+    "owner": "C",
+    "binds": "self"
+   },
+   "args": [
+    {
+     "callee": "C",
+     "receiver": {
+      "text": "mod",
+      "names": [
+       "mod"
+      ]
+     },
+     "positional": [],
+     "attribute": true
+    },
+    {
+     "callee": "m",
+     "receiver": {
+      "text": "mod.C",
+      "names": [
+       "mod"
+      ]
+     },
+     "positional": [
+      {
+       "text": "o",
+       "names": [
+        "o"
+       ]
+      },
+      {
+       "text": "1",
+       "names": []
+      }
+     ]
+    }
+   ],
+   "argument": {
+    "text": "1",
+    "names": []
+   }
+  },
+  {
+   "call": "L.m(o, 1)",
+   "scope": "m",
+   "name": "x",
+   "values": {
+    "L": "<class 'mod.C'>"
+   },
+   "made": null,
+   "index": 0,
+   "entered": 1,
+   "params": {
+    "positional": [
+     "self",
+     "x"
+    ],
+    "vararg": "rest",
+    "keywordOnly": [
+     "k"
+    ],
+    "kwarg": "kw",
+    "owner": "C",
+    "binds": "self"
+   },
+   "args": [
+    {
+     "callee": "m",
+     "receiver": {
+      "text": "L",
+      "names": [
+       "L"
+      ]
+     },
+     "positional": [
+      {
+       "text": "o",
+       "names": [
+        "o"
+       ]
+      },
+      {
+       "text": "1",
+       "names": []
+      }
+     ]
+    }
+   ],
+   "argument": {
+    "text": "1",
+    "names": []
+   }
+  },
+  {
+   "call": "L.one(o, 1)",
+   "scope": "one",
+   "name": "x",
+   "values": {},
+   "made": null,
+   "index": 0,
+   "entered": 1,
+   "params": {
+    "positional": [
+     "self",
+     "x"
+    ],
+    "owner": "C",
+    "binds": "self"
+   },
+   "args": [
+    {
+     "callee": "one",
+     "receiver": {
+      "text": "L",
+      "names": [
+       "L"
+      ]
+     },
+     "positional": [
+      {
+       "text": "o",
+       "names": [
+        "o"
+       ]
+      },
+      {
+       "text": "1",
+       "names": []
+      }
+     ]
+    }
+   ],
+   "argument": null
+  },
+  {
+   "call": "C.mk(9)",
+   "scope": "mk",
+   "name": "v",
+   "values": {},
+   "made": null,
+   "index": 0,
+   "entered": 1,
+   "params": {
+    "positional": [
+     "cls",
+     "v"
+    ],
+    "owner": "C",
+    "binds": "cls"
+   },
+   "args": [
+    {
+     "callee": "mk",
+     "receiver": {
+      "text": "C",
+      "names": [
+       "C"
+      ]
+     },
+     "positional": [
+      {
+       "text": "9",
+       "names": []
+      }
+     ]
+    }
+   ],
+   "argument": {
+    "text": "9",
+    "names": []
+   }
+  },
+  {
+   "call": "C.mk(9)",
+   "scope": "mk",
+   "name": "cls",
+   "values": {},
+   "made": null,
+   "index": 0,
+   "entered": 1,
+   "params": {
+    "positional": [
+     "cls",
+     "v"
+    ],
+    "owner": "C",
+    "binds": "cls"
+   },
+   "args": [
+    {
+     "callee": "mk",
+     "receiver": {
+      "text": "C",
+      "names": [
+       "C"
+      ]
+     },
+     "positional": [
+      {
+       "text": "9",
+       "names": []
+      }
+     ]
+    }
+   ],
+   "argument": {
+    "text": "C",
+    "names": [
+     "C"
+    ]
+   }
+  },
+  {
+   "call": "C.st(1, 2)",
+   "scope": "st",
+   "name": "q",
+   "values": {},
+   "made": null,
+   "index": 0,
+   "entered": 1,
+   "params": {
+    "positional": [
+     "p",
+     "q"
+    ],
+    "owner": "C"
+   },
+   "args": [
+    {
+     "callee": "st",
+     "receiver": {
+      "text": "C",
+      "names": [
+       "C"
+      ]
+     },
+     "positional": [
+      {
+       "text": "1",
+       "names": []
+      },
+      {
+       "text": "2",
+       "names": []
+      }
+     ]
+    }
+   ],
+   "argument": {
+    "text": "2",
+    "names": []
+   }
+  },
+  {
+   "call": "o.st(1, 2)",
+   "scope": "st",
+   "name": "p",
+   "values": {},
+   "made": null,
+   "index": 0,
+   "entered": 1,
+   "params": {
+    "positional": [
+     "p",
+     "q"
+    ],
+    "owner": "C"
+   },
+   "args": [
+    {
+     "callee": "st",
+     "receiver": {
+      "text": "o",
+      "names": [
+       "o"
+      ]
+     },
+     "positional": [
+      {
+       "text": "1",
+       "names": []
+      },
+      {
+       "text": "2",
+       "names": []
+      }
+     ]
+    }
+   ],
+   "argument": {
+    "text": "1",
+    "names": []
+   }
+  },
+  {
+   "call": "m(o, 1)",
+   "scope": "m",
+   "name": "x",
+   "values": {},
+   "made": null,
+   "index": 0,
+   "entered": 1,
+   "params": {
+    "positional": [
+     "self",
+     "x"
+    ],
+    "vararg": "rest",
+    "keywordOnly": [
+     "k"
+    ],
+    "kwarg": "kw",
+    "owner": "C",
+    "binds": "self"
+   },
+   "args": [
+    {
+     "callee": "m",
+     "positional": [
+      {
+       "text": "o",
+       "names": [
+        "o"
+       ]
+      },
+      {
+       "text": "1",
+       "names": []
+      }
+     ]
+    }
+   ],
+   "argument": null
+  },
+  {
+   "call": "r = conv(s)",
+   "scope": "f1",
+   "name": "v",
+   "values": {
+    "conv": "<function f1 at 0x1>"
+   },
+   "made": null,
+   "index": 0,
+   "entered": 1,
+   "params": {
+    "positional": [
+     "v"
+    ]
+   },
+   "args": [
+    {
+     "callee": "conv",
+     "positional": [
+      {
+       "text": "s",
+       "names": [
+        "s"
+       ]
+      }
+     ]
+    }
+   ],
+   "argument": {
+    "text": "s",
+    "names": [
+     "s"
+    ]
+   }
+  },
+  {
+   "call": "r = conv(s)",
+   "scope": "f1",
+   "name": "v",
+   "values": {
+    "conv": "<function other at 0x1>"
+   },
+   "made": null,
+   "index": 0,
+   "entered": 1,
+   "params": {
+    "positional": [
+     "v"
+    ]
+   },
+   "args": [
+    {
+     "callee": "conv",
+     "positional": [
+      {
+       "text": "s",
+       "names": [
+        "s"
+       ]
+      }
+     ]
+    }
+   ],
+   "argument": null
+  },
+  {
+   "call": "p(o, 1)",
+   "scope": "m",
+   "name": "self",
+   "values": {
+    "p": "<function C.m at 0x1>"
+   },
+   "made": null,
+   "index": 0,
+   "entered": 1,
+   "params": {
+    "positional": [
+     "self",
+     "x"
+    ],
+    "vararg": "rest",
+    "keywordOnly": [
+     "k"
+    ],
+    "kwarg": "kw",
+    "owner": "C",
+    "binds": "self"
+   },
+   "args": [
+    {
+     "callee": "p",
+     "positional": [
+      {
+       "text": "o",
+       "names": [
+        "o"
+       ]
+      },
+      {
+       "text": "1",
+       "names": []
+      }
+     ]
+    }
+   ],
+   "argument": {
+    "text": "o",
+    "names": [
+     "o"
+    ]
+   }
+  },
+  {
+   "call": "p(1)",
+   "scope": "m",
+   "name": "x",
+   "values": {
+    "p": "<bound method C.m of <mod.C object at 0x2>>"
+   },
+   "made": null,
+   "index": 0,
+   "entered": 1,
+   "params": {
+    "positional": [
+     "self",
+     "x"
+    ],
+    "vararg": "rest",
+    "keywordOnly": [
+     "k"
+    ],
+    "kwarg": "kw",
+    "owner": "C",
+    "binds": "self"
+   },
+   "args": [
+    {
+     "callee": "p",
+     "positional": [
+      {
+       "text": "1",
+       "names": []
+      }
+     ]
+    }
+   ],
+   "argument": {
+    "text": "1",
+    "names": []
+   }
+  },
+  {
+   "call": "p(1)",
+   "scope": "m",
+   "name": "self",
+   "values": {
+    "p": "<bound method C.m of <mod.C object at 0x2>>"
+   },
+   "made": null,
+   "index": 0,
+   "entered": 1,
+   "params": {
+    "positional": [
+     "self",
+     "x"
+    ],
+    "vararg": "rest",
+    "keywordOnly": [
+     "k"
+    ],
+    "kwarg": "kw",
+    "owner": "C",
+    "binds": "self"
+   },
+   "args": [
+    {
+     "callee": "p",
+     "positional": [
+      {
+       "text": "1",
+       "names": []
+      }
+     ]
+    }
+   ],
+   "argument": null
+  },
+  {
+   "call": "f(1, 2, 3, d=4)",
+   "scope": "f",
+   "name": "c",
+   "values": {},
+   "made": null,
+   "index": 0,
+   "entered": 1,
+   "params": {
+    "positional": [
+     "a",
+     "b",
+     "c"
+    ],
+    "positionalOnly": 2,
+    "keywordOnly": [
+     "d"
+    ],
+    "requiredKeywordOnly": [
+     "d"
+    ]
+   },
+   "args": [
+    {
+     "callee": "f",
+     "positional": [
+      {
+       "text": "1",
+       "names": []
+      },
+      {
+       "text": "2",
+       "names": []
+      },
+      {
+       "text": "3",
+       "names": []
+      }
+     ],
+     "keywords": [
+      {
+       "text": "4",
+       "names": [],
+       "name": "d"
+      }
+     ]
+    }
+   ],
+   "argument": {
+    "text": "3",
+    "names": []
+   }
+  },
+  {
+   "call": "f(1, 2, c=3, d=4)",
+   "scope": "f",
+   "name": "c",
+   "values": {},
+   "made": null,
+   "index": 0,
+   "entered": 1,
+   "params": {
+    "positional": [
+     "a",
+     "b",
+     "c"
+    ],
+    "positionalOnly": 2,
+    "keywordOnly": [
+     "d"
+    ],
+    "requiredKeywordOnly": [
+     "d"
+    ]
+   },
+   "args": [
+    {
+     "callee": "f",
+     "positional": [
+      {
+       "text": "1",
+       "names": []
+      },
+      {
+       "text": "2",
+       "names": []
+      }
+     ],
+     "keywords": [
+      {
+       "text": "3",
+       "names": [],
+       "name": "c"
+      },
+      {
+       "text": "4",
+       "names": [],
+       "name": "d"
+      }
+     ]
+    }
+   ],
+   "argument": {
+    "text": "3",
+    "names": []
+   }
+  },
+  {
+   "call": "f(1, 2, 3)",
+   "scope": "f",
+   "name": "a",
+   "values": {},
+   "made": null,
+   "index": 0,
+   "entered": 1,
+   "params": {
+    "positional": [
+     "a",
+     "b",
+     "c"
+    ],
+    "positionalOnly": 2,
+    "keywordOnly": [
+     "d"
+    ],
+    "requiredKeywordOnly": [
+     "d"
+    ]
+   },
+   "args": [
+    {
+     "callee": "f",
+     "positional": [
+      {
+       "text": "1",
+       "names": []
+      },
+      {
+       "text": "2",
+       "names": []
+      },
+      {
+       "text": "3",
+       "names": []
+      }
+     ]
+    }
+   ],
+   "argument": null
+  },
+  {
+   "call": "f(*xs, d=1)",
+   "scope": "f",
+   "name": "a",
+   "values": {},
+   "made": null,
+   "index": 0,
+   "entered": 1,
+   "params": {
+    "positional": [
+     "a",
+     "b",
+     "c"
+    ],
+    "positionalOnly": 2,
+    "keywordOnly": [
+     "d"
+    ],
+    "requiredKeywordOnly": [
+     "d"
+    ]
+   },
+   "args": [
+    {
+     "callee": "f",
+     "star": true,
+     "positional": [],
+     "keywords": [
+      {
+       "text": "1",
+       "names": [],
+       "name": "d"
+      }
+     ],
+     "unordered": true
+    }
+   ],
+   "argument": null
+  },
+  {
+   "call": "f(*xs, d=1)",
+   "scope": "f",
+   "name": "d",
+   "values": {},
+   "made": null,
+   "index": 0,
+   "entered": 1,
+   "params": {
+    "positional": [
+     "a",
+     "b",
+     "c"
+    ],
+    "positionalOnly": 2,
+    "keywordOnly": [
+     "d"
+    ],
+    "requiredKeywordOnly": [
+     "d"
+    ]
+   },
+   "args": [
+    {
+     "callee": "f",
+     "star": true,
+     "positional": [],
+     "keywords": [
+      {
+       "text": "1",
+       "names": [],
+       "name": "d"
+      }
+     ],
+     "unordered": true
+    }
+   ],
+   "argument": {
+    "text": "1",
+    "names": []
+   }
+  },
+  {
+   "call": "g(a, b)",
+   "scope": "g",
+   "name": "args",
+   "values": {},
+   "made": null,
+   "index": 0,
+   "entered": 1,
+   "params": {
+    "positional": [],
+    "vararg": "args",
+    "kwarg": "kwargs"
+   },
+   "args": [
+    {
+     "callee": "g",
+     "positional": [
+      {
+       "text": "a",
+       "names": [
+        "a"
+       ]
+      },
+      {
+       "text": "b",
+       "names": [
+        "b"
+       ]
+      }
+     ]
+    }
+   ],
+   "argument": {
+    "text": "a, b",
+    "names": [
+     "a",
+     "b"
+    ]
+   }
+  },
+  {
+   "call": "g(a, *b)",
+   "scope": "g",
+   "name": "args",
+   "values": {},
+   "made": null,
+   "index": 0,
+   "entered": 1,
+   "params": {
+    "positional": [],
+    "vararg": "args",
+    "kwarg": "kwargs"
+   },
+   "args": [
+    {
+     "callee": "g",
+     "star": true,
+     "positional": [
+      {
+       "text": "a",
+       "names": [
+        "a"
+       ]
+      }
+     ]
+    }
+   ],
+   "argument": null
+  },
+  {
+   "call": "g(k=a, j=b)",
+   "scope": "g",
+   "name": "kwargs",
+   "values": {},
+   "made": null,
+   "index": 0,
+   "entered": 1,
+   "params": {
+    "positional": [],
+    "vararg": "args",
+    "kwarg": "kwargs"
+   },
+   "args": [
+    {
+     "callee": "g",
+     "positional": [],
+     "keywords": [
+      {
+       "text": "a",
+       "names": [
+        "a"
+       ],
+       "name": "k"
+      },
+      {
+       "text": "b",
+       "names": [
+        "b"
+       ],
+       "name": "j"
+      }
+     ]
+    }
+   ],
+   "argument": {
+    "text": "k=a, j=b",
+    "names": [
+     "a",
+     "b"
+    ]
+   }
+  },
+  {
+   "call": "g(**opts)",
+   "scope": "g",
+   "name": "kwargs",
+   "values": {},
+   "made": null,
+   "index": 0,
+   "entered": 1,
+   "params": {
+    "positional": [],
+    "vararg": "args",
+    "kwarg": "kwargs"
+   },
+   "args": [
+    {
+     "callee": "g",
+     "positional": [],
+     "kwstar": true
+    }
+   ],
+   "argument": null
+  },
+  {
+   "call": "h(v, z=w)",
+   "scope": "h",
+   "name": "x",
+   "values": {},
+   "made": null,
+   "index": 0,
+   "entered": 1,
+   "params": {
+    "positional": [
+     "x",
+     "y"
+    ],
+    "defaults": 1,
+    "keywordOnly": [
+     "z"
+    ],
+    "requiredKeywordOnly": [
+     "z"
+    ]
+   },
+   "args": [
+    {
+     "callee": "h",
+     "positional": [
+      {
+       "text": "v",
+       "names": [
+        "v"
+       ]
+      }
+     ],
+     "keywords": [
+      {
+       "text": "w",
+       "names": [
+        "w"
+       ],
+       "name": "z"
+      }
+     ]
+    }
+   ],
+   "argument": {
+    "text": "v",
+    "names": [
+     "v"
+    ]
+   }
+  },
+  {
+   "call": "h(v, z=w)",
+   "scope": "h",
+   "name": "y",
+   "values": {},
+   "made": null,
+   "index": 0,
+   "entered": 1,
+   "params": {
+    "positional": [
+     "x",
+     "y"
+    ],
+    "defaults": 1,
+    "keywordOnly": [
+     "z"
+    ],
+    "requiredKeywordOnly": [
+     "z"
+    ]
+   },
+   "args": [
+    {
+     "callee": "h",
+     "positional": [
+      {
+       "text": "v",
+       "names": [
+        "v"
+       ]
+      }
+     ],
+     "keywords": [
+      {
+       "text": "w",
+       "names": [
+        "w"
+       ],
+       "name": "z"
+      }
+     ]
+    }
+   ],
+   "argument": null
+  },
+  {
+   "call": "h(v)",
+   "scope": "h",
+   "name": "x",
+   "values": {},
+   "made": null,
+   "index": 0,
+   "entered": 1,
+   "params": {
+    "positional": [
+     "x",
+     "y"
+    ],
+    "defaults": 1,
+    "keywordOnly": [
+     "z"
+    ],
+    "requiredKeywordOnly": [
+     "z"
+    ]
+   },
+   "args": [
+    {
+     "callee": "h",
+     "positional": [
+      {
+       "text": "v",
+       "names": [
+        "v"
+       ]
+      }
+     ]
+    }
+   ],
+   "argument": null
+  },
+  {
+   "call": "h(v, q=1, z=2)",
+   "scope": "h",
+   "name": "x",
+   "values": {},
+   "made": null,
+   "index": 0,
+   "entered": 1,
+   "params": {
+    "positional": [
+     "x",
+     "y"
+    ],
+    "defaults": 1,
+    "keywordOnly": [
+     "z"
+    ],
+    "requiredKeywordOnly": [
+     "z"
+    ]
+   },
+   "args": [
+    {
+     "callee": "h",
+     "positional": [
+      {
+       "text": "v",
+       "names": [
+        "v"
+       ]
+      }
+     ],
+     "keywords": [
+      {
+       "text": "1",
+       "names": [],
+       "name": "q"
+      },
+      {
+       "text": "2",
+       "names": [],
+       "name": "z"
+      }
+     ]
+    }
+   ],
+   "argument": null
+  },
+  {
+   "call": "total = h(a + b * 2, z=n)",
+   "scope": "h",
+   "name": "x",
+   "values": {},
+   "made": null,
+   "index": 0,
+   "entered": 1,
+   "params": {
+    "positional": [
+     "x",
+     "y"
+    ],
+    "defaults": 1,
+    "keywordOnly": [
+     "z"
+    ],
+    "requiredKeywordOnly": [
+     "z"
+    ]
+   },
+   "args": [
+    {
+     "callee": "h",
+     "positional": [
+      {
+       "text": "a + b * 2",
+       "names": [
+        "a",
+        "b"
+       ]
+      }
+     ],
+     "keywords": [
+      {
+       "text": "n",
+       "names": [
+        "n"
+       ],
+       "name": "z"
+      }
+     ]
+    }
+   ],
+   "argument": {
+    "text": "a + b * 2",
+    "names": [
+     "a",
+     "b"
+    ]
+   }
+  },
+  {
+   "call": "same = g2(f1(p), f1(q))",
+   "scope": "f1",
+   "name": "v",
+   "values": {},
+   "made": null,
+   "index": 0,
+   "entered": 2,
+   "params": {
+    "positional": [
+     "v"
+    ]
+   },
+   "args": [
+    {
+     "callee": "f1",
+     "positional": [
+      {
+       "text": "p",
+       "names": [
+        "p"
+       ]
+      }
+     ]
+    },
+    {
+     "callee": "f1",
+     "positional": [
+      {
+       "text": "q",
+       "names": [
+        "q"
+       ]
+      }
+     ]
+    },
+    {
+     "callee": "g2",
+     "positional": [
+      {
+       "text": "f1(p)",
+       "names": [
+        "f1",
+        "p"
+       ]
+      },
+      {
+       "text": "f1(q)",
+       "names": [
+        "f1",
+        "q"
+       ]
+      }
+     ]
+    }
+   ],
+   "argument": {
+    "text": "p",
+    "names": [
+     "p"
+    ]
+   }
+  },
+  {
+   "call": "same = g2(f1(p), f1(q))",
+   "scope": "f1",
+   "name": "v",
+   "values": {},
+   "made": null,
+   "index": 1,
+   "entered": 2,
+   "params": {
+    "positional": [
+     "v"
+    ]
+   },
+   "args": [
+    {
+     "callee": "f1",
+     "positional": [
+      {
+       "text": "p",
+       "names": [
+        "p"
+       ]
+      }
+     ]
+    },
+    {
+     "callee": "f1",
+     "positional": [
+      {
+       "text": "q",
+       "names": [
+        "q"
+       ]
+      }
+     ]
+    },
+    {
+     "callee": "g2",
+     "positional": [
+      {
+       "text": "f1(p)",
+       "names": [
+        "f1",
+        "p"
+       ]
+      },
+      {
+       "text": "f1(q)",
+       "names": [
+        "f1",
+        "q"
+       ]
+      }
+     ]
+    }
+   ],
+   "argument": {
+    "text": "q",
+    "names": [
+     "q"
+    ]
+   }
+  },
+  {
+   "call": "nested = f1(f1(2))",
+   "scope": "f1",
+   "name": "v",
+   "values": {},
+   "made": null,
+   "index": 0,
+   "entered": 2,
+   "params": {
+    "positional": [
+     "v"
+    ]
+   },
+   "args": [
+    {
+     "callee": "f1",
+     "positional": [
+      {
+       "text": "2",
+       "names": []
+      }
+     ]
+    },
+    {
+     "callee": "f1",
+     "positional": [
+      {
+       "text": "f1(2)",
+       "names": [
+        "f1"
+       ]
+      }
+     ]
+    }
+   ],
+   "argument": {
+    "text": "2",
+    "names": []
+   }
+  },
+  {
+   "call": "nested = f1(f1(2))",
+   "scope": "f1",
+   "name": "v",
+   "values": {},
+   "made": null,
+   "index": 1,
+   "entered": 2,
+   "params": {
+    "positional": [
+     "v"
+    ]
+   },
+   "args": [
+    {
+     "callee": "f1",
+     "positional": [
+      {
+       "text": "2",
+       "names": []
+      }
+     ]
+    },
+    {
+     "callee": "f1",
+     "positional": [
+      {
+       "text": "f1(2)",
+       "names": [
+        "f1"
+       ]
+      }
+     ]
+    }
+   ],
+   "argument": {
+    "text": "f1(2)",
+    "names": [
+     "f1"
+    ]
+   }
+  },
+  {
+   "call": "x = f1(p) if c else f1(q)",
+   "scope": "f1",
+   "name": "v",
+   "values": {},
+   "made": null,
+   "index": 0,
+   "entered": 1,
+   "params": {
+    "positional": [
+     "v"
+    ]
+   },
+   "args": [
+    {
+     "callee": "f1",
+     "positional": [
+      {
+       "text": "p",
+       "names": [
+        "p"
+       ]
+      }
+     ],
+     "unordered": true
+    },
+    {
+     "callee": "f1",
+     "positional": [
+      {
+       "text": "q",
+       "names": [
+        "q"
+       ]
+      }
+     ]
+    }
+   ],
+   "argument": null
+  },
+  {
+   "call": "x = f1(p) + f1(q)",
+   "scope": "f1",
+   "name": "v",
+   "values": {},
+   "made": null,
+   "index": 0,
+   "entered": 1,
+   "params": {
+    "positional": [
+     "v"
+    ]
+   },
+   "args": [
+    {
+     "callee": "f1",
+     "positional": [
+      {
+       "text": "p",
+       "names": [
+        "p"
+       ]
+      }
+     ]
+    },
+    {
+     "callee": "f1",
+     "positional": [
+      {
+       "text": "q",
+       "names": [
+        "q"
+       ]
+      }
+     ]
+    }
+   ],
+   "argument": null
+  },
+  {
+   "call": "y = f1(x)",
+   "scope": "f1",
+   "name": "v",
+   "values": {},
+   "made": null,
+   "index": 1,
+   "entered": 2,
+   "params": {
+    "positional": [
+     "v"
+    ]
+   },
+   "args": [
+    {
+     "callee": "f1",
+     "positional": [
+      {
+       "text": "x",
+       "names": [
+        "x"
+       ]
+      }
+     ]
+    }
+   ],
+   "argument": null
+  },
+  {
+   "call": "rows = sorted(rs, key=f1)",
+   "scope": "f1",
+   "name": "v",
+   "values": {},
+   "made": null,
+   "index": 0,
+   "entered": 2,
+   "params": {
+    "positional": [
+     "v"
+    ]
+   },
+   "args": [
+    {
+     "callee": "sorted",
+     "positional": [
+      {
+       "text": "rs",
+       "names": [
+        "rs"
+       ]
+      }
+     ],
+     "keywords": [
+      {
+       "text": "f1",
+       "names": [
+        "f1"
+       ],
+       "name": "key"
+      }
+     ]
+    }
+   ],
+   "argument": null
+  },
+  {
+   "call": "rows = sorted(rs, key=f1) + [f1(r)]",
+   "scope": "f1",
+   "name": "v",
+   "values": {},
+   "made": null,
+   "index": 0,
+   "entered": 3,
+   "params": {
+    "positional": [
+     "v"
+    ]
+   },
+   "args": [
+    {
+     "callee": "sorted",
+     "positional": [
+      {
+       "text": "rs",
+       "names": [
+        "rs"
+       ]
+      }
+     ],
+     "keywords": [
+      {
+       "text": "f1",
+       "names": [
+        "f1"
+       ],
+       "name": "key"
+      }
+     ],
+     "passes": [
+      "f1"
+     ]
+    },
+    {
+     "callee": "f1",
+     "positional": [
+      {
+       "text": "r",
+       "names": [
+        "r"
+       ]
+      }
+     ]
+    }
+   ],
+   "argument": null
+  },
+  {
+   "call": "rows = list(map(self.f1, rs)) + [f1(r)]",
+   "scope": "f1",
+   "name": "v",
+   "values": {},
+   "made": null,
+   "index": 0,
+   "entered": 3,
+   "params": {
+    "positional": [
+     "v"
+    ]
+   },
+   "args": [
+    {
+     "callee": "f1",
+     "receiver": {
+      "text": "self",
+      "names": [
+       "self"
+      ]
+     },
+     "positional": [],
+     "attribute": true,
+     "passes": [
+      "f1"
+     ]
+    },
+    {
+     "callee": "map",
+     "positional": [
+      {
+       "text": "self.f1",
+       "names": [
+        "self"
+       ]
+      },
+      {
+       "text": "rs",
+       "names": [
+        "rs"
+       ]
+      }
+     ]
+    },
+    {
+     "callee": "list",
+     "positional": [
+      {
+       "text": "map(self.f1, rs)",
+       "names": [
+        "self",
+        "rs"
+       ]
+      }
+     ]
+    },
+    {
+     "callee": "f1",
+     "positional": [
+      {
+       "text": "r",
+       "names": [
+        "r"
+       ]
+      }
+     ]
+    }
+   ],
+   "argument": null
+  },
+  {
+   "call": "rows = [f1(r) for r in rs]",
+   "scope": "f1",
+   "name": "v",
+   "values": {},
+   "made": null,
+   "index": 2,
+   "entered": 3,
+   "params": {
+    "positional": [
+     "v"
+    ]
+   },
+   "args": [
+    {
+     "callee": "f1",
+     "positional": [
+      {
+       "text": "r",
+       "names": []
+      }
+     ],
+     "repeats": true,
+     "unordered": true
+    }
+   ],
+   "argument": {
+    "text": "r",
+    "names": []
+   }
+  },
+  {
+   "call": "rows = sorted(rs, key=lambda r: f1(r))",
+   "scope": "f1",
+   "name": "v",
+   "values": {},
+   "made": null,
+   "index": 0,
+   "entered": 2,
+   "params": {
+    "positional": [
+     "v"
+    ]
+   },
+   "args": [
+    {
+     "callee": "f1",
+     "positional": [
+      {
+       "text": "r",
+       "names": []
+      }
+     ],
+     "repeats": true,
+     "unordered": true
+    },
+    {
+     "callee": "sorted",
+     "positional": [
+      {
+       "text": "rs",
+       "names": [
+        "rs"
+       ]
+      }
+     ],
+     "keywords": [
+      {
+       "text": "lambda r: f1(r)",
+       "names": [
+        "f1"
+       ],
+       "name": "key"
+      }
+     ]
+    }
+   ],
+   "argument": {
+    "text": "r",
+    "names": []
+   }
+  },
+  {
+   "call": "both = [f1(a) for a in xs] + [f1(b)]",
+   "scope": "f1",
+   "name": "v",
+   "values": {},
+   "made": null,
+   "index": 0,
+   "entered": 3,
+   "params": {
+    "positional": [
+     "v"
+    ]
+   },
+   "args": [
+    {
+     "callee": "f1",
+     "positional": [
+      {
+       "text": "a",
+       "names": []
+      }
+     ],
+     "repeats": true,
+     "unordered": true
+    },
+    {
+     "callee": "f1",
+     "positional": [
+      {
+       "text": "b",
+       "names": [
+        "b"
+       ]
+      }
+     ]
+    }
+   ],
+   "argument": null
+  },
+  {
+   "call": "t = sum(f1(n) for d, n in items)",
+   "scope": "f1",
+   "name": "v",
+   "values": {},
+   "made": null,
+   "index": 1,
+   "entered": 3,
+   "params": {
+    "positional": [
+     "v"
+    ]
+   },
+   "args": [
+    {
+     "callee": "f1",
+     "positional": [
+      {
+       "text": "n",
+       "names": []
+      }
+     ],
+     "repeats": true,
+     "unordered": true
+    },
+    {
+     "callee": "sum",
+     "positional": [
+      {
+       "text": "(f1(n) for d, n in items)",
+       "names": [
+        "f1",
+        "items"
+       ]
+      }
+     ]
+    }
+   ],
+   "argument": {
+    "text": "n",
+    "names": []
+   }
+  },
+  {
+   "call": "rows = sorted(rs, key=lambda r: f1(r + base))",
+   "scope": "f1",
+   "name": "v",
+   "values": {},
+   "made": null,
+   "index": 0,
+   "entered": 2,
+   "params": {
+    "positional": [
+     "v"
+    ]
+   },
+   "args": [
+    {
+     "callee": "f1",
+     "positional": [
+      {
+       "text": "r + base",
+       "names": [
+        "base"
+       ]
+      }
+     ],
+     "repeats": true,
+     "unordered": true
+    },
+    {
+     "callee": "sorted",
+     "positional": [
+      {
+       "text": "rs",
+       "names": [
+        "rs"
+       ]
+      }
+     ],
+     "keywords": [
+      {
+       "text": "lambda r: f1(r + base)",
+       "names": [
+        "f1",
+        "base"
+       ],
+       "name": "key"
+      }
+     ]
+    }
+   ],
+   "argument": {
+    "text": "r + base",
+    "names": [
+     "base"
+    ]
+   }
+  }
+ ]
+}

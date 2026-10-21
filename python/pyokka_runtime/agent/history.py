@@ -302,12 +302,23 @@ class History:
     def rows(self, name: str) -> list[dict]:
         """Every change of ``name`` from the three sources, ascending by step, before caps, filters and reads."""
         rows: dict[tuple[int, str], dict] = {}
+        recorded_in: dict[tuple[int, str], int] = {}  # a locals row's key -> the scope whose entry made it
 
-        def add(row: dict) -> None:
+        def add(row: dict, scope: int | None = None) -> None:
             key = (int(row["step"]), str(row["name"]))
             have = rows.get(key)
             if have is None:
                 rows[key] = row
+                if scope is not None:
+                    recorded_in[key] = scope
+            elif scope is not None and recorded_in.get(key) == scope:
+                # the same frame recorded the name twice at one step: a statement a yield or an await split in two
+                # (`d["got"] = yield d.pop("seed")`), closed again after the resume. The later one is its value after.
+                have["text"] = row["text"]
+                if "shared" in row:
+                    have["shared"] = row["shared"]
+                else:
+                    have.pop("shared", None)
             elif row.get("logId") and not have.get("logId"):
                 have["logId"] = row["logId"]
 
@@ -325,7 +336,7 @@ class History:
                 shared = self.shared(observed, sid, changed)
                 if shared:
                     row["shared"] = shared
-                add(row)
+                add(row, sid)
         # 2. logged values whose context is the name (or a path under it)
         for ctx, events in self.values_by_context.items():
             if not matches_name(ctx, name):

@@ -36,6 +36,12 @@
     ],
     "calls": [
      "Ledger()"
+    ],
+    "args": [
+     {
+      "callee": "Ledger",
+      "positional": []
+     }
     ]
    },
    {
@@ -49,6 +55,17 @@
     ],
     "calls": [
      "new_order(\"ana\")"
+    ],
+    "args": [
+     {
+      "callee": "new_order",
+      "positional": [
+       {
+        "text": "\"ana\"",
+        "names": []
+       }
+      ]
+     }
     ]
    },
    {
@@ -62,6 +79,17 @@
     ],
     "calls": [
      "new_order(\"bo\")"
+    ],
+    "args": [
+     {
+      "callee": "new_order",
+      "positional": [
+       {
+        "text": "\"bo\"",
+        "names": []
+       }
+      ]
+     }
     ]
    },
    {
@@ -74,6 +102,19 @@
     ],
     "calls": [
      "bulk_bonus(ana)"
+    ],
+    "args": [
+     {
+      "callee": "bulk_bonus",
+      "positional": [
+       {
+        "text": "ana",
+        "names": [
+         "ana"
+        ]
+       }
+      ]
+     }
     ]
    },
    {
@@ -86,6 +127,25 @@
     ],
     "calls": [
      "ledger.charge(ana)"
+    ],
+    "args": [
+     {
+      "callee": "charge",
+      "receiver": {
+       "text": "ledger",
+       "names": [
+        "ledger"
+       ]
+      },
+      "positional": [
+       {
+        "text": "ana",
+        "names": [
+         "ana"
+        ]
+       }
+      ]
+     }
     ]
    },
    {
@@ -100,6 +160,25 @@
     ],
     "calls": [
      "ledger.charge(bo)"
+    ],
+    "args": [
+     {
+      "callee": "charge",
+      "receiver": {
+       "text": "ledger",
+       "names": [
+        "ledger"
+       ]
+      },
+      "positional": [
+       {
+        "text": "bo",
+        "names": [
+         "bo"
+        ]
+       }
+      ]
+     }
     ]
    },
    {
@@ -112,6 +191,44 @@
     ],
     "calls": [
      "print(\"bo pays\", bill, \"ledger\", ledger.totals)"
+    ],
+    "args": [
+     {
+      "callee": "totals",
+      "receiver": {
+       "text": "ledger",
+       "names": [
+        "ledger"
+       ]
+      },
+      "positional": [],
+      "attribute": true
+     },
+     {
+      "callee": "print",
+      "positional": [
+       {
+        "text": "\"bo pays\"",
+        "names": []
+       },
+       {
+        "text": "bill",
+        "names": [
+         "bill"
+        ]
+       },
+       {
+        "text": "\"ledger\"",
+        "names": []
+       },
+       {
+        "text": "ledger.totals",
+        "names": [
+         "ledger"
+        ]
+       }
+      ]
+     }
     ]
    },
    {
@@ -123,6 +240,12 @@
     ],
     "calls": [
      "main()"
+    ],
+    "args": [
+     {
+      "callee": "main",
+      "positional": []
+     }
     ]
    }
   ],
@@ -133,7 +256,14 @@
     "assigns": [
      "self"
     ],
-    "reads": []
+    "reads": [],
+    "params": {
+     "positional": [
+      "self"
+     ],
+     "owner": "Ledger",
+     "binds": "self"
+    }
    },
    {
     "line": 3,
@@ -152,7 +282,15 @@
      "self",
      "order"
     ],
-    "reads": []
+    "reads": [],
+    "params": {
+     "positional": [
+      "self",
+      "order"
+     ],
+     "owner": "Ledger",
+     "binds": "self"
+    }
    },
    {
     "line": 6,
@@ -194,6 +332,20 @@
      "self",
      "order",
      "amount"
+    ],
+    "args": [
+     {
+      "callee": "totals",
+      "receiver": {
+       "text": "self",
+       "names": [
+        "self"
+       ]
+      },
+      "positional": [],
+      "attribute": true,
+      "unordered": true
+     }
     ]
    },
    {
@@ -220,7 +372,12 @@
     "assigns": [
      "customer"
     ],
-    "reads": []
+    "reads": [],
+    "params": {
+     "positional": [
+      "customer"
+     ]
+    }
    },
    {
     "line": 5,
@@ -239,7 +396,12 @@
     "assigns": [
      "order"
     ],
-    "reads": []
+    "reads": [],
+    "params": {
+     "positional": [
+      "order"
+     ]
+    }
    },
    {
     "line": 2,
@@ -292,7 +454,7 @@
     "name": "bill",
     "step": 41,
     "depth": 5,
-    "nodes": 11,
+    "nodes": 19,
     "truncated": false,
     "recordedLocals": true,
     "root": {
@@ -342,7 +504,56 @@
          "scopeId": 9,
          "statement": "def charge(self, order):",
          "resolution": "guessed",
-         "reads": [],
+         "argument": {
+          "text": "ledger",
+          "step": 25,
+          "file": "/fixture/main.py",
+          "fileId": 1,
+          "line": 11,
+          "function": "main",
+          "scopeId": 4,
+          "statement": "ledger.charge(ana)"
+         },
+         "reads": [
+          {
+           "name": "ledger",
+           "text": "<billing.Ledger object at 0x0>",
+           "source": "locals",
+           "logId": "l-1",
+           "step": 9,
+           "file": "/fixture/main.py",
+           "fileId": 1,
+           "line": 7,
+           "function": "main",
+           "scopeId": 4,
+           "statement": "ledger = Ledger()",
+           "resolution": "seen",
+           "reads": [
+            {
+             "name": "Ledger",
+             "text": "<class 'billing.Ledger'>",
+             "source": "locals",
+             "file": "/fixture/billing.py",
+             "fileId": 2,
+             "line": 1,
+             "defined": true
+            }
+           ],
+           "calls": [
+            {
+             "name": "__init__",
+             "scopeId": 5,
+             "entryStep": 10,
+             "returnStep": 11,
+             "file": "/fixture/billing.py",
+             "fileId": 2,
+             "line": 2,
+             "inputs": []
+            }
+           ],
+           "opaque": []
+          }
+         ],
          "calls": [],
          "opaque": []
         },
@@ -358,7 +569,75 @@
          "scopeId": 9,
          "statement": "def charge(self, order):",
          "resolution": "guessed",
-         "reads": [],
+         "argument": {
+          "text": "ana",
+          "step": 25,
+          "file": "/fixture/main.py",
+          "fileId": 1,
+          "line": 11,
+          "function": "main",
+          "scopeId": 4,
+          "statement": "ledger.charge(ana)"
+         },
+         "reads": [
+          {
+           "name": "ana",
+           "text": "{'customer': 'ana', 'lines': [{'price': 1.0, 'qty': 2, 'sku': 'apple'}]}",
+           "source": "locals",
+           "shared": {
+            "path": "ana['lines'][0]",
+            "as": "line",
+            "since": 14,
+            "file": "/fixture/catalog.py",
+            "fileId": 3,
+            "line": 5,
+            "function": "new_order"
+           },
+           "step": 23,
+           "file": "/fixture/promo.py",
+           "fileId": 4,
+           "line": 4,
+           "function": "bulk_bonus",
+           "scopeId": 8,
+           "statement": "line[\"qty\"] += 1",
+           "resolution": "seen",
+           "reads": [
+            {
+             "name": "line",
+             "text": "{'price': 1.0, 'qty': 1, 'sku': 'apple'}",
+             "source": "locals",
+             "step": 21,
+             "file": "/fixture/promo.py",
+             "fileId": 4,
+             "line": 2,
+             "function": "bulk_bonus",
+             "scopeId": 8,
+             "statement": "for line in order[\"lines\"]:",
+             "resolution": "seen",
+             "reads": [
+              {
+               "name": "order",
+               "text": "{'customer': 'ana', 'lines': [{'price': 1.0, 'qty': 1, 'sku': 'apple'}]}",
+               "source": "locals",
+               "step": 19,
+               "file": "/fixture/promo.py",
+               "fileId": 4,
+               "line": 1,
+               "function": "bulk_bonus",
+               "scopeId": 8,
+               "statement": "def bulk_bonus(order):",
+               "resolution": "guessed",
+               "cut": true
+              }
+             ],
+             "calls": [],
+             "opaque": []
+            }
+           ],
+           "calls": [],
+           "opaque": []
+          }
+         ],
          "calls": [],
          "opaque": []
         },
@@ -416,7 +695,41 @@
              "scopeId": 9,
              "statement": "def charge(self, order):",
              "resolution": "guessed",
-             "reads": [],
+             "argument": {
+              "text": "ana",
+              "step": 25,
+              "file": "/fixture/main.py",
+              "fileId": 1,
+              "line": 11,
+              "function": "main",
+              "scopeId": 4,
+              "statement": "ledger.charge(ana)"
+             },
+             "reads": [
+              {
+               "name": "ana",
+               "text": "{'customer': 'ana', 'lines': [{'price': 1.0, 'qty': 2, 'sku': 'apple'}]}",
+               "source": "locals",
+               "shared": {
+                "path": "ana['lines'][0]",
+                "as": "line",
+                "since": 14,
+                "file": "/fixture/catalog.py",
+                "fileId": 3,
+                "line": 5,
+                "function": "new_order"
+               },
+               "step": 23,
+               "file": "/fixture/promo.py",
+               "fileId": 4,
+               "line": 4,
+               "function": "bulk_bonus",
+               "scopeId": 8,
+               "statement": "line[\"qty\"] += 1",
+               "resolution": "seen",
+               "cut": true
+              }
+             ],
              "calls": [],
              "opaque": []
             }
@@ -479,7 +792,62 @@
            "scopeId": 8,
            "statement": "def bulk_bonus(order):",
            "resolution": "guessed",
-           "reads": [],
+           "argument": {
+            "text": "ana",
+            "step": 18,
+            "file": "/fixture/main.py",
+            "fileId": 1,
+            "line": 10,
+            "function": "main",
+            "scopeId": 4,
+            "statement": "bulk_bonus(ana)  # only ana gets the bonus"
+           },
+           "reads": [
+            {
+             "name": "ana",
+             "text": "{'customer': 'ana', 'lines': [{'price': 1.0, 'qty': 1, 'sku': 'apple'}]}",
+             "source": "locals",
+             "logId": "l-2",
+             "step": 12,
+             "file": "/fixture/main.py",
+             "fileId": 1,
+             "line": 8,
+             "function": "main",
+             "scopeId": 4,
+             "statement": "ana = new_order(\"ana\")",
+             "resolution": "seen",
+             "reads": [
+              {
+               "name": "new_order",
+               "text": "<function new_order at 0x0>",
+               "source": "locals",
+               "file": "/fixture/catalog.py",
+               "fileId": 3,
+               "line": 4,
+               "defined": true
+              }
+             ],
+             "calls": [
+              {
+               "name": "new_order",
+               "scopeId": 6,
+               "entryStep": 13,
+               "returnStep": 14,
+               "file": "/fixture/catalog.py",
+               "fileId": 3,
+               "line": 4,
+               "inputs": [
+                {
+                 "name": "customer",
+                 "text": "'ana'"
+                }
+               ],
+               "result": "{'customer': 'ana', 'lines': [{'price': 1.0, 'qty': 1, 'sku': 'apple'}]}"
+              }
+             ],
+             "opaque": []
+            }
+           ],
            "calls": [],
            "opaque": []
           }
@@ -526,7 +894,7 @@
     "name": "bo",
     "step": 33,
     "depth": 5,
-    "nodes": 3,
+    "nodes": 5,
     "truncated": false,
     "recordedLocals": true,
     "root": {
@@ -576,7 +944,62 @@
          "scopeId": 8,
          "statement": "def bulk_bonus(order):",
          "resolution": "guessed",
-         "reads": [],
+         "argument": {
+          "text": "ana",
+          "step": 18,
+          "file": "/fixture/main.py",
+          "fileId": 1,
+          "line": 10,
+          "function": "main",
+          "scopeId": 4,
+          "statement": "bulk_bonus(ana)  # only ana gets the bonus"
+         },
+         "reads": [
+          {
+           "name": "ana",
+           "text": "{'customer': 'ana', 'lines': [{'price': 1.0, 'qty': 1, 'sku': 'apple'}]}",
+           "source": "locals",
+           "logId": "l-2",
+           "step": 12,
+           "file": "/fixture/main.py",
+           "fileId": 1,
+           "line": 8,
+           "function": "main",
+           "scopeId": 4,
+           "statement": "ana = new_order(\"ana\")",
+           "resolution": "seen",
+           "reads": [
+            {
+             "name": "new_order",
+             "text": "<function new_order at 0x0>",
+             "source": "locals",
+             "file": "/fixture/catalog.py",
+             "fileId": 3,
+             "line": 4,
+             "defined": true
+            }
+           ],
+           "calls": [
+            {
+             "name": "new_order",
+             "scopeId": 6,
+             "entryStep": 13,
+             "returnStep": 14,
+             "file": "/fixture/catalog.py",
+             "fileId": 3,
+             "line": 4,
+             "inputs": [
+              {
+               "name": "customer",
+               "text": "'ana'"
+              }
+             ],
+             "result": "{'customer': 'ana', 'lines': [{'price': 1.0, 'qty': 1, 'sku': 'apple'}]}"
+            }
+           ],
+           "opaque": []
+          }
+         ],
          "calls": [],
          "opaque": []
         }
@@ -602,7 +1025,7 @@
     "name": "amount",
     "step": 38,
     "depth": 5,
-    "nodes": 4,
+    "nodes": 7,
     "truncated": false,
     "recordedLocals": true,
     "root": {
@@ -659,7 +1082,75 @@
          "scopeId": 10,
          "statement": "def charge(self, order):",
          "resolution": "guessed",
-         "reads": [],
+         "argument": {
+          "text": "bo",
+          "step": 33,
+          "file": "/fixture/main.py",
+          "fileId": 1,
+          "line": 12,
+          "function": "main",
+          "scopeId": 4,
+          "statement": "bill = ledger.charge(bo)"
+         },
+         "reads": [
+          {
+           "name": "bo",
+           "text": "{'customer': 'bo', 'lines': [{'price': 1.0, 'qty': 2, 'sku': 'apple'}]}",
+           "source": "locals",
+           "shared": {
+            "path": "bo['lines'][0]",
+            "as": "line",
+            "since": 17,
+            "file": "/fixture/catalog.py",
+            "fileId": 3,
+            "line": 5,
+            "function": "new_order"
+           },
+           "step": 23,
+           "file": "/fixture/promo.py",
+           "fileId": 4,
+           "line": 4,
+           "function": "bulk_bonus",
+           "scopeId": 8,
+           "statement": "line[\"qty\"] += 1",
+           "resolution": "seen",
+           "reads": [
+            {
+             "name": "line",
+             "text": "{'price': 1.0, 'qty': 1, 'sku': 'apple'}",
+             "source": "locals",
+             "step": 21,
+             "file": "/fixture/promo.py",
+             "fileId": 4,
+             "line": 2,
+             "function": "bulk_bonus",
+             "scopeId": 8,
+             "statement": "for line in order[\"lines\"]:",
+             "resolution": "seen",
+             "reads": [
+              {
+               "name": "order",
+               "text": "{'customer': 'ana', 'lines': [{'price': 1.0, 'qty': 1, 'sku': 'apple'}]}",
+               "source": "locals",
+               "step": 19,
+               "file": "/fixture/promo.py",
+               "fileId": 4,
+               "line": 1,
+               "function": "bulk_bonus",
+               "scopeId": 8,
+               "statement": "def bulk_bonus(order):",
+               "resolution": "guessed",
+               "cut": true
+              }
+             ],
+             "calls": [],
+             "opaque": []
+            }
+           ],
+           "calls": [],
+           "opaque": []
+          }
+         ],
          "calls": [],
          "opaque": []
         }

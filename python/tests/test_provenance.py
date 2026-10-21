@@ -141,6 +141,11 @@ def test_shared_object_trees_match_the_shared_json(tmp_path: Path):
     bo = next(r for r in bill["root"]["reads"] if r["name"] == "bo")
     assert (bo["line"], bo["shared"]["path"], bo["shared"]["as"], bo["shared"]["line"], bo["shared"]["function"]) == (4, "bo['lines'][0]", "line", 5, "new_order")
     assert "bo['lines'][0] is the same object as line, changed at #" in bill["conclusion"]
+    # charge's order parameter goes back to the bo the call passed, and so to the change ana's bonus made through it
+    order = built[2]["result"]["root"]["reads"][1]["reads"][0]
+    assert (order["name"], order["argument"]["text"], order["argument"]["line"]) == ("order", "bo", 12)
+    bo = order["reads"][0]
+    assert (bo["name"], bo["line"], bo["function"], bo["shared"]["as"]) == ("bo", 4, "bulk_bonus", "line")
     assert doc == json.loads(SHARED_CASES_JSON.read_text(encoding="utf-8"))
 
 
@@ -201,10 +206,14 @@ def test_a_method_reads_its_parameters_from_the_def_header(cases):
         ("self", "Account(owner='ivor', balance=10.0)", 19, 11, "def deposit(self, amount):"),
         ("amount", "20", 19, 11, "def deposit(self, amount):"),
     ]
-    assert all(r["reads"] == [] and r["calls"] == [] and r["opaque"] == [] for r in root["reads"])
+    # each parameter goes on to the argument the call passed: the receiver for self, the loop variable for amount
+    site = {"text": "acct", "step": 18, "file": "/fixture/main.py", "fileId": 1, "line": 26, "function": "<module>", "scopeId": 0, "statement": "acct.deposit(amount)"}
+    assert [r["argument"] for r in root["reads"]] == [site, dict(site, text="amount")]
+    assert [[(a["name"], a["text"], a["step"]) for a in r["reads"]] for r in root["reads"]] == [[("acct", "Account(owner='ivor', balance=0.0)", 10)], [("amount", "20", 17)]]
     both = cases[("both", PROVENANCE_DEPTH, 7)]["result"]["root"]
     assert (both["text"], both["step"], both["file"], both["function"]) == ("22", 31, "/fixture/helper.py", "combine")
     assert [(r["name"], r["text"], r["step"], r["line"]) for r in both["reads"]] == [("a", "12", 30, 6), ("b", "10", 30, 6)]
+    assert [(r["argument"]["text"], [(a["name"], a["step"]) for a in r["reads"]]) for r in both["reads"]] == [("area", [("area", 6)]), ("count", [("count", 28)])]
 
 
 def test_loop_variable_the_marker_and_the_statement_itself(cases):

@@ -58,6 +58,8 @@ function nodeText(n: ProvenanceNode, prefix: string, displayPath: DisplayPath, t
   if (tree.mixed && n.resolution === 'guessed' && parts.length) parts[0] += '  (guessed)'; // only in a tree that has a seen node, so a snapshot tree reads as before
   const statement = first ? first.statement : n.statement;
   if (statement) parts.push(oneLine(statement, WHY_STATEMENT));
+  const arg = n.argument;
+  if (arg) parts.push(`passed ${oneLine(arg.text, WHY_INPUT)} at #${arg.step} ${displayPath(arg.fileId, arg.file)}:${arg.line ?? '?'} ${arg.function ?? '<module>'}`);
   const shared = n.shared ? sharedText(n.shared, displayPath) : '';
   if (shared) parts.push(`[${shared}]`);
   return prefix + parts.join('   ') + (n.cut ? '  …' : '');

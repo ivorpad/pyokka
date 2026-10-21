@@ -284,6 +284,58 @@ export interface StatementBinding {
   loop?: number;
   /** the calls the statement's header makes: the source text of each `Call`, outermost first, at most 8 of at most 80 characters; absent when none */
   calls?: string[];
+  /** each call's arguments and each attribute load's object, in the order Python runs them (`f(g(x))`: `g` first), duplicates kept; none past 64 (a call through anything but a name or an attribute is left out); absent when none */
+  args?: CallArguments[];
+  /** `def` statements: the parameters by kind */
+  params?: DefParameters;
+}
+
+/** One argument expression at a call site: its source text (at most 80 characters) and the names it loads. */
+export interface ArgumentText {
+  text: string;
+  names: string[];
+}
+
+/** The arguments of one call, or the object of one attribute load (`call_args` in bindings.py). */
+export interface CallArguments {
+  /** the last name before the parenthesis (`charge` for `ledger.charge(bo)`), or the attribute's name */
+  callee: string;
+  /** an attribute call's object: `ledger` */
+  receiver?: ArgumentText;
+  /** the arguments before the first `*x` */
+  positional: ArgumentText[];
+  keywords?: (ArgumentText & { name: string })[];
+  /** a `*x` was passed */
+  star?: true;
+  /** a `**x` was passed */
+  kwstar?: true;
+  /** an attribute load, not a call: a property's getter is entered with `receiver` */
+  attribute?: true;
+  /** inside a lambda or a comprehension: it runs any number of times, or none */
+  repeats?: true;
+  /** first entry only: the statement's calls may run in another order or not at all (a branch, a lambda, a comprehension, an await) */
+  unordered?: true;
+  /** first entry only: the callees the statement also hands over as a value (`sorted(rows, key=keyed)`) */
+  passes?: string[];
+}
+
+/** A `def`'s parameters (`def_params` in bindings.py). */
+export interface DefParameters {
+  positional: string[];
+  /** how many of `positional` are positional-only */
+  positionalOnly?: number;
+  /** how many of the last `positional` have a default */
+  defaults?: number;
+  vararg?: string;
+  keywordOnly?: string[];
+  requiredKeywordOnly?: string[];
+  kwarg?: string;
+  /** the class whose body holds the `def` */
+  owner?: string;
+  /** what a call binds to the first parameter: the instance (a method) or the class (a `@classmethod`, `__new__`) */
+  binds?: 'self' | 'cls';
+  /** a property's getter: entered by loading the attribute */
+  property?: true;
 }
 
 /* ---------- provenance (bridge `why` reply, `pyokka why --json`, the Details pane's "why" tree) ---------- */
@@ -357,6 +409,21 @@ export interface ProvenanceNode {
   resolution?: 'seen' | 'guessed';
   /** a root leaf whose name has no value yet at the queried step: the first change after it in the step's scope or its module */
   firstAssigned?: ProvenanceFirstAssigned;
+  /** a parameter: the argument the call passed for it, at the call site (the step that called the function); the names that
+   *  argument loaded are the node's `reads`, resolved at that step */
+  argument?: ProvenanceArgument;
+}
+
+/** Where a parameter's value came from: the argument's source text and the call site, placed as a node is. */
+export interface ProvenanceArgument {
+  text: string;
+  step: number;
+  file?: string;
+  fileId?: number;
+  line?: number;
+  function?: string;
+  scopeId?: number;
+  statement?: string;
 }
 
 /** Where a name that does not exist yet at the queried step is first assigned: the producing statement's step and location, as a node carries them. */

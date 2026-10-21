@@ -6,7 +6,7 @@ import textwrap
 
 import pytest
 
-from pyokka_runtime.bindings import index_bindings, matches_name, statement_bindings
+from pyokka_runtime.bindings import ARGS_CAP, index_bindings, matches_name, statement_bindings
 
 SRC = textwrap.dedent(
     '''
@@ -103,7 +103,13 @@ def test_calls_are_the_header_call_texts():
     # def and class statements make no call at a step (decorators and defaults run when the definition executes)
     assert "calls" not in b[8] and 7 not in b and 10 not in b
     # a statement with only a call is listed for it
-    assert b[12] == {"line": 12, "col": 0, "assigns": [], "reads": [], "calls": ['print("hello")']}
+    assert b[12] == {"line": 12, "col": 0, "assigns": [], "reads": [], "calls": ['print("hello")'], "args": [{"callee": "print", "positional": [{"text": '"hello"', "names": []}]}]}
+    # every call's arguments, duplicates kept (which of two f(x) entered a scope is not in the source), all ten of g's line
+    assert [a["callee"] for a in b[4]["args"]] == ["f", "f"] and len(b[5]["args"]) == 10
+    assert "args" not in by_line(statement_bindings("x = [%s]\n" % ", ".join("f%d()" % i for i in range(ARGS_CAP + 1))))[1]
+    # a def lists its parameters by kind, and a method how a call binds its first one
+    d = by_line(statement_bindings("class K:\n    @classmethod\n    def make(cls, a, b=1, *r, c, d=2, **o): pass\n"))
+    assert d[3]["params"] == {"positional": ["cls", "a", "b"], "defaults": 1, "vararg": "r", "keywordOnly": ["c", "d"], "requiredKeywordOnly": ["c"], "kwarg": "o", "owner": "K", "binds": "cls"}
 
 
 def test_loops_carry_their_last_line():

@@ -20,6 +20,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from ..bindings import class_name, instance_class, parameter_argument
 from ..protocol import MAX_LOCALS_ENTRIES, PROVENANCE_DEPTH, PROVENANCE_MAX_DEPTH, PROVENANCE_NODES
 from .history import History
 from .moments import MomentBuilder
@@ -156,6 +157,47 @@ class ProvenanceBuilder:
         recorded = self.history.recorded_reads(step)
         return [self.labelled(self.from_read(r), recorded and bool(r.get("exact"))) for r in self.history.resolved_reads(step)]
 
+    def argument(self, node: dict) -> tuple[dict, list[dict]] | None:
+        """For a parameter (a node at the ``def`` header that entered its function): where the call passed it and
+        the names that argument read there, each resolved at the call site like a statement's reads. None when
+        the node is not a parameter or the call site does not say which argument it was (``parameter_argument``)."""
+        name, step = str(node.get("name") or ""), int(node["step"])
+        scope = self.trace.scope_by_id.get(self.trace.scope_id(step))
+        if not name or scope is None or int(scope["first"]) != step or int(scope.get("parent", -1)) < 0:
+            return None
+        params = (self.history.binding_at(step) or {}).get("params")
+        if not params or name not in self.history.binding_at(step).get("assigns", []):
+            return None
+        site, parent = self.moments.call_site(scope), int(scope["parent"])
+        loc = self.trace.location(site)
+        if site >= step or loc is None or self.trace.scope_id(site) != parent:
+            return None
+        file_id = int(loc[0])
+
+        def value_of(text: str) -> str | None:
+            value = self.history.value_at(text, site, parent, file_id).get("text") if text.isidentifier() else None
+            return None if value is None else str(value)
+
+        calls = (self.history.binding_at(site) or {}).get("args") or []
+        # the times this statement entered this function, in entry order: which call this one was
+        same = [s for s in self.scopes_by_site.get(site, ()) if int(s["parent"]) == parent and int(s["rid"]) == int(scope["rid"])]
+        index = next((i for i, s in enumerate(same) if s is scope), -1)
+        made = None
+        if scope["name"] in ("__init__", "__new__") and params.get("positional"):
+            first = self.root(str(params["positional"][0]), step)  # self (cls for __new__), as recorded at the entry
+            made = (class_name if scope["name"] == "__new__" else instance_class)(str(first.get("text") or ""))
+        arg = parameter_argument(name, str(scope["name"]), params, calls, value_of, made, index, len(same))
+        if arg is None:
+            return None
+        out: dict[str, Any] = {"text": arg["text"]}
+        out.update(self.history.location(site))
+        statement = self.statement(site)
+        if statement is not None:
+            out["statement"] = statement
+        recorded = self.history.recorded_reads(site)
+        values = [self.history.value_at(n, site, parent, file_id) for n in arg["names"]]
+        return out, [self.labelled(self.from_read(v), recorded and bool(v.get("exact"))) for v in values]
+
     def calls(self, step: int) -> list[dict]:
         """The scopes the statement entered, as the walkthrough's call moments list them, in entry order."""
         scope_id = self.trace.scope_id(step)
@@ -208,6 +250,10 @@ class ProvenanceBuilder:
                 node["cut"] = True
                 continue
             reads = self.reads(int(node["step"]))
+            passed = self.argument(node)
+            if passed is not None:
+                node["argument"] = passed[0]  # a parameter: the argument the call passed, whose names are its reads
+                reads = reads + passed[1]
             if count + len(reads) > budget:
                 node["cut"] = True
                 truncated = True

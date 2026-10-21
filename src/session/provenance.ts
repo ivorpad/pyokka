@@ -11,8 +11,9 @@
  * body was stepped (the walkthrough's call rules, from `MomentBuilder`) and the calls no stepped
  * scope claimed. Expansion is breadth-first under a depth and a node budget.
  */
-import { MAX_LOCALS_ENTRIES, PROVENANCE_DEPTH, PROVENANCE_MAX_DEPTH, PROVENANCE_NODES, type LogEvent, type Provenance, type ProvenanceCall, type ProvenanceFirstAssigned, type ProvenanceNode, type StatementBinding, type TraceScope } from '../shared/protocol';
+import { MAX_LOCALS_ENTRIES, PROVENANCE_DEPTH, PROVENANCE_MAX_DEPTH, PROVENANCE_NODES, type LogEvent, type Provenance, type ProvenanceArgument, type ProvenanceCall, type ProvenanceFirstAssigned, type ProvenanceNode, type StatementBinding, type TraceScope } from '../shared/protocol';
 import { MomentBuilder } from './moments';
+import { className, instanceClass, parameterArgument } from './parameterArgument';
 import { History, type ValueRecord } from './variableHistory';
 import type { WalkthroughInputs } from './walkthroughShared';
 import { provenanceConclusion } from '../shared/provenanceText';
@@ -85,12 +86,18 @@ class ProvenanceBuilder {
           continue;
         }
         const reads = this.history.readNames(node.step);
-        if (this.count + reads.length > budget) {
+        const passed = this.argument(node);
+        if (passed) node.argument = passed.argument; // a parameter: the argument the call passed, whose names are its reads
+        if (this.count + reads.length + (passed?.names.length ?? 0) > budget) {
           node.cut = true;
           this.truncated = true;
           continue;
         }
         this.expand(node, reads);
+        if (passed) {
+          const recorded = this.history.recordedReads(passed.argument.step);
+          node.reads!.push(...passed.names.map((n) => this.resolve(n, passed.argument.step, passed.scopeId, passed.fileId, recorded)));
+        }
         // a name read from itself, or a loop variable, resolves to the statement itself: the walk ends there
         for (const r of node.reads ?? []) if (r.step !== undefined && r.step < node.step) next.push(r);
       }
@@ -221,6 +228,38 @@ class ProvenanceBuilder {
     return this.place(node, v.step);
   }
 
+  /**
+   * For a parameter (a node at the `def` header that entered its function): where the call passed it and the names that
+   * argument read there, resolved at the call site like a statement's reads. Undefined when the node is not a parameter
+   * or the call site does not say which argument it was (`parameterArgument`).
+   */
+  private argument(node: ProvenanceNode): { argument: ProvenanceArgument; names: string[]; scopeId: number; fileId: number } | undefined {
+    const trace = this.inputs.trace;
+    const step = node.step!;
+    const scope = trace.scope(trace.scopeId(step));
+    if (!node.name || !scope || scope.first !== step || scope.parent < 0) return undefined;
+    const def = this.history.bindingAt(step);
+    if (!def?.params || !def.assigns.includes(node.name)) return undefined;
+    const site = this.moments.callSite(scope);
+    const loc = trace.location(site);
+    if (site >= step || !loc || trace.scopeId(site) !== scope.parent) return undefined;
+    const valueOf = (text: string): string | undefined => this.history.valueAt(text, site, scope.parent, loc.fileId).text;
+    const calls = this.history.bindingAt(site)?.args ?? [];
+    // the times this statement entered this function, in entry order: which call this one was
+    const same = (this.children.get(scope.parent) ?? []).filter((s) => s.rid === scope.rid && this.moments.callSite(s) === site);
+    let made: string | undefined;
+    if ((scope.name === '__init__' || scope.name === '__new__') && def.params.positional.length) {
+      const first = this.root(def.params.positional[0]!, step); // self (cls for __new__), as recorded at the entry
+      made = (scope.name === '__new__' ? className : instanceClass)(first.text ?? '');
+    }
+    const arg = parameterArgument(node.name, scope.name, def.params, calls, valueOf, made, same.indexOf(scope), same.length);
+    if (!arg) return undefined;
+    const argument: ProvenanceArgument = { text: arg.text, step: site, ...this.history.location(site) };
+    const statement = this.statement(site);
+    if (statement !== undefined) argument.statement = statement;
+    return { argument, names: arg.names, scopeId: scope.parent, fileId: loc.fileId };
+  }
+
   /* ----- calls ----- */
 
   /** The scopes the statement at `step` entered: children of its scope whose call site is the step, in entry order. */
@@ -286,4 +325,17 @@ export function provenance(inputs: ProvenanceInputs, query: ProvenanceQuery): Pr
 export function stepOfEntry(trace: TraceModel, entry: { step: number; rid: number }): number {
   for (let j = Math.min(entry.step, trace.count - 1); j >= 0; j--) if (trace.rid(j) === entry.rid) return j;
   return entry.step;
+}
+
+/** The tree with display paths on every node, call, first assignment and argument; the wire shape carries absolute ones. The panel host (views/whyPane.ts) and the browser bridge (web/panes.ts) both send it. */
+export function withDisplayPaths(tree: Provenance, displayPath: (fileId: number) => string): Provenance {
+  const node = (n: ProvenanceNode): ProvenanceNode => ({
+    ...n,
+    ...(n.fileId !== undefined ? { file: displayPath(n.fileId) } : {}),
+    ...(n.firstAssigned?.fileId !== undefined ? { firstAssigned: { ...n.firstAssigned, file: displayPath(n.firstAssigned.fileId) } } : {}),
+    ...(n.argument?.fileId !== undefined ? { argument: { ...n.argument, file: displayPath(n.argument.fileId) } } : {}),
+    ...(n.reads ? { reads: n.reads.map(node) } : {}),
+    ...(n.calls ? { calls: n.calls.map((c) => ({ ...c, file: displayPath(c.fileId) })) } : {}),
+  });
+  return { ...tree, root: node(tree.root) };
 }

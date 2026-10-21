@@ -67,6 +67,21 @@ describe('variableHistory over an exact recording', () => {
       { name: 'i', text: '1', step: 4 },
     ]);
   });
+
+  it('lists the later of two changes one frame recorded at one step (a statement a yield split), and keeps another frame\'s first', () => {
+    const base = loopExact();
+    const locals: LocalsEvent['entries'] = [
+      ...base.locals,
+      { step: 5, scopeId: 0, changes: [{ name: 'total', text: '2', exact: true }] }, // closed again after a resume
+      { step: 3, scopeId: 9, changes: [{ name: 'total', text: 'other', exact: true }] }, // another frame's holder row
+    ];
+    const h = variableHistory({ ...base, locals }, 'total');
+    expect(h.changes.map((c) => [c.step, c.text])).toEqual([
+      [0, '0'],
+      [3, '0'],
+      [5, '2'],
+    ]);
+  });
 });
 
 describe('variableHistory', () => {

@@ -5,21 +5,8 @@
  */
 import type { Session } from '../session/session';
 import { sessionProvenance } from '../session/variableQuery';
-import { stepOfEntry } from '../session/provenance';
-import type { Provenance, ProvenanceNode } from '../shared/protocol';
+import { stepOfEntry, withDisplayPaths } from '../session/provenance';
 import type { HostToWebview } from '../shared/webviewProtocol';
-
-/** The tree with display paths on every node and call; the wire shape carries absolute ones. */
-export function withDisplayPaths(tree: Provenance, displayPath: (fileId: number) => string): Provenance {
-  const node = (n: ProvenanceNode): ProvenanceNode => ({
-    ...n,
-    ...(n.fileId !== undefined ? { file: displayPath(n.fileId) } : {}),
-    ...(n.firstAssigned?.fileId !== undefined ? { firstAssigned: { ...n.firstAssigned, file: displayPath(n.firstAssigned.fileId) } } : {}),
-    ...(n.reads ? { reads: n.reads.map(node) } : {}),
-    ...(n.calls ? { calls: n.calls.map((c) => ({ ...c, file: displayPath(c.fileId) })) } : {}),
-  });
-  return { ...tree, root: node(tree.root) };
-}
 
 export class WhyPaneHost {
   private target: { step: number; name: string } | undefined;

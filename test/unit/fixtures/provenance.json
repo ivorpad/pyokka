@@ -40,7 +40,15 @@
      "self",
      "amount"
     ],
-    "reads": []
+    "reads": [],
+    "params": {
+     "positional": [
+      "self",
+      "amount"
+     ],
+     "owner": "Account",
+     "binds": "self"
+    }
    },
    {
     "line": 12,
@@ -59,6 +67,19 @@
     "assigns": [],
     "reads": [
      "self"
+    ],
+    "args": [
+     {
+      "callee": "balance",
+      "receiver": {
+       "text": "self",
+       "names": [
+        "self"
+       ]
+      },
+      "positional": [],
+      "attribute": true
+     }
     ]
    },
    {
@@ -68,7 +89,13 @@
      "value",
      "factor"
     ],
-    "reads": []
+    "reads": [],
+    "params": {
+     "positional": [
+      "value",
+      "factor"
+     ]
+    }
    },
    {
     "line": 17,
@@ -120,6 +147,25 @@
     ],
     "calls": [
      "scale(width, base)"
+    ],
+    "args": [
+     {
+      "callee": "scale",
+      "positional": [
+       {
+        "text": "width",
+        "names": [
+         "width"
+        ]
+       },
+       {
+        "text": "base",
+        "names": [
+         "base"
+        ]
+       }
+      ]
+     }
     ]
    },
    {
@@ -133,6 +179,17 @@
     ],
     "calls": [
      "Account(\"ivor\")"
+    ],
+    "args": [
+     {
+      "callee": "Account",
+      "positional": [
+       {
+        "text": "\"ivor\"",
+        "names": []
+       }
+      ]
+     }
     ]
    },
    {
@@ -154,6 +211,25 @@
     ],
     "calls": [
      "acct.deposit(amount)"
+    ],
+    "args": [
+     {
+      "callee": "deposit",
+      "receiver": {
+       "text": "acct",
+       "names": [
+        "acct"
+       ]
+      },
+      "positional": [
+       {
+        "text": "amount",
+        "names": [
+         "amount"
+        ]
+       }
+      ]
+     }
     ]
    },
    {
@@ -177,6 +253,45 @@
     "calls": [
      "sum(a.balance for a in [acct, Account(\"guest\", 5)])",
      "Account(\"guest\", 5)"
+    ],
+    "args": [
+     {
+      "callee": "balance",
+      "receiver": {
+       "text": "a",
+       "names": []
+      },
+      "positional": [],
+      "attribute": true,
+      "repeats": true,
+      "unordered": true
+     },
+     {
+      "callee": "Account",
+      "positional": [
+       {
+        "text": "\"guest\"",
+        "names": []
+       },
+       {
+        "text": "5",
+        "names": []
+       }
+      ],
+      "repeats": true
+     },
+     {
+      "callee": "sum",
+      "positional": [
+       {
+        "text": "(a.balance for a in [acct, Account(\"guest\", 5)])",
+        "names": [
+         "acct",
+         "Account"
+        ]
+       }
+      ]
+     }
     ]
    },
    {
@@ -192,6 +307,42 @@
     ],
     "calls": [
      "helper.describe(total, os.sep)"
+    ],
+    "args": [
+     {
+      "callee": "sep",
+      "receiver": {
+       "text": "os",
+       "names": [
+        "os"
+       ]
+      },
+      "positional": [],
+      "attribute": true
+     },
+     {
+      "callee": "describe",
+      "receiver": {
+       "text": "helper",
+       "names": [
+        "helper"
+       ]
+      },
+      "positional": [
+       {
+        "text": "total",
+        "names": [
+         "total"
+        ]
+       },
+       {
+        "text": "os.sep",
+        "names": [
+         "os"
+        ]
+       }
+      ]
+     }
     ]
    },
    {
@@ -205,6 +356,19 @@
     ],
     "calls": [
      "len(label)"
+    ],
+    "args": [
+     {
+      "callee": "len",
+      "positional": [
+       {
+        "text": "label",
+        "names": [
+         "label"
+        ]
+       }
+      ]
+     }
     ]
    },
    {
@@ -220,6 +384,31 @@
     ],
     "calls": [
      "helper.combine(area, count)"
+    ],
+    "args": [
+     {
+      "callee": "combine",
+      "receiver": {
+       "text": "helper",
+       "names": [
+        "helper"
+       ]
+      },
+      "positional": [
+       {
+        "text": "area",
+        "names": [
+         "area"
+        ]
+       },
+       {
+        "text": "count",
+        "names": [
+         "count"
+        ]
+       }
+      ]
+     }
     ]
    },
    {
@@ -231,6 +420,19 @@
     ],
     "calls": [
      "print(result)"
+    ],
+    "args": [
+     {
+      "callee": "print",
+      "positional": [
+       {
+        "text": "result",
+        "names": [
+         "result"
+        ]
+       }
+      ]
+     }
     ]
    },
    {
@@ -283,6 +485,23 @@
     ],
     "calls": [
      "settings.get(\"colour\")"
+    ],
+    "args": [
+     {
+      "callee": "get",
+      "receiver": {
+       "text": "settings",
+       "names": [
+        "settings"
+       ]
+      },
+      "positional": [
+       {
+        "text": "\"colour\"",
+        "names": []
+       }
+      ]
+     }
     ]
    },
    {
@@ -305,7 +524,13 @@
      "value",
      "sep"
     ],
-    "reads": []
+    "reads": [],
+    "params": {
+     "positional": [
+      "value",
+      "sep"
+     ]
+    }
    },
    {
     "line": 2,
@@ -319,6 +544,19 @@
     ],
     "calls": [
      "str(value)"
+    ],
+    "args": [
+     {
+      "callee": "str",
+      "positional": [
+       {
+        "text": "value",
+        "names": [
+         "value"
+        ]
+       }
+      ]
+     }
     ]
    },
    {
@@ -336,7 +574,13 @@
      "a",
      "b"
     ],
-    "reads": []
+    "reads": [],
+    "params": {
+     "positional": [
+      "a",
+      "b"
+     ]
+    }
    },
    {
     "line": 7,
@@ -1008,7 +1252,7 @@
     "name": "self.balance",
     "step": 20,
     "depth": 5,
-    "nodes": 3,
+    "nodes": 6,
     "truncated": false,
     "recordedLocals": true,
     "root": {
@@ -1037,7 +1281,47 @@
        "scopeId": 4,
        "statement": "def deposit(self, amount):",
        "resolution": "guessed",
-       "reads": [],
+       "argument": {
+        "text": "acct",
+        "step": 18,
+        "file": "/fixture/main.py",
+        "fileId": 1,
+        "line": 26,
+        "function": "<module>",
+        "scopeId": 0,
+        "statement": "acct.deposit(amount)"
+       },
+       "reads": [
+        {
+         "name": "acct",
+         "text": "Account(owner='ivor', balance=0.0)",
+         "source": "locals",
+         "logId": "l-7",
+         "step": 10,
+         "file": "/fixture/main.py",
+         "fileId": 1,
+         "line": 24,
+         "function": "<module>",
+         "scopeId": 0,
+         "statement": "acct = Account(\"ivor\")",
+         "resolution": "guessed",
+         "reads": [
+          {
+           "name": "Account",
+           "text": "<class '__main__.Account'>",
+           "source": "locals",
+           "file": "/fixture/main.py",
+           "fileId": 1,
+           "line": 6,
+           "defined": true
+          }
+         ],
+         "calls": [],
+         "opaque": [
+          "Account(\"ivor\")"
+         ]
+        }
+       ],
        "calls": [],
        "opaque": []
       },
@@ -1053,7 +1337,34 @@
        "scopeId": 4,
        "statement": "def deposit(self, amount):",
        "resolution": "guessed",
-       "reads": [],
+       "argument": {
+        "text": "amount",
+        "step": 18,
+        "file": "/fixture/main.py",
+        "fileId": 1,
+        "line": 26,
+        "function": "<module>",
+        "scopeId": 0,
+        "statement": "acct.deposit(amount)"
+       },
+       "reads": [
+        {
+         "name": "amount",
+         "text": "20",
+         "source": "locals",
+         "step": 17,
+         "file": "/fixture/main.py",
+         "fileId": 1,
+         "line": 25,
+         "function": "<module>",
+         "scopeId": 0,
+         "statement": "for amount in (10, 20):",
+         "resolution": "guessed",
+         "reads": [],
+         "calls": [],
+         "opaque": []
+        }
+       ],
        "calls": [],
        "opaque": []
       }
@@ -1748,7 +2059,7 @@
     "name": "both",
     "step": 31,
     "depth": 5,
-    "nodes": 3,
+    "nodes": 15,
     "truncated": false,
     "recordedLocals": true,
     "root": {
@@ -1776,7 +2087,118 @@
        "scopeId": 6,
        "statement": "def combine(a, b):",
        "resolution": "guessed",
-       "reads": [],
+       "argument": {
+        "text": "area",
+        "step": 29,
+        "file": "/fixture/main.py",
+        "fileId": 1,
+        "line": 31,
+        "function": "<module>",
+        "scopeId": 0,
+        "statement": "result = helper.combine(area, count)"
+       },
+       "reads": [
+        {
+         "name": "area",
+         "text": "12",
+         "source": "locals",
+         "logId": "l-6",
+         "step": 6,
+         "file": "/fixture/main.py",
+         "fileId": 1,
+         "line": 23,
+         "function": "<module>",
+         "scopeId": 0,
+         "statement": "area = scale(width, base)  # ?",
+         "resolution": "guessed",
+         "reads": [
+          {
+           "name": "scale",
+           "text": "<function scale at 0x0>",
+           "source": "locals",
+           "file": "/fixture/main.py",
+           "fileId": 1,
+           "line": 16,
+           "defined": true
+          },
+          {
+           "name": "width",
+           "text": "4",
+           "source": "locals",
+           "logId": "l-3",
+           "step": 5,
+           "file": "/fixture/main.py",
+           "fileId": 1,
+           "line": 22,
+           "function": "<module>",
+           "scopeId": 0,
+           "statement": "width = base + 1",
+           "resolution": "guessed",
+           "reads": [
+            {
+             "name": "base",
+             "text": "3",
+             "source": "locals",
+             "logId": "l-2",
+             "step": 4,
+             "file": "/fixture/main.py",
+             "fileId": 1,
+             "line": 21,
+             "function": "<module>",
+             "scopeId": 0,
+             "statement": "base = 3",
+             "resolution": "guessed",
+             "reads": [],
+             "calls": [],
+             "opaque": []
+            }
+           ],
+           "calls": [],
+           "opaque": []
+          },
+          {
+           "name": "base",
+           "text": "3",
+           "source": "locals",
+           "logId": "l-2",
+           "step": 4,
+           "file": "/fixture/main.py",
+           "fileId": 1,
+           "line": 21,
+           "function": "<module>",
+           "scopeId": 0,
+           "statement": "base = 3",
+           "resolution": "guessed",
+           "reads": [],
+           "calls": [],
+           "opaque": []
+          }
+         ],
+         "calls": [
+          {
+           "name": "scale",
+           "scopeId": 2,
+           "entryStep": 7,
+           "returnStep": 9,
+           "file": "/fixture/main.py",
+           "fileId": 1,
+           "line": 16,
+           "inputs": [
+            {
+             "name": "value",
+             "text": "4"
+            },
+            {
+             "name": "factor",
+             "text": "3"
+            }
+           ],
+           "result": "12"
+          }
+         ],
+         "opaque": []
+        }
+       ],
        "calls": [],
        "opaque": []
       },
@@ -1792,7 +2214,128 @@
        "scopeId": 6,
        "statement": "def combine(a, b):",
        "resolution": "guessed",
-       "reads": [],
+       "argument": {
+        "text": "count",
+        "step": 29,
+        "file": "/fixture/main.py",
+        "fileId": 1,
+        "line": 31,
+        "function": "<module>",
+        "scopeId": 0,
+        "statement": "result = helper.combine(area, count)"
+       },
+       "reads": [
+        {
+         "name": "count",
+         "text": "10",
+         "source": "locals",
+         "logId": "l-17",
+         "step": 28,
+         "file": "/fixture/main.py",
+         "fileId": 1,
+         "line": 30,
+         "function": "<module>",
+         "scopeId": 0,
+         "statement": "count = len(label)",
+         "resolution": "guessed",
+         "reads": [
+          {
+           "name": "label",
+           "text": "'total/35.0'",
+           "source": "locals",
+           "logId": "l-16",
+           "step": 24,
+           "file": "/fixture/main.py",
+           "fileId": 1,
+           "line": 29,
+           "function": "<module>",
+           "scopeId": 0,
+           "statement": "label = helper.describe(total, os.sep)",
+           "resolution": "guessed",
+           "reads": [
+            {
+             "name": "helper"
+            },
+            {
+             "name": "total",
+             "text": "35.0",
+             "source": "locals",
+             "logId": "l-15",
+             "step": 23,
+             "file": "/fixture/main.py",
+             "fileId": 1,
+             "line": 28,
+             "function": "<module>",
+             "scopeId": 0,
+             "statement": "total = sum(a.balance for a in [acct, Account(\"guest\", 5)])",
+             "resolution": "guessed",
+             "reads": [
+              {
+               "name": "acct",
+               "text": "Account(owner='ivor', balance=30.0)",
+               "source": "value",
+               "logId": "l-14",
+               "step": 22,
+               "file": "/fixture/main.py",
+               "fileId": 1,
+               "line": 27,
+               "function": "<module>",
+               "scopeId": 0,
+               "statement": "acct  # ?+",
+               "resolution": "guessed",
+               "cut": true
+              },
+              {
+               "name": "Account",
+               "text": "<class '__main__.Account'>",
+               "source": "locals",
+               "file": "/fixture/main.py",
+               "fileId": 1,
+               "line": 6,
+               "defined": true
+              }
+             ],
+             "calls": [],
+             "opaque": [
+              "sum(a.balance for a in [acct, Account(\"guest\", 5)])",
+              "Account(\"guest\", 5)"
+             ]
+            },
+            {
+             "name": "os"
+            }
+           ],
+           "calls": [
+            {
+             "name": "describe",
+             "scopeId": 5,
+             "entryStep": 25,
+             "returnStep": 27,
+             "file": "/fixture/helper.py",
+             "fileId": 2,
+             "line": 1,
+             "inputs": [
+              {
+               "name": "value",
+               "text": "35.0"
+              },
+              {
+               "name": "sep",
+               "text": "'/'"
+              }
+             ],
+             "result": "'total/35.0'"
+            }
+           ],
+           "opaque": []
+          }
+         ],
+         "calls": [],
+         "opaque": [
+          "len(label)"
+         ]
+        }
+       ],
        "calls": [],
        "opaque": []
       }
