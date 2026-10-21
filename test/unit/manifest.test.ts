@@ -133,7 +133,7 @@ describe('package.json contributions', () => {
     // a launch may name `module` instead of `program`, so nothing is required here
     expect(launch.required).toEqual([]);
     const p = launch.properties;
-    expect(Object.keys(p).sort()).toEqual(['args', 'breakOnException', 'cwd', 'env', 'libraryCode', 'module', 'pathMappings', 'program', 'python', 'record', 'stopOnEntry', 'transport']);
+    expect(Object.keys(p).sort()).toEqual(['args', 'breakOnException', 'cwd', 'env', 'followObjects', 'libraryCode', 'module', 'pathMappings', 'program', 'python', 'record', 'recordFrom', 'stopOnEntry', 'transport']);
     expect(p['transport']).toMatchObject({ type: 'object', required: ['command'] });
     expect(p['pathMappings']).toMatchObject({ type: 'array', minItems: 1 });
     expect(p['program']).toMatchObject({ type: 'string', default: '${file}' });
@@ -148,6 +148,8 @@ describe('package.json contributions', () => {
     expect(p['breakOnException']).toMatchObject({ type: 'string', default: 'uncaught', enum: ['off', 'uncaught', 'raised'] });
     expect(p['libraryCode']).toMatchObject({ type: 'boolean', default: false });
     expect(p['record']).toMatchObject({ type: 'boolean', default: false });
+    expect(p['recordFrom']).toMatchObject({ type: 'string' });
+    expect(p['followObjects']).toMatchObject({ default: false, oneOf: [{ type: 'boolean' }, { type: 'array', items: { type: 'string' } }] });
     for (const [name, spec] of Object.entries(p)) expect(spec.description, name).toBeTruthy();
   });
 

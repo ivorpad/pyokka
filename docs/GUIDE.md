@@ -544,6 +544,18 @@ is refused rather than switched under you (stop that session first). `module`
 with `"record": true` is refused: a recording run is a Pyokka session on a
 document, and a module launch has none.
 
+`"followObjects": true` next to it records each change at the statement that
+made it, a change in place included (`prices["a"] = 10`, `orders.append(x)`),
+and gives it to every other name that holds the changed object: a caller's
+dict, another order's line, a module global. Why then reaches the line that
+changed a value through another name and says how the name holds it,
+`[bo['lines'][0] is line, shared since #17 catalog.py:5 new_order]`. A list of
+function names, `"followObjects": ["sale_prices", "Cart.total"]`, keeps it to
+those: a traced statement costs about 3.5 times a recorded one, so leave a hot
+loop out. `pyokka debug FILE --record --follow-objects` is the same start from
+a terminal, and `pyokka run FILE --follow-objects` records a run without the
+debugger.
+
 **Breakpoints.** The editor's gutter breakpoints are the debugger's, conditions
 included, and they follow the run while it runs. One on a `def` line pauses at
 every call of the function; one on a blank line moves to the next statement;
@@ -766,7 +778,12 @@ library code, a dataclass constructor) show as leaves. A line moves the Time
 Machine to its step. A name asked about before its scope assigns it says "not
 assigned yet at #0, first assigned at #1" and links to that step, rather than
 claiming the value was made before the recording; a `?` says why when the run
-recorded no locals.
+recorded no locals. In a recording made with `followObjects` a line can end
+in `[x is y, shared since #17 file.py:5]`, the way that name holds the object
+another name changed, and a line from the source or a call's parameters says
+`(guessed)` where the rest were seen; a recording without it marks nothing.
+When the run passed the recorder's 100,000 changes, the CLI's `var` and `why`
+say so first: a change after that point is missing, not absent.
 
 **Execution diagram.** "Pyokka: Show Execution Diagram" (also the rail's More
 menu and the Time Machine toolbar) draws the run at the level of detail you ask

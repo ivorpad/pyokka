@@ -136,6 +136,12 @@ with `{...}` inside, and a `hint:` line under it. At the pause itself, read the 
 files the program writes are written again: tell the user you ran it. Network answers come from the
 HTTP recording, and a run that called the network with HTTP off is refused.
 
+**A value changed through another name.** A change in place through another name (a shared dict, a
+list a callee appended to, a module global) is seen at the statement that changed it only in a recording made with `--follow-objects`:
+`pyokka debug FILE --record --follow-objects --at NAME`, or `--follow-objects-in NAME` to keep the
+cost to the functions in question (a traced statement costs about 3.5 times a plain recorded one).
+Start it that way when `why` at the pause ends at an assignment that does not explain the value.
+
 ## History while debugging
 
 A plain `pyokka debug` records nothing, ever: not while it runs and not after it finishes. When the

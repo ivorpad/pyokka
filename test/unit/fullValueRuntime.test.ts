@@ -274,7 +274,7 @@ runtime('rerun value, real runtime: code run at a pause', () => {
     const last = typed.steps.length / 4 - 1;
     const view = await replayFullValue(source(typed, { modified: true }), { key: 'k', kind: 'at', step: last, name: 'total' });
     expect(view.status, view.summary).toBe('differs');
-    expect(view.summary).toContain('Code typed in the Debug Console ran at a pause of this run. A replay runs the program without it');
+    expect(view.summary).toContain('Code typed in the Debug Console ran at a pause of this run. A rerun runs the program without it');
     expect(view.difference?.name).toBe('total');
     fs.rmSync(dir, { recursive: true, force: true });
   }, 60_000);

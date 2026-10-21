@@ -24,6 +24,9 @@
   `resolution: "seen"` or `"guessed"`, and a tree that mixes the two prints `  (guessed)` after
   the guessed nodes; a snapshot recording prints as before.
 
+- launch.json knows `recordFrom` and `followObjects`: VS Code completes them and no longer
+  underlines them as unknown properties.
+
 - `var`, `why`, `origin` and `history` print a `note:` line when the run hit the 100,000-entry
   cap on recorded locals, with the last step kept. A change after it was shown as no change at all.
 

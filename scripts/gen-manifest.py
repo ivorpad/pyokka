@@ -365,6 +365,8 @@ contributes = {
             'breakOnException': {'type': 'string', 'enum': ['off', 'uncaught', 'raised'], 'default': 'uncaught', 'description': 'Where the debugger pauses on an exception: never, on one nobody caught, or at every raise in your code.'},
             'libraryCode': {'type': 'boolean', 'default': False, 'description': 'Step into third-party packages (never the standard library).'},
             'record': {'type': 'boolean', 'default': False, 'description': 'Also record the run, so the Time Machine, the Code Story and `why` open over it at every pause. Slower; needs "program".'},
+            'recordFrom': {'type': 'string', 'description': 'Run at the debugger\'s speed up to here, pause, and record from this pause on: FILE:LINE or a function name, as `pyokka debug --record-from`. Needs "program".'},
+            'followObjects': {'oneOf': [{'type': 'boolean'}, {'type': 'array', 'items': {'type': 'string'}}], 'default': False, 'description': 'With "record" or "recordFrom": record each change at the statement that made it, a change in place included, and give it to every other name that holds the object, so Why reaches a change made through another name. A list of function names ("Cart.total") keeps it to those; a traced statement costs about 3.5 times a recorded one.'},
             'transport': {
                 'type': 'object', 'required': ['command'], 'additionalProperties': False,
                 'description': 'Run Python through this command and its args, for example podman exec -i CONTAINER WRAPPER. Pyokka appends the container interpreter and runtime bootstrap. The wrapper must exec its arguments and preserve stdin/stdout.',

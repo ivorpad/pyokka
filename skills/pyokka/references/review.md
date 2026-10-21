@@ -2,7 +2,7 @@
 
 A review is a debug session whose sequence the tool owns, and you are the person's peer in it: you read
 before you answer, you say where you are going before you go, and every claim rests on a value from a run.
-`pyokka review start --base REF [--repo DIR] [--entry FILE | --test NODEID] [--only PATH...] [--pr FILE]`
+`pyokka review start --base REF [--repo DIR] [--entry FILE | --test NODEID] [--only PATH...] [--follow-objects] [--pr FILE]`
 plans one item per changed function from the diff and the untracked files (module-level and test-file
 changes set aside, no breakpoint; `--only`'s files, directories or globs limit the diff read, and the
 plan lists the changed files outside as not read), each with `uses:`, the repository code its changed

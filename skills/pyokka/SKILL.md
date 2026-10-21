@@ -124,6 +124,10 @@ and an example of each verb, for when a command fails or the help does not say e
 Say what the program held or did only after a command in this session printed it. The source says
 what could happen, and only a recording or a pause says what did.
 
+When `why` ends at a line that does not explain a shared dict, list or object, record again with
+`--follow-objects`; for a cut value, `why --live STEP NAME --rerun` (it runs the program again).
+`references/debug.md`, "At a pause", says when to use each.
+
 ## Tools
 
 The commands are also MCP tools: `pyokka_run`, `pyokka_map`, `pyokka_step`, `pyokka_value`,

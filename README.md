@@ -408,7 +408,7 @@ Every command is under "Pyokka:" in the Command Palette.
 and `pyokka VERB --help` lists its flags.
 
 ```
-pyokka run FILE --save RUN [--keep] [--cwd DIR] [--test NAME] [--python PATH] [--http record|replay] [--library-code] [--no-locals]   record one run of the file
+pyokka run FILE --save RUN [--keep] [--cwd DIR] [--test NAME] [--python PATH] [--http record|replay] [--library-code] [--no-locals] [--follow-objects | --follow-objects-in NAME]   record one run of the file; --follow-objects sees changes made through another name
 pyokka story RUN [--file F | --scope NAME | --line F:L] [--limit LINES]   the lines that ran, in order, one block per scope
 pyokka steps RUN [--from N --count K | --line F:L]                        step numbers with file:line and function
 pyokka step  RUN N --into|--over|--out|--back|--back-over|--back-out|--to M [--scope]
@@ -416,7 +416,7 @@ pyokka context RUN N [--scope]        or   context RUN --line F:L [--scope]
 pyokka values RUN --line F:L          every value logged on that line, by hit
 pyokka find RUN TEXT [--limit K]      values, locals, errors, output and source lines that mention TEXT
 pyokka var  RUN NAME [--file F] [--scope NAME] [--limit K]   every step where NAME changed: value, statement, what it read
-pyokka why  RUN STEP [NAME] [--depth N]   why NAME had its value after STEP, five levels back
+pyokka why  RUN STEP [NAME] [--depth N] [--rerun]   why NAME had its value after STEP, five levels back; --live --rerun runs the program again for the value uncut
 pyokka origin RUN STEP EXPR [--depth N]   where a bad value was made: the chain back across calls and containers, its root marked
 pyokka coverage RUN [--file F]        per file the lines that ran, never ran and ran in part; --file lists one file with hit counts
 pyokka diff BEFORE AFTER [--ignore NAME] [--limit K]   what an edit changed, statement by statement (--live: the session is the after)

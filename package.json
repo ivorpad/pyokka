@@ -1378,6 +1378,25 @@
                 "default": false,
                 "description": "Also record the run, so the Time Machine, the Code Story and `why` open over it at every pause. Slower; needs \"program\"."
               },
+              "recordFrom": {
+                "type": "string",
+                "description": "Run at the debugger's speed up to here, pause, and record from this pause on: FILE:LINE or a function name, as `pyokka debug --record-from`. Needs \"program\"."
+              },
+              "followObjects": {
+                "oneOf": [
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                ],
+                "default": false,
+                "description": "With \"record\" or \"recordFrom\": record each change at the statement that made it, a change in place included, and give it to every other name that holds the object, so Why reaches a change made through another name. A list of function names (\"Cart.total\") keeps it to those; a traced statement costs about 3.5 times a recorded one."
+              },
               "transport": {
                 "type": "object",
                 "required": [
