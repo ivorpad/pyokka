@@ -43,7 +43,7 @@ def _never_launch_vscode():
         mp.setattr(debug_start, "open_debug_session", refuse)
         yield
 
-FIELDS = ("action", "base", "repo", "entry", "test", "full", "only", "pr", "python", "dir", "args", "n", "ns", "say", "go_on", "why", "surface", "port", "session", "line", "code", "expr", "inputs", "mocks", "edge", "exact", "title", "file", "severity", "step", "repro", "expect", "fix", "patch", "tests", "out", "page", "tour", "json")
+FIELDS = ("action", "base", "repo", "entry", "test", "full", "only", "pr", "python", "dir", "args", "n", "ns", "say", "go_on", "why", "surface", "port", "session", "line", "code", "expr", "inputs", "mocks", "edge", "follow_objects", "title", "file", "severity", "step", "repro", "expect", "fix", "patch", "tests", "out", "page", "tour", "json")
 
 
 def cli(*args: object) -> tuple[int, str, str]:

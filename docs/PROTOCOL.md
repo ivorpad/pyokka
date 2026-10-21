@@ -866,15 +866,16 @@ without the source) and, when expanded, its inputs, in this order:
   before the parenthesis) equals its name, or, for an `__init__` scope, starts with an uppercase
   letter. Leaves: builtins, library code that was not stepped, dataclass constructors.
 
-Every node with a `step` has `resolution`: `exact` when its value is an exact change (`exact` on
-its `locals` entry) and, below the root, the statement above it had its reads recorded; the root
-for an empty `name` is `exact` when its own reads were recorded. Every other node is `inferred`:
+Every node with a `step` has `resolution`: `seen` when its value is an exact change (`exact` on
+its `locals` entry, from a `--follow-objects` recording) and, below the root, the statement above it
+had its reads recorded; the root for an empty `name` is `seen` when its own reads were recorded.
+Every other node is `guessed`:
 a snapshot change, a frame's parameters (recorded at the frame's first step, not made by it), a
 value from before a `--record-from` recording, a read the source listed, an `assign` node, and a
 logged `# ?` value (`source: "value"`): its text is what the statement logged, but its step is the
 statement whose range the log entry names, which is not always the one that made the value. A leaf
-has no `resolution`. In `pyokka why` an exact recording drops `fallback` from `name = tier or
-fallback` when `tier` decided it; a snapshot recording still lists it, `inferred`.
+has no `resolution`. In `pyokka why` a `--follow-objects` recording drops `fallback` from `name = tier or
+fallback` when `tier` decided it; a snapshot recording still lists it, `guessed`.
 
 Expansion is breadth-first, level by level, `depth` levels below the root (default 5, at most 8)
 and at most 60 nodes in all (`PROVENANCE_NODES`; the root counts): a node at the last level, or
@@ -906,8 +907,8 @@ line per node, depth-first, two spaces of indent per level: `← name = text   #
 file:line function   statement` (no arrow on the root; `name = ?` for a leaf without a value, `name = ?   made before #0, where the recording started` for a `beforeRecording` leaf;
 `name  assigned here (value not recorded)` for an `assign` node without one; `name = <function f at 0x…>   def
 file:line` for a `defined` node; `  (unchanged)`
-after an unchanged value; `  (inferred)` after the value, or after the location of a node with no
-name, of an `inferred` node when the tree has at least one `exact` node, so a snapshot tree prints
+after an unchanged value; `  (guessed)` after the value, or after the location of a node with no
+name, of a `guessed` node when the tree has at least one `seen` node, so a snapshot tree prints
 no marker; `  …` after a cut node), its reads first (each with its own subtree),
 then its calls as `↳ name #entry–#return file:line   in a = 1, b = 2   out text`, then `· call
 text   not stepped` per opaque call. Values are cut to 100 characters, statements and results to

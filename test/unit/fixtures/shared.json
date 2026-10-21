@@ -307,7 +307,7 @@
      "function": "main",
      "scopeId": 4,
      "statement": "bill = ledger.charge(bo)",
-     "resolution": "exact",
+     "resolution": "seen",
      "reads": [
       {
        "name": "ledger",
@@ -328,7 +328,7 @@
        "function": "charge",
        "scopeId": 9,
        "statement": "self.totals[order[\"customer\"]] = amount",
-       "resolution": "exact",
+       "resolution": "seen",
        "reads": [
         {
          "name": "self",
@@ -341,7 +341,7 @@
          "function": "charge",
          "scopeId": 9,
          "statement": "def charge(self, order):",
-         "resolution": "inferred",
+         "resolution": "guessed",
          "reads": [],
          "calls": [],
          "opaque": []
@@ -357,7 +357,7 @@
          "function": "charge",
          "scopeId": 9,
          "statement": "def charge(self, order):",
-         "resolution": "inferred",
+         "resolution": "guessed",
          "reads": [],
          "calls": [],
          "opaque": []
@@ -373,7 +373,7 @@
          "function": "charge",
          "scopeId": 9,
          "statement": "amount += line[\"qty\"] * line[\"price\"]",
-         "resolution": "exact",
+         "resolution": "seen",
          "reads": [
           {
            "name": "amount",
@@ -386,7 +386,7 @@
            "function": "charge",
            "scopeId": 9,
            "statement": "amount = 0",
-           "resolution": "exact",
+           "resolution": "seen",
            "reads": [],
            "calls": [],
            "opaque": []
@@ -402,7 +402,7 @@
            "function": "charge",
            "scopeId": 9,
            "statement": "for line in order[\"lines\"]:",
-           "resolution": "exact",
+           "resolution": "seen",
            "reads": [
             {
              "name": "order",
@@ -415,7 +415,7 @@
              "function": "charge",
              "scopeId": 9,
              "statement": "def charge(self, order):",
-             "resolution": "inferred",
+             "resolution": "guessed",
              "reads": [],
              "calls": [],
              "opaque": []
@@ -452,7 +452,7 @@
        "function": "bulk_bonus",
        "scopeId": 8,
        "statement": "line[\"qty\"] += 1",
-       "resolution": "exact",
+       "resolution": "seen",
        "reads": [
         {
          "name": "line",
@@ -465,7 +465,7 @@
          "function": "bulk_bonus",
          "scopeId": 8,
          "statement": "for line in order[\"lines\"]:",
-         "resolution": "exact",
+         "resolution": "seen",
          "reads": [
           {
            "name": "order",
@@ -478,7 +478,7 @@
            "function": "bulk_bonus",
            "scopeId": 8,
            "statement": "def bulk_bonus(order):",
-           "resolution": "inferred",
+           "resolution": "guessed",
            "reads": [],
            "calls": [],
            "opaque": []
@@ -549,7 +549,7 @@
      "function": "bulk_bonus",
      "scopeId": 8,
      "statement": "line[\"qty\"] += 1",
-     "resolution": "exact",
+     "resolution": "seen",
      "reads": [
       {
        "name": "line",
@@ -562,7 +562,7 @@
        "function": "bulk_bonus",
        "scopeId": 8,
        "statement": "for line in order[\"lines\"]:",
-       "resolution": "exact",
+       "resolution": "seen",
        "reads": [
         {
          "name": "order",
@@ -575,7 +575,7 @@
          "function": "bulk_bonus",
          "scopeId": 8,
          "statement": "def bulk_bonus(order):",
-         "resolution": "inferred",
+         "resolution": "guessed",
          "reads": [],
          "calls": [],
          "opaque": []
@@ -616,7 +616,7 @@
      "function": "charge",
      "scopeId": 10,
      "statement": "amount += line[\"qty\"] * line[\"price\"]",
-     "resolution": "exact",
+     "resolution": "seen",
      "reads": [
       {
        "name": "amount",
@@ -629,7 +629,7 @@
        "function": "charge",
        "scopeId": 10,
        "statement": "amount = 0",
-       "resolution": "exact",
+       "resolution": "seen",
        "reads": [],
        "calls": [],
        "opaque": []
@@ -645,7 +645,7 @@
        "function": "charge",
        "scopeId": 10,
        "statement": "for line in order[\"lines\"]:",
-       "resolution": "exact",
+       "resolution": "seen",
        "reads": [
         {
          "name": "order",
@@ -658,7 +658,7 @@
          "function": "charge",
          "scopeId": 10,
          "statement": "def charge(self, order):",
-         "resolution": "inferred",
+         "resolution": "guessed",
          "reads": [],
          "calls": [],
          "opaque": []

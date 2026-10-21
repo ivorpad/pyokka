@@ -40,7 +40,7 @@ function nodeText(n: ProvenanceNode, prefix: string, displayPath: DisplayPath, m
   }
   if (n.step !== undefined) parts.push(`#${n.step} ${displayPath(n.fileId, n.file)}:${n.line ?? '?'} ${n.function ?? '<module>'}`);
   else if (n.defined) parts.push(`def ${displayPath(n.fileId, n.file)}:${n.line}`);
-  if (mixed && n.resolution === 'inferred' && parts.length) parts[0] += '  (inferred)'; // only in a tree that has an exact node, so a snapshot tree reads as before
+  if (mixed && n.resolution === 'guessed' && parts.length) parts[0] += '  (guessed)'; // only in a tree that has a seen node, so a snapshot tree reads as before
   if (n.statement) parts.push(oneLine(n.statement, WHY_STATEMENT));
   const shared = n.shared ? sharedText(n.shared, displayPath) : '';
   if (shared) parts.push(`[${shared}]`);
@@ -48,7 +48,7 @@ function nodeText(n: ProvenanceNode, prefix: string, displayPath: DisplayPath, m
 }
 
 function hasExact(n: ProvenanceNode): boolean {
-  return n.resolution === 'exact' || (n.reads ?? []).some(hasExact);
+  return n.resolution === 'seen' || (n.reads ?? []).some(hasExact);
 }
 
 /** How a node holds the object a change came through: `bo['lines'][0] is line, shared since #17 catalog.py:5 new_order`; '' when it says nothing the line does not. */

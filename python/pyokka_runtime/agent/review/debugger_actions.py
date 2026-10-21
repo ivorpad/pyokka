@@ -83,8 +83,8 @@ def start_in_debugger(f: dict, pre: dict) -> dict:
         "repo": repo, "base": pre["base"], "base_ref": pre["base_ref"], "head": pre["head"], "entry": rel, "test": pre.get("test"),
         "argv": list(pre.get("argv") or []), "python": getattr(interp, "path", None), "dir": directory, "created": now(), "mode": "debugger",
         "phase": "stops" if plan["stops"] else "findings", "tree_hash": tree_hash(repo, rel), "pr": pre.get("pr_from"),
-        # --exact: the agenda's functions record each statement's writes exactly (`RunConfig.exact`); the rest keep the snapshot
-        **({"exact": sorted({str(s["function"]) for s in plan["stops"] if s.get("function")})} if f.get("exact") and plan["stops"] else {}),
+        # --follow-objects: the agenda's functions record each statement's writes exactly (`RunConfig.exact`); the rest keep the snapshot
+        **({"exact": sorted({str(s["function"]) for s in plan["stops"] if s.get("function")})} if f.get("follow_objects") and plan["stops"] else {}),
         "plan": {"stops": plan["stops"], "aside": plan.get("aside", []), "unreached": [], "edges": plan["edges"], "anomalies": [],
                  **({"only": plan["only"], "aside_edges": plan["aside_edges"], "outside": plan.get("outside", [])} if plan.get("only") else {})},
         "shown": [], "skipped": [], "ended": None, "waiting": None, "said": [], "asked": [], "conversation": [], "tries": [], "findings": [], "fix": None,

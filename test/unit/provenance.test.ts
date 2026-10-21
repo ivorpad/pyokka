@@ -81,7 +81,7 @@ function program(bindings: StatementBinding[] = BINDINGS): ProvenanceInputs & { 
 }
 
 /* the nodes of the program's tree, named by their step; a snapshot recording infers every one */
-const at = (step: number, line: number, fn = '<module>', scopeId = 0): Record<string, unknown> => ({ step, file: FILE, fileId: 1, line, function: fn, scopeId, resolution: 'inferred' });
+const at = (step: number, line: number, fn = '<module>', scopeId = 0): Record<string, unknown> => ({ step, file: FILE, fileId: 1, line, function: fn, scopeId, resolution: 'guessed' });
 const leaf = (name: string): Record<string, unknown> => ({ name });
 const T0 = { name: 'total', text: '0', source: 'locals', ...at(0, 1), statement: 'total = 0', reads: [], calls: [], opaque: [] };
 const I4 = { name: 'i', text: '1', source: 'locals', ...at(4, 2), statement: 'for i in range(2):', reads: [], calls: [], opaque: ['range(2)'] };
@@ -328,12 +328,12 @@ describe.skipIf(!HAVE_SHARED)('provenance fixture: a change through a shared obj
     expect(text).toContain("[bo['lines'][0] is line, shared since #");
     expect(text).toContain('catalog.py:5 new_order]');
   });
-  it('marks the inferred nodes of a tree that has exact ones, as render_why does', () => {
+  it('marks the guessed nodes of a tree that has seen ones, as render_why does', () => {
     const c = fixture!.cases[0]!;
     const lines = renderProvenance(provenance(fixture!.inputs, { step: c.step, name: c.name }), (_, file) => path.basename(file ?? '')).split('\n');
-    // `self` is a parameter (inferred); `amount` was made by `amount += ...` and read by a recorded statement (exact)
-    expect(lines.find((l) => l.includes('← self = '))).toContain('  (inferred)   #');
-    expect(lines.find((l) => l.includes('← amount = '))).not.toContain('(inferred)');
-    expect(renderProvenance(provenance(program(), { step: 13, name: 'size' }))).not.toContain('(inferred)');
+    // `self` is a parameter (guessed); `amount` was made by `amount += ...` and read by a recorded statement (seen)
+    expect(lines.find((l) => l.includes('← self = '))).toContain('  (guessed)   #');
+    expect(lines.find((l) => l.includes('← amount = '))).not.toContain('(guessed)');
+    expect(renderProvenance(provenance(program(), { step: 13, name: 'size' }))).not.toContain('(guessed)');
   });
 });

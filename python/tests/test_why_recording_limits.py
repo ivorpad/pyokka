@@ -31,7 +31,7 @@ def record(tmp_path: Path, source: str | dict[str, str], exact: bool = False) ->
     program = tmp_path / next(iter(files))
     saved = tmp_path / "run.json"
     with redirect_stdout(io.StringIO()):
-        assert main(["run", str(program), "--save", str(saved), *(["--exact"] if exact else [])]) == 0
+        assert main(["run", str(program), "--save", str(saved), *(["--follow-objects"] if exact else [])]) == 0
     return SavedRun(str(saved))
 
 
@@ -196,11 +196,11 @@ print(label("gold", "none"))
 
 @pytest.mark.parametrize("exact", [pytest.param(False, id="snapshot"), pytest.param(True, id="exact")])
 def test_a_short_circuited_name_is_not_a_plain_read(tmp_path, exact):
-    """The snapshot recording still lists `fallback` from the source, labelled ``inferred``; the exact one records the loads."""
+    """The snapshot recording still lists `fallback` from the source, labelled ``guessed``; the exact one records the loads."""
     run = record(tmp_path, SHORT_CIRCUIT, exact)
     tree = run.why(steps_on(run, 2)[0], "name")
     fallback = [n for n in tree["root"].get("reads") or [] if n.get("name") == "fallback"]
-    assert not fallback or fallback[0].get("resolution") == "inferred"
+    assert not fallback or fallback[0].get("resolution") == "guessed"
 
 
 def test_the_exact_tree_lists_only_the_operands_that_ran(tmp_path):
@@ -209,16 +209,16 @@ def test_the_exact_tree_lists_only_the_operands_that_ran(tmp_path):
     run = record(tmp_path, SHORT_CIRCUIT, exact=True)
     step = steps_on(run, 2)[0]
     tree = run.why(step, "name")
-    assert tree["root"]["resolution"] == "exact"
-    assert [(n["name"], n.get("resolution")) for n in tree["root"]["reads"]] == [("tier", "inferred")]
+    assert tree["root"]["resolution"] == "seen"
+    assert [(n["name"], n.get("resolution")) for n in tree["root"]["reads"]] == [("tier", "guessed")]
     assert [r["name"] for r in run.var("name")["changes"][0]["reads"]] == ["tier"]
     with redirect_stdout(io.StringIO()) as out:
         assert main(["why", str(tmp_path / "run.json"), str(step), "name"]) == 0
-    assert "  ← tier = 'gold'  (inferred)   #" in out.getvalue()
+    assert "  ← tier = 'gold'  (guessed)   #" in out.getvalue()
     snapshot = record(tmp_path, SHORT_CIRCUIT)
     with redirect_stdout(io.StringIO()) as out:
         assert main(["why", str(tmp_path / "run.json"), str(steps_on(snapshot, 2)[0]), "name"]) == 0
-    assert "(inferred)" not in out.getvalue() and "← fallback = 'none'" in out.getvalue()
+    assert "(guessed)" not in out.getvalue() and "← fallback = 'none'" in out.getvalue()
 
 
 @EXACT_FIXES("objects by id: the shared default list is changed by the second call, which why never reaches")

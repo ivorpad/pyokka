@@ -386,7 +386,7 @@
      "function": "<module>",
      "scopeId": 0,
      "statement": "area = scale(width, base)  # ?",
-     "resolution": "inferred",
+     "resolution": "guessed",
      "reads": [
       {
        "name": "scale",
@@ -409,7 +409,7 @@
        "function": "<module>",
        "scopeId": 0,
        "statement": "width = base + 1",
-       "resolution": "inferred",
+       "resolution": "guessed",
        "reads": [
         {
          "name": "base",
@@ -423,7 +423,7 @@
          "function": "<module>",
          "scopeId": 0,
          "statement": "base = 3",
-         "resolution": "inferred",
+         "resolution": "guessed",
          "reads": [],
          "calls": [],
          "opaque": []
@@ -444,7 +444,7 @@
        "function": "<module>",
        "scopeId": 0,
        "statement": "base = 3",
-       "resolution": "inferred",
+       "resolution": "guessed",
        "reads": [],
        "calls": [],
        "opaque": []
@@ -503,7 +503,7 @@
      "function": "<module>",
      "scopeId": 0,
      "statement": "total = sum(a.balance for a in [acct, Account(\"guest\", 5)])",
-     "resolution": "inferred",
+     "resolution": "guessed",
      "reads": [
       {
        "name": "acct",
@@ -517,7 +517,7 @@
        "function": "<module>",
        "scopeId": 0,
        "statement": "acct  # ?+",
-       "resolution": "inferred",
+       "resolution": "guessed",
        "reads": [
         {
          "name": "acct",
@@ -531,7 +531,7 @@
          "function": "<module>",
          "scopeId": 0,
          "statement": "acct = Account(\"ivor\")",
-         "resolution": "inferred",
+         "resolution": "guessed",
          "reads": [
           {
            "name": "Account",
@@ -597,7 +597,7 @@
      "function": "<module>",
      "scopeId": 0,
      "statement": "label = helper.describe(total, os.sep)",
-     "resolution": "inferred",
+     "resolution": "guessed",
      "reads": [
       {
        "name": "helper"
@@ -614,7 +614,7 @@
        "function": "<module>",
        "scopeId": 0,
        "statement": "total = sum(a.balance for a in [acct, Account(\"guest\", 5)])",
-       "resolution": "inferred",
+       "resolution": "guessed",
        "reads": [
         {
          "name": "acct",
@@ -628,7 +628,7 @@
          "function": "<module>",
          "scopeId": 0,
          "statement": "acct  # ?+",
-         "resolution": "inferred",
+         "resolution": "guessed",
          "reads": [
           {
            "name": "acct",
@@ -642,7 +642,7 @@
            "function": "<module>",
            "scopeId": 0,
            "statement": "acct = Account(\"ivor\")",
-           "resolution": "inferred",
+           "resolution": "guessed",
            "reads": [
             {
              "name": "Account",
@@ -736,7 +736,7 @@
      "function": "<module>",
      "scopeId": 0,
      "statement": "result = helper.combine(area, count)",
-     "resolution": "inferred",
+     "resolution": "guessed",
      "reads": [
       {
        "name": "helper"
@@ -753,7 +753,7 @@
        "function": "<module>",
        "scopeId": 0,
        "statement": "area = scale(width, base)  # ?",
-       "resolution": "inferred",
+       "resolution": "guessed",
        "reads": [
         {
          "name": "scale",
@@ -776,7 +776,7 @@
          "function": "<module>",
          "scopeId": 0,
          "statement": "width = base + 1",
-         "resolution": "inferred",
+         "resolution": "guessed",
          "reads": [
           {
            "name": "base",
@@ -790,7 +790,7 @@
            "function": "<module>",
            "scopeId": 0,
            "statement": "base = 3",
-           "resolution": "inferred",
+           "resolution": "guessed",
            "reads": [],
            "calls": [],
            "opaque": []
@@ -811,7 +811,7 @@
          "function": "<module>",
          "scopeId": 0,
          "statement": "base = 3",
-         "resolution": "inferred",
+         "resolution": "guessed",
          "reads": [],
          "calls": [],
          "opaque": []
@@ -853,7 +853,7 @@
        "function": "<module>",
        "scopeId": 0,
        "statement": "count = len(label)",
-       "resolution": "inferred",
+       "resolution": "guessed",
        "reads": [
         {
          "name": "label",
@@ -867,7 +867,7 @@
          "function": "<module>",
          "scopeId": 0,
          "statement": "label = helper.describe(total, os.sep)",
-         "resolution": "inferred",
+         "resolution": "guessed",
          "reads": [
           {
            "name": "helper"
@@ -884,7 +884,7 @@
            "function": "<module>",
            "scopeId": 0,
            "statement": "total = sum(a.balance for a in [acct, Account(\"guest\", 5)])",
-           "resolution": "inferred",
+           "resolution": "guessed",
            "reads": [
             {
              "name": "acct",
@@ -898,7 +898,7 @@
              "function": "<module>",
              "scopeId": 0,
              "statement": "acct  # ?+",
-             "resolution": "inferred",
+             "resolution": "guessed",
              "reads": [
               {
                "name": "acct",
@@ -912,7 +912,7 @@
                "function": "<module>",
                "scopeId": 0,
                "statement": "acct = Account(\"ivor\")",
-               "resolution": "inferred",
+               "resolution": "guessed",
                "cut": true
               }
              ],
@@ -1023,7 +1023,7 @@
      "function": "deposit",
      "scopeId": 4,
      "statement": "self.balance += amount",
-     "resolution": "inferred",
+     "resolution": "guessed",
      "reads": [
       {
        "name": "self",
@@ -1036,7 +1036,7 @@
        "function": "deposit",
        "scopeId": 4,
        "statement": "def deposit(self, amount):",
-       "resolution": "inferred",
+       "resolution": "guessed",
        "reads": [],
        "calls": [],
        "opaque": []
@@ -1052,7 +1052,7 @@
        "function": "deposit",
        "scopeId": 4,
        "statement": "def deposit(self, amount):",
-       "resolution": "inferred",
+       "resolution": "guessed",
        "reads": [],
        "calls": [],
        "opaque": []
@@ -1089,7 +1089,7 @@
      "function": "<module>",
      "scopeId": 0,
      "statement": "for amount in (10, 20):",
-     "resolution": "inferred",
+     "resolution": "guessed",
      "reads": [],
      "calls": [],
      "opaque": []
@@ -1123,7 +1123,7 @@
      "function": "<module>",
      "scopeId": 0,
      "statement": "acct  # ?+",
-     "resolution": "inferred",
+     "resolution": "guessed",
      "reads": [
       {
        "name": "acct",
@@ -1137,7 +1137,7 @@
        "function": "<module>",
        "scopeId": 0,
        "statement": "acct = Account(\"ivor\")",
-       "resolution": "inferred",
+       "resolution": "guessed",
        "reads": [
         {
          "name": "Account",
@@ -1184,7 +1184,7 @@
      "function": "<module>",
      "scopeId": 0,
      "statement": "print(result)",
-     "resolution": "inferred",
+     "resolution": "guessed",
      "reads": [
       {
        "name": "result",
@@ -1198,7 +1198,7 @@
        "function": "<module>",
        "scopeId": 0,
        "statement": "result = helper.combine(area, count)",
-       "resolution": "inferred",
+       "resolution": "guessed",
        "reads": [
         {
          "name": "helper"
@@ -1215,7 +1215,7 @@
          "function": "<module>",
          "scopeId": 0,
          "statement": "area = scale(width, base)  # ?",
-         "resolution": "inferred",
+         "resolution": "guessed",
          "reads": [
           {
            "name": "scale",
@@ -1238,7 +1238,7 @@
            "function": "<module>",
            "scopeId": 0,
            "statement": "width = base + 1",
-           "resolution": "inferred",
+           "resolution": "guessed",
            "reads": [
             {
              "name": "base",
@@ -1252,7 +1252,7 @@
              "function": "<module>",
              "scopeId": 0,
              "statement": "base = 3",
-             "resolution": "inferred",
+             "resolution": "guessed",
              "reads": [],
              "calls": [],
              "opaque": []
@@ -1273,7 +1273,7 @@
            "function": "<module>",
            "scopeId": 0,
            "statement": "base = 3",
-           "resolution": "inferred",
+           "resolution": "guessed",
            "reads": [],
            "calls": [],
            "opaque": []
@@ -1315,7 +1315,7 @@
          "function": "<module>",
          "scopeId": 0,
          "statement": "count = len(label)",
-         "resolution": "inferred",
+         "resolution": "guessed",
          "reads": [
           {
            "name": "label",
@@ -1329,7 +1329,7 @@
            "function": "<module>",
            "scopeId": 0,
            "statement": "label = helper.describe(total, os.sep)",
-           "resolution": "inferred",
+           "resolution": "guessed",
            "reads": [
             {
              "name": "helper"
@@ -1346,7 +1346,7 @@
              "function": "<module>",
              "scopeId": 0,
              "statement": "total = sum(a.balance for a in [acct, Account(\"guest\", 5)])",
-             "resolution": "inferred",
+             "resolution": "guessed",
              "reads": [
               {
                "name": "acct",
@@ -1360,7 +1360,7 @@
                "function": "<module>",
                "scopeId": 0,
                "statement": "acct  # ?+",
-               "resolution": "inferred",
+               "resolution": "guessed",
                "cut": true
               },
               {
@@ -1473,7 +1473,7 @@
      "function": "<module>",
      "scopeId": 0,
      "statement": "label = helper.describe(total, os.sep)",
-     "resolution": "inferred",
+     "resolution": "guessed",
      "reads": [
       {
        "name": "helper"
@@ -1490,7 +1490,7 @@
        "function": "<module>",
        "scopeId": 0,
        "statement": "total = sum(a.balance for a in [acct, Account(\"guest\", 5)])",
-       "resolution": "inferred",
+       "resolution": "guessed",
        "cut": true
       },
       {
@@ -1550,7 +1550,7 @@
      "function": "<module>",
      "scopeId": 0,
      "statement": "count = len(label)",
-     "resolution": "inferred",
+     "resolution": "guessed",
      "reads": [
       {
        "name": "label",
@@ -1564,7 +1564,7 @@
        "function": "<module>",
        "scopeId": 0,
        "statement": "label = helper.describe(total, os.sep)",
-       "resolution": "inferred",
+       "resolution": "guessed",
        "reads": [
         {
          "name": "helper"
@@ -1581,7 +1581,7 @@
          "function": "<module>",
          "scopeId": 0,
          "statement": "total = sum(a.balance for a in [acct, Account(\"guest\", 5)])",
-         "resolution": "inferred",
+         "resolution": "guessed",
          "reads": [
           {
            "name": "acct",
@@ -1595,7 +1595,7 @@
            "function": "<module>",
            "scopeId": 0,
            "statement": "acct  # ?+",
-           "resolution": "inferred",
+           "resolution": "guessed",
            "reads": [
             {
              "name": "acct",
@@ -1609,7 +1609,7 @@
              "function": "<module>",
              "scopeId": 0,
              "statement": "acct = Account(\"ivor\")",
-             "resolution": "inferred",
+             "resolution": "guessed",
              "reads": [
               {
                "name": "Account",
@@ -1709,7 +1709,7 @@
      "function": "<module>",
      "scopeId": 0,
      "statement": "base = 3",
-     "resolution": "inferred",
+     "resolution": "guessed",
      "reads": [],
      "calls": [],
      "opaque": []
@@ -1762,7 +1762,7 @@
      "function": "combine",
      "scopeId": 6,
      "statement": "both = a + b",
-     "resolution": "inferred",
+     "resolution": "guessed",
      "reads": [
       {
        "name": "a",
@@ -1775,7 +1775,7 @@
        "function": "combine",
        "scopeId": 6,
        "statement": "def combine(a, b):",
-       "resolution": "inferred",
+       "resolution": "guessed",
        "reads": [],
        "calls": [],
        "opaque": []
@@ -1791,7 +1791,7 @@
        "function": "combine",
        "scopeId": 6,
        "statement": "def combine(a, b):",
-       "resolution": "inferred",
+       "resolution": "guessed",
        "reads": [],
        "calls": [],
        "opaque": []
@@ -1829,7 +1829,7 @@
      "function": "<module>",
      "scopeId": 0,
      "statement": "preferred = label if flag else None",
-     "resolution": "inferred",
+     "resolution": "guessed",
      "reads": [
       {
        "name": "label",
@@ -1843,7 +1843,7 @@
        "function": "<module>",
        "scopeId": 0,
        "statement": "label = helper.describe(total, os.sep)",
-       "resolution": "inferred",
+       "resolution": "guessed",
        "reads": [
         {
          "name": "helper"
@@ -1860,7 +1860,7 @@
          "function": "<module>",
          "scopeId": 0,
          "statement": "total = sum(a.balance for a in [acct, Account(\"guest\", 5)])",
-         "resolution": "inferred",
+         "resolution": "guessed",
          "reads": [
           {
            "name": "acct",
@@ -1874,7 +1874,7 @@
            "function": "<module>",
            "scopeId": 0,
            "statement": "acct  # ?+",
-           "resolution": "inferred",
+           "resolution": "guessed",
            "reads": [
             {
              "name": "acct",
@@ -1888,7 +1888,7 @@
              "function": "<module>",
              "scopeId": 0,
              "statement": "acct = Account(\"ivor\")",
-             "resolution": "inferred",
+             "resolution": "guessed",
              "reads": [
               {
                "name": "Account",
@@ -1965,7 +1965,7 @@
        "function": "<module>",
        "scopeId": 0,
        "statement": "flag = count > 5",
-       "resolution": "inferred",
+       "resolution": "guessed",
        "reads": [
         {
          "name": "count",
@@ -1979,7 +1979,7 @@
          "function": "<module>",
          "scopeId": 0,
          "statement": "count = len(label)",
-         "resolution": "inferred",
+         "resolution": "guessed",
          "reads": [
           {
            "name": "label",
@@ -1993,7 +1993,7 @@
            "function": "<module>",
            "scopeId": 0,
            "statement": "label = helper.describe(total, os.sep)",
-           "resolution": "inferred",
+           "resolution": "guessed",
            "reads": [
             {
              "name": "helper"
@@ -2010,7 +2010,7 @@
              "function": "<module>",
              "scopeId": 0,
              "statement": "total = sum(a.balance for a in [acct, Account(\"guest\", 5)])",
-             "resolution": "inferred",
+             "resolution": "guessed",
              "reads": [
               {
                "name": "acct",
@@ -2024,7 +2024,7 @@
                "function": "<module>",
                "scopeId": 0,
                "statement": "acct  # ?+",
-               "resolution": "inferred",
+               "resolution": "guessed",
                "cut": true
               },
               {
@@ -2114,7 +2114,7 @@
      "function": "<module>",
      "scopeId": 0,
      "statement": "copy_of_label = label",
-     "resolution": "inferred",
+     "resolution": "guessed",
      "reads": [
       {
        "name": "label",
@@ -2128,7 +2128,7 @@
        "function": "<module>",
        "scopeId": 0,
        "statement": "label = helper.describe(total, os.sep)",
-       "resolution": "inferred",
+       "resolution": "guessed",
        "reads": [
         {
          "name": "helper"
@@ -2145,7 +2145,7 @@
          "function": "<module>",
          "scopeId": 0,
          "statement": "total = sum(a.balance for a in [acct, Account(\"guest\", 5)])",
-         "resolution": "inferred",
+         "resolution": "guessed",
          "reads": [
           {
            "name": "acct",
@@ -2159,7 +2159,7 @@
            "function": "<module>",
            "scopeId": 0,
            "statement": "acct  # ?+",
-           "resolution": "inferred",
+           "resolution": "guessed",
            "reads": [
             {
              "name": "acct",
@@ -2173,7 +2173,7 @@
              "function": "<module>",
              "scopeId": 0,
              "statement": "acct = Account(\"ivor\")",
-             "resolution": "inferred",
+             "resolution": "guessed",
              "reads": [
               {
                "name": "Account",
@@ -2271,7 +2271,7 @@
      "function": "<module>",
      "scopeId": 0,
      "statement": "missing = settings.get(\"colour\")",
-     "resolution": "inferred",
+     "resolution": "guessed",
      "reads": [
       {
        "name": "settings",
@@ -2285,7 +2285,7 @@
        "function": "<module>",
        "scopeId": 0,
        "statement": "settings = {\"theme\": \"dark\", \"size\": 3}",
-       "resolution": "inferred",
+       "resolution": "guessed",
        "reads": [],
        "calls": [],
        "opaque": []
@@ -2325,7 +2325,7 @@
      "function": "<module>",
      "scopeId": 0,
      "statement": "absent = label if count > 50 else None",
-     "resolution": "inferred",
+     "resolution": "guessed",
      "reads": [
       {
        "name": "label",
@@ -2339,7 +2339,7 @@
        "function": "<module>",
        "scopeId": 0,
        "statement": "label = helper.describe(total, os.sep)",
-       "resolution": "inferred",
+       "resolution": "guessed",
        "reads": [
         {
          "name": "helper"
@@ -2356,7 +2356,7 @@
          "function": "<module>",
          "scopeId": 0,
          "statement": "total = sum(a.balance for a in [acct, Account(\"guest\", 5)])",
-         "resolution": "inferred",
+         "resolution": "guessed",
          "reads": [
           {
            "name": "acct",
@@ -2370,7 +2370,7 @@
            "function": "<module>",
            "scopeId": 0,
            "statement": "acct  # ?+",
-           "resolution": "inferred",
+           "resolution": "guessed",
            "reads": [
             {
              "name": "acct",
@@ -2384,7 +2384,7 @@
              "function": "<module>",
              "scopeId": 0,
              "statement": "acct = Account(\"ivor\")",
-             "resolution": "inferred",
+             "resolution": "guessed",
              "reads": [
               {
                "name": "Account",
@@ -2461,7 +2461,7 @@
        "function": "<module>",
        "scopeId": 0,
        "statement": "count = len(label)",
-       "resolution": "inferred",
+       "resolution": "guessed",
        "reads": [
         {
          "name": "label",
@@ -2475,7 +2475,7 @@
          "function": "<module>",
          "scopeId": 0,
          "statement": "label = helper.describe(total, os.sep)",
-         "resolution": "inferred",
+         "resolution": "guessed",
          "reads": [
           {
            "name": "helper"
@@ -2492,7 +2492,7 @@
            "function": "<module>",
            "scopeId": 0,
            "statement": "total = sum(a.balance for a in [acct, Account(\"guest\", 5)])",
-           "resolution": "inferred",
+           "resolution": "guessed",
            "reads": [
             {
              "name": "acct",
@@ -2506,7 +2506,7 @@
              "function": "<module>",
              "scopeId": 0,
              "statement": "acct  # ?+",
-             "resolution": "inferred",
+             "resolution": "guessed",
              "reads": [
               {
                "name": "acct",
@@ -2520,7 +2520,7 @@
                "function": "<module>",
                "scopeId": 0,
                "statement": "acct = Account(\"ivor\")",
-               "resolution": "inferred",
+               "resolution": "guessed",
                "cut": true
               }
              ],

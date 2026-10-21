@@ -141,9 +141,9 @@ export function parseLaunch(raw: Record<string, unknown>, ctx: LaunchContext = {
   if (module) launch.module = module;
   else if (program) launch.program = program;
   if (recordFrom) launch.recordFrom = recordFrom;
-  const exact = raw['exact'] === true ? true : Array.isArray(raw['exact']) ? strings(raw['exact']) : undefined;
+  const exact = raw['followObjects'] === true ? true : Array.isArray(raw['followObjects']) ? strings(raw['followObjects']) : undefined;
   if (exact !== undefined && (exact === true || exact.length)) {
-    if (!record) throw new Error('"exact" records writes exactly, so it needs a recording: add "record": true or "recordFrom"');
+    if (!record) throw new Error('"followObjects" follows objects through a recording, so it needs a recording: add "record": true or "recordFrom"');
     launch.exact = exact;
   }
   const python = str(raw['python']);
@@ -242,7 +242,7 @@ export function parseDebugUri(query: string): DebugUri {
     ...(q.has('transport') ? { transport: json(q, 'transport') } : {}),
     ...(q.has('pathMappings') ? { pathMappings: json(q, 'pathMappings') } : {}),
     // `true`, or the names of the functions recorded exactly
-    ...(q.has('exact') ? { exact: json(q, 'exact') } : {}),
+    ...(q.has('exact') ? { followObjects: json(q, 'exact') } : {}),
   };
   for (const key of ['program', 'module', 'cwd', 'python', 'breakOnException', 'recordFrom'] as const) {
     const v = q.get(key);

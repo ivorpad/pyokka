@@ -8,12 +8,12 @@ statement further back, its calls are the walkthrough's call moments in short, a
 stepped scope claimed come from the bindings' ``calls`` texts. Expansion is breadth-first with
 a depth and a node budget, so a tree over a long chain stays readable.
 
-Every node with a step says how it was resolved (``resolution``): ``exact`` when the exact recording
-made its value at that step and, below the root, logged the reads of the statement above it;
-``inferred`` otherwise (snapshot changes, parameters, logged ``# ?`` values, source-parsed reads). A
-logged value is inferred though its text is exact: its step is the statement whose range the log entry
+Every node with a step says how it was resolved (``resolution``): ``seen`` when a ``--follow-objects``
+recording made its value at that step and, below the root, logged the reads of the statement above it;
+``guessed`` otherwise (snapshot changes, parameters, logged ``# ?`` values, source-parsed reads). A
+logged value is guessed though its text is exact: its step is the statement whose range the log entry
 names (``log_for``), which is not always the one that made the value. The root for an empty name (the
-statement itself) is exact when its reads were recorded.
+statement itself) is seen when its reads were recorded.
 """
 
 from __future__ import annotations
@@ -127,7 +127,7 @@ class ProvenanceBuilder:
     def labelled(self, node: dict, exact: bool) -> dict:
         """``node`` with its ``resolution`` when it has a step (module docstring)."""
         if node.get("step") is not None:
-            node["resolution"] = "exact" if exact else "inferred"
+            node["resolution"] = "seen" if exact else "guessed"
         return node
 
     # -- a statement's inputs ---------------------------------------------------------------------------------

@@ -471,8 +471,8 @@ def _why_node(n: dict, prefix: str, source: Any, mixed: bool = False) -> str:
         parts.append("#%s %s %s" % (n["step"], _loc(source, n.get("file"), n.get("line")), n.get("function") or "<module>"))
     elif n.get("defined"):
         parts.append("def %s" % _loc(source, n.get("file"), n.get("line")))
-    if mixed and n.get("resolution") == "inferred" and parts:
-        parts[0] += "  (inferred)"  # only in a tree that has an exact node, so a snapshot tree reads as before
+    if mixed and n.get("resolution") == "guessed" and parts:
+        parts[0] += "  (guessed)"  # only in a tree that has a seen node, so a snapshot tree reads as before
     if n.get("statement"):
         parts.append(_one_line(n["statement"], WHY_STATEMENT))
     shared = _shared_text(n["shared"], source) if n.get("shared") else ""
@@ -482,7 +482,7 @@ def _why_node(n: dict, prefix: str, source: Any, mixed: bool = False) -> str:
 
 
 def _has_exact(n: dict) -> bool:
-    return n.get("resolution") == "exact" or any(_has_exact(r) for r in n.get("reads") or [])
+    return n.get("resolution") == "seen" or any(_has_exact(r) for r in n.get("reads") or [])
 
 
 def _shared_text(s: dict, source: Any) -> str:

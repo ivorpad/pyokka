@@ -131,7 +131,7 @@ class ProvenanceBuilder {
 
   /** `node` with its `resolution` when it has a step (docs/PROTOCOL.md, "Provenance"). */
   private label(node: ProvenanceNode, exact: boolean): ProvenanceNode {
-    if (node.step !== undefined) node.resolution = exact ? 'exact' : 'inferred';
+    if (node.step !== undefined) node.resolution = exact ? 'seen' : 'guessed';
     return node;
   }
 

@@ -216,8 +216,8 @@ def add_commands(sub: argparse._SubParsersAction) -> None:
     p.add_argument("--python", metavar="PATH", help="interpreter to run with, a path or a command on PATH such as python3.12 (default: the window's)")
     p.add_argument("--at", action="append", metavar="FILE:LINE|NAME", help="stop here: a line, or a function name whose entry pauses; repeat it for one stop per stage (`continue` goes from one to the next). Every one is set before the program starts and shows in the Breakpoints view")
     p.add_argument("--record", action="store_true", help="also record the run, so the Time Machine, the Code Story and `why` open over it at every pause (slower; needs a file, not --module)")
-    p.add_argument("--exact", action="store_true", help="with --record or --record-from: record each statement's writes exactly, at its own step, so `why` sees changes made in place and through another name (about 13x slower where it traces: --exact-only NAME limits it)")
-    p.add_argument("--exact-only", dest="exact_only", action="append", default=[], metavar="NAME", help="--exact for these functions only (repeatable); the rest keep the default recording")
+    p.add_argument("--follow-objects", dest="exact", action="store_true", help="with --record or --record-from: follow each object across the names that hold it, so `why` sees changes made in place and through another name (about 3.5x slower where it traces: --follow-objects-in NAME limits it)")
+    p.add_argument("--follow-objects-in", dest="exact_only", action="append", default=[], metavar="NAME", help="--follow-objects for these functions only (repeatable); the rest keep the default recording")
     p.add_argument("--record-from", dest="record_from", metavar="NAME|FILE:LINE", help="run at the debugger's speed up to here, pause, and record from this pause on: the Time Machine, `why`, `var` and `history` cover what runs after it (needs a file, not --module). It is also an --at")
     p.add_argument("--library-code", dest="library_code", action="store_true", help="step into and pause inside third-party packages too (never the standard library); off by default, so a breakpoint in a library function and `step --into` on a library call both need it")
     p.add_argument("--configuration", metavar="NAME", help="take program or module, args, cwd, env, envFile, python, stopOnEntry and justMyCode from this debugpy/python configuration of the nearest .vscode/launch.json (above FILE, --cwd or here); flags given here win, and the keys it does not apply are named")
@@ -390,7 +390,7 @@ def debug_launch(args: Any) -> dict | None:
     exact_only = list(getattr(args, "exact_only", None) or [])
     exact = bool(getattr(args, "exact", False)) or bool(exact_only)
     if exact and not (record or record_from):
-        raise AgentError("--exact records each statement's writes exactly, so it needs a recording", "add --record, or --record-from NAME: `pyokka debug app.py --record --exact`")
+        raise AgentError("--follow-objects follows objects through a recording, so it needs a recording", "add --record, or --record-from NAME: `pyokka debug app.py --record --follow-objects`")
     if (record or record_from) and getattr(args, "module", None):
         raise AgentError(
             '%s runs the file as a Pyokka run-all session, which has no module launch' % ("--record-from" if record_from else "--record"),
@@ -461,7 +461,7 @@ def _open_debug_start(args: Any) -> RunSource:
 
 
 #: the `debug` fields a session that is already paused cannot take: (attribute, CLI flag, MCP field)
-_START_ONLY = (("args", "--args", "args"), ("env", "--env", "env"), ("cwd", "--cwd", "cwd"), ("python", "--python", "python"), ("record", "--record", "record"), ("record_from", "--record-from", "record_from"), ("exact", "--exact", "exact"), ("exact_only", "--exact-only", "exact_only"), ("stop_on_entry", "--stop-on-entry", "stop_on_entry"), ("library_code", "--library-code", "library_code"), ("test", "--test", "test"))
+_START_ONLY = (("args", "--args", "args"), ("env", "--env", "env"), ("cwd", "--cwd", "cwd"), ("python", "--python", "python"), ("record", "--record", "record"), ("record_from", "--record-from", "record_from"), ("exact", "--follow-objects", "follow_objects"), ("exact_only", "--follow-objects-in", "follow_objects_in"), ("stop_on_entry", "--stop-on-entry", "stop_on_entry"), ("library_code", "--library-code", "library_code"), ("test", "--test", "test"))
 
 
 def _already_paused(args: Any, result: dict) -> None:

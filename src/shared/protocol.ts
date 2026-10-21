@@ -345,9 +345,9 @@ export interface ProvenanceNode {
   cut?: boolean;
   /** a leaf of a recording that began mid-run (`recordFrom`): the value was made before step 0, where nothing was recorded */
   beforeRecording?: boolean;
-  /** on every node with a step: `exact` when the exact recording made the value at `step` and (below the root) logged the
-   *  reads of the statement above; `inferred` for snapshot changes, parameters, logged values and source-parsed reads */
-  resolution?: 'exact' | 'inferred';
+  /** on every node with a step: `seen` when a --follow-objects recording made the value at `step` and (below the root) logged the
+   *  reads of the statement above; `guessed` for snapshot changes, parameters, logged values and source-parsed reads */
+  resolution?: 'seen' | 'guessed';
 }
 
 export interface Provenance {

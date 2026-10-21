@@ -90,7 +90,7 @@ export async function startDebugSession(launch: LaunchConfig, opts: { stopOnEntr
     libraryCode: launch.libraryCode,
     record: launch.record,
     ...(launch.recordFrom ? { recordFrom: launch.recordFrom } : {}),
-    ...(launch.exact ? { exact: launch.exact } : {}),
+    ...(launch.exact ? { followObjects: launch.exact } : {}),
     // the Pyokka panel is where a run is read; the Debug Console opens when the user asks for it
     internalConsoleOptions: 'neverOpen',
   };
