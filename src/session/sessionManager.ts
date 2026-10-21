@@ -241,7 +241,7 @@ export class SessionManager extends EventEmitter<SessionManagerEvents> {
     }
     const extraPythonPath = this.forFileSitePackages(doc);
     const session = new Session({ document: doc, interpreter, runtimeDir: this.runtimeDir, workspaceRoot, runMode: opts.runMode, autoLog: opts.autoLog, mode: opts.mode, extraPythonPath, launch: opts.launch });
-    if (opts.debug) session.debugCtl.activate({ stopOnEntry: opts.stopOnEntry, ...(opts.recordFrom ? { recordFrom: opts.recordFrom } : {}) });
+    if (opts.debug) session.debugCtl.activate({ stopOnEntry: opts.stopOnEntry, ...(opts.recordFrom ? { recordFrom: opts.recordFrom } : {}), ...(opts.launch?.exact ? { exact: opts.launch.exact } : {}) });
     this.sessions.set(session.key, session);
     this.lastActive = session;
     this.startedAtLeastOnce = true;

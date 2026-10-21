@@ -37,7 +37,8 @@ pyokka run FILE [--save RUN.JSON] [--library-code] [--keep] [--no-locals]
                 [--http off|record|replay] [--timeout MS] [--watch EXPR] [--auto-log]
                 [--max-steps N] [--exclude GLOB]... [--only GLOB]... [--max-value-chars N]
                 [--python PATH] [--cwd DIR] [--test NAME] [--mode normal|snaps|profile]
-                [--trace-context STEP] [--record-locals] [--instrumented] -- ARGS
+                [--trace-context STEP] [--record-locals] [--instrumented]
+                [--exact | --exact-only NAME...] -- ARGS
 ```
 
 `--save` is what writes the recording; without it the command prints the event stream.
@@ -51,6 +52,20 @@ paths relative to the project root; a DIR that holds the file is also the projec
   `pyokka release run.json` shuts it down.
 - `--no-locals` skips recording locals at every step, which is what `var` and `why` read. Leave
   it on unless the run is enormous.
+- `--exact` records each change at the statement that made it, a change in place included
+  (`prices["a"] = 10`, `orders.append(x)`), and gives the change to every other name that holds the
+  changed object: the caller's dict, another order's line, a module global. `var` and `why` show how
+  such a name holds it (`[bo['lines'][0] is line, shared since #17 catalog.py:5 new_order]`), and the
+  `why` conclusion names the step where the sharing began. Without it, a change is seen at the next
+  statement of its scope and only when the value's `id` or length changed. `--exact-only NAME`
+  (repeatable) traces only the functions with that name or qualified name. Use it to keep a hot loop
+  out: tracing every function costs about 4x a plain recording (6.7 s against 1.9 s on a 240,000-step
+  loop), and the cost is per traced statement, so a function the loop does not run costs nearly nothing.
+  A holder is found through containers a traced statement loaded, stored or returned, so record
+  with `--exact` when the shared object passes through more than one function. A traced statement's
+  reads are the names it loaded, so `name = tier or fallback` does not list `fallback` when `tier`
+  decided it; a `why` tree that mixes exact and inferred nodes prints `  (inferred)` after the
+  inferred ones (parameters, logged `# ?` values, reads taken from the source).
 - `--test NAME` runs one test of a test file under its runner and records only that test's body
   (and the file's top level): `test_b`, `TestCart::test_total` or `test_b[2]` is a pytest node id,
   `Cart.test_total` a unittest name, anything else a pytest `-k` expression. pytest runs with
@@ -478,7 +493,7 @@ one command. A refusal has the same two lines around `refused: <why>` and its de
 (`isError` through MCP).
 
 ```
-pyokka review start --base REF [--repo DIR] [--entry FILE | --test NODEID] [--only PATH...] [--full] [--pr FILE] [--python P] [--surface vscode|page|chat] [--port P] [--dir DIR] [-- ARGS]
+pyokka review start --base REF [--repo DIR] [--entry FILE | --test NODEID] [--only PATH...] [--full] [--exact] [--pr FILE] [--python P] [--surface vscode|page|chat] [--port P] [--dir DIR] [-- ARGS]
 pyokka review view [--surface vscode|page|chat] [--port P]      # the person's view, opened after start when it opened none or they moved
 pyokka review stop [N] --say TEXT [--go-on] [--surface auto|page|vscode|chat] [--port P] [--session NAME]   # records the pause the debugger is at; in a --full review moves the view to stop N
 pyokka review ask FILE:LINE --say TEXT
@@ -846,7 +861,7 @@ pyokka tour RUN [--goal NAME|FILE:LINE] [--budget TOKENS] [--at STEP]... [--pros
 pyokka narrate RUN [--command CMD] [--dry-run]
 pyokka history RUN --out PATH [--at STEP|FILE:LINE]... [--var NAME]... [--why STEP NAME]...
         [--pause] [--prose PATH] [--pad N] [--limit K] [--lang L] [--scope] [--append] [--value-chars N]
-pyokka review start --base REF [--repo DIR] [--entry FILE | --test NODEID] [--only PATH...] [--full] [--pr FILE] [--python P] [--dir DIR] [-- ARGS]
+pyokka review start --base REF [--repo DIR] [--entry FILE | --test NODEID] [--only PATH...] [--full] [--exact] [--pr FILE] [--python P] [--dir DIR] [-- ARGS]
 pyokka review stop [N] --say TEXT [--go-on] [--surface auto|page|vscode|chat] [--port P] [--session NAME]   # records the pause the debugger is at; in a --full review moves the view to stop N
 pyokka review ask FILE:LINE --say TEXT
 pyokka review skip N [N...] --why TEXT
@@ -860,8 +875,8 @@ pyokka review state
 pyokka watch --live
 pyokka shell --live
 pyokka debug FILE [--at FILE:LINE|NAME]... [--module M] [--cwd DIR] [--env K=V]... [--python PATH]
-        [--stop-on-entry] [--record | --record-from NAME|FILE:LINE] [--library-code] [--no-focus]
-        [--configuration NAME] [--test NAME] [--args ...]
+        [--stop-on-entry] [--record | --record-from NAME|FILE:LINE] [--exact | --exact-only NAME...]
+        [--library-code] [--no-focus] [--configuration NAME] [--test NAME] [--args ...]
 pyokka continue --live [--no-wait] [--until EXPR | --to FILE:LINE] [--scope] [--no-start]
 pyokka pause --live [--no-wait] [--scope]
 pyokka stop --live

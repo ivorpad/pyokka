@@ -2,6 +2,27 @@
 
 ## Unreleased
 
+- `pyokka run --exact` (also `debug --exact` and `review start --exact`, MCP `exact`) records each
+  change at the statement that made it, a change in place included, and gives it to every other
+  name that holds the changed object. `why bill` in a program where two orders share one dict now
+  reaches the line that changed it, and says how `bo` holds it and since when:
+  `[bo['lines'][0] is line, shared since #17 catalog.py:5 new_order]`. `var TEMPLATE` lists the
+  change made through `line`. A `for` loop's target belongs to its iteration step, once per
+  iteration. `--exact-only NAME` traces only the named functions. The cost is per traced statement:
+  a 240,000-step loop records in 6.7 s against 1.9 s for a plain recording, whether its function is
+  traced alone or with every other one. The events come from `sys.monitoring`, with `sys.settrace`
+  as the fallback when no monitoring tool id is free.
+- `why` links a function or class a statement read to its definition: `discount = ?` is now
+  `discount = <function discount at 0x…>   def main.py:1`, in both recordings. A decorated function
+  links to its own `def` (its first decorator's line), not the decorator's wrapper. Recorded locals
+  carry it as `defined: {fileId, line}`, only for files the run instrumented. At module level a class
+  of the program is now recorded, and a function or class imported from a file the run did not
+  instrument no longer is.
+- With `--exact`, `why` and `var` take a statement's reads from the names it loaded, so
+  `name = tier or fallback` no longer lists `fallback` when `tier` was truthy. Each `why` node has
+  `resolution: "exact"` or `"inferred"`, and a tree that mixes the two prints `  (inferred)` after
+  the inferred nodes; a snapshot recording prints as before.
+
 - `review start --only PATH` (MCP `only`) on files with no changed function no longer refuses. It
   starts the session with an empty agenda, as the same diff without `--only` already did.
 - An empty agenda in a review in the debugger (`start`, `state`, `view`) no longer suggests

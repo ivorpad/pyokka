@@ -57,7 +57,7 @@ export interface BridgeDebugDeps {
   /** the context slice of a step, redacted (the bridge's own builder) */
   slice: (session: Session, step: number, opts: SliceOptions) => Record<string, unknown>;
   /** start a debug run of the session's file inside a VS Code debug session (dapAdapter.ts `debugDocument`) */
-  startDebugging: (session: Session, opts: { stopOnEntry: boolean; recordFrom?: string }) => Promise<void>;
+  startDebugging: (session: Session, opts: { stopOnEntry: boolean; recordFrom?: string; exact?: true | string[] }) => Promise<void>;
   /** stop the debug run and start a fresh one of the same file inside the same debug session; `onStopped` runs once the old run is gone (dapAdapter.ts `restartDebugging`) */
   restartDebugging: (session: Session, opts: { stopOnEntry: boolean; onStopped: () => void }) => Promise<void>;
   /** leave debug mode and stop the run, then wait for it to be gone (dapAdapter.ts `stopDebugging`) */
@@ -112,7 +112,7 @@ export class BridgeDebug {
     const launch = this.launchFor(session, req);
     if (!launch.record) return this.deps.startDebugSession(launch, req);
     // the run opens in a VS Code debug session too, so the standard views show what the agent does
-    return this.stop(session, req, () => this.deps.startDebugging(session, { stopOnEntry: this.entryPause(session, req), ...(launch.recordFrom ? { recordFrom: launch.recordFrom } : {}) }));
+    return this.stop(session, req, () => this.deps.startDebugging(session, { stopOnEntry: this.entryPause(session, req), ...(launch.recordFrom ? { recordFrom: launch.recordFrom } : {}), ...(launch.exact ? { exact: launch.exact } : {}) }));
   }
 
   /** The launch a `debug` request asks for; `program` defaults to the session's file. */

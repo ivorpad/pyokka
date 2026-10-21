@@ -68,6 +68,8 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--max-steps", type=int, default=None, metavar="N", help="record at most N steps (default 999,999); past it the program runs on unrecorded and every command over the run says so")
     run.add_argument("--exclude", action="append", default=[], metavar="GLOB", help="leave this code out of the recording: a dotted module (pkg.flash covers pkg.flash.*) or a path glob relative to the file's directory (pkg/flash, */parser.py); repeatable. It runs at full speed and records no steps")
     run.add_argument("--only", action="append", default=[], metavar="GLOB", help="record only these modules or paths (same forms as --exclude), library ones included; the program file is always recorded; repeatable")
+    run.add_argument("--exact", action="store_true", help="record each statement's writes exactly, at its own step: changes made in place (d[k] = v, .append) and through another name are seen, and none is credited to the next line. About 13x the default recording's time in what it traces: --exact-only NAME limits it")
+    run.add_argument("--exact-only", dest="exact_only", action="append", default=[], metavar="NAME", help="--exact for these functions only (repeatable; a name or a qualified name such as Cart.total); every other function keeps the default recording")
     run.add_argument("--max-value-chars", type=int, default=None, metavar="N", help="characters one recorded value keeps (default 120 for a local, 200 for a logged value); 0 = no limit up to the 1,000,000 ceiling. A cut value ends in …(+N chars)")
     run.add_argument("--python", metavar="PATH", help="the interpreter that runs the program: a path, a venv directory, or a command on PATH such as python3.12; see below for the default")
     run.add_argument("--cwd", metavar="DIR", help="the directory the program runs in (default: the file's directory); a DIR that holds the file is also the project root, so its own imports count as user code")
@@ -186,6 +188,7 @@ def main(argv: list[str] | None = None) -> int:
         "exclude": list(args.exclude or []),
         "only": list(args.only or []),
         "maxValueChars": args.max_value_chars,
+        "exact": list(args.exact_only) if args.exact_only else (True if args.exact else None),
     }
     if args.max_steps is not None and args.max_steps < 1:
         sys.stderr.write("error: --max-steps must be 1 or more, got %d\n" % args.max_steps)

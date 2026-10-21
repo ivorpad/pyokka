@@ -58,10 +58,22 @@ def conclusion(tree: dict) -> str:
     if not name or root.get("step") is None or root.get("text") is None:
         return ""
     first = "%s is %s at %s" % (name, clip(root["text"]), where(root))
-    reads = [r for r in root.get("reads") or [] if isinstance(r, dict) and r.get("text") is not None]
+    # a function or class read (no step, `defined`) is not one of the values the statement worked with
+    reads = [r for r in root.get("reads") or [] if isinstance(r, dict) and r.get("text") is not None and r.get("step") is not None]
     calls = [c for c in root.get("calls") or [] if isinstance(c, dict)]
     second = _conditional(root, reads) or _call(root, calls) or _copy(root, reads) or _lookup(root, reads) or _reads(reads)
-    return first + "." + (" " + second + "." if second else "")
+    third = _shared(root)
+    return first + "." + (" " + second + "." if second else "") + (" " + third + "." if third else "")
+
+
+def _shared(root: dict) -> str:
+    """The root or one of its reads changed through another name, with the step where the sharing began."""
+    for n in [root, *[r for r in root.get("reads") or [] if isinstance(r, dict)]]:
+        s = n.get("shared") or {}
+        if s.get("as") is None or s.get("line") is None or n.get("step") is None:
+            continue
+        return "%s is the same object as %s, changed at %s; it is shared since #%s (%s:%s)" % (s["path"], s["as"], where(n), s.get("since"), short_file(s.get("file")), s["line"])
+    return ""
 
 
 def _rhs(statement: str) -> str:

@@ -177,7 +177,10 @@ def launch_for(data: dict) -> dict:
     if test:
         module, words = runner_for(entry, test)
         return build_launch(module=module, args=[*words, *argv], cwd=repo, env=env, python=data.get("python"), stop_on_entry=True)
-    return build_launch(program=entry, args=argv, cwd=repo, env=env, python=data.get("python"), stop_on_entry=True, record=True)
+    launch = build_launch(program=entry, args=argv, cwd=repo, env=env, python=data.get("python"), stop_on_entry=True, record=True)
+    if data.get("exact"):
+        launch["exact"] = list(data["exact"])
+    return launch
 
 
 def abs_file(review: Review, file: str) -> str:

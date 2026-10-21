@@ -97,6 +97,40 @@ def test_fixture_trees_match_the_shared_json(fixture_run: Path, tmp_path: Path):
     assert doc == expected
 
 
+SHARED_PROGRAM = FIXTURES / "shared"
+SHARED_RUN_JSON = FIXTURES / "shared-run.json"
+SHARED_CASES_JSON = FIXTURES / "shared.json"
+SHARED_FILES = ("main.py", "billing.py", "catalog.py", "promo.py")
+# an exact recording (`config.exact`): both orders hold catalog's one TEMPLATE dict, and ana's bonus changes it
+SHARED_CASES = [
+    ("main.py", 13, "first", "bill", PROVENANCE_DEPTH),
+    ("main.py", 12, "first", "bo", PROVENANCE_DEPTH),
+    ("billing.py", 8, "last", "amount", PROVENANCE_DEPTH),
+]
+
+
+def test_shared_object_trees_match_the_shared_json(tmp_path: Path):
+    """The TS builder reads `shared-run.json` and the cases in `shared.json` and must give the same trees, `shared` included."""
+    files = {rel: (SHARED_PROGRAM / rel).read_text(encoding="utf-8") for rel in SHARED_FILES[1:]}
+    path = saved_run(tmp_path, (SHARED_PROGRAM / "main.py").read_text(encoding="utf-8"), files=files, config={"exact": True})
+    run = SavedRun(str(path))
+    root = str(tmp_path / "proj")
+    built = []
+    for file, line, occurrence, name, depth in SHARED_CASES:
+        step = step_of(run, file, line, occurrence)
+        result = json.loads(normalize(json.dumps(provenance(run, step, name, depth=depth), ensure_ascii=False), root))
+        built.append({"file": file, "line": line, "occurrence": occurrence, "name": name, "depth": depth, "step": step, "result": result})
+    doc = {"bindings": {rel: statement_bindings((SHARED_PROGRAM / rel).read_text(encoding="utf-8")) for rel in SHARED_FILES}, "cases": built}
+    if os.environ.get("PYOKKA_WRITE_FIXTURES"):
+        SHARED_CASES_JSON.write_text(json.dumps(doc, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+        SHARED_RUN_JSON.write_text(normalize(path.read_text(encoding="utf-8"), root) + "\n", encoding="utf-8")
+    bill = built[0]["result"]
+    bo = next(r for r in bill["root"]["reads"] if r["name"] == "bo")
+    assert (bo["line"], bo["shared"]["path"], bo["shared"]["as"], bo["shared"]["line"], bo["shared"]["function"]) == (4, "bo['lines'][0]", "line", 5, "new_order")
+    assert "bo['lines'][0] is the same object as line, changed at #" in bill["conclusion"]
+    assert doc == json.loads(SHARED_CASES_JSON.read_text(encoding="utf-8"))
+
+
 def names(nodes: list[dict]) -> list[str]:
     return [n["name"] for n in nodes]
 
@@ -120,13 +154,13 @@ def test_root_is_the_change_at_the_step_with_its_log_entry(cases):
 def test_reads_walk_through_the_logged_value_to_the_assignment(cases):
     root = cases[("total", PROVENANCE_DEPTH, 28)]["result"]["root"]
     assert (root["text"], root["source"], root["step"]) == ("35.0", "locals", 23) and root["logId"]
-    assert names(root["reads"]) == ["acct", "Account"] and root["reads"][1] == {"name": "Account"}
+    assert names(root["reads"]) == ["acct", "Account"] and root["reads"][1] == {"name": "Account", "text": "<class '__main__.Account'>", "source": "locals", "file": "/fixture/main.py", "fileId": 1, "line": 6, "defined": True}
     acct = root["reads"][0]
     assert (acct["text"], acct["source"], acct["step"], acct["line"], acct["statement"]) == ("Account(owner='ivor', balance=30.0)", "value", 22, 27, "acct  # ?+")
     assert acct["logId"]
     assigned = acct["reads"][0]
     assert (assigned["name"], assigned["text"], assigned["source"], assigned["step"], assigned["line"], assigned["statement"]) == ("acct", "Account(owner='ivor', balance=0.0)", "locals", 10, 24, 'acct = Account("ivor")')
-    assert assigned["reads"] == [{"name": "Account"}] and assigned["opaque"] == ['Account("ivor")']
+    assert assigned["reads"] == [{"name": "Account", "text": "<class '__main__.Account'>", "source": "locals", "file": "/fixture/main.py", "fileId": 1, "line": 6, "defined": True}] and assigned["opaque"] == ['Account("ivor")']
     assert root["calls"] == [] and root["opaque"] == ['sum(a.balance for a in [acct, Account("guest", 5)])', 'Account("guest", 5)']
     assert cases[("total", PROVENANCE_DEPTH, 28)]["result"]["nodes"] == 5
 
@@ -228,9 +262,9 @@ def test_text_form_matches_the_reference_renderer(fixture_run: Path):
         '  ← total = 35.0   #23 main.py:28 <module>   total = sum(a.balance for a in [acct, Account("guest", 5)])',
         "    ← acct = Account(owner='ivor', balance=30.0)   #22 main.py:27 <module>   acct  # ?+",
         "      ← acct = Account(owner='ivor', balance=0.0)   #10 main.py:24 <module>   acct = Account(\"ivor\")",
-        "        ← Account = ?",
+        "        ← Account = <class '__main__.Account'>   def main.py:6",
         '        · Account("ivor")   not stepped',
-        "    ← Account = ?",
+        "    ← Account = <class '__main__.Account'>   def main.py:6",
         '    · sum(a.balance for a in [acct, Account("guest", 5)])   not stepped',
         '    · Account("guest", 5)   not stepped',
         "  ← os = ?",

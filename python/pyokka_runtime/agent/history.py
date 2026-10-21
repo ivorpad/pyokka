@@ -12,7 +12,9 @@ the scope's previous step; when that statement binds the name the change is attr
 which is where the Time Machine should land. Loop headers are the exception: the per-iteration
 step fires after the target is bound, so an iteration step owns the change it observes. Each
 change carries ``reads``: the names the statement loaded, with the latest value recorded for
-each before the step, one level, so a reader can walk backwards.
+each before the step, one level, so a reader can walk backwards. The names are the source's
+(``bindings.read_names``) unless the exact recording logged what the statement loaded (``reads``
+on its locals entry), which leaves out an operand that did not run (``fallback`` in ``tier or fallback``).
 """
 
 from __future__ import annotations
@@ -73,15 +75,35 @@ class History:
     def __init__(self, run: "SavedRun") -> None:
         self.run = run
         self.trace = run.trace
-        # name -> [(observed step, scopeId, text)] ascending
-        self.locals_by_name: dict[str, list[tuple[int, int, str]]] = {}
+        # name -> [(observed step, scopeId, text, exact)] ascending
+        self.locals_by_name: dict[str, list[tuple[int, int, str, bool]]] = {}
+        # (step, scopeId, name) of the changes an exact recording made (`exacttrace.py`): made *by* that step,
+        # where a snapshot change at step N was only observed at N, after the statement before it ran
+        self.exact_keys: set[tuple[int, int, str]] = set()
+        self.exact_steps: set[tuple[int, str]] = set()  # the same changes as (step, name), whatever scope recorded them
+        # the same key -> how the name holds the object a statement changed through another name (`shared`)
+        self.shared_by_key: dict[tuple[int, int, str], dict] = {}
+        # the same key -> where a function or class value was defined (`defined: {fileId, line}`, `defsite.py`)
+        self.defined_by_key: dict[tuple[int, int, str], dict] = {}
+        # step -> the names its statement loaded, as the exact recording logged them (``reads`` on its entry)
+        self.reads_by_step: dict[int, list[str]] = {}
         for entry in run.locals_entries:
             step = int(entry.get("step", -1))
             sid = int(entry.get("scopeId", 0))
+            if isinstance(entry.get("reads"), list):
+                have = self.reads_by_step.setdefault(step, [])
+                have.extend(str(n) for n in entry["reads"] if str(n) not in have)
             for ch in entry.get("changes") or []:
                 name = ch.get("name")
                 if name:
-                    self.locals_by_name.setdefault(str(name), []).append((step, sid, str(ch.get("text", ""))))
+                    self.locals_by_name.setdefault(str(name), []).append((step, sid, str(ch.get("text", "")), bool(ch.get("exact"))))
+                    if ch.get("exact"):
+                        self.exact_keys.add((step, sid, str(name)))
+                        self.exact_steps.add((step, str(name)))
+                    if isinstance(ch.get("shared"), dict):
+                        self.shared_by_key[(step, sid, str(name))] = ch["shared"]
+                    if isinstance(ch.get("defined"), dict):
+                        self.defined_by_key[(step, sid, str(name))] = ch["defined"]
         for lst in self.locals_by_name.values():
             lst.sort(key=lambda t: t[0])
         # context -> [log events] ascending by step, the kinds that carry a variable's value
@@ -144,18 +166,21 @@ class History:
         """The latest recorded value of ``name`` visible at the start of ``step``, from the step's scope or its module.
 
         ``{name}`` alone when nothing was recorded; else ``text``, ``source`` (``locals`` or ``value``),
-        ``step`` (the statement that made it, the same step the change list names) and ``logId`` when a
-        log entry holds the value.
+        ``step`` (the statement that made it, the same step the change list names), ``logId`` when a
+        log entry holds the value and ``exact`` when the recorded change was made by that step. A function
+        or class has no ``step``; ``defined`` (``file``, ``fileId``, ``line``) names its ``def`` or ``class``
+        when the recording linked it.
         """
         scopes = {scope_id} | self.module_scopes(file_id)
         best_step = -1
         best_text: str | None = None
         best_scope = scope_id
-        for s, sid, text in reversed(self.locals_by_name.get(name, ())):
-            if s > step:
-                continue
+        best_exact = False
+        for s, sid, text, exact in reversed(self.locals_by_name.get(name, ())):
+            if s > step or s == step and (s, sid, name) in self.exact_keys:
+                continue  # an exact change at `step` is the statement's own write, not what it read
             if sid in scopes:
-                best_step, best_text, best_scope = s, text, sid
+                best_step, best_text, best_scope, best_exact = s, text, sid, exact
                 break
         event: dict | None = None
         for ev in reversed(self.values_by_context.get(name, ())):
@@ -169,14 +194,24 @@ class History:
         if best_step < 0:
             return out
         out["text"] = best_text
-        if event is None and is_definition(best_text):
+        defined = self.defined_by_key.get((best_step, best_scope, name)) if event is None else None
+        if event is None and (defined is not None or is_definition(best_text)):
             # a recorded local that is a definition has no producing step: `def` and `class` statements are
-            # never steps, so the recorder saw the binding at whatever statement ran next
+            # never steps, so the recorder saw the binding at whatever statement ran next. `defined` says
+            # which `def` or `class` made it instead.
             out["source"] = "locals"
+            if defined is not None:
+                fid = int(defined.get("fileId", -1))
+                out["defined"] = {"file": self.run.file_path(fid), "fileId": fid, "line": int(defined.get("line", 0))}
             return out
         if event is None:
             out["source"] = "locals"
-            out["step"] = self.attribute(best_step, best_scope, name)
+            out["step"] = self.made_at(best_step, best_scope, name)
+            if best_exact:
+                out["exact"] = True
+            shared = self.shared(best_step, best_scope, name)
+            if shared:
+                out["shared"] = shared
             log_id = self.log_for(int(out["step"]), name)
         else:
             out["source"] = "value"
@@ -204,6 +239,23 @@ class History:
         there = self.trace.location(prev)
         return bool(here and there and there[0] == here[0] and int(here[1][0]) <= int(there[1][0]) <= int(end))
 
+    def shared(self, observed: int, scope_id: int, changed: str) -> dict | None:
+        """How ``changed`` holds the object a change reached it through: ``{path, as?, since?}``, with ``since``'s
+        place (``file``, ``line``, ``function``) added: where the edge into the object was first seen."""
+        info = self.shared_by_key.get((observed, scope_id, changed))
+        if info is None:
+            return None
+        out: dict[str, Any] = {k: info[k] for k in ("path", "as", "since") if k in info}
+        since = info.get("since")
+        if isinstance(since, int) and self.trace.valid(since):
+            where = self.location(since)
+            out.update({k: where[k] for k in ("file", "fileId", "line", "function")})
+        return out
+
+    def made_at(self, observed: int, scope_id: int, changed: str) -> int:
+        """The step whose statement made a recorded change: its own for an exact one, else ``attribute``'s."""
+        return observed if (observed, scope_id, changed) in self.exact_keys else self.attribute(observed, scope_id, changed)
+
     def attribute(self, observed: int, scope_id: int, changed: str) -> int:
         """The step whose statement made the change observed at ``observed``."""
         own = self.binding_at(observed)
@@ -216,14 +268,32 @@ class History:
                 return prev
         return observed
 
-    def resolved_reads(self, step: int) -> list[dict]:
-        """The names the statement at ``step`` loaded (at most ``VAR_READS``), each resolved with ``value_at``."""
-        loc = self.trace.location(step)
+    def recorded_reads(self, step: int) -> bool:
+        """Whether the exact recording logged the names the statement at ``step`` loaded. A loop's iteration step
+        loads nothing (its iterable was loaded at the header's first step), so its reads stay the source's."""
+        if step not in self.reads_by_step:
+            return False
         binding = self.binding_at(step)
-        if loc is None or not binding:
+        return not (binding and binding.get("loop") is not None and self.is_iteration_step(step, binding))
+
+    def read_names(self, step: int) -> list[str]:
+        """The names the statement at ``step`` loaded, at most ``VAR_READS``: the recorded ones when the exact
+        recording logged them (in the source's order where the binding lists the name, then the others in
+        load order), else the binding's."""
+        binding = self.binding_at(step) or {}
+        source = list(binding.get("reads") or [])
+        if not self.recorded_reads(step):
+            return source[:VAR_READS]
+        recorded = self.reads_by_step[step]
+        return ([n for n in source if n in recorded] + [n for n in recorded if n not in source])[:VAR_READS]
+
+    def resolved_reads(self, step: int) -> list[dict]:
+        """The names the statement at ``step`` loaded (``read_names``), each resolved with ``value_at``."""
+        loc = self.trace.location(step)
+        if loc is None:
             return []
         sid = self.trace.scope_id(step)
-        return [self.value_at(n, step, sid, loc[0]) for n in (binding.get("reads") or [])[:VAR_READS]]
+        return [self.value_at(n, step, sid, loc[0]) for n in self.read_names(step)]
 
     def reads_for(self, step: int) -> list[dict]:
         """The change list's reads: ``{name, text?, step?}``, one level (the provenance tree keeps the rest)."""
@@ -251,7 +321,11 @@ class History:
                 changed = str(ch.get("name") or "")
                 if not matches_name(changed, name):
                     continue
-                add(self._row(self.attribute(observed, sid, changed), changed, str(ch.get("text", "")), "locals"))
+                row = self._row(self.made_at(observed, sid, changed), changed, str(ch.get("text", "")), "locals")
+                shared = self.shared(observed, sid, changed)
+                if shared:
+                    row["shared"] = shared
+                add(row)
         # 2. logged values whose context is the name (or a path under it)
         for ctx, events in self.values_by_context.items():
             if not matches_name(ctx, name):

@@ -15,6 +15,7 @@ import time
 from array import array
 from typing import Any, Callable
 
+from .defsite import defined_at, skipped_at_module
 from .errors import ErrorMixin
 from .instrument import HOOK_NAMES, SCOPE_NAME, InstrumentedFile
 from .logs import LogMixin
@@ -130,6 +131,11 @@ class Tracer(LogMixin, ErrorMixin, RecordFromMixin):
         self.local_snaps: dict[int, dict] = {}
         self.locals_entries: list[dict] = []
         self.locals_flushed = 0  # entries already emitted at a debug pause
+        self.exact = None
+        if config.exact and self.record_locals:
+            from .exacttrace import ExactTracer
+
+            self.exact = ExactTracer(self)
         self.stop_code = None
         self.installed = False
         self.finished = False
@@ -225,11 +231,15 @@ class Tracer(LogMixin, ErrorMixin, RecordFromMixin):
         self._saved_builtins["print"] = builtins.print
         builtins.print = hooks["print"]
         self._monitoring_start()
+        if self.exact is not None:
+            self.exact.start()
         self.installed = True
 
     def uninstall(self) -> None:
         if not self.installed:
             return
+        if self.exact is not None:
+            self.exact.stop()
         self._monitoring_stop()
         for name, old in self._saved_builtins.items():
             if old is None:
@@ -249,6 +259,7 @@ class Tracer(LogMixin, ErrorMixin, RecordFromMixin):
         scope_last = self.scope_last
         cap = self.cap
         record_locals = self.record_locals
+        exact = self.exact
         getframe = sys._getframe
         extend = steps.extend
 
@@ -282,7 +293,10 @@ class Tracer(LogMixin, ErrorMixin, RecordFromMixin):
                 if tracer.watch_lo <= n < tracer.watch_hi:
                     tracer._eval_watches(n, getframe(1))
                 if record_locals:
-                    tracer._record_locals(n, scope, getframe(1))
+                    if exact is not None and exact.wants(getframe(1)):
+                        exact.on_step(n, scope, getframe(1))
+                    else:
+                        tracer._record_locals(n, scope, getframe(1))
                 if (n & 1023) == 0:
                     tracer._periodic()
             except Exception as exc:  # noqa: BLE001
@@ -524,13 +538,16 @@ class Tracer(LogMixin, ErrorMixin, RecordFromMixin):
             for name, val in items:
                 if name.startswith("_pk_"):
                     continue
-                if module_level:
-                    if name.startswith("__") or isinstance(val, (type, type(sys), type(self._record_locals), type(len))):
-                        continue
                 marker = (id(val), len(val) if type(val) in _SIZED else -1)
                 new[name] = marker
                 if prev is None or prev.get(name) != marker:
-                    changes.append(cut_entry({"name": name}, name, val, self.locals_chars))
+                    defined = defined_at(val, self.files)
+                    if module_level and skipped_at_module(name, val, defined):
+                        continue
+                    entry = cut_entry({"name": name}, name, val, self.locals_chars)
+                    if defined is not None:
+                        entry["defined"] = defined
+                    changes.append(entry)
         finally:
             self.quiet -= 1
         self.local_snaps[scope] = new

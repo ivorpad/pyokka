@@ -181,6 +181,8 @@ def build_uri(launch: dict, at: str | list[str] | None = None, *, window_id: str
         parts.append(("record", "1"))
     if launch.get("recordFrom"):
         parts.append(("recordFrom", str(launch["recordFrom"])))
+    if launch.get("exact"):
+        parts.append(("exact", json.dumps(launch["exact"], separators=(",", ":"))))  # true, or the functions recorded exactly
     if launch.get("libraryCode"):
         parts.append(("libraryCode", "1"))
     if launch.get("breakOnException") and launch["breakOnException"] != "uncaught":

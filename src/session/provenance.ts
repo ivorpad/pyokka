@@ -13,7 +13,7 @@
  */
 import { PROVENANCE_DEPTH, PROVENANCE_MAX_DEPTH, PROVENANCE_NODES, type LogEvent, type Provenance, type ProvenanceCall, type ProvenanceNode, type StatementBinding, type TraceScope } from '../shared/protocol';
 import { MomentBuilder } from './moments';
-import { History, VAR_READS, type ValueRecord } from './variableHistory';
+import { History, type ValueRecord } from './variableHistory';
 import type { WalkthroughInputs } from './walkthroughShared';
 import { provenanceConclusion } from '../shared/provenanceText';
 import type { TraceModel } from '../timeMachine/traceModel';
@@ -84,7 +84,7 @@ class ProvenanceBuilder {
           node.cut = true;
           continue;
         }
-        const reads = this.history.bindingAt(node.step)?.reads.slice(0, VAR_READS) ?? [];
+        const reads = this.history.readNames(node.step);
         if (this.count + reads.length > budget) {
           node.cut = true;
           this.truncated = true;
@@ -110,7 +110,7 @@ class ProvenanceBuilder {
   private root(name: string, step: number): ProvenanceNode {
     const trace = this.inputs.trace;
     if (!trace.valid(step)) return { name };
-    if (!name) return this.place({ name: '' }, step);
+    if (!name) return this.label(this.place({ name: '' }, step), this.history.recordedReads(step)); // the statement itself: exact when its reads were recorded
     const rows = this.history.changesAt(name, step);
     const row = rows.find((r) => r.name === name) ?? rows[0];
     if (row) {
@@ -119,13 +119,20 @@ class ProvenanceBuilder {
       const logId = row.logId ?? this.history.logFor(step, row.name);
       if (logId) node.logId = logId;
       if (row.unchanged) node.unchanged = true;
-      return this.place(node, step);
+      if (row.shared) node.shared = row.shared;
+      return this.label(this.place(node, step), row.source === 'locals' && this.history.exactChange(step, row.name));
     }
     const loc = trace.location(step);
     const scopeId = trace.scopeId(step);
     let v = this.history.valueAt(name, step, scopeId, loc?.fileId ?? -1);
     if (v.step === undefined && name.includes('.')) v = this.history.valueAt(name.split('.')[0]!, step, scopeId, loc?.fileId ?? -1);
-    return v.step === undefined ? this.leaf(name) : this.fromRecord(v);
+    return v.step === undefined ? this.leaf(name) : this.label(this.fromRecord(v), !!v.exact);
+  }
+
+  /** `node` with its `resolution` when it has a step (docs/PROTOCOL.md, "Provenance"). */
+  private label(node: ProvenanceNode, exact: boolean): ProvenanceNode {
+    if (node.step !== undefined) node.resolution = exact ? 'exact' : 'inferred';
+    return node;
   }
 
   /* ----- nodes ----- */
@@ -158,26 +165,36 @@ class ProvenanceBuilder {
     const trace = this.inputs.trace;
     const loc = trace.location(step);
     const scopeId = trace.scopeId(step);
-    node.reads = reads.map((n) => this.resolve(n, step, scopeId, loc?.fileId ?? -1));
+    const recorded = this.history.recordedReads(step);
+    node.reads = reads.map((n) => this.resolve(n, step, scopeId, loc?.fileId ?? -1, recorded));
     const called = this.callsAt(step, scopeId);
     node.calls = called.map((s) => this.call(s, step));
     node.opaque = this.opaque(this.history.bindingAt(step)?.calls ?? [], called);
   }
 
   /** A read of the statement: the latest value recorded for the name before the step, placed at the statement that made it. */
-  private resolve(name: string, step: number, scopeId: number, fileId: number): ProvenanceNode {
+  private resolve(name: string, step: number, scopeId: number, fileId: number, recorded: boolean): ProvenanceNode {
     this.count++;
-    return this.fromRecord(this.history.valueAt(name, step, scopeId, fileId));
+    const v = this.history.valueAt(name, step, scopeId, fileId);
+    return this.label(this.fromRecord(v), recorded && !!v.exact);
   }
 
-  /** A node for what `valueAt` found: a leaf when nothing was recorded, else the producing statement. */
+  /**
+   * A node for what `valueAt` found: a leaf when nothing was recorded, else the producing statement. A function
+   * or class has a value and no step; its node is placed at the `def` or `class` that made it (`defined`).
+   */
   private fromRecord(v: ValueRecord): ProvenanceNode {
     if (v.step === undefined && v.text === undefined) return this.leaf(v.name);
     const node: ProvenanceNode = { name: v.name };
-    if (v.step === undefined) return node;
     if (v.text !== undefined) node.text = v.text;
+    if (v.step === undefined) {
+      if (v.source) node.source = v.source;
+      if (v.defined) Object.assign(node, { file: v.defined.file, fileId: v.defined.fileId, line: v.defined.line, defined: true });
+      return node;
+    }
     node.source = v.source;
     if (v.logId) node.logId = v.logId;
+    if (v.shared) node.shared = v.shared;
     return this.place(node, v.step);
   }
 

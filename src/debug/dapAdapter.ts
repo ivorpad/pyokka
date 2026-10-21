@@ -90,6 +90,7 @@ export async function startDebugSession(launch: LaunchConfig, opts: { stopOnEntr
     libraryCode: launch.libraryCode,
     record: launch.record,
     ...(launch.recordFrom ? { recordFrom: launch.recordFrom } : {}),
+    ...(launch.exact ? { exact: launch.exact } : {}),
     // the Pyokka panel is where a run is read; the Debug Console opens when the user asks for it
     internalConsoleOptions: 'neverOpen',
   };
@@ -101,7 +102,7 @@ export async function startDebugSession(launch: LaunchConfig, opts: { stopOnEntr
  * Start a debug run of `doc`: a `record: false` Debugger session by default, or today's recording
  * run inside the document's own session with `record: true`.
  */
-export async function debugDocument(doc: vscode.TextDocument, existing?: Session, opts: { stopOnEntry?: boolean; record?: boolean; recordFrom?: string; recordFromSpec?: RecordFromSpec } = {}): Promise<void> {
+export async function debugDocument(doc: vscode.TextDocument, existing?: Session, opts: { stopOnEntry?: boolean; record?: boolean; recordFrom?: string; recordFromSpec?: RecordFromSpec; exact?: true | string[] } = {}): Promise<void> {
   const launch: LaunchConfig = existing?.launch ?? {
     program: doc.uri.fsPath, args: [], cwd: vscode.workspace.getWorkspaceFolder(doc.uri)?.uri.fsPath ?? '',
     env: {}, stopOnEntry: false, breakOnException: 'uncaught', libraryCode: false, record: false,
@@ -111,10 +112,11 @@ export async function debugDocument(doc: vscode.TextDocument, existing?: Session
   if (record && existing && attached.has(existing)) {
     // `recordFromSpec` is a restart keeping the run's own; `recordFrom` the `--at` text of a new start
     const recordFrom = opts.recordFromSpec ?? recordFromSpec({ recordFrom: opts.recordFrom ?? launch.recordFrom, cwd: launch.cwd || path.dirname(doc.uri.fsPath) });
-    await existing.startDebug({ stopOnEntry, ...(recordFrom ? { recordFrom } : {}) });
+    const exact = opts.exact ?? launch.exact;
+    await existing.startDebug({ stopOnEntry, ...(recordFrom ? { recordFrom } : {}), ...(exact ? { exact } : {}) });
     return;
   }
-  await startDebugSession({ ...launch, stopOnEntry, record, ...(opts.recordFrom !== undefined ? { recordFrom: opts.recordFrom } : {}) });
+  await startDebugSession({ ...launch, stopOnEntry, record, ...(opts.recordFrom !== undefined ? { recordFrom: opts.recordFrom } : {}), ...(opts.exact ? { exact: opts.exact } : {}) });
 }
 
 /** What "Pyokka: Stop Debugging" does, then wait until the run is gone: leave debug mode, stop the run. Resolves at once when no run is in flight. */
@@ -326,8 +328,9 @@ export function wrapSession(session: Session, mgr: SessionManager, opts: { debug
         debugStarted = false;
         return Promise.resolve();
       }
-      // a recording from a pause is the launch's: the translator's start knows only stopOnEntry
-      return session.startDebug(opts.recordFrom ? { ...o, recordFrom: opts.recordFrom } : o);
+      // a recording from a pause, and exact writes, are the launch's: the translator's start knows only stopOnEntry
+      const exact = session.debugCtl.exact ? { exact: session.debugCtl.exact } : {};
+      return session.startDebug(opts.recordFrom ? { ...o, recordFrom: opts.recordFrom, ...exact } : { ...o, ...exact });
     },
     stopDebug: () => {
       if (!superseded()) session.stopDebug();

@@ -80,8 +80,8 @@ function program(bindings: StatementBinding[] = BINDINGS): ProvenanceInputs & { 
   return { trace, files, entries, locals, errors: [], mainFile: FILE, workspaceRoot: '/w', readSource: (fileId) => (fileId === 1 ? SOURCE : undefined), entriesByRid, bindings: new Map([[1, indexBindings(file, bindings)]]), mainFileId: 1 };
 }
 
-/* the nodes of the program's tree, named by their step */
-const at = (step: number, line: number, fn = '<module>', scopeId = 0): Record<string, unknown> => ({ step, file: FILE, fileId: 1, line, function: fn, scopeId });
+/* the nodes of the program's tree, named by their step; a snapshot recording infers every one */
+const at = (step: number, line: number, fn = '<module>', scopeId = 0): Record<string, unknown> => ({ step, file: FILE, fileId: 1, line, function: fn, scopeId, resolution: 'inferred' });
 const leaf = (name: string): Record<string, unknown> => ({ name });
 const T0 = { name: 'total', text: '0', source: 'locals', ...at(0, 1), statement: 'total = 0', reads: [], calls: [], opaque: [] };
 const I4 = { name: 'i', text: '1', source: 'locals', ...at(4, 2), statement: 'for i in range(2):', reads: [], calls: [], opaque: ['range(2)'] };
@@ -237,10 +237,14 @@ interface Cases {
 }
 
 const HAVE_FIXTURE = fs.existsSync(RUN_JSON) && fs.existsSync(CASES_JSON);
+// an exact recording where two orders hold one dict (python/tests/test_provenance.py, the shared-object case)
+const SHARED_RUN_JSON = path.join(FIXTURES, 'shared-run.json');
+const SHARED_CASES_JSON = path.join(FIXTURES, 'shared.json');
+const HAVE_SHARED = fs.existsSync(SHARED_RUN_JSON) && fs.existsSync(SHARED_CASES_JSON);
 
-function loadFixture(): { inputs: ProvenanceInputs; cases: Cases['cases'] } {
-  const doc = JSON.parse(fs.readFileSync(RUN_JSON, 'utf8')) as SavedRun;
-  const spec = JSON.parse(fs.readFileSync(CASES_JSON, 'utf8')) as Cases;
+function loadFixture(runJson = RUN_JSON, casesJson = CASES_JSON, program = PROGRAM): { inputs: ProvenanceInputs; cases: Cases['cases'] } {
+  const doc = JSON.parse(fs.readFileSync(runJson, 'utf8')) as SavedRun;
+  const spec = JSON.parse(fs.readFileSync(casesJson, 'utf8')) as Cases;
   const files = new FileTable();
   const entries: LogEvent[] = [];
   const locals: LocalsEvent['entries'] = [];
@@ -261,7 +265,7 @@ function loadFixture(): { inputs: ProvenanceInputs; cases: Cases['cases'] } {
     const p = files.get(fileId)?.path;
     if (!p || !p.startsWith(FIXTURE_ROOT + '/')) return undefined;
     try {
-      return fs.readFileSync(path.join(PROGRAM, p.slice(FIXTURE_ROOT.length + 1)), 'utf8').split('\n');
+      return fs.readFileSync(path.join(program, p.slice(FIXTURE_ROOT.length + 1)), 'utf8').split('\n');
     } catch {
       return undefined;
     }
@@ -309,5 +313,27 @@ describe.skipIf(!HAVE_FIXTURE)('provenance fixture', () => {
   it.each(cases.map((c) => [`${c.file}:${c.line} (${c.occurrence}) ${JSON.stringify(c.name)} at #${c.step}${c.depth ? ` depth ${c.depth}` : ''}`, c] as const))('answers %s like the Python builder', (_label, c) => {
     const got = provenance(fixture!.inputs, { step: c.step, name: c.name, depth: c.depth ?? undefined });
     expect(json(got)).toEqual(c.result);
+  });
+});
+
+describe.skipIf(!HAVE_SHARED)('provenance fixture: a change through a shared object', () => {
+  const fixture = HAVE_SHARED ? loadFixture(SHARED_RUN_JSON, SHARED_CASES_JSON, path.join(FIXTURES, 'shared')) : undefined;
+  it.each((fixture?.cases ?? []).map((c) => [`${c.file}:${c.line} ${c.name} at #${c.step}`, c] as const))('answers %s like the Python builder', (_label, c) => {
+    const got = provenance(fixture!.inputs, { step: c.step, name: c.name, depth: c.depth ?? undefined });
+    expect(json(got)).toEqual(c.result);
+  });
+  it('says where the sharing began', () => {
+    const c = fixture!.cases[0]!;
+    const text = renderProvenance(provenance(fixture!.inputs, { step: c.step, name: c.name }), (_, file) => path.basename(file ?? ''));
+    expect(text).toContain("[bo['lines'][0] is line, shared since #");
+    expect(text).toContain('catalog.py:5 new_order]');
+  });
+  it('marks the inferred nodes of a tree that has exact ones, as render_why does', () => {
+    const c = fixture!.cases[0]!;
+    const lines = renderProvenance(provenance(fixture!.inputs, { step: c.step, name: c.name }), (_, file) => path.basename(file ?? '')).split('\n');
+    // `self` is a parameter (inferred); `amount` was made by `amount += ...` and read by a recorded statement (exact)
+    expect(lines.find((l) => l.includes('← self = '))).toContain('  (inferred)   #');
+    expect(lines.find((l) => l.includes('← amount = '))).not.toContain('(inferred)');
+    expect(renderProvenance(provenance(program(), { step: 13, name: 'size' }))).not.toContain('(inferred)');
   });
 });

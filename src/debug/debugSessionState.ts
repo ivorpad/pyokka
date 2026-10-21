@@ -49,6 +49,8 @@ export interface LaunchConfig {
    * `--at` grammar); implies `record`. The code before it runs at the debugger's speed.
    */
   recordFrom?: string;
+  /** record each statement's writes exactly (`RunConfig.exact`): every function, or the named ones; needs `record` */
+  exact?: true | string[];
 }
 
 export interface LaunchContext {
@@ -139,6 +141,11 @@ export function parseLaunch(raw: Record<string, unknown>, ctx: LaunchContext = {
   if (module) launch.module = module;
   else if (program) launch.program = program;
   if (recordFrom) launch.recordFrom = recordFrom;
+  const exact = raw['exact'] === true ? true : Array.isArray(raw['exact']) ? strings(raw['exact']) : undefined;
+  if (exact !== undefined && (exact === true || exact.length)) {
+    if (!record) throw new Error('"exact" records writes exactly, so it needs a recording: add "record": true or "recordFrom"');
+    launch.exact = exact;
+  }
   const python = str(raw['python']);
   if (transport && paths) {
     launch.transport = transport;
@@ -201,6 +208,7 @@ export function debugUri(launch: LaunchConfig, at?: string): string {
   if (launch.stopOnEntry) q.set('stopOnEntry', '1');
   if (launch.record) q.set('record', '1');
   if (launch.recordFrom) q.set('recordFrom', launch.recordFrom);
+  if (launch.exact) q.set('exact', JSON.stringify(launch.exact));
   if (launch.libraryCode) q.set('libraryCode', '1');
   if (launch.breakOnException !== 'uncaught') q.set('breakOnException', launch.breakOnException);
   if (at) q.set('at', at);
@@ -233,6 +241,8 @@ export function parseDebugUri(query: string): DebugUri {
     libraryCode: q.get('libraryCode') === '1',
     ...(q.has('transport') ? { transport: json(q, 'transport') } : {}),
     ...(q.has('pathMappings') ? { pathMappings: json(q, 'pathMappings') } : {}),
+    // `true`, or the names of the functions recorded exactly
+    ...(q.has('exact') ? { exact: json(q, 'exact') } : {}),
   };
   for (const key of ['program', 'module', 'cwd', 'python', 'breakOnException', 'recordFrom'] as const) {
     const v = q.get(key);

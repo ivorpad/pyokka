@@ -14,11 +14,13 @@
  * per-iteration step fires after the target is bound, so an iteration step owns the change
  * it observes. Each change carries `reads`: the names the statement loaded, with the latest
  * value recorded for each before the step, one level, so a reader can walk backwards.
+ * The names are the source's unless the exact recording logged what the statement loaded
+ * (`reads` on its locals entry), which leaves out an operand that did not run.
  *
  * The provenance builder (provenance.ts) reuses the pieces: `History.changesAt` for its root,
  * `valueAt` for the reads it expands, `bindingAt` and `location` for the producing statement.
  */
-import { MAX_LOCALS_ENTRIES, type LocalsEvent, type LogEvent, type StatementBinding, type VariableChange, type VariableChangeSource, type VariableHistory, type VariableRead } from '../shared/protocol';
+import { MAX_LOCALS_ENTRIES, type DefinedRecord, type DefinedSite, type LocalsEvent, type LogEvent, type SharedHolding, type SharedRecord, type StatementBinding, type VariableChange, type VariableChangeSource, type VariableHistory, type VariableRead } from '../shared/protocol';
 import type { TraceModel } from '../timeMachine/traceModel';
 import type { FileTable, InstrumentedFile } from './fileTable';
 
@@ -55,6 +57,12 @@ export interface ValueRecord {
   source?: 'locals' | 'value';
   /** the log entry behind a `value` record, or the one the statement of a `locals` record logged for the name (`logFor`) */
   logId?: string;
+  /** a `locals` record made through another name (`SharedHolding`) */
+  shared?: SharedHolding;
+  /** a function or class (no `step`): the `def` or `class` that made it, when the recording linked it */
+  defined?: DefinedSite;
+  /** a `locals` record of an exact change: made by `step` */
+  exact?: true;
 }
 
 /** The producing statement's place, as a `VariableChange` carries it. */
@@ -92,10 +100,21 @@ interface LocalRecord {
   step: number;
   scopeId: number;
   text: string;
+  exact: boolean;
 }
 
 export class History {
   private readonly localsByName = new Map<string, LocalRecord[]>();
+  /** `step scopeId name` of the changes an exact recording made: made by that step, not observed at it */
+  private readonly exactKeys = new Set<string>();
+  /** the same changes as `step name`, whatever scope recorded them */
+  private readonly exactSteps = new Set<string>();
+  /** step -> the names its statement loaded, as the exact recording logged them (`reads` on its entry) */
+  private readonly readsByStep = new Map<number, string[]>();
+  /** the same key -> how the name holds the object a statement changed through another name */
+  private readonly sharedByKey = new Map<string, SharedRecord>();
+  /** the same key -> where a function or class value was defined (`defsite.py`) */
+  private readonly definedByKey = new Map<string, DefinedRecord>();
   private readonly valuesByContext = new Map<string, LogEvent[]>();
   private readonly moduleScopeCache = new Map<number, Set<number>>();
   /** every step was observed, so a name with no recorded change at the next step of its scope kept its object */
@@ -104,11 +123,20 @@ export class History {
   constructor(private readonly inputs: HistoryInputs) {
     this.observedAll = inputs.locals.length > 0 && inputs.locals.length < MAX_LOCALS_ENTRIES;
     for (const entry of inputs.locals) {
+      if (Array.isArray(entry.reads)) {
+        let have = this.readsByStep.get(entry.step);
+        if (!have) this.readsByStep.set(entry.step, (have = []));
+        for (const n of entry.reads) if (!have.includes(n)) have.push(n);
+      }
       for (const ch of entry.changes) {
         if (!ch.name) continue;
         let list = this.localsByName.get(ch.name);
         if (!list) this.localsByName.set(ch.name, (list = []));
-        list.push({ step: entry.step, scopeId: entry.scopeId, text: ch.text });
+        list.push({ step: entry.step, scopeId: entry.scopeId, text: ch.text, exact: !!ch.exact });
+        if (ch.exact) this.exactKeys.add(`${entry.step} ${entry.scopeId} ${ch.name}`);
+        if (ch.exact) this.exactSteps.add(`${entry.step} ${ch.name}`);
+        if (ch.shared) this.sharedByKey.set(`${entry.step} ${entry.scopeId} ${ch.name}`, ch.shared);
+        if (ch.defined) this.definedByKey.set(`${entry.step} ${entry.scopeId} ${ch.name}`, ch.defined);
       }
     }
     for (const list of this.localsByName.values()) list.sort((a, b) => a.step - b.step);
@@ -174,6 +202,27 @@ export class History {
     return !!here && !!there && there.fileId === here.fileId && here.range[0] <= there.range[0] && there.range[0] <= binding.loop;
   }
 
+  /** The step whose statement made a recorded change: its own for an exact one, else `attribute`'s. */
+  /** How `changed` holds the object a change reached it through, with the place of `since`: where the edge into it was first seen. */
+  private shared(observed: number, scopeId: number, changed: string): SharedHolding | undefined {
+    const info = this.sharedByKey.get(`${observed} ${scopeId} ${changed}`);
+    if (!info) return undefined;
+    const out: SharedHolding = { path: info.path };
+    if (info.as !== undefined) out.as = info.as;
+    if (info.since !== undefined) {
+      out.since = info.since;
+      if (this.trace.valid(info.since)) {
+        const where = this.location(info.since);
+        Object.assign(out, { file: where.file, fileId: where.fileId, line: where.line, function: where.function });
+      }
+    }
+    return out;
+  }
+
+  private madeAt(observed: number, scopeId: number, changed: string): number {
+    return this.exactKeys.has(`${observed} ${scopeId} ${changed}`) ? observed : this.attribute(observed, scopeId, changed);
+  }
+
   /** The step whose statement made the change observed at `observed`. */
   private attribute(observed: number, scopeId: number, changed: string): number {
     const own = this.bindingAt(observed);
@@ -230,14 +279,16 @@ export class History {
     let bestStep = -1;
     let bestText: string | undefined;
     let bestScope = scopeId;
+    let bestExact = false;
     const locals = this.localsByName.get(name) ?? [];
     for (let i = locals.length - 1; i >= 0; i--) {
       const rec = locals[i]!;
-      if (rec.step > step) continue;
+      if (rec.step > step || (rec.step === step && this.exactKeys.has(`${rec.step} ${rec.scopeId} ${name}`))) continue; // an exact change at `step` is its own write
       if (scopes.has(rec.scopeId)) {
         bestStep = rec.step;
         bestText = rec.text;
         bestScope = rec.scopeId;
+        bestExact = rec.exact;
         break;
       }
     }
@@ -259,25 +310,54 @@ export class History {
     if (bestStep < 0) return out;
     out.text = bestText;
     // a recorded local that is a definition has no producing step: `def` and `class` statements are never
-    // steps, so the recorder saw the binding at whatever statement ran next
-    if (fromLocals && isDefinition(bestText)) {
+    // steps, so the recorder saw the binding at whatever statement ran next. `defined` says which `def` or
+    // `class` made it instead.
+    const defined = fromLocals ? this.definedByKey.get(`${bestStep} ${bestScope} ${name}`) : undefined;
+    if (fromLocals && (defined !== undefined || isDefinition(bestText))) {
       out.source = 'locals';
+      if (defined) out.defined = { file: this.inputs.files.get(defined.fileId)?.path ?? '', fileId: defined.fileId, line: defined.line };
       return out;
     }
     // the same step the change list names for it: the statement that made it
-    out.step = fromLocals ? this.attribute(bestStep, bestScope, name) : bestStep;
+    out.step = fromLocals ? this.madeAt(bestStep, bestScope, name) : bestStep;
     out.source = fromLocals ? 'locals' : 'value';
+    if (fromLocals && bestExact) out.exact = true;
+    const shared = fromLocals ? this.shared(bestStep, bestScope, name) : undefined;
+    if (shared) out.shared = shared;
     if (fromLocals) logId = this.logFor(out.step, name);
     if (logId) out.logId = logId;
     return out;
   }
 
+  /** Whether the exact recording logged the names the statement at `step` loaded. A loop's iteration step loads nothing
+   *  (its iterable was loaded at the header's first step), so its reads stay the source's. */
+  recordedReads(step: number): boolean {
+    if (!this.readsByStep.has(step)) return false;
+    const binding = this.bindingAt(step);
+    return !(binding && binding.loop !== undefined && this.isIterationStep(step, binding));
+  }
+
+  /** An exact change of `name` made by `step`, in any scope (a change through another name is recorded in the holder's). */
+  exactChange(step: number, name: string): boolean {
+    return this.exactSteps.has(`${step} ${name}`);
+  }
+
+  /**
+   * The names the statement at `step` loaded, at most `VAR_READS`: the recorded ones when the exact recording
+   * logged them (in the source's order where the binding lists the name, then the others in load order), else the binding's.
+   */
+  readNames(step: number): string[] {
+    const source = this.bindingAt(step)?.reads ?? [];
+    if (!this.recordedReads(step)) return source.slice(0, VAR_READS);
+    const recorded = this.readsByStep.get(step)!;
+    return [...source.filter((n) => recorded.includes(n)), ...recorded.filter((n) => !source.includes(n))].slice(0, VAR_READS);
+  }
+
   private readsFor(step: number): VariableRead[] {
     const loc = this.trace.location(step);
-    const binding = this.bindingAt(step);
-    if (!loc || !binding) return [];
+    if (!loc) return [];
     const scopeId = this.trace.scopeId(step);
-    return binding.reads.slice(0, VAR_READS).map((n) => {
+    return this.readNames(step).map((n) => {
       const v = this.valueAt(n, step, scopeId, loc.fileId);
       const read: VariableRead = { name: n };
       if (v.step !== undefined) {
@@ -302,7 +382,10 @@ export class History {
       if (!this.trace.valid(entry.step)) continue;
       for (const ch of entry.changes) {
         if (!matchesName(ch.name, name)) continue;
-        add(this.row(this.attribute(entry.step, entry.scopeId, ch.name), ch.name, ch.text, 'locals'));
+        const row = this.row(this.madeAt(entry.step, entry.scopeId, ch.name), ch.name, ch.text, 'locals');
+        const shared = this.shared(entry.step, entry.scopeId, ch.name);
+        if (shared) row.shared = shared;
+        add(row);
       }
     }
     // 2. logged values whose context is the name (or a path under it)

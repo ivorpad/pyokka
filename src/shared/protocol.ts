@@ -63,6 +63,13 @@ export interface RunConfig {
    * first pause there. The paused statement becomes step 0 and every `trace` event carries `midRun`.
    */
   recordFrom?: RecordFromSpec;
+  /**
+   * With `recordLocals`: each statement's writes come from opcode tracing, at the statement's own step,
+   * so a change made in place or through another name is seen (`exacttrace.py`). Changes it records carry
+   * `exact`. True traces every function, a list only the functions with those names. About 13x the
+   * default recording's time where it traces; off unless asked.
+   */
+  exact?: boolean | string[];
 }
 
 /** Where a `recordFrom` run starts recording (`RunConfig.recordFrom`). */
@@ -239,6 +246,8 @@ export interface VariableChange {
   source: VariableChangeSource;
   /** `assign` rows: the statement ran and the scope's next step observed no change, so `text` is the value it kept */
   unchanged?: boolean;
+  /** the change came through another name: how this one holds the changed object */
+  shared?: SharedHolding;
   /** the log entry behind a `value` row */
   logId?: string;
   /** names the statement read, with their latest recorded value before the step */
@@ -312,8 +321,12 @@ export interface ProvenanceNode {
   logId?: string;
   /** an `assign` node whose statement left the value as it was (see `VariableChange.unchanged`) */
   unchanged?: boolean;
-  /** the step of the producing statement (Time Machine target); absent for a leaf */
+  /** the change came through another name (see `VariableChange.shared`) */
+  shared?: SharedHolding;
+  /** the step of the producing statement (Time Machine target); absent for a leaf and for a function or class */
   step?: number;
+  /** a function or class value: `file`, `fileId` and `line` are its `def` or `class` (`DefinedRecord`), not a statement of the run */
+  defined?: true;
   /** the producing statement's location, as a `VariableChange` (absolute path on the wire; display path in the panel) */
   file?: string;
   fileId?: number;
@@ -332,6 +345,9 @@ export interface ProvenanceNode {
   cut?: boolean;
   /** a leaf of a recording that began mid-run (`recordFrom`): the value was made before step 0, where nothing was recorded */
   beforeRecording?: boolean;
+  /** on every node with a step: `exact` when the exact recording made the value at `step` and (below the root) logged the
+   *  reads of the statement above; `inferred` for snapshot changes, parameters, logged values and source-parsed reads */
+  resolution?: 'exact' | 'inferred';
 }
 
 export interface Provenance {
@@ -653,7 +669,40 @@ export interface TraceCap {
 
 export interface LocalsEvent extends RunEventBase {
   type: 'locals';
-  entries: { step: number; scopeId: number; changes: { name: string; text: string }[] }[];
+  /** a change with `exact` was made by the statement at `step` (`config.exact`, `exacttrace.py`); without it the
+   *  change was observed at `step`, after the scope's previous statement ran; `reads` (exact recording only) are the
+   *  names the statement at `step` loaded, in first-load order, with `changes` empty when it changed nothing */
+  entries: { step: number; scopeId: number; changes: { name: string; text: string; exact?: true; shared?: SharedRecord; defined?: DefinedRecord }[]; reads?: string[] }[];
+}
+
+/** Where a recorded function or class was defined: the first line of its `def` or `class` (the first decorator's line
+ *  for a decorated one, as `co_firstlineno` counts) in a file this run instrumented (`defsite.py`). A decorated
+ *  function links to the innermost function of its `__wrapped__` chain. */
+export interface DefinedRecord {
+  fileId: number;
+  line: number;
+}
+
+/** A `DefinedRecord` with the file's path, as `valueAt` returns it. */
+export interface DefinedSite extends DefinedRecord {
+  file: string;
+}
+
+/** An exact change that reached a name through another one: the name holds the changed object at `path`
+ *  (`bo['lines'][0]`), the statement changed it through `as` (`line`), and `since` is the step that first
+ *  showed the edge into it, where the sharing began (`exacttrace.py`). */
+export interface SharedRecord {
+  path: string;
+  as?: string;
+  since?: number;
+}
+
+/** A `SharedRecord` with the place of `since`, as `VariableChange` and `ProvenanceNode` carry it. */
+export interface SharedHolding extends SharedRecord {
+  file?: string;
+  fileId?: number;
+  line?: number;
+  function?: string;
 }
 
 /** `locals` entries the runtime records per run at most; past the cap "no change recorded" stops meaning "unchanged" */

@@ -439,6 +439,9 @@ def render_var(result: dict, source: Any, args: Any) -> list[str]:
         else:
             what = "%s  assigned here (value not recorded)" % row.get("name")
         line = "  #%d %s  %s" % (row.get("step", -1), where, what)
+        shared = _shared_text(row["shared"], source) if row.get("shared") else ""
+        if shared:
+            line += "   [%s]" % shared
         reads = [r for r in row.get("reads") or [] if isinstance(r, dict)]
         if reads:
             parts = ["%s = %s" % (r.get("name"), _one_line(r.get("text"), 60) if r.get("text") is not None else "?") for r in reads[:VAR_READS_SHOWN]]
@@ -455,7 +458,7 @@ def render_var(result: dict, source: Any, args: Any) -> list[str]:
 BEFORE_RECORDING = "   made before #0, where the recording started"
 
 
-def _why_node(n: dict, prefix: str, source: Any) -> str:
+def _why_node(n: dict, prefix: str, source: Any, mixed: bool = False) -> str:
     parts = []
     if n.get("name"):
         if n.get("text") is not None:
@@ -466,9 +469,30 @@ def _why_node(n: dict, prefix: str, source: Any) -> str:
             parts.append("%s = ?%s" % (n["name"], BEFORE_RECORDING if n.get("beforeRecording") else ""))
     if n.get("step") is not None:
         parts.append("#%s %s %s" % (n["step"], _loc(source, n.get("file"), n.get("line")), n.get("function") or "<module>"))
+    elif n.get("defined"):
+        parts.append("def %s" % _loc(source, n.get("file"), n.get("line")))
+    if mixed and n.get("resolution") == "inferred" and parts:
+        parts[0] += "  (inferred)"  # only in a tree that has an exact node, so a snapshot tree reads as before
     if n.get("statement"):
         parts.append(_one_line(n["statement"], WHY_STATEMENT))
+    shared = _shared_text(n["shared"], source) if n.get("shared") else ""
+    if shared:
+        parts.append("[%s]" % shared)
     return prefix + "   ".join(parts) + ("  …" if n.get("cut") else "")
+
+
+def _has_exact(n: dict) -> bool:
+    return n.get("resolution") == "exact" or any(_has_exact(r) for r in n.get("reads") or [])
+
+
+def _shared_text(s: dict, source: Any) -> str:
+    """How a node holds the object a change came through (``sharedText`` in provenanceText.ts); '' when it says nothing the line does not."""
+    if s.get("as") is None and s.get("line") is None:
+        return ""
+    out = "%s is %s" % (s["path"], s["as"]) if s.get("as") is not None else "through %s" % s["path"]
+    if s.get("line") is not None:
+        out += ", %s since #%s %s %s" % ("shared" if s.get("as") is not None else "held", s.get("since"), _loc(source, s.get("file"), s.get("line")), s.get("function") or "<module>")
+    return out
 
 
 def _why_call(c: dict, source: Any) -> str:
@@ -485,10 +509,11 @@ def render_why(result: dict, source: Any, args: Any) -> list[str]:
     """The twin of ``src/shared/provenanceText.ts``: the header, one line per node depth-first (its reads,
     then its calls, then its opaque calls), the truncation note. Keep the two identical."""
     out = ["why %s at #%s" % (result["name"], result["step"]) if result.get("name") else "why #%s" % result["step"]]
+    mixed = _has_exact(result["root"])
 
     def walk(n: dict, level: int) -> None:
         pad = "  " * level
-        out.append(pad + _why_node(n, "← " if level else "", source))
+        out.append(pad + _why_node(n, "← " if level else "", source, mixed))
         for r in n.get("reads") or []:
             walk(r, level + 1)
         for c in n.get("calls") or []:

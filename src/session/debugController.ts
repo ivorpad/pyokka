@@ -30,6 +30,8 @@ export interface DebugStartOptions {
   stopOnEntry?: boolean;
   /** record only from this pause on (`--record-from`); the code before it runs at the debugger's speed */
   recordFrom?: RecordFromSpec;
+  /** record each statement's writes exactly (`RunConfig.exact`): every function, or the named ones */
+  exact?: true | string[];
 }
 
 export class DebugController {
@@ -38,6 +40,8 @@ export class DebugController {
   private stopOnEntry = true;
   /** where the debug run starts recording, kept for a restart; undefined records from the start */
   recordFrom: RecordFromSpec | undefined;
+  /** the debug run records writes exactly (`RunConfig.exact`): every function, or the named ones */
+  exact: true | string[] | undefined;
   /** the "run to line" breakpoint: sent with the list for one pause, dropped at the next */
   private transient: BreakpointSpec | undefined;
   private blockedLogged = false;
@@ -56,6 +60,7 @@ export class DebugController {
     const config: Partial<RunConfig> = { debug: true, stopOnEntry: this.stopOnEntry, recordLocals: true, breakOnException: this.state.exceptions };
     // an older runtime would ignore `recordFrom` and record the whole run: the start refuses instead (`start`)
     if (this.recordFrom) config.recordFrom = this.recordFrom;
+    if (this.exact) config.exact = this.exact === true ? true : [...this.exact];
     if (setting<boolean>('timeMachine.autoLog', true, this.session.document.uri)) config.autoLog = true;
     return { config, breakpoints: this.merged() };
   }
@@ -90,6 +95,7 @@ export class DebugController {
   activate(opts?: DebugStartOptions): void {
     this.stopOnEntry = opts?.stopOnEntry ?? true;
     this.recordFrom = opts?.recordFrom;
+    this.exact = opts?.exact;
     this.state = { ...this.state, active: true, paused: undefined, frontier: undefined, runId: undefined };
     this.blockedLogged = false;
     this.emitChanged();

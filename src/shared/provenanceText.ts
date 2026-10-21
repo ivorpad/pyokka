@@ -4,7 +4,7 @@
  * it. The Python twin is `render_why` in `python/pyokka_runtime/agent/render.py`; keep the
  * rules identical.
  */
-import { PROVENANCE_NODES, type Provenance, type ProvenanceCall, type ProvenanceNode } from './protocol';
+import { PROVENANCE_NODES, type Provenance, type ProvenanceCall, type ProvenanceNode, type SharedHolding } from './protocol';
 
 export const WHY_VALUE = 100;
 export const WHY_STATEMENT = 80;
@@ -31,7 +31,7 @@ export function oneLine(text: string | undefined, limit: number): string {
 
 export type DisplayPath = (fileId: number | undefined, file: string | undefined) => string;
 
-function nodeText(n: ProvenanceNode, prefix: string, displayPath: DisplayPath): string {
+function nodeText(n: ProvenanceNode, prefix: string, displayPath: DisplayPath, mixed = false): string {
   const parts: string[] = [];
   if (n.name) {
     if (n.text !== undefined) parts.push(`${n.name} = ${oneLine(n.text, WHY_VALUE)}${n.unchanged ? '  (unchanged)' : ''}`);
@@ -39,8 +39,24 @@ function nodeText(n: ProvenanceNode, prefix: string, displayPath: DisplayPath): 
     else parts.push(`${n.name} = ?${n.beforeRecording ? BEFORE_RECORDING : ''}`);
   }
   if (n.step !== undefined) parts.push(`#${n.step} ${displayPath(n.fileId, n.file)}:${n.line ?? '?'} ${n.function ?? '<module>'}`);
+  else if (n.defined) parts.push(`def ${displayPath(n.fileId, n.file)}:${n.line}`);
+  if (mixed && n.resolution === 'inferred' && parts.length) parts[0] += '  (inferred)'; // only in a tree that has an exact node, so a snapshot tree reads as before
   if (n.statement) parts.push(oneLine(n.statement, WHY_STATEMENT));
+  const shared = n.shared ? sharedText(n.shared, displayPath) : '';
+  if (shared) parts.push(`[${shared}]`);
   return prefix + parts.join('   ') + (n.cut ? '  …' : '');
+}
+
+function hasExact(n: ProvenanceNode): boolean {
+  return n.resolution === 'exact' || (n.reads ?? []).some(hasExact);
+}
+
+/** How a node holds the object a change came through: `bo['lines'][0] is line, shared since #17 catalog.py:5 new_order`; '' when it says nothing the line does not. */
+export function sharedText(s: SharedHolding, displayPath: DisplayPath): string {
+  if (s.as === undefined && s.line === undefined) return '';
+  let out = s.as !== undefined ? `${s.path} is ${s.as}` : `through ${s.path}`;
+  if (s.line !== undefined) out += `, ${s.as !== undefined ? 'shared' : 'held'} since #${s.since} ${displayPath(s.fileId, s.file)}:${s.line} ${s.function ?? '<module>'}`;
+  return out;
 }
 
 function callText(c: ProvenanceCall, displayPath: DisplayPath): string {
@@ -53,9 +69,10 @@ function callText(c: ProvenanceCall, displayPath: DisplayPath): string {
 /** The lines of a tree: the header, then each node depth-first (its reads, then its calls, then its opaque calls), then the truncation note. */
 export function provenanceLines(p: Provenance, displayPath: DisplayPath = (_, file) => file ?? '<unknown>'): ProvenanceLine[] {
   const out: ProvenanceLine[] = [{ text: p.name ? `why ${p.name} at #${p.step}` : `why #${p.step}`, kind: 'header', indent: 0 }];
+  const mixed = hasExact(p.root);
   const walk = (n: ProvenanceNode, level: number): void => {
     const pad = '  '.repeat(level);
-    out.push({ text: pad + nodeText(n, level ? '← ' : '', displayPath), kind: 'node', indent: level, step: n.step, fileId: n.fileId, line: n.line });
+    out.push({ text: pad + nodeText(n, level ? '← ' : '', displayPath, mixed), kind: 'node', indent: level, step: n.step, fileId: n.fileId, line: n.line });
     for (const r of n.reads ?? []) walk(r, level + 1);
     for (const c of n.calls ?? []) out.push({ text: pad + '  ' + callText(c, displayPath), kind: 'call', indent: level + 1, step: c.entryStep, fileId: c.fileId, line: c.line });
     for (const o of n.opaque ?? []) out.push({ text: `${pad}  · ${o}   not stepped`, kind: 'opaque', indent: level + 1 });
@@ -239,8 +256,20 @@ export function provenanceConclusion(p: Pick<Provenance, 'root'>): string {
   const root = p.root;
   if (!root.name || root.step === undefined || root.text === undefined) return '';
   const first = `${root.name} is ${clip(root.text)} at ${where(root)}`;
-  const reads = (root.reads ?? []).filter((r) => r.text !== undefined);
+  // a function or class read (no step, `defined`) is not one of the values the statement worked with
+  const reads = (root.reads ?? []).filter((r) => r.text !== undefined && r.step !== undefined);
   const calls = root.calls ?? [];
   const second = conditional(root, reads) || calledValue(root, calls) || copied(root, reads) || lookedUp(root, reads) || readValues(reads);
-  return first + '.' + (second ? ' ' + second + '.' : '');
+  const third = sharedSentence(root);
+  return first + '.' + (second ? ' ' + second + '.' : '') + (third ? ' ' + third + '.' : '');
+}
+
+/** The root or one of its reads changed through another name, with the step where the sharing began. */
+function sharedSentence(root: ProvenanceNode): string {
+  for (const n of [root, ...(root.reads ?? [])]) {
+    const s = n.shared;
+    if (s?.as === undefined || s.line === undefined || n.step === undefined) continue;
+    return `${s.path} is the same object as ${s.as}, changed at ${where(n)}; it is shared since #${s.since} (${shortFile(s.file)}:${s.line})`;
+  }
+  return '';
 }

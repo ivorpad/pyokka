@@ -168,6 +168,10 @@ class RunConfig:
     # read only with debug and record: the run starts with the debugger's hooks and records from a pause on
     # (`Tracer.start_recording`): "pause" is the first pause, {"function"} / {"path", "line"} the first pause there
     record_from: str | dict[str, Any] | None = None
+    # with recordLocals: each statement's writes come from opcode tracing at its own step, not from the next
+    # step's snapshot (`exacttrace.py`). True traces every function; a list of names only those (the rest
+    # keep the snapshot). About 13x the snapshot's time where it traces, so asked for
+    exact: bool | list[str] = False
     raw: dict[str, Any] = field(default_factory=dict)
 
     @property
@@ -246,6 +250,7 @@ class RunConfig:
             stop_on_entry=bool(cfg.get("stopOnEntry", True)),
             break_on_exception=break_on_exception,
             record_from=_record_from(cfg.get("recordFrom")),
+            exact=[str(n) for n in cfg["exact"]] if isinstance(cfg.get("exact"), list) else bool(cfg.get("exact", False)),
             raw=cfg,
         )
 

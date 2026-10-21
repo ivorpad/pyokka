@@ -193,7 +193,7 @@ paused statement's own call) prints as `output`, not as a `log`.
 | `coverage` | `fileId, states: number[]` (index = local rid; 0 not run, 1 covered, 2 partial, 3 error source, 4 error path, 5 ignored by an ignore hint), `hits: number[]`. Ignored statements are also dropped from `file.instrumented.statements`. |
 | `time` | `rid, n, total, min, max` (ms, floats) |
 | `trace` | `steps: base64(Int32Array quads [rid, scopeId, depth, flags]), scopes: [{scopeId, rid, name, parent, depth, first, last, returned?, returnedTruncated?, returnedLength?, raised?}], truncated`. `returned` is the text of the value the function returned (a bounded repr cut like a `locals` change: `config.maxValueChars` characters, unset 120, then `…(+N chars)` and `returnedTruncated: true`, `returnedLength` as `truncated`/`length` on a change, see "Recording limits"; secrets masked; taken when the frame exits, so a `finally` that returns again wins), `null` when the body ran off its end; `raised` is the exception type the frame left by. A module body has neither; a scope of the final `trace` carries them, a partial delta may not yet. During runs longer than a second the child also sends `trace {partial: true, offset, steps, scopes}` deltas about once a second: the steps since the previous delta (`offset..`) and only the scopes created since then (`last` of earlier scopes is not re-sent; a host assembling deltas derives it from the steps). No deltas are sent once `maxTraceSteps` is reached. The final `trace` without `partial` is complete and authoritative, hosts may ignore the deltas. Scope 0 is the module (`rid` 0 = the whole-file range); imported project modules get their own scope at depth 1, library modules get none (their body is coverage-only, see the runtime notes). A scope's `parent` is the scope of the frame that called, awaited or iterated it (read from the caller frame, see the runtime notes), not the scope that last recorded a step: a task resumed by the event loop or a thread's target has the module as parent (depth 1), so gathered coroutines sit side by side and never under each other. `depth` is `parent`'s depth + 1, for display; the moves (step over / out and their back variants) follow the parent chain, not `depth`. Function entry is a step on the `def` header range with flag 4. Loops record one step on the header per iteration. `midRun: true` on every `trace` of a run whose recording began at a pause (`config.recordFrom`): step 0 is that pause and the ancestors' scopes have `first: 0` with no call site recorded. The final `trace` of a run cut at `maxTraceSteps` also has `cap` (the setting), `stepsRun` (statements the program executed, the same number as `run.finished.stepCount`) and `spentBy: [{path, steps}]`, the five files with the most statement hits over the whole run (see "Recording limits"). |
-| `locals` | `entries: [{step, scopeId, changes: [{name, text, truncated?, length?}]}]` (only when `recordLocals`; `truncated`/`length` as on a `log`, see "Recording limits") |
+| `locals` | `entries: [{step, scopeId, changes: [{name, text, truncated?, length?, exact?, shared?, defined?}], reads?}]` (only when `recordLocals`; `truncated`/`length` as on a `log`, see "Recording limits"). Without `exact` a change was observed at `step`, before its statement ran, so the scope's previous statement made it. With `exact: true` (`config.exact`: `true`, or the function names to trace) the statement at `step` made it. `shared: {path, as?, since?}` is on an exact change that reached the name through another one: the name holds the changed object at `path` (`bo['lines'][0]`), the statement changed it through `as` (`line`), and `since` is the step that first showed the edge into it. Variable history and the provenance tree return it on a change or node as `shared`, with `since`'s `file`, `fileId`, `line` and `function` added. `defined: {fileId, line}` is on a change whose value is a function, a bound method or a class from a file this run instrumented: the first line of its `def` or `class` (`co_firstlineno`, a class's `__firstlineno__` on 3.13+, so the first decorator's line for a decorated one). A decorated function links to the innermost instrumented function of its `__wrapped__` chain, read from the function's own `__dict__`; no user code runs (`defsite.py`). At module level a function, method or class is recorded only when it has `defined`; imports, dunders and builtins are not. `reads` (exact recording only) are the names the statement at `step` loaded, in first-load order: a name it loaded before storing it that the frame or its module holds, so no builtin and no comprehension target. A statement that read something and changed nothing has an entry with empty `changes`; these entries count toward `MAX_LOCALS_ENTRIES`. An entry without `reads` is one whose reads were not recorded (a snapshot entry, a frame's parameters, a change reaching another holder) |
 | `watch` | `watchId, step, valueBag` |
 | `debug.paused` | `step, rid, fileId, line, scopeId, depth, reason: "start" | "breakpoint" | "step" | "watch" | "pause" | "exception", thread: {name, ident}, stack` (innermost first), plus `kind` for a step, `breakpoint` (as echoed by `debug`) and `conditionError?` for a breakpoint, `watch: {id, exp, text}` for a watch, `exception: {type, message, uncaught}` for an exception, `recordingStarted: true` at the pause a `recordFrom` run started recording at. `stack` has two shapes, told apart by which members are present: with a recording `[{scopeId, name, rid, depth}]` from the scope parent chain (a host shows each scope at its range), without one `[{frameId, name, fileId, line, rid?, scopeId?}]` from the frame chain (see below). `thread` is on every pause in both shapes and names the thread that stopped. Emitted before the statement at `step` executes (at an `exception` pause that statement is the one that raised), after the recording so far went out: a partial `trace` up to this step, `time`, and the `locals` entries not sent yet. The run is off the timeout clock until it resumes. While paused, `evaluate` answers in the paused frame and `expand` opens the values it and `locals` returned. `config.breakOnException` (and the `debug` action `exceptions`) says where an exception pauses: `off` never; `uncaught` on the one that ends the run, before the `error` event, with the traceback's innermost user frame as the paused frame, so `evaluate` and `locals` answer from it although it has returned; `raised` there and at every first sighting of an exception in a user file, with the raising frame live and `uncaught: false`, since whether anyone catches it is not known yet (one that nobody catches pauses again at the top, `uncaught: true`). `step`, `rid`, `line` and `stack` are the user statement that raised, which for a raise inside a library or a C call is the statement that made the call. `StopIteration`, `GeneratorExit`, `SystemExit` and `KeyboardInterrupt` never pause, nor does a library frame. After the uncaught pause resumes, the run ends as it would have: exit code 1 and the `error` event with its traceback. |
 | `debug.resumed` | `step, action: "continue" | "step", kind?` |
@@ -787,7 +787,8 @@ iteration steps. `reads` lists the names the statement loaded (at most 8) with t
 recorded before the step in the step's scope or its module, and the step that recorded it, one
 level, so the reader walks backwards by asking for that name. A recorded local that is a
 definition (`<function …>`, `<class …>`) carries its text but no step: `def` and `class`
-statements are never steps, so the recorder saw the binding at whatever statement ran next. `file` (path suffix or basename)
+statements are never steps, so the recorder saw the binding at whatever statement ran next. The
+`why` tree's read node of it carries the `defined` link (Provenance); `var`'s `reads` do not. `file` (path suffix or basename)
 and `scope` (function name) narrow the list. Text form: one line per change,
 `#step file:line function name = text`, the reads after `←`.
 
@@ -842,11 +843,16 @@ A node with a `step` carries the producing statement: its location (`file`, `fil
 `function`, `scopeId`, as a `var` change), `statement` (the first source line, trimmed, ` …`
 appended when the step's range ends on a later line, so a loop header is never marked; absent
 without the source) and, when expanded, its inputs, in this order:
-- `reads`: the names the statement loaded (the bindings' `reads`, at most 8, in order), each
+- `reads`: the names the statement loaded (at most 8, in order): the `reads` its `locals` entry
+  recorded when there are some (in the bindings' order where they list the name, then the rest in
+  load order), else the bindings' `reads`. A loop's iteration step keeps the bindings' (its
+  iterable was loaded at the header's first step). Each
   resolved like `var`'s reads (the latest value recorded before the step in the step's scope or
   its module: `text`, `source` `locals` or `value`, `step` the statement that made it, `logId`)
   and expanded in turn while its step is earlier than its parent's (a name read from itself, or
-  a loop variable, ends there);
+  a loop variable, ends there). A read of a function or class has `text` and no `step`; with a
+  `defined` link its `file`, `fileId` and `line` are the `def` or `class` and `defined: true` says
+  so. The conclusion's reads leave it out;
 - `calls`: the functions the statement called whose body was stepped: every scope whose parent
   is the step's scope and whose call site (the last step of the parent scope before the scope's
   first step, the walkthrough's rule) is the step, in entry order, at most 8: the scope's `name`
@@ -859,6 +865,16 @@ without the source) and, when expanded, its inputs, in this order:
   scope claimed: a scope claims the first unclaimed text whose callee (the last dotted name
   before the parenthesis) equals its name, or, for an `__init__` scope, starts with an uppercase
   letter. Leaves: builtins, library code that was not stepped, dataclass constructors.
+
+Every node with a `step` has `resolution`: `exact` when its value is an exact change (`exact` on
+its `locals` entry) and, below the root, the statement above it had its reads recorded; the root
+for an empty `name` is `exact` when its own reads were recorded. Every other node is `inferred`:
+a snapshot change, a frame's parameters (recorded at the frame's first step, not made by it), a
+value from before a `--record-from` recording, a read the source listed, an `assign` node, and a
+logged `# ?` value (`source: "value"`): its text is what the statement logged, but its step is the
+statement whose range the log entry names, which is not always the one that made the value. A leaf
+has no `resolution`. In `pyokka why` an exact recording drops `fallback` from `name = tier or
+fallback` when `tier` decided it; a snapshot recording still lists it, `inferred`.
 
 Expansion is breadth-first, level by level, `depth` levels below the root (default 5, at most 8)
 and at most 60 nodes in all (`PROVENANCE_NODES`; the root counts): a node at the last level, or
@@ -888,8 +904,11 @@ Text form (`pyokka why`, the panel's Details pane; `src/shared/provenanceText.ts
 reference, `render_why` its twin): `why NAME at #STEP` (`why #STEP` without a name), then one
 line per node, depth-first, two spaces of indent per level: `← name = text   #step
 file:line function   statement` (no arrow on the root; `name = ?` for a leaf without a value, `name = ?   made before #0, where the recording started` for a `beforeRecording` leaf;
-`name  assigned here (value not recorded)` for an `assign` node without one; `  (unchanged)`
-after an unchanged value; `  …` after a cut node), its reads first (each with its own subtree),
+`name  assigned here (value not recorded)` for an `assign` node without one; `name = <function f at 0x…>   def
+file:line` for a `defined` node; `  (unchanged)`
+after an unchanged value; `  (inferred)` after the value, or after the location of a node with no
+name, of an `inferred` node when the tree has at least one `exact` node, so a snapshot tree prints
+no marker; `  …` after a cut node), its reads first (each with its own subtree),
 then its calls as `↳ name #entry–#return file:line   in a = 1, b = 2   out text`, then `· call
 text   not stepped` per opaque call. Values are cut to 100 characters, statements and results to
 80, inputs to 60. A truncated tree ends with `… more inputs than 60 nodes show; ask why for a

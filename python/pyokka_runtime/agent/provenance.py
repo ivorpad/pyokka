@@ -7,6 +7,13 @@ the value the name had when the step ran), a node's reads are ``var``'s reads re
 statement further back, its calls are the walkthrough's call moments in short, and the calls no
 stepped scope claimed come from the bindings' ``calls`` texts. Expansion is breadth-first with
 a depth and a node budget, so a tree over a long chain stays readable.
+
+Every node with a step says how it was resolved (``resolution``): ``exact`` when the exact recording
+made its value at that step and, below the root, logged the reads of the statement above it;
+``inferred`` otherwise (snapshot changes, parameters, logged ``# ?`` values, source-parsed reads). A
+logged value is inferred though its text is exact: its step is the statement whose range the log entry
+names (``log_for``), which is not always the one that made the value. The root for an empty name (the
+statement itself) is exact when its reads were recorded.
 """
 
 from __future__ import annotations
@@ -55,7 +62,7 @@ class ProvenanceBuilder:
         text = src[line - 1].strip()
         return text + " …" if end > line else text
 
-    def node(self, name: str, step: int, *, text: str | None = None, source: str | None = None, log_id: str | None = None, unchanged: bool = False) -> dict:
+    def node(self, name: str, step: int, *, text: str | None = None, source: str | None = None, log_id: str | None = None, unchanged: bool = False, shared: dict | None = None) -> dict:
         out: dict[str, Any] = {"name": name}
         if text is not None:
             out["text"] = text
@@ -65,6 +72,8 @@ class ProvenanceBuilder:
             out["logId"] = log_id
         if unchanged:
             out["unchanged"] = True
+        if shared:
+            out["shared"] = shared  # the change came through another name: how this one holds the object
         out.update(self.history.location(step))
         statement = self.statement(step)
         if statement is not None:
@@ -76,10 +85,21 @@ class ProvenanceBuilder:
         return {"name": name, "beforeRecording": True} if getattr(self.run, "mid_run", False) else {"name": name}
 
     def from_read(self, read: dict) -> dict:
-        """A node for what ``value_at`` found: a leaf when nothing was recorded, else the producing statement."""
+        """A node for what ``value_at`` found: a leaf when nothing was recorded, else the producing statement.
+
+        A function or class has a value and no step; its node is placed at the ``def`` or ``class`` that made it
+        (``file``, ``fileId``, ``line``, and ``defined`` to say so) when the recording linked it."""
         if read.get("step") is None:
-            return self.leaf(read["name"]) if read.get("text") is None else {"name": read["name"]}
-        return self.node(read["name"], int(read["step"]), text=read.get("text"), source=read.get("source"), log_id=read.get("logId"))
+            if read.get("text") is None:
+                return self.leaf(read["name"])
+            out: dict[str, Any] = {"name": read["name"], "text": read["text"]}
+            if read.get("source"):
+                out["source"] = read["source"]
+            if read.get("defined"):
+                out.update(read["defined"])
+                out["defined"] = True
+            return out
+        return self.node(read["name"], int(read["step"]), text=read.get("text"), source=read.get("source"), log_id=read.get("logId"), shared=read.get("shared"))
 
     def root(self, name: str, step: int) -> dict:
         """The value ``name`` had after ``step``: the change made there, else the value read there, else a leaf.
@@ -88,23 +108,32 @@ class ProvenanceBuilder:
         ``self.balance``); the node says so by its ``name``. An empty name is the statement itself.
         """
         if not name:
-            return self.node("", step)
+            return self.labelled(self.node("", step), self.history.recorded_reads(step))  # the statement itself: exact when its reads were recorded
         rows = [r for r in self.history.rows(name) if int(r["step"]) == step]
         exact = [r for r in rows if r["name"] == name]
         row = exact[0] if exact else rows[0] if rows else None
         if row is not None:
             log_id = row.get("logId") or self.history.log_for(step, str(row["name"]))
-            return self.node(str(row["name"]), step, text=row.get("text"), source=row.get("source"), log_id=log_id, unchanged=bool(row.get("unchanged")))
+            out = self.node(str(row["name"]), step, text=row.get("text"), source=row.get("source"), log_id=log_id, unchanged=bool(row.get("unchanged")), shared=row.get("shared"))
+            # the entry's scope is the holder's for a change that reached the name through another one, so match by step and name
+            return self.labelled(out, row.get("source") == "locals" and (step, str(row["name"])) in self.history.exact_steps)
         loc = self.trace.location(step)
         scope_id, file_id = self.trace.scope_id(step), loc[0] if loc else -1
         read = self.history.value_at(name, step, scope_id, file_id)
         if read.get("step") is None and "." in name:
             read = self.history.value_at(name.split(".", 1)[0], step, scope_id, file_id)
-        return self.from_read(read) if read.get("step") is not None else self.leaf(name)
+        return self.labelled(self.from_read(read), bool(read.get("exact"))) if read.get("step") is not None else self.leaf(name)
+
+    def labelled(self, node: dict, exact: bool) -> dict:
+        """``node`` with its ``resolution`` when it has a step (module docstring)."""
+        if node.get("step") is not None:
+            node["resolution"] = "exact" if exact else "inferred"
+        return node
 
     # -- a statement's inputs ---------------------------------------------------------------------------------
     def reads(self, step: int) -> list[dict]:
-        return [self.from_read(r) for r in self.history.resolved_reads(step)]
+        recorded = self.history.recorded_reads(step)
+        return [self.labelled(self.from_read(r), recorded and bool(r.get("exact"))) for r in self.history.resolved_reads(step)]
 
     def calls(self, step: int) -> list[dict]:
         """The scopes the statement entered, as the walkthrough's call moments list them, in entry order."""

@@ -15,6 +15,15 @@ describe('debugUri / parseDebugUri', () => {
     expect(back.at).toBe('app.py:42');
   });
 
+  it('carries exact recording, every function or the named ones, and refuses it without a recording', () => {
+    for (const exact of [true, ['sale_prices', 'Cart.total']] as const) {
+      const launch = parseLaunch({ program: app, cwd: root, record: true, exact });
+      expect(launch.exact).toEqual(exact);
+      expect(parseDebugUri(debugUri(launch)).launch).toEqual(launch);
+    }
+    expect(() => parseLaunch({ program: app, cwd: root, exact: true })).toThrow(/needs a recording/);
+  });
+
   it('encodes every value and reads the query alone too', () => {
     const launch = parseLaunch({ program: path.join(root, 'my app.py'), args: ['a b', '"c"'], cwd: root, env: { 'A B': 'c&d' } });
     const uri = debugUri(launch);

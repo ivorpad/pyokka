@@ -117,7 +117,7 @@ def investigate_command(args: Any, source: Any) -> dict:
     if automatic and selected and selected.get("source") == "locals":
         # the locals entry that reported the change: the first step where the new value is visible
         index = History(run)
-        observed = next((s for s, sid, text in index.locals_by_name.get(str(selected["name"]), ()) if sid == selected["scopeId"] and text == selected.get("text") and index.attribute(s, sid, str(selected["name"])) == selected["step"]), None)
+        observed = next((s for s, sid, text, _ in index.locals_by_name.get(str(selected["name"]), ()) if sid == selected["scopeId"] and text == selected.get("text") and index.made_at(s, sid, str(selected["name"])) == selected["step"]), None)
     if not automatic:
         step = at
     elif observed is not None:

@@ -40,6 +40,35 @@ function loop(): HistoryInputs & { locals: LocalsEvent['entries'] } {
   return { trace, files, entriesByRid: new Map(), locals, bindings: new Map([[1, indexBindings(file, statements)]]), mainFileId: 1 };
 }
 
+/** The same program recorded with `config.exact`: each change at the step whose statement made it (`exact`). */
+function loopExact(): HistoryInputs & { locals: LocalsEvent['entries'] } {
+  const base = loop();
+  const locals: LocalsEvent['entries'] = [
+    { step: 0, scopeId: 0, changes: [{ name: 'total', text: '0', exact: true }] },
+    { step: 2, scopeId: 0, changes: [{ name: 'i', text: '0', exact: true }] },
+    { step: 3, scopeId: 0, changes: [{ name: 'total', text: '0', exact: true }] },
+    { step: 4, scopeId: 0, changes: [{ name: 'i', text: '1', exact: true }] },
+    { step: 5, scopeId: 0, changes: [{ name: 'total', text: '1', exact: true }] },
+  ];
+  return { ...base, locals };
+}
+
+describe('variableHistory over an exact recording', () => {
+  it('keeps each change at its own step and never shows a statement its own write as a read', () => {
+    const h = variableHistory(loopExact(), 'total');
+    expect(h.changes.map((c) => [c.step, c.line, c.text, c.source])).toEqual([
+      [0, 1, '0', 'locals'],
+      [3, 3, '0', 'locals'],
+      [5, 3, '1', 'locals'],
+    ]);
+    // `total += i` at step 5 read total as step 3 left it and i as the iteration at step 4 bound it
+    expect(h.changes[2]!.reads).toEqual([
+      { name: 'total', text: '0', step: 3 },
+      { name: 'i', text: '1', step: 4 },
+    ]);
+  });
+});
+
 describe('variableHistory', () => {
   it('attributes recorded locals to the statement that bound the name and infers unchanged assignments', () => {
     const h = variableHistory(loop(), 'total');

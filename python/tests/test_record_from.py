@@ -312,3 +312,17 @@ def test_coroutines_suspended_at_the_switch_are_adopted(run, tmp_path):
     assert "two" in names and "main" in names
     assert all(s < FOREIGN for _r, s, _d, _f in steps_of(out.trace))
     assert all(s["parent"] < len(out.trace["scopes"]) for s in out.trace["scopes"])
+
+
+def test_exact_writes_from_the_pause_on(run):
+    """``exact`` with ``recordFrom``: each statement's writes at its own step (``exact``), the parameter of the frame
+    paused at its entry at its first step, and the callers' statements that were running at the switch (``got =
+    inner(n)``, ``result = outer(before)``) observed at their next step, as a snapshot change is, without ``exact``."""
+    out = run(NESTED, config=config(recordFrom={"function": "inner"}, exact=True), on_tracer=attach(Scripted([CONTINUE]), breakpoints=[{"path": "", "line": 0, "function": "inner"}]))
+    assert out.result.exit_code == 0
+    changes = [(c["name"], e["step"], bool(c.get("exact"))) for ev in out.of("locals") for e in ev["entries"] for c in e["changes"]]
+    assert ("x", 1, False) in changes
+    assert ("y", 1, True) in changes and ("z", 2, True) in changes, "inner's writes at the steps that made them"
+    assert ("got", 4, False) in changes and ("result", 5, False) in changes, "the statements in flight at the switch, observed after"
+    assert ("after", 5, True) in changes
+    assert not any(n == "before" for n, _s, _e in changes), "a value from before the switch is not a change the recording saw"

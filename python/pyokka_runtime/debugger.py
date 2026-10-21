@@ -397,6 +397,8 @@ class Debugger(ExceptionPauseMixin, RecordPauseMixin):
             self._reason = reason
             self._extra = {k: v for k, v in extra.items() if k != "recordingStarted"}
             self.frames = dbgframes.frame_chain(t, frame) if frame is not None else []
+            if t.exact is not None and frame is not None and not extra.get("recordingStarted"):
+                t.exact.settle(frame)  # the pause comes inside the statement hook, before the statement that ran is closed
             self._flush()
             begin = getattr(self.control, "begin_pause", None)
             if begin is not None:

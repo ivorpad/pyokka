@@ -73,6 +73,13 @@ class RecordFromMixin:
         self.cur_scope = top
         if self.record_locals:
             self._baseline_locals(chain, frame, entry)
+            if self.config.exact:
+                if self.exact is None:
+                    from .exacttrace import ExactTracer
+
+                    self.exact = ExactTracer(self)
+                    self.exact.start()
+                self.exact.baseline(chain, frame, entry, top)
         if entry and frame is not None:
             info = self.def_logs.get(rid)
             if info is not None:
