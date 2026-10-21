@@ -2081,7 +2081,7 @@
     "watch": "node esbuild.mjs --watch",
     "pyokka-web": "node dist/web/server.js",
     "package": "node esbuild.mjs --production && vsce package --no-dependencies",
-    "typecheck": "tsc --noEmit -p .",
+    "typecheck": "tsrs --noEmit -p .",
     "test": "npm run typecheck && vitest run && npm run test:py",
     "test:py": "cd python && uv run --group dev pytest -q",
     "test:e2e": "vscode-test",
@@ -2097,7 +2097,8 @@
     "handlebars": "^4.7.9",
     "preact-render-to-string": "^6.7.0",
     "shiki": "^4.4.3",
-    "typescript": "^6.0.0",
+    "tsrs": "0.18.0-ts7.1.0-dev.20260929",
+    "typescript": "^6.0.3",
     "vitest": "^4 || ^5",
     "webmcp-types": "^0.1.10"
   },
