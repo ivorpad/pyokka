@@ -338,6 +338,11 @@ export class History {
   }
 
   /** An exact change of `name` made by `step`, in any scope (a change through another name is recorded in the holder's). */
+  /** The recording followed objects: some change in it is exact (`--follow-objects`). */
+  get followedObjects(): boolean {
+    return this.exactSteps.size > 0;
+  }
+
   exactChange(step: number, name: string): boolean {
     return this.exactSteps.has(`${step} ${name}`);
   }

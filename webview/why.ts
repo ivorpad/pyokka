@@ -3,7 +3,7 @@
  * with `pyokka why`) plus what a click on each line needs. Pure, so the pane and its tests share
  * it; Details.tsx owns the Monaco side.
  */
-import { provenanceLines } from '../src/shared/provenanceText';
+import { provenanceLines, type ProvenanceLine } from '../src/shared/provenanceText';
 import type { PanelEntry, WhyView } from './src-shared';
 
 export interface WhyLine {
@@ -39,7 +39,8 @@ export function buildWhyDocument(view: WhyView): WhyDocument {
   if (view.error) return { text: view.error, lines: [{ kind: 'error' }] };
   if (!view.tree) return { text: 'LOOKING UP…', lines: [{ kind: 'wait' }] };
   // the panel's trees carry display paths already
-  const lines = provenanceLines(view.tree, (_, file) => file ?? '<unknown>');
+  // the summary's lines are the card above the document (WhySummaryCard.tsx), not part of it
+  const lines = provenanceLines(view.tree, (_, file) => file ?? '<unknown>').filter((l): l is ProvenanceLine & { kind: Exclude<ProvenanceLine['kind'], 'summary'> } => l.kind !== 'summary');
   return {
     text: lines.map((l) => l.text).join('\n'),
     lines: lines.map((l) => {

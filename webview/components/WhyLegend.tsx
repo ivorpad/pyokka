@@ -30,8 +30,9 @@ export function WhyLegend() {
         ))}
       </dl>
       <p>
-        The last line says the tree in one sentence. When a value in the tree differs from what a call below it received, it
-        changed through another name: record again with <code>"followObjects": true</code> to see the line that changed it.
+        The card above the tree says what it shows: the line that changed a shared object, a value that differs from what a
+        call received, or no cause found and what this recording could not see. Record again following objects to see the
+        line behind a changed value.
       </p>
     </div>
   );

@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- The Why pane opens with a summary card above the tree, in one of three states, each sentence
+  built from the tree's own values and checked against it before it is shown:
+  - **Change found:** `bo['lines'][0], the same object as line, was changed at #23 promo.py:4 in
+    bulk_bonus: line["qty"] += 1`, with the value it feeds, since when the names share it and the
+    argument each parameter on the way came from.
+  - **Changed in between:** `bo['lines'][0]['qty'] was 1 at #15 main.py:9, and charge received 2 as
+    order['lines'][0]['qty'] at #34 billing.py:5`, comparing builtin values only, never object reprs.
+  - **No cause found:** the value, and what the recording could not see (an object whose text shows
+    nothing inside, a cut value, no locals, the cap, a chain cut short).
+  Every place is a Time Machine link. "Record again, following objects" records the file once more
+  following objects, with locals on, and the tree refreshes. `pyokka why` prints the same as
+  `answer:`/`signpost:` lines after the conclusion. A fallback prints only the limits it found.
+  Trees carry it as `summary`, plus `followObjects: true` on a recording that followed objects.
+
 - `why` follows a parameter back to the call that passed it. `charge`'s `order` at #34 now reads
   `passed bo at #33 main.py:12 main`, and the walk goes on to the statement that last changed `bo`:
   #23, `line["qty"] += 1` in `bulk_bonus`, in a `--follow-objects` recording, or #15, where `bo`

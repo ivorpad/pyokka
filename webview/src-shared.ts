@@ -1,5 +1,5 @@
 /** Re-exports of the host contract so components import from one place. */
-export type { CompletionItem, CompletionKind, Completions, HttpMode, HttpSource, HttpSummary, HttpTable, HttpTableRow, ValueNode, ValueProp, ValueBag, StackFrame, TraceScope, VariableChange, VariableHistory, VariableRead, Provenance, ProvenanceNode, ProvenanceCall } from '../src/shared/protocol';
+export type { CompletionItem, CompletionKind, Completions, HttpMode, HttpSource, HttpSummary, HttpTable, HttpTableRow, ValueNode, ValueProp, ValueBag, StackFrame, TraceScope, VariableChange, VariableHistory, VariableRead, Provenance, ProvenanceNode, ProvenanceCall, WhyPiece, WhySummary } from '../src/shared/protocol';
 export { StepFlag } from '../src/shared/protocol';
 /** the step cap's sentence (pure) */
 export { capSentence } from '../src/shared/traceCap';

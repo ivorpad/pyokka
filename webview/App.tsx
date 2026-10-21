@@ -275,6 +275,7 @@ export function App() {
       onCloseWhy={closeWhy}
       whyFull={state.why ? state.fullValues[whyKey(state.why)] : undefined}
       onFull={askFull}
+      onFollowObjects={state.features.followObjects ? () => post({ type: 'why.followObjects' }) : undefined}
       handle={detailsRef}
     />
   );

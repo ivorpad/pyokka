@@ -1037,6 +1037,40 @@ when the recorded text is a whole dict); otherwise `It reads a = X, b = Y` for u
 recorded reads. It is `""` for a leaf, for a statement query (empty name) and for a root whose
 value was not recorded. The text forms (`pyokka why`, the panel) print it as the last line.
 
+`summary` says what the tree shows as one of three states, in sentences made of typed pieces
+(`python/pyokka_runtime/agent/why_summary.py`, `src/shared/whySummary.ts`; the fixture cases pin
+both): `{state, headline, details, action?, limits?}`, each sentence a list of pieces, exactly one
+of `t` (words), `name` (a name the tree has), `value` with `of`/`at` (a node's recorded text, or with
+`path` the part of it at that subscript path), `step` with `file`/`fileId`/`line`/`function` (a place
+the tree has: a node, an `argument`, a `shared` since) and `code` (a node's statement). The first
+state that applies, breadth-first from the root:
+- `answer`: a `seen` node with a `shared` holding: `bo['lines'][0], the same object as line, was
+  changed at #23 promo.py:4 in bulk_bonus: line["qty"] += 1.`, then which queried value it is an input
+  of, since when the names share it, and each parameter on the way with the argument passed for it.
+  Below the root only a builtin container counts (its text a literal: the chain read its contents);
+  an object changed in place (`self.opcodes = None`) is read for other attributes as often as for
+  the changed one, so the fallback names it instead;
+- `signpost`: a parameter with an `argument` whose read is the argument's name, both values builtin
+  literals and neither cut, that differ: the first differing part on both sides (`bo['lines'][0]['qty']
+  was 1 at #15 main.py:9, and charge received 2 as order['lines'][0]['qty'] at #34 billing.py:5.`), that
+  the recording has no change of the name in between (only when locals were recorded and the cap was
+  not reached), and `action: "followObjects"`. On a recording that followed objects it says the change
+  happened in code that was not stepped instead, with no action. An object's repr is never compared:
+  it can change while the object does not (taken before `__init__` filled it in);
+- `fallback`: the value and where; that nothing in the chain changed through another name or
+  differs from what a call received, or, when an object of the chain was changed in place, where and
+  by which statement, and that the recording does not say whether that reached the value; and
+  `limits`, each with its sentence: `noLocals`, `cap`,
+  `opaque` (a value whose text is `<… object at 0x…>`, in a recording that did not follow objects),
+  `cut`, `chainCut`, `beforeRecording`; `action: "followObjects"` when objects were not followed.
+
+Before a summary is attached every piece is checked against the tree field for field (`validate`):
+a value must be the node's text or the part at its path, a place one the tree has, a name one it
+names, code a statement it holds. A sentence that fails is dropped, and a summary whose headline
+fails is not attached, so on an unusual program the summary says less, not something the tree does
+not hold. `followObjects: true` on the tree says the recording followed objects (some change in it
+is exact). There is no summary for a root without a recorded value.
+
 Text form (`pyokka why`, the panel's Details pane; `src/shared/provenanceText.ts` is the
 reference, `render_why` its twin): `why NAME at #STEP` (`why #STEP` without a name), then one
 line per node, depth-first, two spaces of indent per level: `← name = text   #step
@@ -1051,7 +1085,13 @@ then its calls as `↳ name #entry–#return file:line   in a = 1, b = 2   out t
 text   not stepped` per opaque call. Values are cut to 100 characters, statements and results to
 80, inputs to 60. A truncated tree ends with `… more inputs than 60 nodes show; ask why for a
 node's name at its step`. `pyokka why --live [STEP] [NAME]` takes the Time Machine's step when
-`STEP` is left out.
+`STEP` is left out. After the conclusion come the summary's lines: `answer: HEADLINE` or `signpost:
+HEADLINE`, one indented line per detail and `  next: record again following objects
+(--follow-objects)` for the action; a fallback prints only its limits, as `summary: …` lines, with
+the action only for an `opaque` one, and nothing when it found none. The panel shows the summary as a
+card above the tree instead (its places link to their steps); in the extension its action is a
+button that records the file once more following objects, with locals on (`why.followObjects`); the
+next run records the usual way again.
 
 ### Bridge (live session)
 

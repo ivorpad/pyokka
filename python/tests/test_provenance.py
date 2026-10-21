@@ -119,7 +119,11 @@ SHARED_CASES = [
     ("main.py", 13, "first", "bill", PROVENANCE_DEPTH),
     ("main.py", 12, "first", "bo", PROVENANCE_DEPTH),
     ("billing.py", 8, "last", "amount", PROVENANCE_DEPTH),
+    ("main.py", 13, "first", "ledger.totals", PROVENANCE_DEPTH),
 ]
+# the same program recorded without following objects: the summaries' signpost and fallback
+SHARED_DEFAULT_RUN_JSON = FIXTURES / "shared-default-run.json"
+SHARED_DEFAULT_CASES_JSON = FIXTURES / "shared-default.json"
 
 
 def test_shared_object_trees_match_the_shared_json(tmp_path: Path):
@@ -147,6 +151,29 @@ def test_shared_object_trees_match_the_shared_json(tmp_path: Path):
     bo = order["reads"][0]
     assert (bo["name"], bo["line"], bo["function"], bo["shared"]["as"]) == ("bo", 4, "bulk_bonus", "line")
     assert doc == json.loads(SHARED_CASES_JSON.read_text(encoding="utf-8"))
+
+
+def shared_default_cases(tmp_path: Path) -> list[dict]:
+    files = {rel: (SHARED_PROGRAM / rel).read_text(encoding="utf-8") for rel in SHARED_FILES[1:]}
+    path = saved_run(tmp_path, (SHARED_PROGRAM / "main.py").read_text(encoding="utf-8"), files=files)
+    run = SavedRun(str(path))
+    root = str(tmp_path / "proj")
+    built = []
+    for file, line, occurrence, name, depth in SHARED_CASES:
+        step = step_of(run, file, line, occurrence)
+        result = json.loads(normalize(json.dumps(provenance(run, step, name, depth=depth), ensure_ascii=False), root))
+        built.append({"file": file, "line": line, "occurrence": occurrence, "name": name, "depth": depth, "step": step, "result": result})
+    if os.environ.get("PYOKKA_WRITE_FIXTURES"):
+        doc = {"bindings": {rel: statement_bindings((SHARED_PROGRAM / rel).read_text(encoding="utf-8")) for rel in SHARED_FILES}, "cases": built}
+        SHARED_DEFAULT_CASES_JSON.write_text(json.dumps(doc, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+        SHARED_DEFAULT_RUN_JSON.write_text(normalize(path.read_text(encoding="utf-8"), root) + "\n", encoding="utf-8")
+    return built
+
+
+def test_shared_object_trees_without_following_objects_match_the_shared_json(tmp_path: Path):
+    """The TS builder reads `shared-default-run.json` and the cases in `shared-default.json` and must give the same trees."""
+    built = shared_default_cases(tmp_path)
+    assert built == json.loads(SHARED_DEFAULT_CASES_JSON.read_text(encoding="utf-8"))["cases"]
 
 
 def names(nodes: list[dict]) -> list[str]:

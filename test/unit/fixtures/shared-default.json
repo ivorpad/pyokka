@@ -1,0 +1,1090 @@
+{
+ "bindings": {
+  "main.py": [
+   {
+    "line": 1,
+    "col": 0,
+    "assigns": [
+     "Ledger"
+    ],
+    "reads": []
+   },
+   {
+    "line": 2,
+    "col": 0,
+    "assigns": [
+     "new_order"
+    ],
+    "reads": []
+   },
+   {
+    "line": 3,
+    "col": 0,
+    "assigns": [
+     "bulk_bonus"
+    ],
+    "reads": []
+   },
+   {
+    "line": 7,
+    "col": 4,
+    "assigns": [
+     "ledger"
+    ],
+    "reads": [
+     "Ledger"
+    ],
+    "calls": [
+     "Ledger()"
+    ],
+    "args": [
+     {
+      "callee": "Ledger",
+      "positional": []
+     }
+    ]
+   },
+   {
+    "line": 8,
+    "col": 4,
+    "assigns": [
+     "ana"
+    ],
+    "reads": [
+     "new_order"
+    ],
+    "calls": [
+     "new_order(\"ana\")"
+    ],
+    "args": [
+     {
+      "callee": "new_order",
+      "positional": [
+       {
+        "text": "\"ana\"",
+        "names": []
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "line": 9,
+    "col": 4,
+    "assigns": [
+     "bo"
+    ],
+    "reads": [
+     "new_order"
+    ],
+    "calls": [
+     "new_order(\"bo\")"
+    ],
+    "args": [
+     {
+      "callee": "new_order",
+      "positional": [
+       {
+        "text": "\"bo\"",
+        "names": []
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "line": 10,
+    "col": 4,
+    "assigns": [],
+    "reads": [
+     "bulk_bonus",
+     "ana"
+    ],
+    "calls": [
+     "bulk_bonus(ana)"
+    ],
+    "args": [
+     {
+      "callee": "bulk_bonus",
+      "positional": [
+       {
+        "text": "ana",
+        "names": [
+         "ana"
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "line": 11,
+    "col": 4,
+    "assigns": [],
+    "reads": [
+     "ledger",
+     "ana"
+    ],
+    "calls": [
+     "ledger.charge(ana)"
+    ],
+    "args": [
+     {
+      "callee": "charge",
+      "receiver": {
+       "text": "ledger",
+       "names": [
+        "ledger"
+       ]
+      },
+      "positional": [
+       {
+        "text": "ana",
+        "names": [
+         "ana"
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "line": 12,
+    "col": 4,
+    "assigns": [
+     "bill"
+    ],
+    "reads": [
+     "ledger",
+     "bo"
+    ],
+    "calls": [
+     "ledger.charge(bo)"
+    ],
+    "args": [
+     {
+      "callee": "charge",
+      "receiver": {
+       "text": "ledger",
+       "names": [
+        "ledger"
+       ]
+      },
+      "positional": [
+       {
+        "text": "bo",
+        "names": [
+         "bo"
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "line": 13,
+    "col": 4,
+    "assigns": [],
+    "reads": [
+     "bill",
+     "ledger"
+    ],
+    "calls": [
+     "print(\"bo pays\", bill, \"ledger\", ledger.totals)"
+    ],
+    "args": [
+     {
+      "callee": "totals",
+      "receiver": {
+       "text": "ledger",
+       "names": [
+        "ledger"
+       ]
+      },
+      "positional": [],
+      "attribute": true
+     },
+     {
+      "callee": "print",
+      "positional": [
+       {
+        "text": "\"bo pays\"",
+        "names": []
+       },
+       {
+        "text": "bill",
+        "names": [
+         "bill"
+        ]
+       },
+       {
+        "text": "\"ledger\"",
+        "names": []
+       },
+       {
+        "text": "ledger.totals",
+        "names": [
+         "ledger"
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "line": 16,
+    "col": 0,
+    "assigns": [],
+    "reads": [
+     "main"
+    ],
+    "calls": [
+     "main()"
+    ],
+    "args": [
+     {
+      "callee": "main",
+      "positional": []
+     }
+    ]
+   }
+  ],
+  "billing.py": [
+   {
+    "line": 2,
+    "col": 4,
+    "assigns": [
+     "self"
+    ],
+    "reads": [],
+    "params": {
+     "positional": [
+      "self"
+     ],
+     "owner": "Ledger",
+     "binds": "self"
+    }
+   },
+   {
+    "line": 3,
+    "col": 8,
+    "assigns": [
+     "self.totals"
+    ],
+    "reads": [
+     "self"
+    ]
+   },
+   {
+    "line": 5,
+    "col": 4,
+    "assigns": [
+     "self",
+     "order"
+    ],
+    "reads": [],
+    "params": {
+     "positional": [
+      "self",
+      "order"
+     ],
+     "owner": "Ledger",
+     "binds": "self"
+    }
+   },
+   {
+    "line": 6,
+    "col": 8,
+    "assigns": [
+     "amount"
+    ],
+    "reads": []
+   },
+   {
+    "line": 7,
+    "col": 8,
+    "assigns": [
+     "line"
+    ],
+    "reads": [
+     "order"
+    ],
+    "loop": 8
+   },
+   {
+    "line": 8,
+    "col": 12,
+    "assigns": [
+     "amount"
+    ],
+    "reads": [
+     "amount",
+     "line"
+    ]
+   },
+   {
+    "line": 9,
+    "col": 8,
+    "assigns": [
+     "self.totals"
+    ],
+    "reads": [
+     "self",
+     "order",
+     "amount"
+    ],
+    "args": [
+     {
+      "callee": "totals",
+      "receiver": {
+       "text": "self",
+       "names": [
+        "self"
+       ]
+      },
+      "positional": [],
+      "attribute": true,
+      "unordered": true
+     }
+    ]
+   },
+   {
+    "line": 10,
+    "col": 8,
+    "assigns": [],
+    "reads": [
+     "amount"
+    ]
+   }
+  ],
+  "catalog.py": [
+   {
+    "line": 1,
+    "col": 0,
+    "assigns": [
+     "TEMPLATE"
+    ],
+    "reads": []
+   },
+   {
+    "line": 4,
+    "col": 0,
+    "assigns": [
+     "customer"
+    ],
+    "reads": [],
+    "params": {
+     "positional": [
+      "customer"
+     ]
+    }
+   },
+   {
+    "line": 5,
+    "col": 4,
+    "assigns": [],
+    "reads": [
+     "customer",
+     "TEMPLATE"
+    ]
+   }
+  ],
+  "promo.py": [
+   {
+    "line": 1,
+    "col": 0,
+    "assigns": [
+     "order"
+    ],
+    "reads": [],
+    "params": {
+     "positional": [
+      "order"
+     ]
+    }
+   },
+   {
+    "line": 2,
+    "col": 4,
+    "assigns": [
+     "line"
+    ],
+    "reads": [
+     "order"
+    ],
+    "loop": 4
+   },
+   {
+    "line": 3,
+    "col": 8,
+    "assigns": [],
+    "reads": [
+     "line"
+    ]
+   },
+   {
+    "line": 4,
+    "col": 12,
+    "assigns": [
+     "line"
+    ],
+    "reads": [
+     "line"
+    ]
+   },
+   {
+    "line": 5,
+    "col": 4,
+    "assigns": [],
+    "reads": [
+     "order"
+    ]
+   }
+  ]
+ },
+ "cases": [
+  {
+   "file": "main.py",
+   "line": 13,
+   "occurrence": "first",
+   "name": "bill",
+   "depth": 5,
+   "step": 41,
+   "result": {
+    "name": "bill",
+    "step": 41,
+    "depth": 5,
+    "nodes": 5,
+    "truncated": false,
+    "recordedLocals": true,
+    "root": {
+     "name": "bill",
+     "text": "2.0",
+     "source": "locals",
+     "logId": "l-6",
+     "step": 33,
+     "file": "/fixture/main.py",
+     "fileId": 1,
+     "line": 12,
+     "function": "main",
+     "scopeId": 4,
+     "statement": "bill = ledger.charge(bo)",
+     "resolution": "guessed",
+     "reads": [
+      {
+       "name": "ledger",
+       "text": "<billing.Ledger object at 0x0>",
+       "source": "locals",
+       "logId": "l-1",
+       "step": 9,
+       "file": "/fixture/main.py",
+       "fileId": 1,
+       "line": 7,
+       "function": "main",
+       "scopeId": 4,
+       "statement": "ledger = Ledger()",
+       "resolution": "guessed",
+       "reads": [
+        {
+         "name": "Ledger",
+         "text": "<class 'billing.Ledger'>",
+         "source": "locals",
+         "file": "/fixture/billing.py",
+         "fileId": 2,
+         "line": 1,
+         "defined": true
+        }
+       ],
+       "calls": [
+        {
+         "name": "__init__",
+         "scopeId": 5,
+         "entryStep": 10,
+         "returnStep": 11,
+         "file": "/fixture/billing.py",
+         "fileId": 2,
+         "line": 2,
+         "inputs": []
+        }
+       ],
+       "opaque": []
+      },
+      {
+       "name": "bo",
+       "text": "{'customer': 'bo', 'lines': [{'price': 1.0, 'qty': 1, 'sku': 'apple'}]}",
+       "source": "locals",
+       "logId": "l-3",
+       "step": 15,
+       "file": "/fixture/main.py",
+       "fileId": 1,
+       "line": 9,
+       "function": "main",
+       "scopeId": 4,
+       "statement": "bo = new_order(\"bo\")",
+       "resolution": "guessed",
+       "reads": [
+        {
+         "name": "new_order",
+         "text": "<function new_order at 0x0>",
+         "source": "locals",
+         "file": "/fixture/catalog.py",
+         "fileId": 3,
+         "line": 4,
+         "defined": true
+        }
+       ],
+       "calls": [
+        {
+         "name": "new_order",
+         "scopeId": 7,
+         "entryStep": 16,
+         "returnStep": 17,
+         "file": "/fixture/catalog.py",
+         "fileId": 3,
+         "line": 4,
+         "inputs": [
+          {
+           "name": "customer",
+           "text": "'bo'"
+          }
+         ],
+         "result": "{'customer': 'bo', 'lines': [{'price': 1.0, 'qty': 1, 'sku': 'apple'}]}"
+        }
+       ],
+       "opaque": []
+      }
+     ],
+     "calls": [
+      {
+       "name": "charge",
+       "scopeId": 10,
+       "entryStep": 34,
+       "returnStep": 40,
+       "file": "/fixture/billing.py",
+       "fileId": 2,
+       "line": 5,
+       "inputs": [
+        {
+         "name": "order",
+         "text": "{'customer': 'bo', 'lines': [{'price': 1.0, 'qty': 2, 'sku': 'apple'}]}"
+        }
+       ],
+       "result": "2.0"
+      }
+     ],
+     "opaque": []
+    },
+    "conclusion": "bill is 2.0 at #33 (main.py:12). ledger.charge(bo) returned 2.0.",
+    "summary": {
+     "state": "fallback",
+     "headline": [
+      {
+       "name": "bill"
+      },
+      {
+       "t": " is "
+      },
+      {
+       "value": "2.0",
+       "of": "bill",
+       "at": 33
+      },
+      {
+       "t": " at "
+      },
+      {
+       "step": 33,
+       "file": "/fixture/main.py",
+       "fileId": 1,
+       "line": 12,
+       "function": "main"
+      },
+      {
+       "t": "."
+      }
+     ],
+     "details": [
+      [
+       {
+        "t": "Nothing in this chain changed through another name or differs from what a call received."
+       }
+      ],
+      [
+       {
+        "name": "ledger"
+       },
+       {
+        "t": " shows nothing inside it ("
+       },
+       {
+        "value": "<billing.Ledger object at 0x0>",
+        "of": "ledger",
+        "at": 9
+       },
+       {
+        "t": "), so this recording cannot see what changed inside it."
+       }
+      ]
+     ],
+     "limits": [
+      "opaque"
+     ],
+     "action": "followObjects"
+    }
+   }
+  },
+  {
+   "file": "main.py",
+   "line": 12,
+   "occurrence": "first",
+   "name": "bo",
+   "depth": 5,
+   "step": 33,
+   "result": {
+    "name": "bo",
+    "step": 33,
+    "depth": 5,
+    "nodes": 2,
+    "truncated": false,
+    "recordedLocals": true,
+    "root": {
+     "name": "bo",
+     "text": "{'customer': 'bo', 'lines': [{'price': 1.0, 'qty': 1, 'sku': 'apple'}]}",
+     "source": "locals",
+     "logId": "l-3",
+     "step": 15,
+     "file": "/fixture/main.py",
+     "fileId": 1,
+     "line": 9,
+     "function": "main",
+     "scopeId": 4,
+     "statement": "bo = new_order(\"bo\")",
+     "resolution": "guessed",
+     "reads": [
+      {
+       "name": "new_order",
+       "text": "<function new_order at 0x0>",
+       "source": "locals",
+       "file": "/fixture/catalog.py",
+       "fileId": 3,
+       "line": 4,
+       "defined": true
+      }
+     ],
+     "calls": [
+      {
+       "name": "new_order",
+       "scopeId": 7,
+       "entryStep": 16,
+       "returnStep": 17,
+       "file": "/fixture/catalog.py",
+       "fileId": 3,
+       "line": 4,
+       "inputs": [
+        {
+         "name": "customer",
+         "text": "'bo'"
+        }
+       ],
+       "result": "{'customer': 'bo', 'lines': [{'price': 1.0, 'qty': 1, 'sku': 'apple'}]}"
+      }
+     ],
+     "opaque": []
+    },
+    "conclusion": "bo is {'customer': 'bo', 'lines': [{'price': 1.0, 'qty': 1, 'sku'… at #15 (main.py:9). new_order(\"bo\") returned {'customer': 'bo', 'lines': [{'price': 1.0, 'qty': 1, 'sku'….",
+    "summary": {
+     "state": "fallback",
+     "headline": [
+      {
+       "name": "bo"
+      },
+      {
+       "t": " is "
+      },
+      {
+       "value": "{'customer': 'bo', 'lines': [{'price': 1.0, 'qty': 1, 'sku': 'apple'}]}",
+       "of": "bo",
+       "at": 15
+      },
+      {
+       "t": " at "
+      },
+      {
+       "step": 15,
+       "file": "/fixture/main.py",
+       "fileId": 1,
+       "line": 9,
+       "function": "main"
+      },
+      {
+       "t": "."
+      }
+     ],
+     "details": [
+      [
+       {
+        "t": "Nothing in this chain changed through another name or differs from what a call received."
+       }
+      ],
+      [
+       {
+        "t": "This recording sees new values given to names, not changes inside objects: following objects can show more."
+       }
+      ]
+     ],
+     "limits": [],
+     "action": "followObjects"
+    }
+   }
+  },
+  {
+   "file": "billing.py",
+   "line": 8,
+   "occurrence": "last",
+   "name": "amount",
+   "depth": 5,
+   "step": 38,
+   "result": {
+    "name": "amount",
+    "step": 38,
+    "depth": 5,
+    "nodes": 6,
+    "truncated": false,
+    "recordedLocals": true,
+    "root": {
+     "name": "amount",
+     "text": "2.0",
+     "source": "locals",
+     "step": 38,
+     "file": "/fixture/billing.py",
+     "fileId": 2,
+     "line": 8,
+     "function": "charge",
+     "scopeId": 10,
+     "statement": "amount += line[\"qty\"] * line[\"price\"]",
+     "resolution": "guessed",
+     "reads": [
+      {
+       "name": "amount",
+       "text": "0",
+       "source": "locals",
+       "step": 35,
+       "file": "/fixture/billing.py",
+       "fileId": 2,
+       "line": 6,
+       "function": "charge",
+       "scopeId": 10,
+       "statement": "amount = 0",
+       "resolution": "guessed",
+       "reads": [],
+       "calls": [],
+       "opaque": []
+      },
+      {
+       "name": "line",
+       "text": "{'price': 1.0, 'qty': 2, 'sku': 'apple'}",
+       "source": "locals",
+       "step": 37,
+       "file": "/fixture/billing.py",
+       "fileId": 2,
+       "line": 7,
+       "function": "charge",
+       "scopeId": 10,
+       "statement": "for line in order[\"lines\"]:",
+       "resolution": "guessed",
+       "reads": [
+        {
+         "name": "order",
+         "text": "{'customer': 'bo', 'lines': [{'price': 1.0, 'qty': 2, 'sku': 'apple'}]}",
+         "source": "locals",
+         "step": 34,
+         "file": "/fixture/billing.py",
+         "fileId": 2,
+         "line": 5,
+         "function": "charge",
+         "scopeId": 10,
+         "statement": "def charge(self, order):",
+         "resolution": "guessed",
+         "argument": {
+          "text": "bo",
+          "step": 33,
+          "file": "/fixture/main.py",
+          "fileId": 1,
+          "line": 12,
+          "function": "main",
+          "scopeId": 4,
+          "statement": "bill = ledger.charge(bo)"
+         },
+         "reads": [
+          {
+           "name": "bo",
+           "text": "{'customer': 'bo', 'lines': [{'price': 1.0, 'qty': 1, 'sku': 'apple'}]}",
+           "source": "locals",
+           "logId": "l-3",
+           "step": 15,
+           "file": "/fixture/main.py",
+           "fileId": 1,
+           "line": 9,
+           "function": "main",
+           "scopeId": 4,
+           "statement": "bo = new_order(\"bo\")",
+           "resolution": "guessed",
+           "reads": [
+            {
+             "name": "new_order",
+             "text": "<function new_order at 0x0>",
+             "source": "locals",
+             "file": "/fixture/catalog.py",
+             "fileId": 3,
+             "line": 4,
+             "defined": true
+            }
+           ],
+           "calls": [
+            {
+             "name": "new_order",
+             "scopeId": 7,
+             "entryStep": 16,
+             "returnStep": 17,
+             "file": "/fixture/catalog.py",
+             "fileId": 3,
+             "line": 4,
+             "inputs": [
+              {
+               "name": "customer",
+               "text": "'bo'"
+              }
+             ],
+             "result": "{'customer': 'bo', 'lines': [{'price': 1.0, 'qty': 1, 'sku': 'apple'}]}"
+            }
+           ],
+           "opaque": []
+          }
+         ],
+         "calls": [],
+         "opaque": []
+        }
+       ],
+       "calls": [],
+       "opaque": []
+      }
+     ],
+     "calls": [],
+     "opaque": []
+    },
+    "conclusion": "amount is 2.0 at #38 (billing.py:8). It reads amount = 0, line = {'price': 1.0, 'qty': 2, 'sku': 'apple'}.",
+    "summary": {
+     "state": "signpost",
+     "headline": [
+      {
+       "name": "bo['lines'][0]['qty']"
+      },
+      {
+       "t": " was "
+      },
+      {
+       "value": "1",
+       "of": "bo",
+       "at": 15,
+       "path": "['lines'][0]['qty']"
+      },
+      {
+       "t": " at "
+      },
+      {
+       "step": 15,
+       "file": "/fixture/main.py",
+       "fileId": 1,
+       "line": 9,
+       "function": "main"
+      },
+      {
+       "t": ", and "
+      },
+      {
+       "name": "charge"
+      },
+      {
+       "t": " received "
+      },
+      {
+       "value": "2",
+       "of": "order",
+       "at": 34,
+       "path": "['lines'][0]['qty']"
+      },
+      {
+       "t": " as "
+      },
+      {
+       "name": "order['lines'][0]['qty']"
+      },
+      {
+       "t": " at "
+      },
+      {
+       "step": 34,
+       "file": "/fixture/billing.py",
+       "fileId": 2,
+       "line": 5,
+       "function": "charge"
+      },
+      {
+       "t": "."
+      }
+     ],
+     "details": [
+      [
+       {
+        "t": "This recording has no change of "
+       },
+       {
+        "name": "bo"
+       },
+       {
+        "t": " between "
+       },
+       {
+        "step": 15,
+        "file": "/fixture/main.py",
+        "fileId": 1,
+        "line": 9,
+        "function": "main"
+       },
+       {
+        "t": " and the call at "
+       },
+       {
+        "step": 33,
+        "file": "/fixture/main.py",
+        "fileId": 1,
+        "line": 12,
+        "function": "main"
+       },
+       {
+        "t": "."
+       }
+      ],
+      [
+       {
+        "t": "This recording sees new values given to names, not changes inside an object. Record again following objects to see the line that changed it."
+       }
+      ]
+     ],
+     "action": "followObjects"
+    }
+   }
+  },
+  {
+   "file": "main.py",
+   "line": 13,
+   "occurrence": "first",
+   "name": "ledger.totals",
+   "depth": 5,
+   "step": 41,
+   "result": {
+    "name": "ledger.totals",
+    "step": 41,
+    "depth": 5,
+    "nodes": 2,
+    "truncated": false,
+    "recordedLocals": true,
+    "root": {
+     "name": "ledger",
+     "text": "<billing.Ledger object at 0x0>",
+     "source": "locals",
+     "logId": "l-1",
+     "step": 9,
+     "file": "/fixture/main.py",
+     "fileId": 1,
+     "line": 7,
+     "function": "main",
+     "scopeId": 4,
+     "statement": "ledger = Ledger()",
+     "resolution": "guessed",
+     "reads": [
+      {
+       "name": "Ledger",
+       "text": "<class 'billing.Ledger'>",
+       "source": "locals",
+       "file": "/fixture/billing.py",
+       "fileId": 2,
+       "line": 1,
+       "defined": true
+      }
+     ],
+     "calls": [
+      {
+       "name": "__init__",
+       "scopeId": 5,
+       "entryStep": 10,
+       "returnStep": 11,
+       "file": "/fixture/billing.py",
+       "fileId": 2,
+       "line": 2,
+       "inputs": []
+      }
+     ],
+     "opaque": []
+    },
+    "conclusion": "ledger is <billing.Ledger object at 0x0> at #9 (main.py:7).",
+    "summary": {
+     "state": "fallback",
+     "headline": [
+      {
+       "name": "ledger"
+      },
+      {
+       "t": " is "
+      },
+      {
+       "value": "<billing.Ledger object at 0x0>",
+       "of": "ledger",
+       "at": 9
+      },
+      {
+       "t": " at "
+      },
+      {
+       "step": 9,
+       "file": "/fixture/main.py",
+       "fileId": 1,
+       "line": 7,
+       "function": "main"
+      },
+      {
+       "t": "."
+      }
+     ],
+     "details": [
+      [
+       {
+        "t": "Nothing in this chain changed through another name or differs from what a call received."
+       }
+      ],
+      [
+       {
+        "name": "ledger"
+       },
+       {
+        "t": " shows nothing inside it ("
+       },
+       {
+        "value": "<billing.Ledger object at 0x0>",
+        "of": "ledger",
+        "at": 9
+       },
+       {
+        "t": "), so this recording cannot see what changed inside it."
+       }
+      ]
+     ],
+     "limits": [
+      "opaque"
+     ],
+     "action": "followObjects"
+    }
+   }
+  }
+ ]
+}

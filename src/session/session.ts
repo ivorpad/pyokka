@@ -326,7 +326,7 @@ export class Session extends EventEmitter<SessionEvents> {
   }
 
   /** Execute now. Resolves with the `run.finished` event of this run (or a stopped stub). */
-  runNow(reason: string, opts: { mode?: ProtocolRunMode } = {}): Promise<RunFinishedEvent> {
+  runNow(reason: string, opts: { mode?: ProtocolRunMode; /** this run follows objects (`exact`), locals on: the Why summary's button */ followObjects?: boolean } = {}): Promise<RunFinishedEvent> {
     if (this.disposed) return Promise.resolve(stoppedStub(''));
     if (this.debugCtl.blocksRun(reason)) return Promise.resolve(stoppedStub(this.state.runId));
     if (this.debounceTimer) {
@@ -353,7 +353,7 @@ export class Session extends EventEmitter<SessionEvents> {
       argv: this.argvOverride ?? this.config.argv,
       env: this.envOverride ? { ...env, ...this.envOverride } : env,
       projectFiles: this.projectFiles(),
-      config: { ...this.config.run, autoLog: this.autoLog, libraryCode: this.libraryCode, timeoutMs: this.runTimeoutMs, recordLocals: this.recordLocals, http: this.http, secrets: { ...this.config.run.secrets, mask: this.maskSecrets }, ...(debugExtras?.config ?? {}) },
+      config: { ...this.config.run, autoLog: this.autoLog, libraryCode: this.libraryCode, timeoutMs: this.runTimeoutMs, recordLocals: this.recordLocals, http: this.http, secrets: { ...this.config.run.secrets, mask: this.maskSecrets }, ...(opts.followObjects ? { exact: true as const, recordLocals: true } : {}), ...(debugExtras?.config ?? {}) },
       breakpoints: debugExtras?.breakpoints,
       markers: this.markers.forRun(),
       expressionsToEvaluate: {},

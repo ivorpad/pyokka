@@ -15,6 +15,7 @@ import type { UiPrefs } from '../vscode';
 import { shapeLabel, tableFor, type ValueTableModel } from '../valueTable';
 import { buildWhyDocument, type WhyLine } from '../why';
 import { WhyLegend } from './WhyLegend';
+import { WhySummaryCard } from './WhySummaryCard';
 import { formatRepr, whyFullTarget } from '../src-shared';
 import { IconButton, MenuButton, type MenuItem } from './ui';
 import { ValueTable } from './ValueTable';
@@ -49,6 +50,8 @@ export interface DetailsProps {
   whyFull?: FullValueView;
   /** absent: the host has no replay (the browser page) */
   onFull?: (ask: FullValueAsk) => void;
+  /** the Why summary's "Record again, following objects"; absent: the host cannot (the browser page) */
+  onFollowObjects?: () => void;
   /** rows to mark in the tables, by entry logId: the loop's current item */
   tableMarks?: Record<string, number>;
   handle?: Ref<DetailsHandle>;
@@ -398,6 +401,7 @@ export function Details(props: DetailsProps) {
         </span>
       </header>
       {why && legendOpen && <WhyLegend />}
+      {why?.tree?.summary && <WhySummaryCard summary={why.tree.summary} followObjects={!!why.tree.followObjects} onGoto={props.onGoto} onFollowObjects={props.onFollowObjects} />}
       {why && props.whyFull && (
         <div class="pk-why-full">
           <FullValue key={`${props.whyFull.key}:${props.whyFull.status}`} view={props.whyFull} />

@@ -4,6 +4,7 @@
  * it. The Python twin is `render_why` in `python/pyokka_runtime/agent/render.py`; keep the
  * rules identical.
  */
+import { summaryLines } from './whySummary';
 import { PROVENANCE_NODES, type Provenance, type ProvenanceCall, type ProvenanceNode, type SharedHolding } from './protocol';
 
 export const WHY_VALUE = 100;
@@ -16,7 +17,7 @@ export const NOT_RECORDED = '   not recorded: this run recorded no locals';
 
 export interface ProvenanceLine {
   text: string;
-  kind: 'header' | 'node' | 'call' | 'opaque' | 'note' | 'conclusion';
+  kind: 'header' | 'node' | 'call' | 'opaque' | 'note' | 'conclusion' | 'summary';
   /** levels below the root (the header and the note have none) */
   indent: number;
   /** the Time Machine target of a node or call line */
@@ -100,6 +101,7 @@ export function provenanceLines(p: Provenance, displayPath: DisplayPath = (_, fi
   walk(p.root, 0);
   if (p.truncated) out.push({ text: `… more inputs than ${PROVENANCE_NODES} nodes show; ask why for a node's name at its step`, kind: 'note', indent: 0 });
   if (p.conclusion) out.push({ text: p.conclusion, kind: 'conclusion', indent: 0 });
+  for (const text of summaryLines(p.summary)) out.push({ text, kind: 'summary', indent: 0 });
   return out;
 }
 

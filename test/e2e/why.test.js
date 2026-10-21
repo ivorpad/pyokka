@@ -213,4 +213,25 @@ describe('Pyokka why on demo.py', function () {
     session.setRecordLocals(false);
     await next;
   });
+
+  it("the summary's button records one run following objects, locals on; the next run records the usual way again", async () => {
+    assert.equal(session.recordLocals, false);
+    const step = await stepOnCallLine();
+    const quick = await api.provenance(session, step, 'point_b');
+    assert.equal(quick.followObjects, undefined);
+    // what the panel's "Record again, following objects" does (WhyPaneHost.followObjects)
+    await session.runNow('followObjects', { followObjects: true });
+    await api.waitForIdle(session, 60_000);
+    const followed = await api.provenance(session, await stepOnCallLine(), 'point_b');
+    assert.equal(followed.followObjects, true);
+    assert.equal(followed.recordedLocals, true);
+    assert.ok(followed.summary, 'a summary over the followed run');
+    assert.notEqual(followed.summary.action, 'followObjects');
+    // the session's own setting did not change: the next run is a plain one
+    assert.equal(session.recordLocals, false);
+    await session.runNow('test');
+    await api.waitForIdle(session, 60_000);
+    const again = await api.provenance(session, await stepOnCallLine(), 'point_b');
+    assert.equal(again.followObjects, undefined);
+  });
 });

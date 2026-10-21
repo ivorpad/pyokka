@@ -242,7 +242,7 @@ export class OutputPanel implements vscode.WebviewViewProvider, TimeMachineSink,
 
   private resync(): void {
     const s = this.bound;
-    this.post({ type: 'init', theme: currentTheme(), settings: s ? this.settings(s) : defaultSettings(), sessionName: s?.displayName ?? null, features: { fullValue: true } });
+    this.post({ type: 'init', theme: currentTheme(), settings: s ? this.settings(s) : defaultSettings(), sessionName: s?.displayName ?? null, features: { fullValue: true, followObjects: true } });
     this.debugView?.push();
     if (!s) return;
     this.postSession();
@@ -509,6 +509,9 @@ export class OutputPanel implements vscode.WebviewViewProvider, TimeMachineSink,
         return;
       case 'why.close':
         this.why.close();
+        return;
+      case 'why.followObjects':
+        if (s) void this.why.followObjects(s);
         return;
       case 'fullValue.query':
         if (s) void this.fullValue.query(s, msg);

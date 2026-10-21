@@ -11,12 +11,13 @@
  * body was stepped (the walkthrough's call rules, from `MomentBuilder`) and the calls no stepped
  * scope claimed. Expansion is breadth-first under a depth and a node budget.
  */
-import { MAX_LOCALS_ENTRIES, PROVENANCE_DEPTH, PROVENANCE_MAX_DEPTH, PROVENANCE_NODES, type LogEvent, type Provenance, type ProvenanceArgument, type ProvenanceCall, type ProvenanceFirstAssigned, type ProvenanceNode, type StatementBinding, type TraceScope } from '../shared/protocol';
+import { MAX_LOCALS_ENTRIES, PROVENANCE_DEPTH, PROVENANCE_MAX_DEPTH, PROVENANCE_NODES, type LogEvent, type Provenance, type ProvenanceArgument, type ProvenanceCall, type ProvenanceFirstAssigned, type ProvenanceNode, type StatementBinding, type TraceScope, type WhyPiece } from '../shared/protocol';
 import { MomentBuilder } from './moments';
 import { className, instanceClass, parameterArgument } from './parameterArgument';
 import { History, type ValueRecord } from './variableHistory';
 import type { WalkthroughInputs } from './walkthroughShared';
 import { provenanceConclusion } from '../shared/provenanceText';
+import { summarize } from '../shared/whySummary';
 import type { TraceModel } from '../timeMachine/traceModel';
 
 export interface ProvenanceInputs extends WalkthroughInputs {
@@ -105,6 +106,10 @@ class ProvenanceBuilder {
     }
     const out: Provenance = { name, step: q.step, depth, nodes: this.count, truncated: this.truncated, recordedLocals: this.history.recordedLocals, root };
     out.conclusion = provenanceConclusion(out); // the answer in words (provenanceText.ts); '' when nothing was recorded
+    const follow = this.history.followedObjects; // the recording followed objects (some change is exact)
+    if (follow) out.followObjects = true;
+    const summary = summarize(out, follow, this.cappedBefore(q.step)); // the state and its sentences (whySummary.ts), each checked against the tree
+    if (summary) out.summary = summary;
     return out;
   }
 
@@ -337,5 +342,7 @@ export function withDisplayPaths(tree: Provenance, displayPath: (fileId: number)
     ...(n.reads ? { reads: n.reads.map(node) } : {}),
     ...(n.calls ? { calls: n.calls.map((c) => ({ ...c, file: displayPath(c.fileId) })) } : {}),
   });
-  return { ...tree, root: node(tree.root) };
+  const piece = (p: WhyPiece): WhyPiece => (p.fileId !== undefined ? { ...p, file: displayPath(p.fileId) } : p);
+  const summary = tree.summary ? { ...tree.summary, headline: tree.summary.headline.map(piece), details: tree.summary.details.map((d) => d.map(piece)) } : undefined;
+  return { ...tree, root: node(tree.root), ...(summary ? { summary } : {}) };
 }

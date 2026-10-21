@@ -24,6 +24,7 @@ from ..bindings import class_name, instance_class, parameter_argument
 from ..protocol import MAX_LOCALS_ENTRIES, PROVENANCE_DEPTH, PROVENANCE_MAX_DEPTH, PROVENANCE_NODES
 from .history import History
 from .moments import MomentBuilder
+from .why_summary import summarize
 from .why_text import conclusion
 
 if TYPE_CHECKING:
@@ -269,6 +270,14 @@ class ProvenanceBuilder:
                     queue.append((read, level + 1))
         result = {"name": name, "step": step, "depth": depth, "nodes": count, "truncated": truncated, "recordedLocals": bool(self.run.locals_entries), "root": root}
         result["conclusion"] = conclusion(result)  # the answer in words (why_text.py); empty when nothing was recorded
+        follow = bool(self.history.exact_steps)  # the recording followed objects (some change is exact)
+        if follow:
+            result["followObjects"] = True
+        entries = self.run.locals_entries
+        capped = len(entries) >= MAX_LOCALS_ENTRIES and int(entries[-1]["step"]) < step
+        summary = summarize(result, follow, capped)  # the state and its sentences (why_summary.py), each checked against the tree
+        if summary is not None:
+            result["summary"] = summary
         return result
 
 

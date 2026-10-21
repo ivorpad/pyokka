@@ -507,6 +507,8 @@ export type WebviewToHost =
   | { type: 'why.query'; step: number; name: string; logId?: string }
   /** the Details pane closed the tree: the host forgets the query (no more refreshes after a run) */
   | { type: 'why.close' }
+  /** the Why summary's "Record again, following objects": one run with `exact` and locals on; the tree refreshes after it */
+  | { type: 'why.followObjects' }
   /**
    * "Rerun value": run the program again and copy `name` whole. `change`: the value a Variable pane row
    * recorded (the host finds the step that kept it); `at`: the value at `step`, the Why tree's.

@@ -718,7 +718,50 @@
      ],
      "opaque": []
     },
-    "conclusion": "area is 12 at #6 (main.py:23). scale(width, base) returned 12."
+    "conclusion": "area is 12 at #6 (main.py:23). scale(width, base) returned 12.",
+    "summary": {
+     "state": "fallback",
+     "headline": [
+      {
+       "name": "area"
+      },
+      {
+       "t": " is "
+      },
+      {
+       "value": "12",
+       "of": "area",
+       "at": 6
+      },
+      {
+       "t": " at "
+      },
+      {
+       "step": 6,
+       "file": "/fixture/main.py",
+       "fileId": 1,
+       "line": 23,
+       "function": "<module>"
+      },
+      {
+       "t": "."
+      }
+     ],
+     "details": [
+      [
+       {
+        "t": "Nothing in this chain changed through another name or differs from what a call received."
+       }
+      ],
+      [
+       {
+        "t": "This recording sees new values given to names, not changes inside objects: following objects can show more."
+       }
+      ]
+     ],
+     "limits": [],
+     "action": "followObjects"
+    }
    }
   },
   {
@@ -812,7 +855,50 @@
       "Account(\"guest\", 5)"
      ]
     },
-    "conclusion": "total is 35.0 at #23 (main.py:28). It reads acct = Account(owner='ivor', balance=30.0)."
+    "conclusion": "total is 35.0 at #23 (main.py:28). It reads acct = Account(owner='ivor', balance=30.0).",
+    "summary": {
+     "state": "fallback",
+     "headline": [
+      {
+       "name": "total"
+      },
+      {
+       "t": " is "
+      },
+      {
+       "value": "35.0",
+       "of": "total",
+       "at": 23
+      },
+      {
+       "t": " at "
+      },
+      {
+       "step": 23,
+       "file": "/fixture/main.py",
+       "fileId": 1,
+       "line": 28,
+       "function": "<module>"
+      },
+      {
+       "t": "."
+      }
+     ],
+     "details": [
+      [
+       {
+        "t": "Nothing in this chain changed through another name or differs from what a call received."
+       }
+      ],
+      [
+       {
+        "t": "This recording sees new values given to names, not changes inside objects: following objects can show more."
+       }
+      ]
+     ],
+     "limits": [],
+     "action": "followObjects"
+    }
    }
   },
   {
@@ -951,7 +1037,50 @@
      ],
      "opaque": []
     },
-    "conclusion": "label is 'total/35.0' at #24 (main.py:29). helper.describe(total, os.sep) returned 'total/35.0'."
+    "conclusion": "label is 'total/35.0' at #24 (main.py:29). helper.describe(total, os.sep) returned 'total/35.0'.",
+    "summary": {
+     "state": "fallback",
+     "headline": [
+      {
+       "name": "label"
+      },
+      {
+       "t": " is "
+      },
+      {
+       "value": "'total/35.0'",
+       "of": "label",
+       "at": 24
+      },
+      {
+       "t": " at "
+      },
+      {
+       "step": 24,
+       "file": "/fixture/main.py",
+       "fileId": 1,
+       "line": 29,
+       "function": "<module>"
+      },
+      {
+       "t": "."
+      }
+     ],
+     "details": [
+      [
+       {
+        "t": "Nothing in this chain changed through another name or differs from what a call received."
+       }
+      ],
+      [
+       {
+        "t": "This recording sees new values given to names, not changes inside objects: following objects can show more."
+       }
+      ]
+     ],
+     "limits": [],
+     "action": "followObjects"
+    }
    }
   },
   {
@@ -1238,7 +1367,57 @@
      ],
      "opaque": []
     },
-    "conclusion": "result is 22 at #29 (main.py:31). helper.combine(area, count) returned 22."
+    "conclusion": "result is 22 at #29 (main.py:31). helper.combine(area, count) returned 22.",
+    "summary": {
+     "state": "fallback",
+     "headline": [
+      {
+       "name": "result"
+      },
+      {
+       "t": " is "
+      },
+      {
+       "value": "22",
+       "of": "result",
+       "at": 29
+      },
+      {
+       "t": " at "
+      },
+      {
+       "step": 29,
+       "file": "/fixture/main.py",
+       "fileId": 1,
+       "line": 31,
+       "function": "<module>"
+      },
+      {
+       "t": "."
+      }
+     ],
+     "details": [
+      [
+       {
+        "t": "Nothing in this chain changed through another name or differs from what a call received."
+       }
+      ],
+      [
+       {
+        "t": "The chain goes on past what is shown: ask why for a node's name at its step."
+       }
+      ],
+      [
+       {
+        "t": "This recording sees new values given to names, not changes inside objects: following objects can show more."
+       }
+      ]
+     ],
+     "limits": [
+      "chainCut"
+     ],
+     "action": "followObjects"
+    }
    }
   },
   {
@@ -1372,7 +1551,50 @@
      "calls": [],
      "opaque": []
     },
-    "conclusion": "self.balance is 30.0 at #20 (main.py:12). It reads self = Account(owner='ivor', balance=10.0), amount = 20."
+    "conclusion": "self.balance is 30.0 at #20 (main.py:12). It reads self = Account(owner='ivor', balance=10.0), amount = 20.",
+    "summary": {
+     "state": "fallback",
+     "headline": [
+      {
+       "name": "self.balance"
+      },
+      {
+       "t": " is "
+      },
+      {
+       "value": "30.0",
+       "of": "self.balance",
+       "at": 20
+      },
+      {
+       "t": " at "
+      },
+      {
+       "step": 20,
+       "file": "/fixture/main.py",
+       "fileId": 1,
+       "line": 12,
+       "function": "deposit"
+      },
+      {
+       "t": "."
+      }
+     ],
+     "details": [
+      [
+       {
+        "t": "Nothing in this chain changed through another name or differs from what a call received."
+       }
+      ],
+      [
+       {
+        "t": "This recording sees new values given to names, not changes inside objects: following objects can show more."
+       }
+      ]
+     ],
+     "limits": [],
+     "action": "followObjects"
+    }
    }
   },
   {
@@ -1405,7 +1627,50 @@
      "calls": [],
      "opaque": []
     },
-    "conclusion": "amount is 20 at #17 (main.py:25)."
+    "conclusion": "amount is 20 at #17 (main.py:25).",
+    "summary": {
+     "state": "fallback",
+     "headline": [
+      {
+       "name": "amount"
+      },
+      {
+       "t": " is "
+      },
+      {
+       "value": "20",
+       "of": "amount",
+       "at": 17
+      },
+      {
+       "t": " at "
+      },
+      {
+       "step": 17,
+       "file": "/fixture/main.py",
+       "fileId": 1,
+       "line": 25,
+       "function": "<module>"
+      },
+      {
+       "t": "."
+      }
+     ],
+     "details": [
+      [
+       {
+        "t": "Nothing in this chain changed through another name or differs from what a call received."
+       }
+      ],
+      [
+       {
+        "t": "This recording sees new values given to names, not changes inside objects: following objects can show more."
+       }
+      ]
+     ],
+     "limits": [],
+     "action": "followObjects"
+    }
    }
   },
   {
@@ -1469,7 +1734,50 @@
      "calls": [],
      "opaque": []
     },
-    "conclusion": "acct is Account(owner='ivor', balance=30.0) at #22 (main.py:27). It reads acct = Account(owner='ivor', balance=0.0)."
+    "conclusion": "acct is Account(owner='ivor', balance=30.0) at #22 (main.py:27). It reads acct = Account(owner='ivor', balance=0.0).",
+    "summary": {
+     "state": "fallback",
+     "headline": [
+      {
+       "name": "acct"
+      },
+      {
+       "t": " is "
+      },
+      {
+       "value": "Account(owner='ivor', balance=30.0)",
+       "of": "acct",
+       "at": 22
+      },
+      {
+       "t": " at "
+      },
+      {
+       "step": 22,
+       "file": "/fixture/main.py",
+       "fileId": 1,
+       "line": 27,
+       "function": "<module>"
+      },
+      {
+       "t": "."
+      }
+     ],
+     "details": [
+      [
+       {
+        "t": "Nothing in this chain changed through another name or differs from what a call received."
+       }
+      ],
+      [
+       {
+        "t": "This recording sees new values given to names, not changes inside objects: following objects can show more."
+       }
+      ]
+     ],
+     "limits": [],
+     "action": "followObjects"
+    }
    }
   },
   {
@@ -1832,7 +2140,57 @@
      ],
      "opaque": []
     },
-    "conclusion": "label is 'total/35.0' at #24 (main.py:29). helper.describe(total, os.sep) returned 'total/35.0'."
+    "conclusion": "label is 'total/35.0' at #24 (main.py:29). helper.describe(total, os.sep) returned 'total/35.0'.",
+    "summary": {
+     "state": "fallback",
+     "headline": [
+      {
+       "name": "label"
+      },
+      {
+       "t": " is "
+      },
+      {
+       "value": "'total/35.0'",
+       "of": "label",
+       "at": 24
+      },
+      {
+       "t": " at "
+      },
+      {
+       "step": 24,
+       "file": "/fixture/main.py",
+       "fileId": 1,
+       "line": 29,
+       "function": "<module>"
+      },
+      {
+       "t": "."
+      }
+     ],
+     "details": [
+      [
+       {
+        "t": "Nothing in this chain changed through another name or differs from what a call received."
+       }
+      ],
+      [
+       {
+        "t": "The chain goes on past what is shown: ask why for a node's name at its step."
+       }
+      ],
+      [
+       {
+        "t": "This recording sees new values given to names, not changes inside objects: following objects can show more."
+       }
+      ]
+     ],
+     "limits": [
+      "chainCut"
+     ],
+     "action": "followObjects"
+    }
    }
   },
   {
@@ -1991,7 +2349,50 @@
       "len(label)"
      ]
     },
-    "conclusion": "count is 10 at #28 (main.py:30). It reads label = 'total/35.0'."
+    "conclusion": "count is 10 at #28 (main.py:30). It reads label = 'total/35.0'.",
+    "summary": {
+     "state": "fallback",
+     "headline": [
+      {
+       "name": "count"
+      },
+      {
+       "t": " is "
+      },
+      {
+       "value": "10",
+       "of": "count",
+       "at": 28
+      },
+      {
+       "t": " at "
+      },
+      {
+       "step": 28,
+       "file": "/fixture/main.py",
+       "fileId": 1,
+       "line": 30,
+       "function": "<module>"
+      },
+      {
+       "t": "."
+      }
+     ],
+     "details": [
+      [
+       {
+        "t": "Nothing in this chain changed through another name or differs from what a call received."
+       }
+      ],
+      [
+       {
+        "t": "This recording sees new values given to names, not changes inside objects: following objects can show more."
+       }
+      ]
+     ],
+     "limits": [],
+     "action": "followObjects"
+    }
    }
   },
   {
@@ -2025,7 +2426,50 @@
      "calls": [],
      "opaque": []
     },
-    "conclusion": "base is 3 at #4 (main.py:21)."
+    "conclusion": "base is 3 at #4 (main.py:21).",
+    "summary": {
+     "state": "fallback",
+     "headline": [
+      {
+       "name": "base"
+      },
+      {
+       "t": " is "
+      },
+      {
+       "value": "3",
+       "of": "base",
+       "at": 4
+      },
+      {
+       "t": " at "
+      },
+      {
+       "step": 4,
+       "file": "/fixture/main.py",
+       "fileId": 1,
+       "line": 21,
+       "function": "<module>"
+      },
+      {
+       "t": "."
+      }
+     ],
+     "details": [
+      [
+       {
+        "t": "Nothing in this chain changed through another name or differs from what a call received."
+       }
+      ],
+      [
+       {
+        "t": "This recording sees new values given to names, not changes inside objects: following objects can show more."
+       }
+      ]
+     ],
+     "limits": [],
+     "action": "followObjects"
+    }
    }
   },
   {
@@ -2343,7 +2787,57 @@
      "calls": [],
      "opaque": []
     },
-    "conclusion": "both is 22 at #31 (helper.py:7). It reads a = 12, b = 10."
+    "conclusion": "both is 22 at #31 (helper.py:7). It reads a = 12, b = 10.",
+    "summary": {
+     "state": "fallback",
+     "headline": [
+      {
+       "name": "both"
+      },
+      {
+       "t": " is "
+      },
+      {
+       "value": "22",
+       "of": "both",
+       "at": 31
+      },
+      {
+       "t": " at "
+      },
+      {
+       "step": 31,
+       "file": "/fixture/helper.py",
+       "fileId": 2,
+       "line": 7,
+       "function": "combine"
+      },
+      {
+       "t": "."
+      }
+     ],
+     "details": [
+      [
+       {
+        "t": "Nothing in this chain changed through another name or differs from what a call received."
+       }
+      ],
+      [
+       {
+        "t": "The chain goes on past what is shown: ask why for a node's name at its step."
+       }
+      ],
+      [
+       {
+        "t": "This recording sees new values given to names, not changes inside objects: following objects can show more."
+       }
+      ]
+     ],
+     "limits": [
+      "chainCut"
+     ],
+     "action": "followObjects"
+    }
    }
   },
   {
@@ -2628,7 +3122,57 @@
      "calls": [],
      "opaque": []
     },
-    "conclusion": "preferred is 'total/35.0' at #35 (main.py:34). The if arm ran: flag is True."
+    "conclusion": "preferred is 'total/35.0' at #35 (main.py:34). The if arm ran: flag is True.",
+    "summary": {
+     "state": "fallback",
+     "headline": [
+      {
+       "name": "preferred"
+      },
+      {
+       "t": " is "
+      },
+      {
+       "value": "'total/35.0'",
+       "of": "preferred",
+       "at": 35
+      },
+      {
+       "t": " at "
+      },
+      {
+       "step": 35,
+       "file": "/fixture/main.py",
+       "fileId": 1,
+       "line": 34,
+       "function": "<module>"
+      },
+      {
+       "t": "."
+      }
+     ],
+     "details": [
+      [
+       {
+        "t": "Nothing in this chain changed through another name or differs from what a call received."
+       }
+      ],
+      [
+       {
+        "t": "The chain goes on past what is shown: ask why for a node's name at its step."
+       }
+      ],
+      [
+       {
+        "t": "This recording sees new values given to names, not changes inside objects: following objects can show more."
+       }
+      ]
+     ],
+     "limits": [
+      "chainCut"
+     ],
+     "action": "followObjects"
+    }
    }
   },
   {
@@ -2785,7 +3329,50 @@
      "calls": [],
      "opaque": []
     },
-    "conclusion": "copy_of_label is 'total/35.0' at #36 (main.py:35). It copies label, which has been 'total/35.0' since #24 (main.py:29)."
+    "conclusion": "copy_of_label is 'total/35.0' at #36 (main.py:35). It copies label, which has been 'total/35.0' since #24 (main.py:29).",
+    "summary": {
+     "state": "fallback",
+     "headline": [
+      {
+       "name": "copy_of_label"
+      },
+      {
+       "t": " is "
+      },
+      {
+       "value": "'total/35.0'",
+       "of": "copy_of_label",
+       "at": 36
+      },
+      {
+       "t": " at "
+      },
+      {
+       "step": 36,
+       "file": "/fixture/main.py",
+       "fileId": 1,
+       "line": 35,
+       "function": "<module>"
+      },
+      {
+       "t": "."
+      }
+     ],
+     "details": [
+      [
+       {
+        "t": "Nothing in this chain changed through another name or differs from what a call received."
+       }
+      ],
+      [
+       {
+        "t": "This recording sees new values given to names, not changes inside objects: following objects can show more."
+       }
+      ]
+     ],
+     "limits": [],
+     "action": "followObjects"
+    }
    }
   },
   {
@@ -2839,7 +3426,50 @@
       "settings.get(\"colour\")"
      ]
     },
-    "conclusion": "missing is None at #38 (main.py:37). settings.get(\"colour\") is None: the key is not in settings (2 keys)."
+    "conclusion": "missing is None at #38 (main.py:37). settings.get(\"colour\") is None: the key is not in settings (2 keys).",
+    "summary": {
+     "state": "fallback",
+     "headline": [
+      {
+       "name": "missing"
+      },
+      {
+       "t": " is "
+      },
+      {
+       "value": "None",
+       "of": "missing",
+       "at": 38
+      },
+      {
+       "t": " at "
+      },
+      {
+       "step": 38,
+       "file": "/fixture/main.py",
+       "fileId": 1,
+       "line": 37,
+       "function": "<module>"
+      },
+      {
+       "t": "."
+      }
+     ],
+     "details": [
+      [
+       {
+        "t": "Nothing in this chain changed through another name or differs from what a call received."
+       }
+      ],
+      [
+       {
+        "t": "This recording sees new values given to names, not changes inside objects: following objects can show more."
+       }
+      ]
+     ],
+     "limits": [],
+     "action": "followObjects"
+    }
    }
   },
   {
@@ -3124,7 +3754,57 @@
      "calls": [],
      "opaque": []
     },
-    "conclusion": "absent is None at #39 (main.py:38). The else arm ran: count > 50 was false, since count is 10."
+    "conclusion": "absent is None at #39 (main.py:38). The else arm ran: count > 50 was false, since count is 10.",
+    "summary": {
+     "state": "fallback",
+     "headline": [
+      {
+       "name": "absent"
+      },
+      {
+       "t": " is "
+      },
+      {
+       "value": "None",
+       "of": "absent",
+       "at": 39
+      },
+      {
+       "t": " at "
+      },
+      {
+       "step": 39,
+       "file": "/fixture/main.py",
+       "fileId": 1,
+       "line": 38,
+       "function": "<module>"
+      },
+      {
+       "t": "."
+      }
+     ],
+     "details": [
+      [
+       {
+        "t": "Nothing in this chain changed through another name or differs from what a call received."
+       }
+      ],
+      [
+       {
+        "t": "The chain goes on past what is shown: ask why for a node's name at its step."
+       }
+      ],
+      [
+       {
+        "t": "This recording sees new values given to names, not changes inside objects: following objects can show more."
+       }
+      ]
+     ],
+     "limits": [
+      "chainCut"
+     ],
+     "action": "followObjects"
+    }
    }
   },
   {

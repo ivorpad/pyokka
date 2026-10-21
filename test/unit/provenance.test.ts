@@ -9,9 +9,10 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { TraceModel, packSteps } from '../../src/timeMachine/traceModel';
 import { FileTable } from '../../src/session/fileTable';
-import { decodeSteps, type ErrorEvent, type FileInstrumentedEvent, type LocalsEvent, type LogEvent, type ProvenanceNode, type Range4, type StatementBinding, type TraceEvent, type TraceScope } from '../../src/shared/protocol';
+import { decodeSteps, type ErrorEvent, type FileInstrumentedEvent, type LocalsEvent, type LogEvent, type Provenance, type ProvenanceNode, type Range4, type StatementBinding, type TraceEvent, type TraceScope } from '../../src/shared/protocol';
 import { indexBindings } from '../../src/session/variableHistory';
 import { calleeOf, provenance, stepOfEntry, type ProvenanceInputs } from '../../src/session/provenance';
+import { literalDiff, literalPart, parseLiteral, sentenceText, validateSummary } from '../../src/shared/whySummary';
 import { provenanceConclusion, renderProvenance } from '../../src/shared/provenanceText';
 
 const FILE = '/w/main.py';
@@ -103,7 +104,9 @@ describe('provenance', () => {
 
   it('roots on the change var lists at the step, with the entry the statement logged (at the callee\'s last step for a call line)', () => {
     const p = provenance(program(), { step: 6, name: 'n' });
-    expect(json(p)).toEqual({ name: 'n', step: 6, depth: 5, nodes: 5, truncated: false, recordedLocals: true, root: N6, conclusion: 'n is 2 at #6 (main.py:10). double(total) returned 2.' });
+    const { summary, ...tree } = json(p) as Provenance;
+    expect(tree).toEqual({ name: 'n', step: 6, depth: 5, nodes: 5, truncated: false, recordedLocals: true, root: N6, conclusion: 'n is 2 at #6 (main.py:10). double(total) returned 2.' });
+    expect(summary?.state).toBe('fallback'); // nothing shared, no argument: the value, and what a recording that follows no objects cannot see
     const merged = provenance(program(), { step: 5, name: 'total' });
     expect(merged.root).toMatchObject({ name: 'total', text: '1', source: 'locals', logId: 'l-3-5', step: 5 });
     // the entry stamped at step 9 is line 10's (`n`); a node inside double gets no logId from it
@@ -212,8 +215,8 @@ describe('provenance', () => {
   });
 
   it('renders the text form', () => {
-    expect(renderProvenance(provenance(program(), { step: 6, name: 'n', depth: 1 }))).toBe(['why n at #6', 'n = 2   #6 /w/main.py:10 <module>   n = double(total)  # ?', '  ← double = ?', '  ← total = 1   #5 /w/main.py:3 <module>   total += i  …', '  ↳ double #7–#9 /w/main.py:4   in x = 1   out 2', 'n is 2 at #6 (main.py:10). double(total) returned 2.'].join('\n'));
-    expect(renderProvenance(provenance(program(), { step: 3, name: 'total', depth: 1 }), (id) => `f${id}`)).toBe(['why total at #3', 'total = 0  (unchanged)   #3 f1:3 <module>   total += i', '  ← total = 0   #0 f1:1 <module>   total = 0  …', '  ← i = 0   #2 f1:2 <module>   for i in range(2):  …', 'total is 0 at #3 (main.py:3). It reads total = 0, i = 0.'].join('\n'));
+    expect(renderProvenance(provenance(program(), { step: 6, name: 'n', depth: 1 }))).toBe(['why n at #6', 'n = 2   #6 /w/main.py:10 <module>   n = double(total)  # ?', '  ← double = ?', '  ← total = 1   #5 /w/main.py:3 <module>   total += i  …', '  ↳ double #7–#9 /w/main.py:4   in x = 1   out 2', 'n is 2 at #6 (main.py:10). double(total) returned 2.', "summary: The chain goes on past what is shown: ask why for a node's name at its step."].join('\n'));
+    expect(renderProvenance(provenance(program(), { step: 3, name: 'total', depth: 1 }), (id) => `f${id}`)).toBe(['why total at #3', 'total = 0  (unchanged)   #3 f1:3 <module>   total += i', '  ← total = 0   #0 f1:1 <module>   total = 0  …', '  ← i = 0   #2 f1:2 <module>   for i in range(2):  …', 'total is 0 at #3 (main.py:3). It reads total = 0, i = 0.', "summary: The chain goes on past what is shown: ask why for a node's name at its step."].join('\n'));
     const inputs = program();
     inputs.locals = [];
     const lines = renderProvenance(provenance(inputs, { step: 13, name: 'size', nodes: 3 })).split('\n');
@@ -265,6 +268,10 @@ const HAVE_FIXTURE = fs.existsSync(RUN_JSON) && fs.existsSync(CASES_JSON);
 const SHARED_RUN_JSON = path.join(FIXTURES, 'shared-run.json');
 const SHARED_CASES_JSON = path.join(FIXTURES, 'shared.json');
 const HAVE_SHARED = fs.existsSync(SHARED_RUN_JSON) && fs.existsSync(SHARED_CASES_JSON);
+// the same program recorded without following objects (the summaries' signpost and fallback)
+const SHARED_DEFAULT_RUN_JSON = path.join(FIXTURES, 'shared-default-run.json');
+const SHARED_DEFAULT_CASES_JSON = path.join(FIXTURES, 'shared-default.json');
+const HAVE_SHARED_DEFAULT = fs.existsSync(SHARED_DEFAULT_RUN_JSON) && fs.existsSync(SHARED_DEFAULT_CASES_JSON);
 
 function loadFixture(runJson = RUN_JSON, casesJson = CASES_JSON, program = PROGRAM): { inputs: ProvenanceInputs; cases: Cases['cases'] } {
   const doc = JSON.parse(fs.readFileSync(runJson, 'utf8')) as SavedRun;
@@ -360,5 +367,45 @@ describe.skipIf(!HAVE_SHARED)('provenance fixture: a change through a shared obj
     expect(lines.find((l) => l.includes('← self = '))).toContain('  (guessed)   #');
     expect(lines.find((l) => l.includes('← amount = '))).not.toContain('(guessed)');
     expect(renderProvenance(provenance(program(), { step: 13, name: 'size' }))).not.toContain('(guessed)');
+  });
+});
+
+describe.skipIf(!HAVE_SHARED_DEFAULT)('provenance fixture: the shared object without following objects', () => {
+  const fixture = HAVE_SHARED_DEFAULT ? loadFixture(SHARED_DEFAULT_RUN_JSON, SHARED_DEFAULT_CASES_JSON, path.join(FIXTURES, 'shared')) : undefined;
+  it.each((fixture?.cases ?? []).map((c) => [`${c.file}:${c.line} ${c.name} at #${c.step}`, c] as const))('answers %s like the Python builder', (_label, c) => {
+    const got = provenance(fixture!.inputs, { step: c.step, name: c.name, depth: c.depth ?? undefined });
+    expect(json(got)).toEqual(c.result);
+  });
+});
+
+describe('why summaries', () => {
+  it('pass the validator in every fixture case', () => {
+    for (const [runJson, casesJson, program] of [
+      [RUN_JSON, CASES_JSON, PROGRAM],
+      [SHARED_RUN_JSON, SHARED_CASES_JSON, path.join(FIXTURES, 'shared')],
+      [SHARED_DEFAULT_RUN_JSON, SHARED_DEFAULT_CASES_JSON, path.join(FIXTURES, 'shared')],
+    ] as const) {
+      const fixture = loadFixture(runJson, casesJson, program);
+      for (const c of fixture.cases) {
+        const tree = provenance(fixture.inputs, { step: c.step, name: c.name, depth: c.depth ?? undefined });
+        expect(validateSummary(tree.summary, tree), `${c.name} at #${c.step}`).toEqual([]);
+      }
+    }
+  });
+  it('signpost the value a call received that differs from its argument\'s last one, and answer with the line when objects were followed', () => {
+    const plain = loadFixture(SHARED_DEFAULT_RUN_JSON, SHARED_DEFAULT_CASES_JSON, path.join(FIXTURES, 'shared'));
+    const amount = plain.cases.find((c) => c.name === 'amount')!;
+    const signpost = provenance(plain.inputs, { step: amount.step, name: 'amount' }).summary!;
+    expect(signpost.state).toBe('signpost');
+    expect(sentenceText(signpost.headline)).toBe("bo['lines'][0]['qty'] was 1 at #15 main.py:9, and charge received 2 as order['lines'][0]['qty'] at #34 billing.py:5.");
+    const followed = loadFixture(SHARED_RUN_JSON, SHARED_CASES_JSON, path.join(FIXTURES, 'shared'));
+    const answer = provenance(followed.inputs, { step: followed.cases.find((c) => c.name === 'amount')!.step, name: 'amount' }).summary!;
+    expect(answer.state).toBe('answer');
+    expect(sentenceText(answer.headline)).toBe('bo[\'lines\'][0], the same object as line, was changed at #23 promo.py:4 in bulk_bonus: line["qty"] += 1.');
+  });
+  it('compare only builtin literals that are whole', () => {
+    expect(literalDiff("{'lines': [{'qty': 1}]}", "{'lines': [{'qty': 2}]}")).toEqual(["['lines'][0]['qty']", '1', '2']);
+    for (const text of ['<ArgumentParser object>', "ArgumentParser(prog='demo')", "{'a': 1…(+3 chars)", 'set()']) expect(parseLiteral(text), text).toBeUndefined();
+    expect(literalPart("{'a': [1, (2, 3)]}", "['a'][1][0]")).toBe('2');
   });
 });

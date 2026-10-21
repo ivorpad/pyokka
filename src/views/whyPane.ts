@@ -34,6 +34,14 @@ export class WhyPaneHost {
     return this.push(session);
   }
 
+  /**
+   * The summary's "Record again, following objects": one run that follows each object (`exact`), with locals on,
+   * which it needs. The tree recomputes after it (`refresh`); the next run on save records the usual way again.
+   */
+  followObjects(session: Session): Promise<unknown> {
+    return session.runNow('followObjects', { followObjects: true });
+  }
+
   /** After a run, or when the webview resyncs: recompute while a query is active. */
   refresh(session: Session): Promise<void> {
     return this.target ? this.push(session) : Promise.resolve();

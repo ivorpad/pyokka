@@ -452,7 +452,45 @@ export interface Provenance {
   root: ProvenanceNode;
   /** the answer in words, built from the root and its first level; '' when nothing was recorded (see `provenanceConclusion`) */
   conclusion?: string;
+  /** the recording followed objects (`--follow-objects`, `followObjects`): some change in it is exact */
+  followObjects?: true;
+  /** what the tree shows, as one of three states in checked sentences (`src/shared/whySummary.ts`); absent when the root has no recorded value */
+  summary?: WhySummary;
 }
+
+/**
+ * One piece of a summary sentence; exactly one of `t`, `name`, `value`, `step`, `code` says which:
+ * plain words, a name the tree has, a node's recorded text (`of` at `at`, the part at `path` when set),
+ * a place the tree has, a statement's source. `validateSentence` checks each against the tree.
+ */
+export interface WhyPiece {
+  t?: string;
+  name?: string;
+  value?: string;
+  of?: string;
+  at?: number;
+  path?: string;
+  step?: number;
+  file?: string;
+  fileId?: number;
+  line?: number;
+  function?: string;
+  code?: string;
+}
+
+/** The summary above a why tree: `answer` (a change the recording saw), `signpost` (a value that differs from what a call received), `fallback` (neither). */
+export interface WhySummary {
+  state: 'answer' | 'signpost' | 'fallback';
+  headline: WhyPiece[];
+  details: WhyPiece[][];
+  /** what to do next: record again following objects */
+  action?: 'followObjects';
+  /** a fallback: what this recording could not see, in the order its sentences say it */
+  limits?: WhyLimit[];
+}
+
+/** What a fallback found the recording could not see: no locals, the entries cap, an object whose text shows nothing inside, a cut value, a chain cut short, a value made before the recording began. */
+export type WhyLimit = 'noLocals' | 'cap' | 'opaque' | 'cut' | 'chainCut' | 'beforeRecording';
 
 /* ---------- HTTP table (bridge `http` reply, `pyokka http`, the panel's HTTP view) ---------- */
 

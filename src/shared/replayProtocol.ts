@@ -62,6 +62,8 @@ export interface ReplayResultEvent extends RunEventBase {
 export interface PanelFeatures {
   /** `fullValue.query`: reruns for "Rerun value" (the extension; the browser page has none) */
   fullValue?: boolean;
+  /** `why.followObjects`: a run that follows objects, from the Why summary's button (the extension; the browser page has none) */
+  followObjects?: boolean;
 }
 
 /**
