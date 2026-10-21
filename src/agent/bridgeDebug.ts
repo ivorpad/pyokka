@@ -120,6 +120,8 @@ export class BridgeDebug {
     const raw = req.launch && typeof req.launch === 'object' && !Array.isArray(req.launch) ? { ...(req.launch as Record<string, unknown>) } : {};
     if (!raw['program'] && !raw['module']) raw['program'] = session.filePath;
     if (raw['stopOnEntry'] === undefined && req.stopOnEntry !== undefined) raw['stopOnEntry'] = req.stopOnEntry === true;
+    // the CLI sends `exact` (the runtime's key), as the debug URI does; a launch.json names it `followObjects`
+    if (raw['exact'] !== undefined && raw['followObjects'] === undefined) raw['followObjects'] = raw['exact'];
     try {
       return parseLaunch(raw, { workspaceRoot: session.workspaceRoot });
     } catch (err) {

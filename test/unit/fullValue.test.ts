@@ -50,6 +50,13 @@ describe('where the recording kept a value', () => {
     expect(changeTarget(exact, { step: 5, scopeId: 0, name: 'd', text: "{'k': 2}" }, 6)).toEqual({ step: 6, observation: { step: 6, scopeId: 0, text: "{'k': 2}" } });
   });
 
+  it('a --follow-objects change counts from the step after it, where it is checked', () => {
+    const exact = [{ step: 0, scopeId: 0, changes: [{ name: 'd', text: "{'k': 1}", exact: true as const }] }, { step: 5, scopeId: 0, changes: [{ name: 'd', text: "{'k': 2}", exact: true as const }] }];
+    // the value when step 6 began is the change at 5, checked at 6; at step 5 it is still the one from 0
+    expect(lastObservation(exact, 'd', 6, [0])).toEqual({ step: 6, scopeId: 0, text: "{'k': 2}" });
+    expect(lastObservation(exact, 'd', 5, [0])).toEqual({ step: 5, scopeId: 0, text: "{'k': 1}" });
+  });
+
   it('a loop target or a parameter is kept at its own step, and its text says so', () => {
     // a parameter seen at the call's first step (9), then the statement there changed it again (14)
     expect(changeTarget(locals, { step: 9, scopeId: 3, name: 'orders', text: "{'Ana': {'items': [{...}], 'tier': 'gold'}}" }, 14)).toEqual({ step: 9, observation: { step: 9, scopeId: 3, text: "{'Ana': {'items': [{...}], 'tier': 'gold'}}" } });

@@ -65,18 +65,25 @@ export function changeTarget(locals: readonly LocalsEntry[], change: { step: num
   return after && !after.exact ? { step: next, observation: seen(after) } : { step: next };
 }
 
-/** The last snapshot of `name` at or before `step` in one of `scopes` (the step's own, then the module's). */
+/**
+ * The last snapshot of `name` at or before `step` in one of `scopes` (the step's own, then the module's).
+ * A --follow-objects change (`exact`) holds the value after its statement, so it counts only before
+ * `step` and is checked at `step`, where it is in force.
+ */
 export function lastObservation(locals: readonly LocalsEntry[], name: string, step: number, scopes: readonly number[]): Observation | undefined {
   let best: Observation | undefined;
+  let bestAt = -1;
   let rank = Infinity;
   for (const entry of locals) {
     if (entry.step > step) break;
     const r = scopes.indexOf(entry.scopeId);
     if (r < 0) continue;
     const ch = entry.changes.find((c) => c.name === name);
+    if (!ch || (ch.exact && entry.step >= step)) continue;
     // the step's own scope wins over the module's, and a later snapshot over an earlier one in the same scope
-    if (ch && (r < rank || (r === rank && (!best || entry.step >= best.step)))) {
-      best = { step: entry.step, scopeId: entry.scopeId, text: ch.text };
+    if (r < rank || (r === rank && entry.step >= bestAt)) {
+      best = { step: ch.exact ? step : entry.step, scopeId: entry.scopeId, text: ch.text };
+      bestAt = entry.step;
       rank = r;
     }
   }

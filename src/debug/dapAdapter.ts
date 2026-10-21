@@ -273,7 +273,7 @@ export class PyokkaDebugAdapter implements vscode.DebugAdapter {
         if (attached.get(session) === this.debugSession) attached.delete(session);
       });
     }
-    return wrapSession(session, this.mgr, { debugStarted: !existing, recordFrom, replay: this.timeMachine ? timeMachineReplay(session, this.timeMachine) : undefined });
+    return wrapSession(session, this.mgr, { debugStarted: !existing, recordFrom, exact: launch.exact ?? null, replay: this.timeMachine ? timeMachineReplay(session, this.timeMachine) : undefined });
   }
 }
 
@@ -290,7 +290,7 @@ export function applyLaunchOverrides(session: Session, launch: LaunchConfig): vo
 }
 
 /** The translator's view of a run-all session in debug mode (`record: true`). */
-export function wrapSession(session: Session, mgr: SessionManager, opts: { debugStarted?: boolean; recordFrom?: RecordFromSpec; replay?: ReplaySource } = {}): DebugTarget {
+export function wrapSession(session: Session, mgr: SessionManager, opts: { debugStarted?: boolean; recordFrom?: RecordFromSpec; exact?: true | string[] | null; replay?: ReplaySource } = {}): DebugTarget {
   // a fresh session started in debug mode is already running its paused first run: the translator's
   // startDebug must not start a second one
   let debugStarted = !!opts.debugStarted;
@@ -328,8 +328,10 @@ export function wrapSession(session: Session, mgr: SessionManager, opts: { debug
         debugStarted = false;
         return Promise.resolve();
       }
-      // a recording from a pause, and exact writes, are the launch's: the translator's start knows only stopOnEntry
-      const exact = session.debugCtl.exact ? { exact: session.debugCtl.exact } : {};
+      // a recording from a pause, and --follow-objects, are the launch's: the translator's start knows only stopOnEntry.
+      // A DAP launch says which it wants (`null`: none), so a session reused from an earlier run does not keep its setting
+      const wanted = opts.exact !== undefined ? opts.exact : session.debugCtl.exact;
+      const exact = wanted ? { exact: wanted } : {};
       return session.startDebug(opts.recordFrom ? { ...o, recordFrom: opts.recordFrom, ...exact } : { ...o, ...exact });
     },
     stopDebug: () => {
