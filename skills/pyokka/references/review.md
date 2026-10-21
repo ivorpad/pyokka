@@ -47,9 +47,9 @@ What the person says decides what you do, before you answer them:
 - They ask whether something is right, enough or correct: read the whole function, then
   `pyokka review try --expr EXPR` or `--code FILE` with inputs that test the claim (the boundary,
   an empty value, the other branch). Answer with the try's result and the step that shows it.
-- They ask what a value is, or where it came from: `pyokka eval --live EXPR` in the paused frame
-  (`pyokka review look --expr EXPR` in a `--full` review), or `pyokka origin --live STEP EXPR` on a
-  recording session for the chain back to its source; quote the chain's root.
+- They ask what a value is or where it came from: `pyokka eval --live EXPR` at the pause (`review look
+  --expr EXPR` in a `--full` review), `origin --live STEP EXPR` for its chain (quote the root), and for
+  a recorded value cut to `…(+N chars)` or `{...}`, `why --live STEP NAME --rerun` (it runs the program again).
 - They ask why the code is like this: `git log -L L,L:FILE` or `git blame` on the line, and the
   PR text; say which source answered.
 - They ask about a line that is not a stop: `pyokka break --live FILE:LINE` then `pyokka continue

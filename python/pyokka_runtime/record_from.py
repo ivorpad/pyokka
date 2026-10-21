@@ -33,13 +33,17 @@ from .protocol import FLAG_SCOPE_ENTRY
 class RecordFromMixin:
     """Mixed into ``Tracer``; reads its scope tables, ``files``, ``config`` and ``_make_hooks``."""
 
-    def start_recording(self, frame: Any, rid: int, scope: int) -> int:
+    def start_recording(self, frame: Any, rid: int, scope: int, count: int | None = None) -> int:
         """Record from here on; the paused statement ``rid`` becomes step 0. Returns its recorded scope.
 
         ``scope`` is the id the debugger's hook reported for the paused frame. At a function-entry
         pause (``--at NAME``) the frame's ``_pk_scope_`` is not assigned yet, so the id comes from
         the hook, not from the frame. Called from ``Debugger._pause`` with the program thread
         stopped; another instrumented thread meets the new hooks at its next statement.
+
+        ``count`` is the debugger's statement count at the paused statement (the ``n`` its hooks
+        report): kept as ``started_at`` and sent as ``startedAt``, so a replay that counts the
+        same way switches at the same statement (replay.py).
         """
         from .dbgframes import frame_chain, scope_of
         from .tracer import FOREIGN
@@ -64,6 +68,7 @@ class RecordFromMixin:
             top = self.adopt(scope, frame)
         self.record = True
         self.mid_run = True
+        self.started_at = count
         self.record_locals = bool(self.config.record_locals)
         if self.cap > 0:
             self.steps.extend((rid, top, self.depth_of[top], FLAG_SCOPE_ENTRY if entry else 0))
@@ -207,9 +212,9 @@ class RecordPauseMixin:
             return {"ok": True, "recording": True, "already": True, "step": at[0]}
         if not t.config.records_later:
             raise ValueError("this run was started without a recording; start it with recordFrom to record from a pause")
-        _n, rid, scope = at
-        scope = t.start_recording(frame, rid, scope)
+        n, rid, scope = at
+        scope = t.start_recording(frame, rid, scope, count=n)
         self.paused_at = (0, rid, scope)
         self._flush()
-        t.emit(self._stop_event(0, rid, scope, frame, self._reason, {**self._extra, "recordingStarted": True}))
+        t.emit(self._stop_event(0, rid, scope, frame, self._reason, {**self._extra, "recordingStarted": True, "startedAt": n}))
         return {"ok": True, "recording": True, "step": 0}

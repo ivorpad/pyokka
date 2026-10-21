@@ -467,5 +467,9 @@ describe('ExecutionDiagram', () => {
     expect(view({ graph: null })).not.toContain('pk-exec-range');
     expect(view({ graph: null, running: true })).toContain('RUNNING…');
     expect(view({ running: true })).toContain('pk-exec-running">RUNNING…<');
+    // a paused recording debug run is in flight, but nothing executes
+    expect(view({ graph: null, running: true, paused: true })).toContain('>PAUSED<');
+    expect(view({ running: true, paused: true })).toContain('pk-exec-running">PAUSED<');
+    expect(view({ running: true, paused: true })).not.toContain('RUNNING');
   });
 });

@@ -148,6 +148,16 @@ a {
   color: var(--pk-dim);
   margin-left: 4px;
 }
+/* the run's phase and the inspected step beside a pane title (inspection.ts); it gives way first */
+.pk-inspection {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  color: var(--pk-dim);
+}
 .pk-toolbar {
   display: inline-flex;
   align-items: center;
@@ -1592,6 +1602,60 @@ body[data-theme='light'] .pk-cp-bg.hl {
   font: inherit;
   cursor: pointer;
   border-radius: 2px;
+}
+/* "Rerun value": a rerun's copy under its row (or above the Why tree); the status edge says how far it was checked */
+.pk-full {
+  margin: 2px 8px 6px 40px;
+  padding: 4px 0 4px 8px;
+  border-left: 2px solid color-mix(in srgb, var(--pk-fg) 25%, transparent);
+  cursor: default;
+}
+.pk-why-full .pk-full {
+  margin: 4px 8px;
+}
+.pk-full-checked {
+  border-left-color: var(--vscode-charts-green, #89d185);
+}
+.pk-full-differs,
+.pk-full-diverged {
+  border-left-color: var(--vscode-editorWarning-foreground, #cca700);
+}
+.pk-full-error {
+  border-left-color: var(--pk-error);
+}
+.pk-full-status {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--pk-dim);
+}
+.pk-full-status .codicon {
+  flex: none;
+  font-size: 12px;
+}
+.pk-full-checked .pk-full-status .codicon {
+  color: var(--vscode-charts-green, #89d185);
+}
+.pk-full-differs .pk-full-status .codicon,
+.pk-full-diverged .pk-full-status .codicon {
+  color: var(--vscode-editorWarning-foreground, #cca700);
+}
+.pk-full-error .pk-full-status .codicon {
+  color: var(--pk-error);
+}
+.pk-full-label {
+  flex: none;
+  font-weight: 600;
+  color: var(--pk-fg);
+}
+.pk-full-diff {
+  margin-top: 2px;
+  font-family: var(--pk-mono);
+  font-size: var(--pk-mono-size);
+}
+.pk-full-tree {
+  margin-top: 4px;
 }
 .pk-variable-read:hover {
   background: var(--pk-hover);

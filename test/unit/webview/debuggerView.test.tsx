@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { render } from 'preact-render-to-string';
 import { DebugSessionView } from '../../../webview/components/DebuggerView';
-import { breakpointLabel, breakpointRows, debugHeaderLine, frameLabel, frameRows, launchSummary, stackRows, watchArg, watchLabel, watchValue } from '../../../webview/debuggerView';
+import { breakpointLabel, breakpointRows, debugHeaderLine, frameLabel, frameRows, historyGap, launchSummary, stackRows, watchArg, watchLabel, watchValue } from '../../../webview/debuggerView';
 import { Rail } from '../../../webview/components/Chrome';
 import type { DebugSessionPanel } from '../../../src/shared/webviewProtocol';
 import type { ValueBag, ValueNode } from '../../../src/shared/protocol';
@@ -209,6 +209,29 @@ describe('DebugSessionView, paused with a stack', () => {
     expect(html).toContain('<b>ValueError</b>: too big: 3');
     expect(html).toContain('class="pk-dbg-warn"');
     expect(html).toContain('Values were changed from the console');
+  });
+});
+
+describe('DebugSessionView, the history a launch does not keep', () => {
+  it('says a plain launch records nothing and names what records, above the watches', () => {
+    const html = view();
+    expect(html).toContain('class="pk-dbg-history" role="note"');
+    expect(html).toContain('No history: this launch records nothing, so there is no Time Machine, variable history or Why.');
+    expect(html).toContain('<code>pyokka debug FILE --record</code>');
+    expect(html).toContain('<code>--record-from NAME</code>');
+    expect(html.indexOf('pk-dbg-history')).toBeLessThan(html.indexOf('WATCHES'));
+  });
+
+  it('says a module launch cannot record at all, and that the file can', () => {
+    const html = view({ launch: { ...PAUSED.launch, program: null, module: 'app.server' } });
+    expect(html).toContain('No history: a module launch cannot record, because a recording runs on a file.');
+    expect(html).not.toContain('--record-from');
+  });
+
+  it('is not there for a launch that records', () => {
+    expect(historyGap({ ...PAUSED.launch, record: true })).toBeNull();
+    expect(historyGap(PAUSED.launch)).toBe('plain');
+    expect(historyGap({ ...PAUSED.launch, program: null, module: 'app.server' })).toBe('module');
   });
 });
 

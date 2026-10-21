@@ -29,7 +29,8 @@ export function DebugToolbar({ state, session, onAction, onStop, onShowDiagram, 
     <div class="pk-header">
       <span class="pk-session">
         {session.name ?? 'Pyokka'}
-        {session.running ? <i class="codicon codicon-loading codicon-modifier-spin" /> : session.durationMs !== undefined ? <span class="pk-dim"> {formatMs(session.durationMs)}{session.replayed ? ' · replayed' : ''}</span> : null}
+        {/* a paused debug run is a run in flight, but nothing executes: no spinner over a pause */}
+        {state.debug?.paused ? <span class="pk-dim"> · paused</span> : session.running ? <i class="codicon codicon-loading codicon-modifier-spin" /> : session.durationMs !== undefined ? <span class="pk-dim"> {formatMs(session.durationMs)}{session.replayed ? ' · replayed' : ''}</span> : null}
       </span>
       <span class="pk-toolbar pk-debug-toolbar">
         <IconButton icon={state.autoPlaying ? 'debug-pause' : 'play'} title={state.autoPlaying ? 'Pause auto play' : 'Auto play'} onClick={() => onAction(state.autoPlaying ? 'pause' : 'autoPlay')} />

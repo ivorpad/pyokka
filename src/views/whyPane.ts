@@ -14,6 +14,7 @@ export function withDisplayPaths(tree: Provenance, displayPath: (fileId: number)
   const node = (n: ProvenanceNode): ProvenanceNode => ({
     ...n,
     ...(n.fileId !== undefined ? { file: displayPath(n.fileId) } : {}),
+    ...(n.firstAssigned?.fileId !== undefined ? { firstAssigned: { ...n.firstAssigned, file: displayPath(n.firstAssigned.fileId) } } : {}),
     ...(n.reads ? { reads: n.reads.map(node) } : {}),
     ...(n.calls ? { calls: n.calls.map((c) => ({ ...c, file: displayPath(c.fileId) })) } : {}),
   });

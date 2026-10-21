@@ -33,7 +33,7 @@ function settingsAsConfig(resource?: vscode.Uri): ConfigObject {
   // `httpObserve` is a flat key on purpose: VS Code stores settings as a tree, so `pyokka.http.observe` could not coexist with the string `pyokka.http`
   const flat = pick(['logLimit', 'maxConsoleMessages', 'resolveGetters', 'autoLog', 'maxTraceSteps', 'maxValueChars', 'runTimeout', 'http', 'httpObserve', 'installPackageCommand', 'plugins', 'runMode', 'delay', 'showValueOnSelection', 'showSingleInlineValue', 'smartStart']);
   const tm: ConfigObject = {};
-  for (const k of ['recordLocals', 'libraryCode', 'libraryPackages', 'exclude']) {
+  for (const k of ['recordLocals', 'recordInputs', 'libraryCode', 'libraryPackages', 'exclude']) {
     const insp = c.inspect(`timeMachine.${k}`);
     const v = insp?.workspaceFolderValue ?? insp?.workspaceValue ?? insp?.globalValue;
     if (v !== undefined) tm[k] = v;

@@ -109,7 +109,8 @@ describe('pyokka debug FILE --record-from', function () {
     stubDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pyokka-code-'));
     uriFile = path.join(stubDir, 'uri.txt');
     stub = path.join(stubDir, 'code-stub');
-    fs.writeFileSync(stub, `#!/bin/sh\nprintf '%s' "$2" > ${JSON.stringify(uriFile)}\n`);
+    // `--list-extensions` answers like a VS Code with the extension installed (debug_start.check_extension asks first); `--open-url URI` keeps the URI
+    fs.writeFileSync(stub, `#!/bin/sh\nif [ "$1" = "--list-extensions" ]; then echo ivor.pyokka; exit 0; fi\nprintf '%s' "$2" > ${JSON.stringify(uriFile)}\n`);
     fs.chmodSync(stub, 0o755);
   });
 

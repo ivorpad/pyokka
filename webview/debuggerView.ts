@@ -182,6 +182,16 @@ export function launchSummary(launch: DebugSessionPanel['launch']): string {
   return launch.cwd ? `${command}  ·  cwd ${launch.cwd}` : command;
 }
 
+/**
+ * Why this launch has no history (no Time Machine, variable history or Why), said under the launch
+ * line before anyone looks for a value: `module` cannot record at all (a recording is a session on a
+ * file), `plain` is the debugger without `record`; null when it records.
+ */
+export function historyGap(launch: DebugSessionPanel['launch']): 'module' | 'plain' | null {
+  if (launch.record) return null;
+  return launch.module ? 'module' : 'plain';
+}
+
 /** `do_GET  app.py:42`; a library frame is marked so the list reads as one. */
 export function frameLabel(frame: DebugSessionFrame): string {
   return `${frame.name}  ${frame.file}:${frame.line}`;

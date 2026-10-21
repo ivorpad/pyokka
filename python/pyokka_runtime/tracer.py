@@ -78,6 +78,7 @@ class Tracer(LogMixin, ErrorMixin, RecordFromMixin):
         self.record = config.records and not config.records_later
         self.foreign: dict[int, int] = {}  # debugger per-call id (>= FOREIGN) -> recorded scope
         self.mid_run = False  # the recording began at a pause: step 0 is that pause, not the program's start
+        self.started_at: int | None = None  # with mid_run: the debugger's statement count at that pause (start_recording)
         self.files: dict[str, InstrumentedFile] = {}
         self.files_by_id: dict[int, InstrumentedFile] = {}
         self.file_bases: list[int] = []
@@ -580,7 +581,7 @@ class Tracer(LogMixin, ErrorMixin, RecordFromMixin):
             return
         chunk = self.steps[self.flushed_steps * 4 : recorded * 4]
         new_scopes = self._scope_table(self.flushed_scopes)
-        self.emit(ev_trace(encode_steps(chunk), new_scopes, self.n_steps > self.cap, partial=True, offset=self.flushed_steps, mid_run=self.mid_run))
+        self.emit(ev_trace(encode_steps(chunk), new_scopes, self.n_steps > self.cap, partial=True, offset=self.flushed_steps, mid_run=self.mid_run, started_at=self.started_at))
         self.flushed_steps = recorded
         self.flushed_scopes = len(self.scopes)
 
@@ -640,7 +641,7 @@ class Tracer(LogMixin, ErrorMixin, RecordFromMixin):
             if self.locals_entries:
                 for i in range(self.locals_flushed, len(self.locals_entries), 5000):
                     self.emit({"type": "locals", "entries": self.locals_entries[i : i + 5000]})
-            trace = ev_trace(encode_steps(self.steps), self._scope_table(), self.n_steps > self.cap, mid_run=self.mid_run)
+            trace = ev_trace(encode_steps(self.steps), self._scope_table(), self.n_steps > self.cap, mid_run=self.mid_run, started_at=self.started_at)
             if self.n_steps > self.cap:
                 trace.update(self.cap_report())
             self.emit(trace)

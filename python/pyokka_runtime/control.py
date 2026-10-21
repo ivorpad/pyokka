@@ -32,6 +32,8 @@ import queue
 import threading
 from typing import Any, Callable
 
+from .offrecord import off_the_record
+
 STEP_KINDS = ("into", "over", "out")
 # Refused while the program runs (no frame to work in), and the reply type each is refused with.
 _REFUSED_WHILE_RUNNING = {"evaluate": "evaluate", "shadow": "evaluate", "complete": "complete", "exec": "exec"}
@@ -264,7 +266,8 @@ class ControlChannel:
                 if req.get("type") == "exit":
                     self.queue.put(req)  # the after-run loop needs it too
                     return {"action": "continue", "kind": None}
-                action = handle_request(req, self.execution, self.emit, frame, debugger)
+                # the Debug Console, evaluations and the values' reprs are the debugger's, not the program's (offrecord.py)
+                action = off_the_record(debugger, lambda: handle_request(req, self.execution, self.emit, frame, debugger))
                 if action is not None:
                     return action
         finally:

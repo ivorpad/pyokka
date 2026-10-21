@@ -30,6 +30,8 @@ export interface ExecutionDiagramProps {
   selected: string | null;
   /** a run is in flight */
   running: boolean;
+  /** the run in flight is a paused debug run: the labels say PAUSED, not RUNNING */
+  paused?: boolean;
   /** `pyokka.diagram.detail` and `pyokka.diagram.dataEdges`; `view` overrides them for the open panel */
   settings: Pick<PanelSettings, 'diagramDetail' | 'diagramDataEdges'>;
   view: GraphViewState;
@@ -211,7 +213,7 @@ export function ExecutionDiagram(props: ExecutionDiagramProps) {
     return (
       <section class="pk-pane pk-exec" aria-label="Execution diagram">
         {header}
-        <div class="pk-empty">{props.running ? 'RUNNING…' : 'NO RUN YET'}</div>
+        <div class="pk-empty">{props.running ? (props.paused ? 'PAUSED' : 'RUNNING…') : 'NO RUN YET'}</div>
       </section>
     );
   }
@@ -248,7 +250,7 @@ export function ExecutionDiagram(props: ExecutionDiagramProps) {
           )}
         </div>
         <div class="pk-exec-centre">
-          {props.running && <div class="pk-exec-running">RUNNING…</div>}
+          {props.running && <div class="pk-exec-running">{props.paused ? 'PAUSED' : 'RUNNING…'}</div>}
           <div
             class="pk-exec-canvas pk-dg-view"
             ref={viewRef}

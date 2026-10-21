@@ -11,7 +11,7 @@
  * body was stepped (the walkthrough's call rules, from `MomentBuilder`) and the calls no stepped
  * scope claimed. Expansion is breadth-first under a depth and a node budget.
  */
-import { PROVENANCE_DEPTH, PROVENANCE_MAX_DEPTH, PROVENANCE_NODES, type LogEvent, type Provenance, type ProvenanceCall, type ProvenanceNode, type StatementBinding, type TraceScope } from '../shared/protocol';
+import { MAX_LOCALS_ENTRIES, PROVENANCE_DEPTH, PROVENANCE_MAX_DEPTH, PROVENANCE_NODES, type LogEvent, type Provenance, type ProvenanceCall, type ProvenanceFirstAssigned, type ProvenanceNode, type StatementBinding, type TraceScope } from '../shared/protocol';
 import { MomentBuilder } from './moments';
 import { History, type ValueRecord } from './variableHistory';
 import type { WalkthroughInputs } from './walkthroughShared';
@@ -126,13 +126,36 @@ class ProvenanceBuilder {
     const scopeId = trace.scopeId(step);
     let v = this.history.valueAt(name, step, scopeId, loc?.fileId ?? -1);
     if (v.step === undefined && name.includes('.')) v = this.history.valueAt(name.split('.')[0]!, step, scopeId, loc?.fileId ?? -1);
-    return v.step === undefined ? this.leaf(name) : this.label(this.fromRecord(v), !!v.exact);
+    return v.step === undefined ? this.notYet(name, step, scopeId, loc?.fileId ?? -1) : this.label(this.fromRecord(v), !!v.exact);
   }
 
   /** `node` with its `resolution` when it has a step (docs/PROTOCOL.md, "Provenance"). */
   private label(node: ProvenanceNode, exact: boolean): ProvenanceNode {
     if (node.step !== undefined) node.resolution = exact ? 'seen' : 'guessed';
     return node;
+  }
+
+  /**
+   * A root name with no value at `step`. A later assignment in its scope (or its module) says it has
+   * none yet only when every earlier value would have been seen: locals recorded from the program's
+   * start, under the recorder's cap. Otherwise an earlier value may only have gone unrecorded: a run
+   * without locals answers the leaf, and a recording that began at a pause names the later assignment
+   * without ruling out a value made before step 0 (`beforeRecording` with `firstAssigned`).
+   */
+  private notYet(name: string, step: number, scopeId: number, fileId: number): ProvenanceNode {
+    let later = this.history.firstChangeAfter(name, step, scopeId, fileId);
+    if (!later && name.includes('.')) later = this.history.firstChangeAfter(name.split('.')[0]!, step, scopeId, fileId);
+    if (!later || !this.history.recordedLocals || this.cappedBefore(step)) return this.leaf(name);
+    const first: ProvenanceFirstAssigned = { step: later.step, ...this.history.location(later.step) };
+    const statement = this.statement(later.step);
+    if (statement !== undefined) first.statement = statement;
+    return this.inputs.midRun ? { name: later.name, beforeRecording: true, firstAssigned: first } : { name: later.name, firstAssigned: first };
+  }
+
+  /** The recorder keeps no changes past its cap, so a step after the last one it kept was not observed. */
+  private cappedBefore(step: number): boolean {
+    const locals = this.inputs.locals;
+    return locals.length >= MAX_LOCALS_ENTRIES && locals[locals.length - 1]!.step < step;
   }
 
   /* ----- nodes ----- */

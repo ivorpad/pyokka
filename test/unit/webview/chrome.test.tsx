@@ -90,6 +90,13 @@ describe('DebugToolbar', () => {
     expect(live).toContain('pk-dim"> 250ms<');
     expect(live).not.toContain('replayed');
   });
+  it('says paused, with no spinner, over a recording debug run that is paused', () => {
+    const paused = render(<DebugToolbar state={{ ...state, debug: { active: true, paused: true, frontier: 3 } }} session={{ name: 'a.py', running: true, runMode: 'auto' }} onAction={noop} onStop={noop} />);
+    expect(paused).toContain('pk-dim"> · paused<');
+    expect(paused).not.toContain('codicon-loading');
+    const running = render(<DebugToolbar state={{ ...state, debug: { active: true, paused: false } }} session={{ name: 'a.py', running: true, runMode: 'auto' }} onAction={noop} onStop={noop} />);
+    expect(running).toContain('codicon-loading');
+  });
 });
 
 describe('SettingsView', () => {

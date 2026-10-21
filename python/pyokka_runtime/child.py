@@ -61,15 +61,34 @@ class EmitPipe:
             pending()
 
 
+def unpin_hash_seed(environ: Any) -> None:
+    """Take Pyokka's str-hashing seed out of the program's environment (src/runtime/hashSeed.ts).
+
+    The host pins one seed per session, so a replay iterates sets of strings in the order the run
+    did. The interpreter read it at its start; the program and the processes it starts get the
+    environment they would have without Pyokka. A PYTHONHASHSEED the user set has no mark and stays."""
+    mark = environ.pop("PYOKKA_PINNED_HASHSEED", None)
+    if mark is not None and environ.get("PYTHONHASHSEED") == mark:
+        del environ["PYTHONHASHSEED"]
+
+
 def child_main(request: dict, write: Callable[[bytes], None], ctl_fd: int) -> None:
     """Body of the run child. Never returns."""
     from .execute import Execution, RunSpec, install_step_streams
 
+    unpin_hash_seed(os.environ)
     emit = EmitPipe(write)
     spec = RunSpec.from_request(request)
     execution = Execution(spec, emit)
     control = ControlChannel(ctl_fd, emit)
-    execution.on_tracer = lambda tracer: control.attach_debugger(execution, tracer, request)
+    replay = request.get("replay")
+    if isinstance(replay, dict):
+        from .replay import attach_replay
+
+        # a replay checks every step against a recording and pauses nowhere: no debugger, even for a debug request
+        execution.on_tracer = lambda tracer: attach_replay(tracer, replay)
+    else:
+        execution.on_tracer = lambda tracer: control.attach_debugger(execution, tracer, request)
     install_step_streams(emit, lambda: execution.tracer)
     devnull = os.open(os.devnull, os.O_RDONLY)
     os.dup2(devnull, 0)

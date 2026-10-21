@@ -53,6 +53,13 @@ CASES = [
     ("main.py", 35, "first", "copy_of_label", PROVENANCE_DEPTH),
     ("main.py", 37, "first", "missing", PROVENANCE_DEPTH),
     ("main.py", 38, "first", "absent", PROVENANCE_DEPTH),
+    # a name with no value yet at the step: where it is first assigned, in this recording and read as one
+    # that began at a pause ("midRun", the case flag both builders apply), where only a name nothing
+    # assigns later is one made before step 0
+    ("main.py", 23, "first", "label", PROVENANCE_DEPTH),
+    ("main.py", 23, "first", "label", PROVENANCE_DEPTH, "midRun"),
+    ("helper.py", 1, "last", "text", PROVENANCE_DEPTH, "midRun"),
+    ("main.py", 23, "first", "nothing_here", PROVENANCE_DEPTH, "midRun"),
 ]
 
 
@@ -69,18 +76,24 @@ def step_of(run: SavedRun, file: str, line: int, occurrence: str) -> int:
 
 def build_cases(run: SavedRun, root: str) -> list[dict]:
     out = []
-    for file, line, occurrence, name, depth in CASES:
+    began = run.mid_run
+    for file, line, occurrence, name, depth, *flags in CASES:
         step = step_of(run, file, line, occurrence)
+        run.mid_run = "midRun" in flags
         result = json.loads(normalize(json.dumps(provenance(run, step, name, depth=depth), ensure_ascii=False), root))
-        out.append({"file": file, "line": line, "occurrence": occurrence, "name": name, "depth": depth, "step": step, "result": result})
+        case = {"file": file, "line": line, "occurrence": occurrence, "name": name, "depth": depth, "step": step, "result": result}
+        if run.mid_run:
+            case["midRun"] = True
+        out.append(case)
+    run.mid_run = began
     return out
 
 
 @pytest.fixture
 def cases(fixture_run: Path, tmp_path: Path) -> dict[tuple, dict]:
-    """The trees by (name, depth, line)."""
+    """The trees by (name, depth, line), with "midRun" appended for a case read as a recording that began at a pause."""
     built = build_cases(SavedRun(str(fixture_run)), str(tmp_path / "proj"))
-    return {(c["name"], c["depth"], c["line"]): c for c in built}
+    return {(c["name"], c["depth"], c["line"]) + (("midRun",) if c.get("midRun") else ()): c for c in built}
 
 
 def test_fixture_trees_match_the_shared_json(fixture_run: Path, tmp_path: Path):
@@ -216,6 +229,28 @@ def test_read_rule_and_leaf_roots(cases):
     assert nothing["root"] == {"name": "nothing_here"} and nothing["nodes"] == 1 and nothing["truncated"] is False
 
 
+def test_a_name_with_no_value_yet_says_where_it_is_first_assigned(cases):
+    early = cases[("label", PROVENANCE_DEPTH, 23)]["result"]
+    first = {"step": 24, "file": "/fixture/main.py", "fileId": 1, "line": 29, "function": "<module>", "scopeId": 0, "statement": "label = helper.describe(total, os.sep)"}
+    assert early["step"] == 6 and early["root"] == {"name": "label", "firstAssigned": first} and early["nodes"] == 1 and early["conclusion"] == ""
+    # read as a recording that began at a pause, nothing tells a name made before step 0 from one its scope
+    # assigns later: the node names the later assignment and keeps the other possibility (review of 0.7.0)
+    assert cases[("label", PROVENANCE_DEPTH, 23, "midRun")]["result"]["root"] == {**early["root"], "beforeRecording": True}
+    # the F2 shape: asked at a function's first step, the local its next statement assigns
+    text = cases[("text", PROVENANCE_DEPTH, 1, "midRun")]["result"]
+    assert text["step"] == 25 and text["root"] == {"name": "text", "beforeRecording": True, "firstAssigned": {"step": 26, "file": "/fixture/helper.py", "fileId": 2, "line": 2, "function": "describe", "scopeId": 5, "statement": 'text = "total" + sep + str(value)'}}
+    # only a name nothing assigns later is one made before the recording
+    assert cases[("nothing_here", PROVENANCE_DEPTH, 23, "midRun")]["result"]["root"] == {"name": "nothing_here", "beforeRecording": True}
+
+
+def test_a_later_assignment_in_another_scope_is_not_this_name(fixture_run: Path):
+    run = SavedRun(str(fixture_run))
+    # `text` exists only inside describe; at a module step it is not "not yet", it is nothing
+    assert provenance(run, 6, "text")["root"] == {"name": "text"}
+    # `both` is assigned at #31 inside combine, after #26 in describe: still another scope
+    assert provenance(run, 26, "both")["root"] == {"name": "both"}
+
+
 def test_depth_cuts_the_last_level(cases):
     doc = cases[("label", 1, 29)]["result"]
     assert doc["depth"] == 1 and doc["nodes"] == 4
@@ -275,6 +310,36 @@ def test_text_form_matches_the_reference_renderer(fixture_run: Path):
     assert code == 0 and text.splitlines()[:2] == ["why #33", "#33 main.py:32 <module>   print(result)"]
     code, text = pyokka("why", str(fixture_run), "24", "label", "--depth", "1")
     assert code == 0 and text.splitlines()[3].endswith('Account("guest", 5)])  …')
+
+
+def test_text_form_says_why_a_name_has_no_value(fixture_run: Path, tmp_path: Path):
+    code, text = pyokka("why", str(fixture_run), "6", "label")
+    assert code == 0
+    assert text.splitlines() == ["why label at #6", "label  not assigned yet at #6, first assigned at #24 main.py:29 <module>   label = helper.describe(total, os.sep)"]
+    # a run saved without locals: the `?` says why, not just that nothing answered
+    program = tmp_path / "small.py"
+    program.write_text("base = 3\nwidth = base + 1\nprint(width)\n", encoding="utf-8")
+    saved = tmp_path / "small.json"
+    with redirect_stdout(io.StringIO()):
+        assert main(["run", str(program), "--save", str(saved), "--no-locals"]) == 0
+    code, text = pyokka("why", str(saved), "2")
+    assert code == 0 and "  ← width = ?   not recorded: this run recorded no locals" in text.splitlines()
+    # a name assigned before the step, with no value recorded, is never "not assigned yet" (review of 0.7.0)
+    program.write_text("x = 1\ny = 2\nprint(y)\nx = 3  # ?\n", encoding="utf-8")
+    with redirect_stdout(io.StringIO()):
+        assert main(["run", str(program), "--save", str(saved), "--no-locals"]) == 0
+    code, text = pyokka("why", str(saved), "2", "x")
+    assert code == 0 and text.splitlines() == ["why x at #2", "x = ?   not recorded: this run recorded no locals"]
+
+
+def test_a_recording_from_a_pause_keeps_both_possibilities():
+    import types
+
+    from pyokka_runtime.agent.render import _why_node
+
+    first = {"step": 24, "file": "/fixture/main.py", "fileId": 1, "line": 29, "function": "<module>", "scopeId": 0, "statement": "label = helper.describe(total, os.sep)"}
+    line = _why_node({"name": "label", "beforeRecording": True, "firstAssigned": first}, "", types.SimpleNamespace(display_path=os.path.basename), 6)
+    assert line == "label = ?   made before #0, where the recording started, or first assigned at #24 main.py:29 <module>   label = helper.describe(total, os.sep)"
 
 
 # -- the conclusion: the answer in words ---------------------------------------------------------------------------

@@ -427,6 +427,18 @@ export class History {
     return [...rows.values()];
   }
 
+  /** The first change `var` lists for exactly `name` after `step`, in the step's scope or its module: where a name with no value yet at `step` gets one. */
+  firstChangeAfter(name: string, step: number, scopeId: number, fileId: number): VariableChange | undefined {
+    const scopes = new Set(this.moduleScopes(fileId));
+    scopes.add(scopeId);
+    let first: VariableChange | undefined;
+    for (const r of this.rows(name)) {
+      if (r.name !== name || r.step <= step || !scopes.has(r.scopeId)) continue;
+      if (!first || r.step < first.step) first = r;
+    }
+    return first;
+  }
+
   /** The rows `var` lists at `step` for `name`, in `var`'s order (by matched name); none when the statement did not change it. */
   changesAt(name: string, step: number): VariableChange[] {
     return this.rows(name)

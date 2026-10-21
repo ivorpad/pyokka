@@ -24,8 +24,10 @@ from typing import Any, Callable
 from . import cache
 from . import module_run
 from . import secrets
+from .inputs import for_run
 from .instrument import InstrumentOptions, InstrumentedFile, Instrumenter
 from .protocol import RunConfig
+from .replay import ReplayStop
 from .serialize import Registry
 from .spans import module_span
 from .tracer import Tracer
@@ -65,6 +67,7 @@ class RunSpec:
     trace_context: dict | None
     module: str | None = None  # `run.module`: a `python -m` launch instead of a file (module_run.py)
     mode: str = "normal"
+    replay: dict | None = None  # `run.replay`: run again to one step of a recording and read a value there (replay.py)
     raw: dict = field(default_factory=dict)
 
     @classmethod
@@ -94,6 +97,7 @@ class RunSpec:
             trace_context=req.get("traceContext"),
             module=module,
             mode=mode if config.records else "normal",  # profile and snaps are recordings of a different shape
+            replay=req.get("replay") if isinstance(req.get("replay"), dict) else None,
             raw=req,
         )
 
@@ -496,6 +500,10 @@ class Execution:
             # A `-m` launch resolves inside the try below: finding the module imports its parent
             # packages, which is the program running, so the hooks have to be on first.
             tracer.install()
+            inputs = for_run(spec, tracer)  # the clock and randomness: kept by a recording run, handed back by a replay
+            tracer.inputs = inputs  # held while the debugger serves a pause (offrecord.py)
+            if inputs is not None:
+                inputs.install()
             try:
                 if spec.module:
                     code_obj = module_run.launch(self, spec.module)
@@ -512,14 +520,23 @@ class Execution:
                     self.emit({"type": "output", "stream": "stderr", "text": str(code) + "\n", "step": tracer.output_step()})
             except KeyboardInterrupt:
                 exit_code = 130
+            except ReplayStop:
+                pass  # a replay stopped the program where it had its answer; the run finishes as any run does
             except BaseException as exc:  # noqa: BLE001 - user code
                 uncaught = exc
                 exit_code = 1
                 if tracer.dbg is not None:
                     tracer.dbg.on_uncaught(exc)  # a debug run pauses here unless breakOnException is off
             finally:
+                if inputs is not None:
+                    inputs.uninstall()
                 self._flush_std()
                 self.run_plugins("after")
+                replay_finished = getattr(tracer.dbg, "replay_finished", None)
+                if replay_finished is not None:
+                    replay_finished(uncaught)
+                if inputs is not None and inputs.mode == "record":
+                    self.emit(inputs.event())
                 tracer.finish(uncaught)
                 tracer.uninstall()
         finally:

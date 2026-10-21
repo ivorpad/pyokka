@@ -15,10 +15,12 @@ import type { RunFinishedEvent } from '../shared/protocol';
 import type { SessionManager } from '../session/sessionManager';
 import type { TimeMachine, MoveKind } from '../timeMachine/navigator';
 import { contextSliceForLine, contextSliceForStep, locationAt, valuesAtStep, valuesForLine, type SliceInputs, type SliceOptions } from '../session/contextSlice';
-import { sessionProvenance, sessionVariableHistory } from '../session/variableQuery';
+import { sessionVariableHistory } from '../session/variableQuery';
+import { bridgeWhole } from './bridgeFull';
+import { bridgeWhy } from './bridgeWhy';
 import { redact, redactValueBag, redactValueNode } from '../util/redact';
 import { ensureDir } from '../util/paths';
-import { BridgeError, awaitIdle, describe, fileIdFor, int, isStale, readSource, redactExceptionReport, redactGraph, redactHistory, redactHttpTable, redactProvenance, redactSlice, redactValues, redactWalkthrough, rm, sessionRecording, sessionsDir, socketPathFor, sliceOptions, sweepDeadDescriptors, walkthroughInputs, type Request } from './bridgeSupport';
+import { BridgeError, awaitIdle, describe, fileIdFor, int, isStale, readSource, redactExceptionReport, redactGraph, redactHistory, redactHttpTable, redactSlice, redactValues, redactWalkthrough, rm, sessionRecording, sessionsDir, socketPathFor, sliceOptions, sweepDeadDescriptors, walkthroughInputs, type Request } from './bridgeSupport';
 import { buildWalkthrough } from '../session/walkthrough';
 import { buildExecutionGraph } from '../session/executionGraph';
 import { buildHttpTable } from '../session/httpTable';
@@ -33,7 +35,7 @@ import { setting } from '../config/settings';
 import { log } from '../util/log';
 
 export const AGENT_ACCESS_SETTING = 'agentAccess';
-const REQUEST_TYPES = ['state', 'step', 'context', 'values', 'var', 'why', 'eval', 'exec', 'expand', 'select', 'watch', 'unwatch', 'walkthrough', 'graph', 'exceptions', 'http', 'debug', 'continue', 'pause', 'stop', 'restart', 'break', 'watches', 'locals', 'record', 'recording'] as const;
+const REQUEST_TYPES = ['state', 'step', 'context', 'values', 'var', 'why', 'whole', 'eval', 'exec', 'expand', 'select', 'watch', 'unwatch', 'walkthrough', 'graph', 'exceptions', 'http', 'debug', 'continue', 'pause', 'stop', 'restart', 'break', 'watches', 'locals', 'record', 'recording'] as const;
 const MOVE_KINDS: readonly MoveKind[] = ['into', 'over', 'out', 'back', 'backOver', 'backOut'];
 
 interface Client {
@@ -314,17 +316,10 @@ export class AgentBridge implements vscode.Disposable {
         if (!history) throw new BridgeError('no execution trace', 'run the file first (save, or Re-execute)');
         return { ...redactHistory(history) };
       }
-      case 'why': {
-        const step = int(req.step);
-        if (step === undefined) throw new BridgeError('why needs step', 'send {step: N, name?: "total", depth?: 5}: the step of a var change, or of the Time Machine; name empty explains the statement');
-        const name = typeof req.name === 'string' ? req.name.trim() : '';
-        await awaitIdle(session);
-        const trace = this.inputs(session).trace; // throws the "no trace" error with its hint
-        if (!trace.valid(step)) throw new BridgeError(`step ${step} is out of range`, `steps are 0..${trace.count - 1}`);
-        const tree = await sessionProvenance(session, step, name, int(req.depth));
-        if (!tree) throw new BridgeError('no execution trace', 'run the file first (save, or Re-execute)');
-        return { ...redactProvenance(tree) };
-      }
+      case 'why':
+        return bridgeWhy(session, req, () => this.inputs(session).trace);
+      case 'whole':
+        return bridgeWhole(session, req); // 0.7.0's request, kept for one release: `why` with `rerun`
       case 'eval': {
         const expression = typeof req.expression === 'string' ? req.expression.trim() : '';
         if (!expression) throw new BridgeError('eval needs expression', 'send {expression: "name.attr"}');

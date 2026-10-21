@@ -107,7 +107,8 @@ describe('pyokka debug FILE, cold', function () {
     stubDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pyokka-code-'));
     uriFile = path.join(stubDir, 'uri.txt');
     stub = path.join(stubDir, 'code-stub');
-    fs.writeFileSync(stub, `#!/bin/sh\nprintf '%s' "$2" > ${JSON.stringify(uriFile)}\n`);
+    // `--list-extensions` answers like a VS Code with the extension installed (debug_start.check_extension asks first); `--open-url URI` keeps the URI
+    fs.writeFileSync(stub, `#!/bin/sh\nif [ "$1" = "--list-extensions" ]; then echo ivor.pyokka; exit 0; fi\nprintf '%s' "$2" > ${JSON.stringify(uriFile)}\n`);
     fs.chmodSync(stub, 0o755);
   });
 
@@ -391,7 +392,11 @@ describe('pyokka debug FILE, cold', function () {
   it('a timeout prints the hint that names the URI confirmation first, then pyokka.agentAccess', async () => {
     await stopAll();
     assert.equal(api.manager.all().length, 0, 'no run socket, so route (c) is the one taken');
-    const r = await cli(['debug', file], { code: '/usr/bin/true', timeoutMs: 60_000 });
+    // a VS Code that has the extension but never acts on the URI, as when its confirmation is declined
+    const silent = path.join(stubDir, 'code-silent');
+    fs.writeFileSync(silent, '#!/bin/sh\nif [ "$1" = "--list-extensions" ]; then echo ivor.pyokka; fi\n');
+    fs.chmodSync(silent, 0o755);
+    const r = await cli(['debug', file], { code: silent, timeoutMs: 60_000 });
     assert.equal(r.status, 2, `${r.stdout} ${r.stderr}`);
     assert.match(r.stderr, new RegExp(`did not start a debug session for ${NAME.replace('.', '\\.')}`));
     assert.match(r.stderr, /^look at the VS Code window first/m);

@@ -23,6 +23,7 @@ from .origin.text import render_origin
 from .live import stop_reason
 from .render_debug import cut_hint, exec_error, is_debug_reply, local_lines, recording_start_lines, recording_suffix, render_debug_exec, render_debug_state, render_debug_stop, render_record, unseen_run_note, value_line
 from .recording import cut_line
+from .full_value import full_hint, full_lines
 
 MOVE_LABEL = {"into": "into", "over": "over", "out": "out", "back": "back", "backOver": "back-over", "backOut": "back-out"}
 TEXT_MAX = 160
@@ -106,6 +107,7 @@ def render(command: str, result: dict, source: Any, args: Any) -> str:
     }[command]
     lines.extend(fn(result, source, args))
     lines.extend(cut_hint(command, result))  # one line at the end when a live value was cut
+    lines.extend(full_hint(command, result, args, source, why_chars=WHY_VALUE, text_chars=TEXT_MAX))  # and when a recorded one was
     return "\n".join(redact(l) for l in lines) + "\n"
 
 
@@ -456,25 +458,34 @@ def render_var(result: dict, source: Any, args: Any) -> list[str]:
 
 # a leaf of a recording that began at a pause (`--record-from`): its value was made before step 0
 BEFORE_RECORDING = "   made before #0, where the recording started"
+# a leaf of a run that recorded no locals: why nothing answers for the name
+NOT_RECORDED = "   not recorded: this run recorded no locals"
 
 
-def _why_node(n: dict, prefix: str, source: Any, mixed: bool = False) -> str:
+def _why_node(n: dict, prefix: str, source: Any, mixed: bool = False, step: Any = None, recorded_locals: bool = True) -> str:
+    """One node line; ``step`` is the queried step (a name with no value yet there says so), ``mixed`` that the tree has a seen node."""
     parts = []
+    first = n.get("firstAssigned") if n.get("step") is None and n.get("text") is None and isinstance(n.get("firstAssigned"), dict) else None
     if n.get("name"):
         if n.get("text") is not None:
             parts.append("%s = %s%s" % (n["name"], _one_line(n["text"], WHY_VALUE), "  (same object)" if n.get("unchanged") else ""))
         elif n.get("step") is not None:
             parts.append("%s  assigned here (value not recorded)" % n["name"])
+        elif first:
+            where = "#%s %s %s" % (first.get("step"), _loc(source, first.get("file"), first.get("line")), first.get("function") or "<module>")
+            # a recording that began at a pause cannot tell a name made before step 0 from one made later: it says both
+            parts.append("%s = ?%s, or first assigned at %s" % (n["name"], BEFORE_RECORDING, where) if n.get("beforeRecording") else "%s  not assigned yet at #%s, first assigned at %s" % (n["name"], step, where))
         else:
-            parts.append("%s = ?%s" % (n["name"], BEFORE_RECORDING if n.get("beforeRecording") else ""))
+            parts.append("%s = ?%s" % (n["name"], BEFORE_RECORDING if n.get("beforeRecording") else "" if recorded_locals else NOT_RECORDED))
     if n.get("step") is not None:
         parts.append("#%s %s %s" % (n["step"], _loc(source, n.get("file"), n.get("line")), n.get("function") or "<module>"))
     elif n.get("defined"):
         parts.append("def %s" % _loc(source, n.get("file"), n.get("line")))
     if mixed and n.get("resolution") == "guessed" and parts:
         parts[0] += "  (guessed)"  # only in a tree that has a seen node, so a snapshot tree reads as before
-    if n.get("statement"):
-        parts.append(_one_line(n["statement"], WHY_STATEMENT))
+    statement = first.get("statement") if first else n.get("statement")
+    if statement:
+        parts.append(_one_line(statement, WHY_STATEMENT))
     shared = _shared_text(n["shared"], source) if n.get("shared") else ""
     if shared:
         parts.append("[%s]" % shared)
@@ -510,10 +521,11 @@ def render_why(result: dict, source: Any, args: Any) -> list[str]:
     then its calls, then its opaque calls), the truncation note. Keep the two identical."""
     out = ["why %s at #%s" % (result["name"], result["step"]) if result.get("name") else "why #%s" % result["step"]]
     mixed = _has_exact(result["root"])
+    recorded_locals = result.get("recordedLocals") is not False
 
     def walk(n: dict, level: int) -> None:
         pad = "  " * level
-        out.append(pad + _why_node(n, "← " if level else "", source, mixed))
+        out.append(pad + _why_node(n, "← " if level else "", source, mixed, result.get("step"), recorded_locals))
         for r in n.get("reads") or []:
             walk(r, level + 1)
         for c in n.get("calls") or []:
@@ -526,6 +538,8 @@ def render_why(result: dict, source: Any, args: Any) -> list[str]:
         out.append("… more inputs than %d nodes show; ask why for a node's name at its step" % PROVENANCE_NODES)
     if result.get("conclusion"):
         out.append(str(result["conclusion"]))
+    if isinstance(result.get("rerun"), dict):
+        out.extend(full_lines(result["rerun"]))
     return out
 
 

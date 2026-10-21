@@ -82,6 +82,8 @@ function program(bindings: StatementBinding[] = BINDINGS): ProvenanceInputs & { 
 
 /* the nodes of the program's tree, named by their step; a snapshot recording infers every one */
 const at = (step: number, line: number, fn = '<module>', scopeId = 0): Record<string, unknown> => ({ step, file: FILE, fileId: 1, line, function: fn, scopeId, resolution: 'guessed' });
+/* a place, as `firstAssigned` carries it: a location with no resolution */
+const place = (step: number, line: number, fn = '<module>', scopeId = 0): Record<string, unknown> => ({ step, file: FILE, fileId: 1, line, function: fn, scopeId });
 const leaf = (name: string): Record<string, unknown> => ({ name });
 const T0 = { name: 'total', text: '0', source: 'locals', ...at(0, 1), statement: 'total = 0', reads: [], calls: [], opaque: [] };
 const I4 = { name: 'i', text: '1', source: 'locals', ...at(4, 2), statement: 'for i in range(2):', reads: [], calls: [], opaque: ['range(2)'] };
@@ -118,6 +120,22 @@ describe('provenance', () => {
   it('answers a leaf for a name nothing recorded and for a step outside the trace', () => {
     expect(json(provenance(program(), { step: 6, name: 'nothing' }))).toEqual({ name: 'nothing', step: 6, depth: 5, nodes: 1, truncated: false, recordedLocals: true, root: { name: 'nothing' }, conclusion: '' });
     expect(provenance(program(), { step: 99, name: 'total' }).root).toEqual({ name: 'total' });
+  });
+
+  it('says where a name with no value yet at the step is first assigned, in its scope or its module', () => {
+    const first = { step: 6, ...place(6, 10), statement: 'n = double(total)  # ?' };
+    expect(json(provenance(program(), { step: 3, name: 'n' }))).toEqual({ name: 'n', step: 3, depth: 5, nodes: 1, truncated: false, recordedLocals: true, root: { name: 'n', firstAssigned: first }, conclusion: '' });
+    // a function's first step, before the statement that binds its local (the F2 shape)
+    expect(json(provenance(program(), { step: 7, name: 'y' }).root)).toEqual({ name: 'y', firstAssigned: { step: 8, ...place(8, 5, 'double', 1), statement: 'y = x * 2' } });
+    // a recording that began at a pause cannot rule out a value made before step 0: it names the later assignment and keeps both
+    expect(json(provenance({ ...program(), midRun: true }, { step: 3, name: 'n' }).root)).toEqual({ name: 'n', beforeRecording: true, firstAssigned: first });
+    expect(provenance({ ...program(), midRun: true }, { step: 3, name: 'nothing' }).root).toEqual({ name: 'nothing', beforeRecording: true });
+    // without recorded locals an earlier value may only have gone unrecorded: no claim that there is none (review of 0.7.0)
+    const bare = program();
+    bare.locals = [];
+    expect(json(provenance(bare, { step: 3, name: 'n' }).root)).toEqual({ name: 'n' });
+    // an assignment in another scope is another name: `y` lives in double
+    expect(provenance(program(), { step: 3, name: 'y' }).root).toEqual({ name: 'y' });
   });
 
   it('explains the statement itself for an empty name', () => {
@@ -200,7 +218,12 @@ describe('provenance', () => {
     inputs.locals = [];
     const lines = renderProvenance(provenance(inputs, { step: 13, name: 'size', nodes: 3 })).split('\n');
     expect(lines[1]).toBe('size  assigned here (value not recorded)   #13 /w/main.py:12 <module>   size = len(str(n)) + box.v');
-    expect(lines.slice(2)).toEqual(['  ← n = ?', '  ← box = ?', '  · len(str(n))   not stepped', '  · str(n)   not stepped']);
+    expect(lines.slice(2)).toEqual(['  ← n = ?   not recorded: this run recorded no locals', '  ← box = ?   not recorded: this run recorded no locals', '  · len(str(n))   not stepped', '  · str(n)   not stepped']);
+    expect(renderProvenance(provenance(program(), { step: 3, name: 'n' })).split('\n')).toEqual(['why n at #3', 'n  not assigned yet at #3, first assigned at #6 /w/main.py:10 <module>   n = double(total)  # ?']);
+    expect(renderProvenance(provenance({ ...program(), midRun: true }, { step: 3, name: 'nothing' })).split('\n')).toEqual(['why nothing at #3', 'nothing = ?   made before #0, where the recording started']);
+    // a recording that began at a pause keeps both possibilities; a run without locals claims neither
+    expect(renderProvenance(provenance({ ...program(), midRun: true }, { step: 3, name: 'n' })).split('\n')).toEqual(['why n at #3', 'n = ?   made before #0, where the recording started, or first assigned at #6 /w/main.py:10 <module>   n = double(total)  # ?']);
+    expect(renderProvenance(provenance({ ...program(), locals: [] }, { step: 3, name: 'n' })).split('\n')).toEqual(['why n at #3', 'n = ?   not recorded: this run recorded no locals']);
     const cut = renderProvenance(provenance(program(), { step: 13, name: '', nodes: 4 })).split('\n');
     expect(cut[0]).toBe('why #13');
     expect(cut[cut.length - 1]).toBe("… more inputs than 60 nodes show; ask why for a node's name at its step");
@@ -233,7 +256,8 @@ interface SavedRun {
 }
 interface Cases {
   bindings: Record<string, StatementBinding[]>;
-  cases: { file: string; line: number; occurrence: number; name: string; depth?: number | null; step: number; result: unknown }[];
+  /** `midRun`: the case reads the run as a recording that began at a pause */
+  cases: { file: string; line: number; occurrence: number; name: string; depth?: number | null; step: number; midRun?: boolean; result: unknown }[];
 }
 
 const HAVE_FIXTURE = fs.existsSync(RUN_JSON) && fs.existsSync(CASES_JSON);
@@ -310,8 +334,9 @@ describe.skipIf(!HAVE_FIXTURE)('provenance fixture', () => {
   it('has cases', () => {
     expect(cases.length).toBeGreaterThan(0);
   });
-  it.each(cases.map((c) => [`${c.file}:${c.line} (${c.occurrence}) ${JSON.stringify(c.name)} at #${c.step}${c.depth ? ` depth ${c.depth}` : ''}`, c] as const))('answers %s like the Python builder', (_label, c) => {
-    const got = provenance(fixture!.inputs, { step: c.step, name: c.name, depth: c.depth ?? undefined });
+  it.each(cases.map((c) => [`${c.file}:${c.line} (${c.occurrence}) ${JSON.stringify(c.name)} at #${c.step}${c.depth ? ` depth ${c.depth}` : ''}${c.midRun ? ' mid-run' : ''}`, c] as const))('answers %s like the Python builder', (_label, c) => {
+    const inputs = c.midRun ? { ...fixture!.inputs, midRun: true } : fixture!.inputs;
+    const got = provenance(inputs, { step: c.step, name: c.name, depth: c.depth ?? undefined });
     expect(json(got)).toEqual(c.result);
   });
 });

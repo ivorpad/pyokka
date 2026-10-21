@@ -106,19 +106,29 @@ def arm_text(texts: list) -> str:
     return "%s %s" % (head, ", ".join("%s x%d" % (t[len(head):].strip(), n) for t, n in counts.most_common()))
 
 
+def _place_note(node: dict, first: dict | None) -> str:
+    """The statement column of a chain row: the producing statement, or for a name with no value yet where it gets one."""
+    if node.get("beforeRecording"):
+        return "made before #0, where the recording started" + (", or first assigned here: %s" % flat(first.get("statement"), 100) if first else "")
+    return "first assigned here: %s" % flat(first.get("statement"), 100) if first else flat(node.get("statement"), 100)
+
+
 def flatten_chain(node: Any, depth: int = 0, via: str = "root", limit: int = VALUE_MAX) -> list[dict]:
     """``why``'s tree as an indented list: ``depth`` keeps the shape, ``via`` says how we got here."""
     if not isinstance(node, dict):
         return []
+    # a root name with no value yet at the queried step: the row points at where it is first assigned
+    first = node.get("firstAssigned") if node.get("step") is None and node.get("text") is None and isinstance(node.get("firstAssigned"), dict) else None
+    place = first or node
     out = [{
         "depth": depth,
         "via": via,
         "name": str(node.get("name") or ""),
-        "text": flat(node.get("text"), limit) if node.get("text") is not None else "?",
-        # a leaf of a recording that began at a pause: the value was made before step 0
-        "statement": "made before #0, where the recording started" if node.get("beforeRecording") else flat(node.get("statement"), 100),
-        "location": "%s:%s" % (os.path.basename(str(node.get("file") or "")), node.get("line")) if node.get("file") else "",
-        "step": node.get("step") if isinstance(node.get("step"), int) else None,
+        "text": flat(node.get("text"), limit) if node.get("text") is not None else "not assigned yet" if first and not node.get("beforeRecording") else "?",
+        # a leaf of a recording that began at a pause: the value was made before step 0, or (when a later statement assigns it) there
+        "statement": _place_note(node, first),
+        "location": "%s:%s" % (os.path.basename(str(place.get("file") or "")), place.get("line")) if place.get("file") else "",
+        "step": place.get("step") if isinstance(place.get("step"), int) else None,
     }]
     for read in node.get("reads") or []:
         out.extend(flatten_chain(read, depth + 1, "reads", limit))

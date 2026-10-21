@@ -14,9 +14,12 @@ import { monaco, monacoTheme, READONLY_OPTIONS } from '../monaco';
 import type { UiPrefs } from '../vscode';
 import { shapeLabel, tableFor, type ValueTableModel } from '../valueTable';
 import { buildWhyDocument, type WhyLine } from '../why';
-import { formatRepr } from '../src-shared';
+import { formatRepr, whyFullTarget } from '../src-shared';
 import { IconButton, MenuButton, type MenuItem } from './ui';
 import { ValueTable } from './ValueTable';
+import type { FullValueView } from '../../src/shared/replayProtocol';
+import type { FullValueAsk } from './VariablePane';
+import { FullValue } from './FullValue';
 
 export interface DetailsHandle {
   focus(): void;
@@ -30,6 +33,8 @@ export interface DetailsProps {
   compareEnabled: boolean;
   /** the "why" tree shown instead of the entries until it is closed */
   why: WhyView | null;
+  /** with a why tree: the run's phase and the step the tree explains (inspection.ts), while the Time Machine is on */
+  whyInspection?: string;
   onPrefs: (patch: Partial<UiPrefs>) => void;
   onOpen: (fileId: number, line: number, col: number, sideView: boolean) => void;
   onExpand: (entry: Entry, node: ValueNode) => void;
@@ -39,9 +44,18 @@ export interface DetailsProps {
   /** Time Machine to a step (a tree's node or call line; starts it when needed) */
   onGoto: (step: number) => void;
   onCloseWhy: () => void;
+  /** with a why tree: the rerun value of its name at its step, once asked for (`whyKey`) */
+  whyFull?: FullValueView;
+  /** absent: the host has no replay (the browser page) */
+  onFull?: (ask: FullValueAsk) => void;
   /** rows to mark in the tables, by entry logId: the loop's current item */
   tableMarks?: Record<string, number>;
   handle?: Ref<DetailsHandle>;
+}
+
+/** The pane's key for the rerun value a why tree asks for: its name at its step. */
+export function whyKey(why: Pick<WhyView, 'step' | 'name'>): string {
+  return `at:${why.step}:${why.name}`;
 }
 
 interface DetailLine extends Omit<WhyLine, 'kind'> {
@@ -79,7 +93,7 @@ function tablesFor(entries: Entry[]): TableEntry[] {
 
 /**
  * `tabled` lists the entries shown as a table above the editor with the rows the user opened:
- * the document then holds those rows only, under the entry's header, instead of the whole value.
+ * the document then holds those rows only, under the entry's header, instead of the full value.
  */
 function buildDocument(entries: Entry[], tabled: Map<string, { name: string; rows: { index: number; node: ValueNode }[] }> = new Map()): Built {
   const out: string[] = [];
@@ -362,15 +376,29 @@ export function Details(props: DetailsProps) {
             </>
           )}
         </span>
+        {why && props.whyInspection && <span class="pk-inspection">{props.whyInspection}</span>}
         <span class="pk-toolbar">
           {!why && props.compareEnabled && <IconButton icon="diff" title="Compare selected values" onClick={props.onCompare} />}
           {!why && <IconButton icon="type-hierarchy-sub" title="Show as diagram" disabled={props.entries.length === 0} onClick={props.onDiagram} />}
           <IconButton icon="search" title="Find" active={findOpen} onClick={toggleFind} />
           <IconButton icon="copy" title="Copy with highlighting" onClick={copyAll} />
           <MenuButton icon="ellipsis" title="More" items={menuItems} />
+          {why && why.name && why.tree && props.onFull && (
+            <IconButton
+              icon="list-tree"
+              title={`Rerun value of ${why.name} at #${why.step}: runs the program again in a separate process up to this step and copies all of it (network answers come from the HTTP recording; files it writes are written again)`}
+              spin={props.whyFull?.status === 'pending'}
+              onClick={() => props.onFull!({ key: whyKey(why), ...whyFullTarget(why.tree!) })}
+            />
+          )}
           {why && <IconButton icon="close" title="Back to entries" onClick={props.onCloseWhy} />}
         </span>
       </header>
+      {why && props.whyFull && (
+        <div class="pk-why-full">
+          <FullValue key={`${props.whyFull.key}:${props.whyFull.status}`} view={props.whyFull} />
+        </div>
+      )}
       {!why && tables.length > 0 && (
         <div class={`pk-details-tables${emptyUnderTables ? ' pk-details-tables--only' : ''}`}>
           {tables.map(({ entry, model, name }) => {

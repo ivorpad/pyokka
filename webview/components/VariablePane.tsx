@@ -1,14 +1,39 @@
 /**
  * VARIABLE pane: the history of one name, every step where it changed with the new value and
  * what the statement read. A row moves the Time Machine to its step; a read name becomes the
- * next query, so the user walks backwards one statement at a time.
+ * next query, so the user walks backwards one statement at a time. A recorded row's "Full
+ * value" replays the run and shows the copy under the row, where opening it moves nothing.
  */
 import { useEffect, useState } from 'preact/hooks';
 import type { PanelSettings, VariableChange, VariableView } from '../src-shared';
+import type { FullValueView } from '../../src/shared/replayProtocol';
 import { Icon, IconButton, Repr, SourceLink } from './ui';
+import { FullValue } from './FullValue';
+
+/** What a "Rerun value" button asks the host (`fullValue.query` without its type). */
+export interface FullValueAsk {
+  key: string;
+  kind: 'change' | 'at';
+  step: number;
+  name: string;
+  scopeId?: number;
+  text?: string;
+}
+
+/** The pane's key for a row's rerun value: one per recorded change. */
+export function changeKey(c: Pick<VariableChange, 'step' | 'scopeId' | 'name'>): string {
+  return `change:${c.step}:${c.scopeId}:${c.name}`;
+}
+
+/** A row whose value the recorder kept can be replayed for the whole of it. */
+export function canAskFull(c: Pick<VariableChange, 'source' | 'text'>): boolean {
+  return c.source === 'locals' && c.text !== undefined;
+}
 
 export interface VariablePaneProps {
   view: VariableView | null;
+  /** the run's phase and the step the Time Machine shows (inspection.ts), while it is on */
+  inspection?: string;
   settings: PanelSettings;
   showFileName: boolean;
   /** ask the host for a name's history; an empty name clears the pane */
@@ -21,6 +46,9 @@ export interface VariablePaneProps {
   /** switch the session's Record Variable Changes on */
   onEnableRecordLocals: () => void;
   onClose: () => void;
+  /** rerun values by key (`changeKey`); absent: the host has no replay (the browser page) */
+  fullValues?: Record<string, FullValueView>;
+  onFull?: (ask: FullValueAsk) => void;
 }
 
 export function VariablePane(props: VariablePaneProps) {
@@ -38,6 +66,7 @@ export function VariablePane(props: VariablePaneProps) {
         <span class="pk-pane-title">
           VARIABLE {history && <span class="pk-count">{history.total}</span>}
         </span>
+        {props.inspection && <span class="pk-inspection">{props.inspection}</span>}
         <span class="pk-toolbar">
           <IconButton icon="close" title="Close" onClick={props.onClose} />
         </span>
@@ -110,7 +139,7 @@ function VariableBody(props: VariablePaneProps) {
         history.pauses ? (
           <PauseRow key={`${c.step}:${c.name}`} change={c} showFileName={props.showFileName} />
         ) : (
-          <ChangeRow key={`${c.step}:${c.name}`} change={c} showFileName={props.showFileName} onGoto={props.onGoto} onOpen={props.onOpen} onQuery={props.onQuery} onWhy={props.onWhy} />
+          <ChangeRow key={`${c.step}:${c.name}`} change={c} showFileName={props.showFileName} onGoto={props.onGoto} onOpen={props.onOpen} onQuery={props.onQuery} onWhy={props.onWhy} full={props.fullValues?.[changeKey(c)]} onFull={props.onFull} />
         )
       ))}
       {history.truncated && (
@@ -141,7 +170,8 @@ function PauseRow({ change: c, showFileName }: { change: VariableChange; showFil
   );
 }
 
-function ChangeRow({ change: c, showFileName, onGoto, onOpen, onQuery, onWhy }: { change: VariableChange; showFileName: boolean; onGoto: (step: number) => void; onOpen: VariablePaneProps['onOpen']; onQuery: (name: string) => void; onWhy: VariablePaneProps['onWhy'] }) {
+function ChangeRow({ change: c, showFileName, onGoto, onOpen, onQuery, onWhy, full, onFull }: { change: VariableChange; showFileName: boolean; onGoto: (step: number) => void; onOpen: VariablePaneProps['onOpen']; onQuery: (name: string) => void; onWhy: VariablePaneProps['onWhy']; full?: FullValueView; onFull?: (ask: FullValueAsk) => void }) {
+  const ask = onFull && canAskFull(c) ? (): void => onFull({ key: changeKey(c), kind: 'change', step: c.step, name: c.name, scopeId: c.scopeId, text: c.text }) : undefined;
   return (
     <div class="pk-variable-change" role="listitem">
       <div class="pk-row pk-variable-row" title={`Time Machine to step ${c.step}`} onClick={() => onGoto(c.step)}>
@@ -160,6 +190,15 @@ function ChangeRow({ change: c, showFileName, onGoto, onOpen, onQuery, onWhy }: 
         </span>
         <span class="pk-variable-fn">{c.function}</span>
         <SourceLink file={c.file} line={c.line} col={0} showFile={showFileName} onOpen={(side) => onOpen(c.fileId, c.line, 0, side)} />
+        {ask && (
+          <IconButton
+            icon="list-tree"
+            title={`Rerun value of ${c.name}: runs the program again in a separate process up to this step and copies all of it (network answers come from the HTTP recording; files it writes are written again)`}
+            class="pk-full-btn"
+            spin={full?.status === 'pending'}
+            onClick={ask}
+          />
+        )}
         <IconButton icon="question" title={`Why this value at #${c.step}`} class="pk-why" onClick={() => onWhy(c.step, c.name, c.logId)} />
       </div>
       {c.reads && c.reads.length > 0 && (
@@ -180,6 +219,7 @@ function ChangeRow({ change: c, showFileName, onGoto, onOpen, onQuery, onWhy }: 
           ))}
         </div>
       )}
+      {full && <FullValue key={`${full.key}:${full.status}`} view={full} />}
     </div>
   );
 }
