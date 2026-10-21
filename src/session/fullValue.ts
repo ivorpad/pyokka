@@ -37,27 +37,32 @@ export function nextInScope(scopeOf: (step: number) => number, count: number, st
  * without one (the statement kept the same object, the recorder was past its cap, the text was
  * masked for display) is read at `next`, the value after its statement. The snapshot at the start
  * of the row's own step is taken only when the text says so, since it can hold the value from
- * before the change.
+ * before the change. A --follow-objects change (`exact`) is kept at its statement's own step but
+ * holds the value after it, so it is read at `next` and compared with its own text.
  */
 export function changeTarget(locals: readonly LocalsEntry[], change: { step: number; scopeId: number; name: string; text?: string }, next: number | undefined): { step: number; observation?: Observation } | undefined {
-  const snapshotAt = (step: number | undefined): Observation | undefined => {
+  const snapshotAt = (step: number | undefined): (Observation & { exact: boolean }) | undefined => {
     if (step === undefined) return undefined;
     for (const entry of locals) {
       if (entry.step > step) break;
       if (entry.step !== step || entry.scopeId !== change.scopeId) continue;
       const ch = entry.changes.find((c) => c.name === change.name);
-      if (ch) return { step, scopeId: entry.scopeId, text: ch.text };
+      if (ch) return { step, scopeId: entry.scopeId, text: ch.text, exact: !!ch.exact };
     }
     return undefined;
   };
+  const seen = (o: Observation & { exact: boolean }): Observation => ({ step: o.step, scopeId: o.scopeId, text: o.text });
   const after = snapshotAt(next);
   if (change.text !== undefined) {
-    if (after && after.text === change.text) return { step: after.step, observation: after };
+    if (after && !after.exact && after.text === change.text) return { step: after.step, observation: seen(after) };
     const own = snapshotAt(change.step);
-    if (own && own.text === change.text) return { step: own.step, observation: own };
+    if (own && own.text === change.text) {
+      if (!own.exact) return { step: own.step, observation: seen(own) };
+      if (next !== undefined) return { step: next, observation: { step: next, scopeId: own.scopeId, text: own.text } };
+    }
   }
   if (next === undefined) return undefined;
-  return after ? { step: next, observation: after } : { step: next };
+  return after && !after.exact ? { step: next, observation: seen(after) } : { step: next };
 }
 
 /** The last snapshot of `name` at or before `step` in one of `scopes` (the step's own, then the module's). */
