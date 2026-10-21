@@ -21,7 +21,7 @@ vi.mock('../../src/session/fullValueSession', () => ({
       status: 'checked',
       step: q.step + 1,
       name: q.name,
-      summary: 'The replay took the same 13 steps, and the key sk-abcdefghijklmnopqrstuvwxyz0123 came out the same.',
+      summary: 'The rerun took the same 13 steps, and the key sk-abcdefghijklmnopqrstuvwxyz0123 came out the same.',
       value: { type: 'dict', value: "{'key': 'sk-abcdefghijklmnopqrstuvwxyz0123'}", id: 'replay 1', queryPath: ['replay'], props: [{ name: 'key', type: 'str', value: 'sk-abcdefghijklmnopqrstuvwxyz0123', id: 'replay 2', queryPath: ['replay', 'key'] }] },
       matched: 13,
       ms: 40,

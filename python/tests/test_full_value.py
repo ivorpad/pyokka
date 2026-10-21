@@ -36,7 +36,7 @@ ORDER = {"type": "dict", "value": "{'tier': 'gold', 'items': [{...}, {...}]}", "
 ]}
 
 CHECKED = (
-    "The replay took the same 42 steps, and all 12 values the recording kept on the way came out the same. Each was compared as far as the recording kept it "
+    "The rerun took the same 42 steps, and all 12 values the recording kept on the way came out the same. Each was compared as far as the recording kept it "
     "(by default 120 characters, three levels deep), so a difference deeper in this copy, from a file or a database that changed since, would not show."
 )
 

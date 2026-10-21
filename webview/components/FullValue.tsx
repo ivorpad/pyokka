@@ -22,7 +22,7 @@ const STATUS_ICON: Record<FullValueStatus, string> = {
 };
 
 const STATUS_LABEL: Record<FullValueStatus, string> = {
-  pending: 'Replaying',
+  pending: 'Rerunning',
   checked: 'Checked',
   path: 'Path checked',
   differs: 'Differs',
@@ -55,7 +55,7 @@ export function FullValue({ view }: { view: FullValueView }) {
         <span class="pk-full-label">{STATUS_LABEL[view.status]}</span>
         <span class="pk-full-summary">
           {view.summary}
-          {view.ms !== undefined && view.status !== 'pending' && view.status !== 'unavailable' ? <span class="pk-dim"> Replayed in {seconds(view.ms)}.</span> : null}
+          {view.ms !== undefined && view.status !== 'pending' && view.status !== 'unavailable' ? <span class="pk-dim"> Ran again in {seconds(view.ms)}.</span> : null}
         </span>
       </div>
       {d && (
@@ -63,7 +63,7 @@ export function FullValue({ view }: { view: FullValueView }) {
           <span class="pk-dim">
             #{d.step} {d.name}:
           </span>{' '}
-          <span class="pk-dim">the recording kept</span> <Repr text={d.recorded} /> <span class="pk-dim">the replay has</span> <Repr text={d.replay} />
+          <span class="pk-dim">the recording kept</span> <Repr text={d.recorded} /> <span class="pk-dim">the rerun has</span> <Repr text={d.replay} />
         </div>
       )}
       {rows.length > 0 && (
@@ -82,7 +82,7 @@ export function FullValue({ view }: { view: FullValueView }) {
                   <span class="pk-dbg-twist" />
                 )}
                 {r.more ? (
-                  <span class="pk-dbg-dim">more elements, past what a replay copies</span>
+                  <span class="pk-dbg-dim">more elements, past what a rerun copies</span>
                 ) : (
                   <>
                     <span class="pk-dbg-name">{r.name}</span>
@@ -90,7 +90,7 @@ export function FullValue({ view }: { view: FullValueView }) {
                     <span class="pk-dbg-value" title={r.text}>
                       <Repr text={r.text} />
                     </span>
-                    {r.needsLoad ? <span class="pk-dbg-dim"> (deeper than a replay copies)</span> : null}
+                    {r.needsLoad ? <span class="pk-dbg-dim"> (deeper than a rerun copies)</span> : null}
                   </>
                 )}
               </li>

@@ -89,7 +89,7 @@ describe('the run behind a rerun value', () => {
     expect(sent.replay?.inputs).toEqual({ seed: 42, reads: [['time', 1792500000.25]] });
     expect(new Int32Array(Uint8Array.from(Buffer.from(sent.replay!.expect, 'base64')).buffer).length).toBe(2 * 5);
     expect(view).toMatchObject({ key: 'change:3:0:orders', status: 'checked', step: 4, name: 'orders', matched: 4 });
-    expect(view.summary).toMatch(/^The replay took the same 4 steps, and all 2 values the recording kept on the way came out the same\. Each was compared as far as the recording kept it/);
+    expect(view.summary).toMatch(/^The rerun took the same 4 steps, and all 2 values the recording kept on the way came out the same\. Each was compared as far as the recording kept it/);
     expect(runner.disposed).toBe(true);
   });
 
@@ -141,13 +141,13 @@ describe('the run behind a rerun value', () => {
     const runner = new FakeRunner(() => [{ type: 'run.finished', exitCode: null, durationMs: 60_000, timedOut: true, stopped: false, stepCount: 3, logCount: 0 }]);
     const src = source(runner);
     const view = await replayFullValue({ ...src, request: { ...src.request!, config: { ...src.request!.config, timeoutMs: 30_000 } } }, { key: 'k', kind: 'at', step: 5, name: 'orders' });
-    expect(view).toMatchObject({ status: 'error', summary: 'The replay hit its time limit (60 s, twice the Run Timeout) before step #5. Raise the Run Timeout in Settings and ask again.' });
+    expect(view).toMatchObject({ status: 'error', summary: 'The rerun hit its time limit (60 s, twice the Run Timeout) before step #5. Raise the Run Timeout in Settings and ask again.' });
   });
 
   it('a refused replay answers at once, without waiting for the program', async () => {
     const runner = new FakeRunner(() => [{ type: 'replay.result', status: 'error', step: 0, matched: 0, message: 'a replay cannot start from a pause' }]);
     const view = await replayFullValue(source(runner), { key: 'k', kind: 'at', step: 5, name: 'orders' });
-    expect(view).toMatchObject({ status: 'error', summary: 'The replay failed: a replay cannot start from a pause.' });
+    expect(view).toMatchObject({ status: 'error', summary: 'The rerun failed: a replay cannot start from a pause.' });
   });
 
   it('a row with no later step in its scope has nothing to replay to', async () => {

@@ -82,7 +82,7 @@ export async function replayFullValue(src: ReplaySource, query: FullValueQuery):
   const refused = refusal({ request: src.request, midRun: src.midRun, startedAt: src.startedAt, httpCount: src.httpCount, running: src.running, paused: src.paused, transport: src.transport, step: target, count: src.count });
   if (refused) return unavailable(target, refused);
   const runner = src.makeRunner();
-  if (!runner) return unavailable(target, 'No runner could be started for the replay.');
+  if (!runner) return unavailable(target, 'No runner could be started for the rerun.');
   const runId = `${src.runId}-replay-${++serial}`;
   const request = replayRequest(src.request!, runId, {
     expect: expectPairs(src.steps, target),
@@ -97,9 +97,9 @@ export async function replayFullValue(src: ReplaySource, query: FullValueQuery):
   let timedOut = false;
   try {
     const ready = await runner.start();
-    if (!ready.capabilities.includes(REPLAY_CAPABILITY)) return unavailable(target, 'The Pyokka runtime in dist/python is older than the extension and cannot replay. Reinstall the extension.');
+    if (!ready.capabilities.includes(REPLAY_CAPABILITY)) return unavailable(target, 'The Pyokka runtime in dist/python is older than the extension and cannot rerun the program. Reinstall the extension.');
     await new Promise<void>((resolve, reject) => {
-      const timer = setTimeout(() => reject(new Error(`the replay did not reach step #${target} within ${Math.round(src.timeoutMs / 1000)} s`)), src.timeoutMs);
+      const timer = setTimeout(() => reject(new Error(`the rerun did not reach step #${target} within ${Math.round(src.timeoutMs / 1000)} s`)), src.timeoutMs);
       runner.on('event', (ev) => {
         if (ev.runId !== runId) return;
         if (ev.type === 'locals') locals.push(...ev.entries);
@@ -120,7 +120,7 @@ export async function replayFullValue(src: ReplaySource, query: FullValueQuery):
       runner.on('exit', (code) => {
         clearTimeout(timer);
         if (result) resolve();
-        else reject(new Error(`the replay's runner exited (code ${code ?? 'null'}) before it answered`));
+        else reject(new Error(`the rerun's runner exited (code ${code ?? 'null'}) before it answered`));
       });
       runner.run(request).catch((err: unknown) => {
         clearTimeout(timer);
@@ -128,13 +128,13 @@ export async function replayFullValue(src: ReplaySource, query: FullValueQuery):
       });
     });
   } catch (err) {
-    if (!result) return { key: query.key, status: 'error', step: target, name: query.name, summary: `The replay failed: ${err instanceof Error ? err.message : String(err)}.`, ms: Date.now() - started };
+    if (!result) return { key: query.key, status: 'error', step: target, name: query.name, summary: `The rerun failed: ${err instanceof Error ? err.message : String(err)}.`, ms: Date.now() - started };
   } finally {
     runner.dispose();
   }
   if (!result && timedOut) {
     const limit = Math.round((request.config.timeoutMs ?? 0) / 1000);
-    return { key: query.key, status: 'error', step: target, name: query.name, summary: `The replay hit its time limit (${limit} s, twice the Run Timeout) before step #${target}. Raise the Run Timeout in Settings and ask again.`, ms: Date.now() - started };
+    return { key: query.key, status: 'error', step: target, name: query.name, summary: `The rerun hit its time limit (${limit} s, twice the Run Timeout) before step #${target}. Raise the Run Timeout in Settings and ask again.`, ms: Date.now() - started };
   }
   const compare = compareRecorded({ locals: src.locals, logs: src.logs }, { locals, logs }, target);
   const inputs = src.inputs ? 'handed back' : src.paused && src.running ? 'run paused' : 'none recorded';

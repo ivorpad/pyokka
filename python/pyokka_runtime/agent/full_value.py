@@ -21,7 +21,7 @@ from .source import AgentError
 
 #: the panel's labels (webview/components/FullValue.tsx)
 STATUS_LABEL = {
-    "pending": "Replaying",
+    "pending": "Rerunning",
     "checked": "Checked",
     "path": "Path checked",
     "differs": "Differs",

@@ -286,7 +286,7 @@ pyokka why --live 53 order --rerun    # invoices.py, paused in invoice_total
 # order = {'items': [{'qty': 2, 'sku': 'KB-01', 'unit_price': 49.9}, {'qty': 1, 'sku': 'MS-07'…(+39 chars)   #53 invoices.py:40 invoice_total   def invoice_total(order):
 #
 # rerun value of order: Checked
-# The replay took the same 55 steps, and all 104 values the recording kept on the way came out the same. …
+# The rerun took the same 55 steps, and all 104 values the recording kept on the way came out the same. …
 # ran again in 363 ms in a separate process, so files it writes were written again
 #   order = {
 #     'tier': 'gold',

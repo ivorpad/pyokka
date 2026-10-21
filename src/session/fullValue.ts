@@ -102,18 +102,18 @@ export function comparable(text: string): string {
 /** Why this run cannot be replayed, in a sentence; undefined when it can. */
 export function refusal(input: { request?: Omit<RunRequest, 'type' | 'id'>; midRun?: boolean; startedAt?: number; httpCount: number; running: boolean; paused: boolean; transport: boolean; step: number; count: number }): string | undefined {
   if (input.running && !input.paused) return 'A run is in flight. Ask again when it finishes or pauses.';
-  if (input.transport) return 'This session runs in a container or another machine; a replay needs a local interpreter for now.';
+  if (input.transport) return 'This session runs in a container or another machine; a rerun needs a local interpreter for now.';
   if (!input.request) return 'Pyokka did not keep how this run was started. Run the file again, then ask.';
-  if (input.request.module) return 'A module launch cannot be replayed: the recording needs a file.';
-  if (input.request.mode !== 'normal') return 'Only a normal run can be replayed (not a profile or snaps run).';
+  if (input.request.module) return 'A module launch cannot be rerun: the recording needs a file.';
+  if (input.request.mode !== 'normal') return 'Only a normal run can be rerun (not a profile or snaps run).';
   // a recording that began at a pause replays by running unrecorded to the statement it began at; a runtime older than that kept no such point
   if (input.midRun && input.startedAt === undefined) return 'This recording began at a pause, and the runtime that made it did not keep where. Record it again with this version, or record the whole run (--record).';
   if (input.step < 0 || input.step >= input.count) return `Step ${input.step} is not in this run (it has ${input.count} steps).`;
   const config = input.request.config;
-  if (config.httpObserve === false) return 'HTTP observation is off for this session, so Pyokka cannot tell whether this run called the network, and a replay could call it again. Turn httpObserve on and run once.';
+  if (config.httpObserve === false) return 'HTTP observation is off for this session, so Pyokka cannot tell whether this run called the network, and a rerun could call it again. Turn httpObserve on and run once.';
   if (config.http === 'off' && input.httpCount > 0) {
     const n = input.httpCount === 1 ? 'one request' : `${input.httpCount} requests`;
-    return `This run called the network (${n}) and the answers were not recorded, so a replay would call it again, could get other answers and spend tokens. Switch HTTP to Record in Settings, run once, then ask again.`;
+    return `This run called the network (${n}) and the answers were not recorded, so a rerun would call it again, could get other answers and spend tokens. Switch HTTP to Record in Settings, run once, then ask again.`;
   }
   return undefined;
 }
@@ -221,19 +221,19 @@ export function interpret(
   const base = { key, step: query.step, name: query.name, ms: Math.round(ms) };
   // code typed at a pause ran in the recording only: said after whatever the replay found
   const view = (status: FullValueStatus, summary: string, extra: Partial<FullValueView> = {}): FullValueView => ({ ...base, status, summary: summary + (notes.console && status !== 'error' ? CONSOLE_NOTE : ''), ...extra });
-  if (!result) return view('error', 'The replay ended without an answer. The Pyokka log has what the runtime printed.');
+  if (!result) return view('error', 'The rerun ended without an answer. The Pyokka log has what the runtime printed.');
   const matched = result.matched;
   switch (result.status) {
     case 'diverged': {
-      const where = result.expected && result.actual ? ` The recording ran ${locate(result.expected.rid)}, the replay ran ${locate(result.actual.rid)}.` : result.message ? ` ${result.message}.` : '';
-      return view('diverged', `The replay went another way at step #${result.step}, so it has no value from this run.${where}${inputsNote(notes.inputs)}`, { matched });
+      const where = result.expected && result.actual ? ` The recording ran ${locate(result.expected.rid)}, the rerun ran ${locate(result.actual.rid)}.` : result.message ? ` ${result.message}.` : '';
+      return view('diverged', `The rerun went another way at step #${result.step}, so it has no value from this run.${where}${inputsNote(notes.inputs)}`, { matched });
     }
     case 'input':
-      return view('diverged', `The replay went another way at step #${result.step}: ${result.message ?? 'the program read something the recording does not have'}.`, { matched });
+      return view('diverged', `The rerun went another way at step #${result.step}: ${result.message ?? 'the program read something the recording does not have'}.`, { matched });
     case 'ended':
-      return view('diverged', `The replay finished at step #${result.step}, before step #${query.step}: it went another way.${inputsNote(notes.inputs)}`, { matched });
+      return view('diverged', `The rerun finished at step #${result.step}, before step #${query.step}: it went another way.${inputsNote(notes.inputs)}`, { matched });
     case 'error':
-      return view('error', `The replay failed: ${result.message ?? 'no reason given'}.`, { matched });
+      return view('error', `The rerun failed: ${result.message ?? 'no reason given'}.`, { matched });
     case 'reached':
       break;
   }
@@ -250,20 +250,20 @@ export function interpret(
   }
   const value = result.value.data;
   if (difference) {
-    return view('differs', `The replay took the same ${matched} steps, but ${difference.name} at step #${difference.step} came out different from what the recording kept, so this copy is not quite your run's value.`, { value, difference, matched });
+    return view('differs', `The rerun took the same ${matched} steps, but ${difference.name} at step #${difference.step} came out different from what the recording kept, so this copy is not quite your run's value.`, { value, difference, matched });
   }
   if (compared === 0) {
-    return view('path', `The replay took the same ${matched} steps. The recording kept no values on the way to compare with, so only the path is checked.${inputsNote(notes.inputs)}`, { value, matched });
+    return view('path', `The rerun took the same ${matched} steps. The recording kept no values on the way to compare with, so only the path is checked.${inputsNote(notes.inputs)}`, { value, matched });
   }
   const count = compared === 1 ? 'the one value' : `all ${compared} values`;
   const own = itself ? '' : ` The recording kept no text of ${query.name} itself to compare with.`;
   // past the recorder's cap on changes nothing was kept: those steps were compared by the path alone
   const capped = notes.valuesUntil !== undefined && notes.valuesUntil < query.step ? ` The recording stopped keeping values at step #${notes.valuesUntil} (its limit of ${MAX_LOCALS_ENTRIES.toLocaleString('en-US')} changes), so after it only the path was compared.` : '';
-  return view('checked', `The replay took the same ${matched} steps, and ${count} the recording kept on the way came out the same.${KEPT_LIMIT}${own}${capped}${inputsNote(notes.inputs)}`, { value, matched });
+  return view('checked', `The rerun took the same ${matched} steps, and ${count} the recording kept on the way came out the same.${KEPT_LIMIT}${own}${capped}${inputsNote(notes.inputs)}`, { value, matched });
 }
 
 /** A recording whose run had code typed in the Debug Console at a pause: the replay ran without it. */
-export const CONSOLE_NOTE = ' Code typed in the Debug Console ran at a pause of this run. A replay runs the program without it, so a value that code changed comes out as the program made it.';
+export const CONSOLE_NOTE = ' Code typed in the Debug Console ran at a pause of this run. A rerun runs the program without it, so a value that code changed comes out as the program made it.';
 
 /** What "checked" cannot cover: the comparison stops where the recorder's text of each value stops. */
 export const KEPT_LIMIT = ' Each was compared as far as the recording kept it (by default 120 characters, three levels deep), so a difference deeper in this copy, from a file or a database that changed since, would not show.';

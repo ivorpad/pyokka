@@ -35,7 +35,7 @@ const orders: ValueNode = {
   ],
 };
 
-const checked: FullValueView = { key: 'change:3:0:orders', status: 'checked', step: 4, name: 'orders', summary: 'The replay took the same 4 steps, and all 2 values the recording kept on the way came out the same.', value: orders, matched: 4, ms: 1234 };
+const checked: FullValueView = { key: 'change:3:0:orders', status: 'checked', step: 4, name: 'orders', summary: 'The rerun took the same 4 steps, and all 2 values the recording kept on the way came out the same.', value: orders, matched: 4, ms: 1234 };
 
 describe('the copy under a row', () => {
   it('says what was checked, opens at the root and marks what the copy did not reach', () => {
@@ -43,19 +43,19 @@ describe('the copy under a row', () => {
     expect(html).toContain('pk-full-checked');
     expect(html).toContain('Checked');
     expect(html).toContain('all 2 values the recording kept on the way came out the same');
-    expect(html).toContain('Replayed in 1.2 s.');
+    expect(html).toContain('Ran again in 1.2 s.');
     // the root row is open: its members are rows, the deeper ones wait for a click
     expect(html).toContain('>Ben<');
     expect(html).toContain('>Zed<');
     expect(html).not.toContain('MON-27</span></span></li><li');
-    expect(html).toContain('deeper than a replay copies');
+    expect(html).toContain('deeper than a rerun copies');
   });
 
   it('a difference shows both texts, and the copy is still there to read', () => {
-    const html = render(<FullValue view={{ ...checked, status: 'differs', summary: 'The replay took the same 4 steps, but orders at step #4 came out different.', difference: { step: 4, name: 'orders', recorded: "{'Ben': {...}}", replay: "{'Ann': {...}}" } }} />);
+    const html = render(<FullValue view={{ ...checked, status: 'differs', summary: 'The rerun took the same 4 steps, but orders at step #4 came out different.', difference: { step: 4, name: 'orders', recorded: "{'Ben': {...}}", replay: "{'Ann': {...}}" } }} />);
     expect(html).toContain('pk-full-differs');
     expect(html).toContain('the recording kept');
-    expect(html).toContain('the replay has');
+    expect(html).toContain('the rerun has');
     expect(html).toContain('>Ben<');
   });
 

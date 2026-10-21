@@ -113,7 +113,7 @@ describe('what the replay has to match', () => {
   });
 });
 
-describe('a run that cannot be replayed says why', () => {
+describe('a run that cannot be rerun says why', () => {
   it('a run that called the network unrecorded is refused, with the action that fixes it', () => {
     const why = refusal({ ...ok, request: request(), httpCount: 2 });
     expect(why).toContain('called the network (2 requests)');
@@ -173,7 +173,7 @@ describe('what the pane says', () => {
     const v = interpret('k', { step: 14, name: 'orders' }, reached({ check: { step: 14, text: obs.text } }), { compared: 5 }, obs, where, 412, { inputs: 'handed back' });
     expect(v.status).toBe('checked');
     // and it says how far "the same" goes: the recorder's text of each value, not the whole copy
-    expect(v.summary).toBe('The replay took the same 14 steps, and all 6 values the recording kept on the way came out the same. Each was compared as far as the recording kept it (by default 120 characters, three levels deep), so a difference deeper in this copy, from a file or a database that changed since, would not show.');
+    expect(v.summary).toBe('The rerun took the same 14 steps, and all 6 values the recording kept on the way came out the same. Each was compared as far as the recording kept it (by default 120 characters, three levels deep), so a difference deeper in this copy, from a file or a database that changed since, would not show.');
     expect(v.value?.type).toBe('dict');
     expect(v.ms).toBe(412);
   });
@@ -206,13 +206,13 @@ describe('what the pane says', () => {
     expect(v.summary).toContain('read fresh');
   });
 
-  it('a replay that went another way has no value, and says where', () => {
+  it('a rerun that went another way has no value, and says where', () => {
     const d = interpret('k', { step: 14, name: 'orders' }, { type: 'replay.result', runId: 'x', seq: 1, status: 'diverged', step: 9, matched: 9, expected: { rid: 51, depth: 2 }, actual: { rid: 53, depth: 2 } }, { compared: 0 }, obs, where, 1, { inputs: 'handed back' });
     expect(d).toMatchObject({ status: 'diverged', matched: 9 });
     expect(d.value).toBeUndefined();
-    expect(d.summary).toBe('The replay went another way at step #9, so it has no value from this run. The recording ran invoices.py:51, the replay ran invoices.py:53.');
+    expect(d.summary).toBe('The rerun went another way at step #9, so it has no value from this run. The recording ran invoices.py:51, the rerun ran invoices.py:53.');
     const i = interpret('k', { step: 14, name: 'orders' }, { type: 'replay.result', runId: 'x', seq: 1, status: 'input', step: 12, matched: 12, message: 'the program read time once more than the recorded run did (1 reads)' }, { compared: 0 }, obs, where, 1, { inputs: 'handed back' });
-    expect(i.summary).toBe('The replay went another way at step #12: the program read time once more than the recorded run did (1 reads).');
+    expect(i.summary).toBe('The rerun went another way at step #12: the program read time once more than the recorded run did (1 reads).');
     const e = interpret('k', { step: 14, name: 'orders' }, { type: 'replay.result', runId: 'x', seq: 1, status: 'ended', step: 10, matched: 10 }, { compared: 0 }, obs, where, 1, { inputs: 'none recorded' });
     expect(e.summary).toContain('finished at step #10, before step #14');
   });

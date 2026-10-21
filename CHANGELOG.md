@@ -35,8 +35,8 @@
   `review stop --say TEXT`.
 
 - Whole value is now Rerun value: it runs the program again, where a replay in Pyokka (HTTP
-  Replay, the Time Machine's replay session) runs nothing. The button, its tooltip and the guide
-  say so.
+  Replay, the Time Machine's replay session) runs nothing. The button, its tooltip, its pending
+  label (Rerunning), its summaries ("The rerun took the same 55 steps …") and the guide say so.
 
 - Agents get the rerun value: `pyokka why --live STEP NAME --rerun` prints the why tree, then the
   value on its first line, copied whole by running the program again, with the panel's status
