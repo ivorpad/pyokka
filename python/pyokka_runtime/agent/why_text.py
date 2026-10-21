@@ -70,9 +70,11 @@ def _shared(root: dict) -> str:
     """The root or one of its reads changed through another name, with the step where the sharing began."""
     for n in [root, *[r for r in root.get("reads") or [] if isinstance(r, dict)]]:
         s = n.get("shared") or {}
-        if s.get("as") is None or s.get("line") is None or n.get("step") is None:
+        if s.get("as") is None or n.get("step") is None:
             continue
-        return "%s is the same object as %s, changed at %s; it is shared since #%s (%s:%s)" % (s["path"], s["as"], where(n), s.get("since"), short_file(s.get("file")), s["line"])
+        head = "%s is the same object as %s, changed at %s" % (s["path"], s["as"], where(n))
+        # no `since` when the holder is the object itself (a global a function returned), not a path into a container
+        return head + ("; it is shared since #%s (%s:%s)" % (s.get("since"), short_file(s.get("file")), s["line"]) if s.get("line") is not None else "")
     return ""
 
 

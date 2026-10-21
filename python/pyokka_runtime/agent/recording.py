@@ -3,7 +3,8 @@
 Two losses are reported. A trace cut at the step cap (``maxTraceSteps``, ``run --max-steps``):
 the final ``trace`` event carries ``truncated`` and, from this runtime on, ``cap``, ``stepsRun``
 and ``spentBy`` (``Tracer.cap_report``). ``run`` prints a warning, ``state`` and every verb over
-that run print a ``note:`` line first, and ``--json`` gets a ``recording`` field. And a value text
+that run print a ``note:`` line first, and ``--json`` gets a ``recording`` field. Recorded locals stop at
+``MAX_LOCALS_ENTRIES``; ``var``, ``why``, ``origin`` and ``history`` then print a ``note:`` line too. And a value text
 cut at ``maxValueChars``: the text itself ends in ``…(+N chars)`` (``values.value_text``), and
 ``--json`` gets ``truncated`` and ``length`` next to any such ``text``.
 """
@@ -13,6 +14,8 @@ from __future__ import annotations
 import os
 import re
 from typing import Any
+
+from ..protocol import MAX_LOCALS_ENTRIES
 
 # the mark `values.value_text` leaves on a cut text, and the one the CLI's own line cuts leave
 CUT_RE = re.compile(r"…\((?:\+([\d,]+) chars|cut)\)$")
@@ -84,6 +87,15 @@ def warning_lines(info: dict) -> list[str]:
     return out
 
 
+def locals_cap_line(command: str, source: Any) -> str | None:
+    """For the verbs that read recorded locals: the line saying the locals recording stopped at its entry cap, so a
+    change after its last step is missing, not absent."""
+    entries = getattr(source, "locals_entries", None)
+    if command not in ("var", "why", "origin", "history") or not entries or len(entries) < MAX_LOCALS_ENTRIES:
+        return None
+    return "note: the locals recording reached its limit of %s entries at #%s; changes after it are not recorded (rerun with --exclude for hot library code, or record a smaller input)" % (format(MAX_LOCALS_ENTRIES, ","), entries[-1].get("step"))
+
+
 def annotate_cut(value: Any) -> Any:
     """Every dict under ``value`` whose ``text`` carries the cut mark gets ``truncated: true`` and, when known, ``length``."""
     if isinstance(value, dict):
@@ -122,4 +134,4 @@ def cut_line(text: Any, limit: int, *, strip: bool = False) -> str:
     return "%s…(+%s chars)" % (core[:keep], format(len(core) - keep + earlier, ","))
 
 
-__all__ = ["cap_info", "note_line", "warning_lines", "annotate_cut", "cut_line", "CUT_RE", "exclude_for"]
+__all__ = ["cap_info", "note_line", "locals_cap_line", "warning_lines", "annotate_cut", "cut_line", "CUT_RE", "exclude_for"]

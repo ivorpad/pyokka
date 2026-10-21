@@ -19,7 +19,8 @@ import pytest
 
 from pyokka_runtime.__main__ import main
 from pyokka_runtime.agent import interpreter
-from pyokka_runtime.agent.recording import annotate_cut, cut_line
+from pyokka_runtime.agent.recording import annotate_cut, cut_line, locals_cap_line
+from pyokka_runtime.protocol import MAX_LOCALS_ENTRIES
 from pyokka_runtime.agent.source import AgentError
 from pyokka_runtime.values import VALUE_CHARS_CEILING, value_chars, value_text
 
@@ -112,6 +113,17 @@ def test_a_run_under_the_cap_has_no_note(project: Path):
     code, text = pyokka("state", run)
     assert not text.startswith("note:")
     assert "recording" not in pyokka_json("state", run)
+
+
+def test_locals_past_their_cap_are_said_missing_by_the_verbs_that_read_them():
+    class Source:
+        locals_entries = [{"step": s} for s in range(MAX_LOCALS_ENTRIES)]
+
+    line = locals_cap_line("var", Source())
+    assert line and line.startswith("note: the locals recording reached its limit") and "#%d" % (MAX_LOCALS_ENTRIES - 1) in line
+    assert locals_cap_line("steps", Source()) is None  # a verb that reads no locals
+    Source.locals_entries = Source.locals_entries[:10]
+    assert locals_cap_line("why", Source()) is None
 
 
 def test_the_runtime_reports_who_spent_the_steps(tmp_path: Path):

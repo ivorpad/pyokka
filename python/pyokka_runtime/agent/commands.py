@@ -29,7 +29,7 @@ from .origin.walk import ORIGIN_DEPTH, ORIGIN_MAX_DEPTH
 from ..redact import redact
 from .live import LIVE_TEXT_LEN, watch_line
 from .tour.cli import add_tour_parser, run_tour
-from .recording import annotate_cut, note_line
+from .recording import annotate_cut, locals_cap_line, note_line
 from .render import _one_line, exec_error, render
 from .sessions import NO_SESSION
 from .source import AgentError, RunSource, SavedRun
@@ -695,6 +695,9 @@ def dispatch(args: Any, out: Any = None) -> int:
         for label, info in notes:
             line = note_line(info)
             out.write(("note: %s: %s" % (label, line[len("note: "):]) if label else line) + "\n")
+        locals_note = locals_cap_line(args.command, source)
+        if locals_note:
+            out.write(locals_note + "\n")
         # a statement that raised is still a served request: the error goes on stderr, exit stays 0
         raised = exec_error(result) if args.command == "exec" else None
         if raised:

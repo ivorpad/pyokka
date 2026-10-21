@@ -24,6 +24,9 @@
   `resolution: "seen"` or `"guessed"`, and a tree that mixes the two prints `  (guessed)` after
   the guessed nodes; a snapshot recording prints as before.
 
+- `var`, `why`, `origin` and `history` print a `note:` line when the run hit the 100,000-entry
+  cap on recorded locals, with the last step kept. A change after it was shown as no change at all.
+
 - `review start --only PATH` (MCP `only`) on files with no changed function no longer refuses. It
   starts the session with an empty agenda, as the same diff without `--only` already did.
 - An empty agenda in a review in the debugger (`start`, `state`, `view`) no longer suggests

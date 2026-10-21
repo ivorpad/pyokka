@@ -268,8 +268,10 @@ export function provenanceConclusion(p: Pick<Provenance, 'root'>): string {
 function sharedSentence(root: ProvenanceNode): string {
   for (const n of [root, ...(root.reads ?? [])]) {
     const s = n.shared;
-    if (s?.as === undefined || s.line === undefined || n.step === undefined) continue;
-    return `${s.path} is the same object as ${s.as}, changed at ${where(n)}; it is shared since #${s.since} (${shortFile(s.file)}:${s.line})`;
+    if (s?.as === undefined || n.step === undefined) continue;
+    const head = `${s.path} is the same object as ${s.as}, changed at ${where(n)}`;
+    // no `since` when the holder is the object itself (a global a function returned), not a path into a container
+    return s.line === undefined ? head : `${head}; it is shared since #${s.since} (${shortFile(s.file)}:${s.line})`;
   }
   return '';
 }
