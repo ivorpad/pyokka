@@ -7,6 +7,7 @@ import type { WhyView } from '../../../src/shared/webviewProtocol';
 vi.mock('../../../webview/monaco', () => ({ monaco: { editor: {} }, monacoTheme: () => 'vs-dark', READONLY_OPTIONS: {} }));
 
 import { Details } from '../../../webview/components/Details';
+import { WhyLegend } from '../../../webview/components/WhyLegend';
 import { DEFAULT_PREFS } from '../../../webview/vscode';
 
 const noop = (): void => undefined;
@@ -27,5 +28,18 @@ describe('the Why header', () => {
     expect(details({ step: 53, name: 'order', tree }, false)).not.toContain('Rerun value of');
     expect(details({ step: 53, name: '', tree: { ...tree, name: '' } }, true)).not.toContain('Rerun value of');
     expect(details({ step: 53, name: 'order', tree }, true)).not.toMatch(/[Ww]hole value|[Ff]ull value|[Rr]eplay value/);
+  });
+});
+
+describe('the Why header\'s help', () => {
+  it('is a button only while a why tree is shown', () => {
+    expect(details({ step: 53, name: 'order', tree }, true)).toContain('aria-label="How to read this tree"');
+    const entries = render(<Details entries={[]} total={0} theme="dark" prefs={DEFAULT_PREFS} compareEnabled={false} why={null} onPrefs={noop} onOpen={noop} onExpand={noop} onCopy={noop} onCompare={noop} onDiagram={noop} onGoto={noop} onCloseWhy={noop} />);
+    expect(entries).not.toContain('How to read this tree');
+  });
+
+  it('says what each mark the tree prints means', () => {
+    const html = render(<WhyLegend />);
+    for (const mark of ['← name = value', '↳ f #34–#40', 'def file:line', 'shared since #17', '(guessed)', 'Rerun value']) expect(html).toContain(mark);
   });
 });

@@ -14,6 +14,7 @@ import { monaco, monacoTheme, READONLY_OPTIONS } from '../monaco';
 import type { UiPrefs } from '../vscode';
 import { shapeLabel, tableFor, type ValueTableModel } from '../valueTable';
 import { buildWhyDocument, type WhyLine } from '../why';
+import { WhyLegend } from './WhyLegend';
 import { formatRepr, whyFullTarget } from '../src-shared';
 import { IconButton, MenuButton, type MenuItem } from './ui';
 import { ValueTable } from './ValueTable';
@@ -139,6 +140,7 @@ export function Details(props: DetailsProps) {
   const propsRef = useRef(props);
   propsRef.current = props;
   const [findOpen, setFindOpen] = useState(false);
+  const [legendOpen, setLegendOpen] = useState(false);
   const decorations = useRef<monaco.editor.IEditorDecorationsCollection | null>(null);
   // homogeneous collections: shown as a table unless the user switched that value to the list; rows opened from a table go to the document
   const [listMode, setListMode] = useState<Record<string, boolean>>({});
@@ -391,9 +393,11 @@ export function Details(props: DetailsProps) {
               onClick={() => props.onFull!({ key: whyKey(why), ...whyFullTarget(why.tree!) })}
             />
           )}
+          {why && <IconButton icon="question" title="How to read this tree" active={legendOpen} onClick={() => setLegendOpen((open) => !open)} />}
           {why && <IconButton icon="close" title="Back to entries" onClick={props.onCloseWhy} />}
         </span>
       </header>
+      {why && legendOpen && <WhyLegend />}
       {why && props.whyFull && (
         <div class="pk-why-full">
           <FullValue key={`${props.whyFull.key}:${props.whyFull.status}`} view={props.whyFull} />

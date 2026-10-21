@@ -1613,6 +1613,37 @@ body[data-theme='light'] .pk-cp-bg.hl {
 .pk-why-full .pk-full {
   margin: 4px 8px;
 }
+/* the Why header's help: what each mark of the tree means */
+.pk-why-legend {
+  margin: 4px 8px 6px;
+  padding: 4px 8px;
+  border-left: 2px solid color-mix(in srgb, var(--pk-fg) 25%, transparent);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.pk-why-legend dl {
+  margin: 0;
+}
+.pk-why-legend-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 34%) 1fr;
+  gap: 8px;
+  padding: 1px 0;
+}
+.pk-why-legend dt code {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+}
+.pk-why-legend dd {
+  margin: 0;
+  opacity: 0.85;
+}
+.pk-why-legend p {
+  margin: 6px 0 2px;
+  opacity: 0.85;
+}
 .pk-full-checked {
   border-left-color: var(--vscode-charts-green, #89d185);
 }
