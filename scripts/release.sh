@@ -1,13 +1,13 @@
 #!/bin/sh
-# Cut a release: move the version, run the checks, build the vsix, install it, tag, and
+# Cut a release: move the version, build the vsix, install it, tag, and
 # put the artifact on GitHub.
 #
 #   scripts/release.sh             level from the Bump: trailers since the last tag
 #   scripts/release.sh minor       force a level
 #   scripts/release.sh --set 1.2.3 force a number
 #
-# The checks run before anything is written, so a failing test leaves the tree clean
-# rather than half-bumped. The bump then happens before the build, so the vsix that gets
+# It runs no tests: run the suites on the release commit first (scripts/check.sh and
+# the e2e, on the test box). The bump happens before the build, so the vsix that gets
 # installed and uploaded is the one the tag names.
 set -e
 cd "$(dirname "$0")/.."
@@ -31,9 +31,6 @@ if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
   exit 1
 fi
 echo "releasing $TAG"
-
-echo "==> checks"
-scripts/check.sh
 
 echo "==> version"
 python3 scripts/version.py "$@" --auto

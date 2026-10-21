@@ -1396,9 +1396,10 @@ Package an installable `.vsix`:
 node esbuild.mjs --production && ./node_modules/.bin/vsce package --no-dependencies
 ```
 
-A release is `scripts/release.sh`: the checks, the version from the `Bump:` trailers since the
+A release is `scripts/release.sh`: the version from the `Bump:` trailers since the
 last tag, the `## Unreleased` changelog section cut into the release notes, the build, an
-annotated tag and a GitHub release with the `.vsix`.
+annotated tag and a GitHub release with the `.vsix`. It runs no tests, so run
+`scripts/check.sh` and the e2e suite on the release commit first.
 
 `package.json` was generated from Quokka's manifest by `scripts/gen-manifest.py`.
 That manifest is not in the repository, so the script stops without a local
