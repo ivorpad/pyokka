@@ -1,5 +1,5 @@
 /**
- * "Full value" for a session: what its current run kept, handed to the replay
+ * "Rerun value" for a session: what its current run kept, handed to the replay
  * (fullValueReplay.ts). The panel (views/fullValuePane.ts) and the agent bridge both ask here.
  */
 import type { Session } from './session';

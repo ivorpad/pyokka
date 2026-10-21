@@ -1,4 +1,4 @@
-/** The Why header's "Full value" button (components/Details.tsx): there once the tree is, and only where the host can replay. */
+/** The Why header's "Rerun value" button (components/Details.tsx): there once the tree is, and only where the host can replay. */
 import { describe, expect, it, vi } from 'vitest';
 import { render } from 'preact-render-to-string';
 import type { Provenance } from '../../../src/shared/protocol';
@@ -17,15 +17,15 @@ function details(why: WhyView, replays: boolean): string {
 }
 
 describe('the Why header', () => {
-  it('offers the full value of the tree\'s name, named so, once the tree is there', () => {
-    expect(details({ step: 53, name: 'order', tree }, true)).toContain('aria-label="Full value of order at #53: replays the run in a separate process up to this step');
+  it('offers the rerun value of the tree\'s name, named so, once the tree is there', () => {
+    expect(details({ step: 53, name: 'order', tree }, true)).toContain('aria-label="Rerun value of order at #53: runs the program again in a separate process up to this step');
     // still computing: nothing to read the value of yet
-    expect(details({ step: 53, name: 'order', tree: null }, true)).not.toContain('Full value of');
+    expect(details({ step: 53, name: 'order', tree: null }, true)).not.toContain('Rerun value of');
   });
 
   it('has no button where the host cannot replay (the browser page), nor for a statement without a name', () => {
-    expect(details({ step: 53, name: 'order', tree }, false)).not.toContain('Full value of');
-    expect(details({ step: 53, name: '', tree: { ...tree, name: '' } }, true)).not.toContain('Full value of');
-    expect(details({ step: 53, name: 'order', tree }, true)).not.toMatch(/[Ww]hole value/);
+    expect(details({ step: 53, name: 'order', tree }, false)).not.toContain('Rerun value of');
+    expect(details({ step: 53, name: '', tree: { ...tree, name: '' } }, true)).not.toContain('Rerun value of');
+    expect(details({ step: 53, name: 'order', tree }, true)).not.toMatch(/[Ww]hole value|[Ff]ull value|[Rr]eplay value/);
   });
 });

@@ -319,7 +319,7 @@ export class AgentBridge implements vscode.Disposable {
       case 'why':
         return bridgeWhy(session, req, () => this.inputs(session).trace);
       case 'whole':
-        return bridgeWhole(session, req); // 0.7.0's request, kept for one release: `why` with `full`
+        return bridgeWhole(session, req); // 0.7.0's request, kept for one release: `why` with `rerun`
       case 'eval': {
         const expression = typeof req.expression === 'string' ? req.expression.trim() : '';
         if (!expression) throw new BridgeError('eval needs expression', 'send {expression: "name.attr"}');

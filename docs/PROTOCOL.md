@@ -186,7 +186,7 @@ paused statement's own call) prints as `output`, not as a `log`.
 ### Replay
 
 `run.replay` runs the program again to a recorded step, checks every step on the
-way, and copies one value whole ("Full value" in the panel, `why` with `full`
+way, and copies one value whole ("Rerun value" in the panel, `why` with `rerun`
 over the bridge). The host sends the recording run's own request (the same
 `file.content`, `projectFiles`, `markers` and limits, so the instrumentation and
 the steps are the same) to a runner of its own, with no debugger, `breakpoints`,
@@ -758,7 +758,7 @@ Replay`. On the first recording in a git workspace the host offers once to add
   read, and the debugger's statement count is put back after it, so the
   `startedAt` of a recording that begins later is the program's own. A replay runs
   the program alone; what a console statement wrote is the one thing it cannot
-  repeat, and the full value's summary says so when `modified` was set. Another
+  repeat, and the rerun value's summary says so when `modified` was set. Another
   thread that runs while a request is served loses its steps for that long, as it
   does while a value's `__repr__` runs.
 - A `function: NAME` breakpoint (`dbgbreakpoints.py`) is resolved by the runtime,
@@ -1019,8 +1019,8 @@ session's main file. `context`/`values` include `valueBag`s only with
 | `context` | `step?` or `file, line, endLine?`; `scope?` | context slice; while a debug run is paused, the frontier's slice (no `step`, or `step` = the frontier) also carries `paused`, `locals` and `output`. With no `step`, no Time Machine and no pause of its own, the run socket answers with the pause of a `record: false` debug session of the same file when one is paused: that socket's stop reply, `recording: false` (docs/design/live-pause-context.md); else the error `context needs step or file/line while the Time Machine is not active` |
 | `values` | `file, line` | `{values: [...]}` every value logged on that line, by hit |
 | `var` | `name, file?, scope?, limit?` | the variable history above (`file` narrows to one file of the run, `scope` to a function) |
-| `why` | `step, name?, depth?, full?` | the provenance tree above (`name` empty or absent: the statement at `step`; `depth` 1..8, default 5). With `full: true` (and a `name`) also `full`: the value on the tree's first line, copied by a replay of the run (see "Replay"): the change the root shows when the step's statement made it, read where the recorder kept it, else the value when the step began (`src/shared/fullValueTarget.ts`). `full` is `{status: "checked" \| "path" \| "differs" \| "diverged" \| "unavailable" \| "error", step, name, summary, value?: ValueNode, difference?: {step, name, recorded, replay}, matched?, ms?}`, every text redacted; `step` is where the value was read. `unavailable` says why for a run that called the network with HTTP off, began at a pause, runs over a transport or is a module launch. The replay runs the program again in a runner of its own, so it is never implied: an extension older than this ignores `full` and answers the tree alone (`pyokka why --live STEP NAME --full`, MCP `pyokka_value` `full`) |
-| `whole` | `step, name` | 0.7.0's request, answered for one more release: `why`'s `full` alone, for the value `name` had when `step` began |
+| `why` | `step, name?, depth?, rerun?` | the provenance tree above (`name` empty or absent: the statement at `step`; `depth` 1..8, default 5). With `rerun: true` (and a `name`) also `rerun`: the value on the tree's first line, copied whole by running the program again (see "Replay"): the change the root shows when the step's statement made it, read where the recorder kept it, else the value when the step began (`src/shared/fullValueTarget.ts`). `rerun` is `{status: "checked" \| "path" \| "differs" \| "diverged" \| "unavailable" \| "error", step, name, summary, value?: ValueNode, difference?: {step, name, recorded, replay}, matched?, ms?}`, every text redacted; `step` is where the value was read. `unavailable` says why for a run that called the network with HTTP off, began at a pause, runs over a transport or is a module launch. It runs the program again in a runner of its own, so it is never implied: an extension older than this ignores `rerun` and answers the tree alone (`pyokka why --live STEP NAME --rerun`, MCP `pyokka_value` `rerun`) |
+| `whole` | `step, name` | 0.7.0's request, answered for one more release: `why`'s `rerun` alone, for the value `name` had when `step` began |
 | `eval` | `expression`, `frameId?` | `{text, valueBag?}` via `evaluate` (no statement of the program is re-run; pure calls run, a user function is refused, see the `evaluate` row); in the paused frame, locals over globals, while a debug run is paused. `frameId` names a frame of the pause, innermost 0; absent means 0 |
 | `expand` | `valueId, queryPath` | `{node}` |
 | `select` | `file, line, endLine?` | `{ok}`; moves the editor selection and reveals it |

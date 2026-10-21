@@ -427,7 +427,7 @@ export type HostToWebview =
   | { type: 'story'; story: StoryPanel | null }
   /** the Details pane's "why" tree: the query (tree null while it computes), then the answer; null clears it */
   | { type: 'why'; view: WhyView | null }
-  /** a full value a replay copied (`pending` first, then the answer); `fullValue.reset` drops them all (another run) */
+  /** a rerun value (`pending` first, then the answer); `fullValue.reset` drops them all (another run) */
   | { type: 'fullValue'; view: FullValueView }
   | { type: 'fullValue.reset' }
   /** the Execution Diagram view: null until a run finished; resent when a package is unrolled */
@@ -508,7 +508,7 @@ export type WebviewToHost =
   /** the Details pane closed the tree: the host forgets the query (no more refreshes after a run) */
   | { type: 'why.close' }
   /**
-   * "Full value": replay the run and copy `name` whole. `change`: the value a Variable pane row
+   * "Rerun value": run the program again and copy `name` whole. `change`: the value a Variable pane row
    * recorded (the host finds the step that kept it); `at`: the value at `step`, the Why tree's.
    * The host answers with `fullValue` under the same `key`.
    */

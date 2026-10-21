@@ -1,4 +1,4 @@
-/** "Full value": the rules a replay is held to (session/fullValue.ts), without a runner. */
+/** "Rerun value": the rules a rerun is held to (session/fullValue.ts), without a runner. */
 import { describe, expect, it } from 'vitest';
 import type { LogEvent, RunRequest } from '../../src/shared/protocol';
 import type { ReplayResultEvent } from '../../src/shared/replayProtocol';

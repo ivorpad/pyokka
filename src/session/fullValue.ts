@@ -1,5 +1,5 @@
 /**
- * "Full value": what a replay of the run has to match, and what its answer means. Pure, so the
+ * "Rerun value": what a rerun of the program has to match, and what its answer means. Pure, so the
  * rules are tested without a runner; fullValueReplay.ts runs the replay.
  *
  * The recorder keeps a local as 120 characters of repr, three levels deep, at the start of the

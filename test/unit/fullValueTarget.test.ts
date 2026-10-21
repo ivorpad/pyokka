@@ -1,11 +1,11 @@
-/** Which value a why tree's "Full value" replays (shared/fullValueTarget.ts): the one on its first line. */
+/** Which value a why tree's "Rerun value" copies (shared/fullValueTarget.ts): the one on its first line. */
 import { describe, expect, it } from 'vitest';
 import type { Provenance, ProvenanceNode } from '../../src/shared/protocol';
 import { whyFullTarget } from '../../src/shared/fullValueTarget';
 
 const tree = (root: ProvenanceNode, step = 12, name = 'order'): Pick<Provenance, 'step' | 'name' | 'root'> => ({ step, name, root });
 
-describe('a why tree\'s full value', () => {
+describe('a why tree\'s rerun value', () => {
   it('a step that made the value: the change, read after its statement, picked by the text the recorder kept', () => {
     const root: ProvenanceNode = { name: 'order', text: "{'tier': 'gold', 'items': []}", source: 'locals', step: 12, scopeId: 4, line: 27 };
     expect(whyFullTarget(tree(root))).toEqual({ kind: 'change', step: 12, name: 'order', scopeId: 4, text: "{'tier': 'gold', 'items': []}" });

@@ -1,5 +1,6 @@
 /**
- * A full value a replay copied, under the Variable pane row or the Why tree that asked for it.
+ * A rerun value, the whole value a rerun of the program copied, under the Variable pane row or the
+ * Why tree that asked for it.
  * First what was checked, in a sentence (the same steps, and every value the recording kept on the
  * way came out the same, or where one did not), then the value as a tree. Every member came with
  * the copy, so a row opens here, in the panel: nothing is loaded later, nothing runs, and nothing
@@ -48,7 +49,7 @@ export function FullValue({ view }: { view: FullValueView }) {
     });
   const d = view.difference;
   return (
-    <div class={`pk-full pk-full-${view.status}`} onClick={(e) => e.stopPropagation()} aria-label={`Full value of ${view.name}`}>
+    <div class={`pk-full pk-full-${view.status}`} onClick={(e) => e.stopPropagation()} aria-label={`Rerun value of ${view.name}`}>
       <div class="pk-full-status" role="status">
         <Icon name={STATUS_ICON[view.status]} class={view.status === 'pending' ? 'codicon-modifier-spin' : undefined} />
         <span class="pk-full-label">{STATUS_LABEL[view.status]}</span>

@@ -1603,7 +1603,7 @@ body[data-theme='light'] .pk-cp-bg.hl {
   cursor: pointer;
   border-radius: 2px;
 }
-/* "Full value": a replay's copy under its row (or above the Why tree); the status edge says how far it was checked */
+/* "Rerun value": a rerun's copy under its row (or above the Why tree); the status edge says how far it was checked */
 .pk-full {
   margin: 2px 8px 6px 40px;
   padding: 4px 0 4px 8px;

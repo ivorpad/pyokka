@@ -2,19 +2,21 @@
 
 ## Unreleased
 
-- Whole value is now Full value: the button, its tooltip and the guide say so.
+- Whole value is now Rerun value: it runs the program again, where a replay in Pyokka (HTTP
+  Replay, the Time Machine's replay session) runs nothing. The button, its tooltip and the guide
+  say so.
 
-- Agents get the full value: `pyokka why --live STEP NAME --full` prints the why tree, then the
-  value on its first line copied by a replay of the run, with the panel's status label, its
-  summary and the value as indented Python-like text (`--json` gives the view; MCP:
-  `pyokka_value` `why` with `full: true`). Wherever `var`, `why`, `step` or `context` print a
+- Agents get the rerun value: `pyokka why --live STEP NAME --rerun` prints the why tree, then the
+  value on its first line, copied whole by running the program again, with the panel's status
+  label, its summary and the value as indented Python-like text (`--json` gives the view; MCP:
+  `pyokka_value` `why` with `rerun: true`). Wherever `var`, `why`, `step` or `context` print a
   recorded value that was cut, a `hint:` line names the command with the step and the name to
-  give it. The replay runs the program again, so the flag's help, the hint, the tool's description
+  give it. The program runs again, so the flag's help, the hint, the tool's description
   and the line after the label say so, and `pyokka_value` is no longer marked read-only. A saved
-  run is refused: it has no runner to replay in. The bridge's `why` takes `full`; 0.7.0's `whole`
-  request is still answered for one release.
+  run is refused: it has no runner to run it again in. The bridge's `why` takes `rerun`, and
+  0.7.0's `whole` request is still answered for one release.
 
-- Full value fixes from a review of 0.7.0. A change was sometimes read at the start of its own
+- Rerun value fixes from a review of 0.7.0. A change was sometimes read at the start of its own
   step, which holds the value from before it, and that older value could read Checked; a change
   is now read where its snapshot came from. The Why header replayed the value from before its
   step's statement when that statement made the value; it now replays the value on the tree's

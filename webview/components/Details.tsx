@@ -44,7 +44,7 @@ export interface DetailsProps {
   /** Time Machine to a step (a tree's node or call line; starts it when needed) */
   onGoto: (step: number) => void;
   onCloseWhy: () => void;
-  /** with a why tree: the full value of its name at its step, once asked for (`whyKey`) */
+  /** with a why tree: the rerun value of its name at its step, once asked for (`whyKey`) */
   whyFull?: FullValueView;
   /** absent: the host has no replay (the browser page) */
   onFull?: (ask: FullValueAsk) => void;
@@ -53,7 +53,7 @@ export interface DetailsProps {
   handle?: Ref<DetailsHandle>;
 }
 
-/** The pane's key for the full value a why tree asks for: its name at its step. */
+/** The pane's key for the rerun value a why tree asks for: its name at its step. */
 export function whyKey(why: Pick<WhyView, 'step' | 'name'>): string {
   return `at:${why.step}:${why.name}`;
 }
@@ -386,7 +386,7 @@ export function Details(props: DetailsProps) {
           {why && why.name && why.tree && props.onFull && (
             <IconButton
               icon="list-tree"
-              title={`Full value of ${why.name} at #${why.step}: replays the run in a separate process up to this step and copies all of it (network answers come from the HTTP recording; files it writes are written again)`}
+              title={`Rerun value of ${why.name} at #${why.step}: runs the program again in a separate process up to this step and copies all of it (network answers come from the HTTP recording; files it writes are written again)`}
               spin={props.whyFull?.status === 'pending'}
               onClick={() => props.onFull!({ key: whyKey(why), ...whyFullTarget(why.tree!) })}
             />

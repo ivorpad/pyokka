@@ -124,7 +124,7 @@ export function App() {
     dispatch({ type: 'whyClose' });
     post({ type: 'why.close' });
   }, []);
-  // "Full value" exists only where the host replays (the extension announces it in `init`)
+  // "Rerun value" exists only where the host reruns (the extension announces it in `init`)
   const askFull = useMemo(() => (state.features.fullValue ? (ask: FullValueAsk) => post({ type: 'fullValue.query', ...ask }) : undefined), [state.features.fullValue]);
 
   const compareEnabled = selectedEntries.length === 2 && canCompare(selectedEntries[0], selectedEntries[1]);

@@ -202,7 +202,7 @@ def words_value(a: dict) -> list[str]:
     if action in ("why", "origin"):
         _opt(words, a, "depth", "--depth")
         if action == "why":
-            _opt(words, a, "full", "--full")
+            _opt(words, a, "rerun", "--rerun")
         step = a.get("step")
         if step is None and "--live" not in opts:
             raise ToolError("%s needs `step`" % action, "pyokka_value var lists the steps where a name changed; pyokka_map exceptions lists the steps that raised")

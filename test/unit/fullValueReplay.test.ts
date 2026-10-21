@@ -1,4 +1,4 @@
-/** "Full value" end to end against a fake runner: what is sent, what comes back, and that the runner is let go. */
+/** "Rerun value" end to end against a fake runner: what is sent, what comes back, and that the runner is let go. */
 import { EventEmitter } from 'node:events';
 import { describe, expect, it } from 'vitest';
 import type { RunEvent, RunRequest } from '../../src/shared/protocol';
@@ -73,7 +73,7 @@ function source(runner: FakeRunner | undefined, overrides: Partial<ReplaySource>
 
 const value = { data: { type: 'dict', id: '1', queryPath: ['r'], props: [] } };
 
-describe('a replay for a full value', () => {
+describe('the run behind a rerun value', () => {
   it('asks for the snapshot behind the row, hands the inputs back, compares on the way and lets the runner go', async () => {
     const runner = new FakeRunner((req) => [
       { type: 'locals', entries: [recordedLocals[0]!] },

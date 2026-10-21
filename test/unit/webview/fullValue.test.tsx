@@ -1,4 +1,4 @@
-/** "Full value" in the panel: the copy under its row, the buttons, and the state that holds the answers. */
+/** "Rerun value" in the panel: the copy under its row, the buttons, and the state that holds the answers. */
 import { describe, expect, it } from 'vitest';
 import { render } from 'preact-render-to-string';
 import type { ValueNode } from '../../../src/shared/protocol';

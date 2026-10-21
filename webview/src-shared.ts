@@ -5,7 +5,7 @@ export { StepFlag } from '../src/shared/protocol';
 export { capSentence } from '../src/shared/traceCap';
 /** a repr's text, indented (pure) */
 export { formatRepr } from '../src/shared/reprFormat';
-/** which value a why tree's Full value replays (pure) */
+/** which value a why tree's Rerun value copies (pure) */
 export { whyFullTarget } from '../src/shared/fullValueTarget';
 export type { DebuggerState, DebugOutputChunk, DebugPanelInfo, DebugSessionBreakpoint, DebugSessionFrame, DebugSessionPanel, DebugSessionWatch, ExceptionsPanel, ExecutionGraphPanel, HostToWebview, HttpPanel, PanelEntry, PanelMoment, PanelSettings, PanelTourChapter, PanelTourStop, StoryPanel, TimelineModel, TourPanel, VariableView, ViewId, WalkthroughPanel, WebviewToHost, WhyView } from '../src/shared/webviewProtocol';
 export type { CallEdge, CallNode, DataEdge, DecisionNode, GraphEdge, GraphNode, GraphRow, StatementNode } from '../src/session/executionGraphTypes';

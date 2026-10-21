@@ -10,7 +10,7 @@ import type { FullValueView } from '../../src/shared/replayProtocol';
 import { Icon, IconButton, Repr, SourceLink } from './ui';
 import { FullValue } from './FullValue';
 
-/** What a "Full value" button asks the host (`fullValue.query` without its type). */
+/** What a "Rerun value" button asks the host (`fullValue.query` without its type). */
 export interface FullValueAsk {
   key: string;
   kind: 'change' | 'at';
@@ -20,7 +20,7 @@ export interface FullValueAsk {
   text?: string;
 }
 
-/** The pane's key for a row's full value: one per recorded change. */
+/** The pane's key for a row's rerun value: one per recorded change. */
 export function changeKey(c: Pick<VariableChange, 'step' | 'scopeId' | 'name'>): string {
   return `change:${c.step}:${c.scopeId}:${c.name}`;
 }
@@ -46,7 +46,7 @@ export interface VariablePaneProps {
   /** switch the session's Record Variable Changes on */
   onEnableRecordLocals: () => void;
   onClose: () => void;
-  /** replayed full values by key (`changeKey`); absent: the host has no replay (the browser page) */
+  /** rerun values by key (`changeKey`); absent: the host has no replay (the browser page) */
   fullValues?: Record<string, FullValueView>;
   onFull?: (ask: FullValueAsk) => void;
 }
@@ -193,7 +193,7 @@ function ChangeRow({ change: c, showFileName, onGoto, onOpen, onQuery, onWhy, fu
         {ask && (
           <IconButton
             icon="list-tree"
-            title={`Full value of ${c.name}: replays the run in a separate process up to this step and copies all of it (network answers come from the HTTP recording; files it writes are written again)`}
+            title={`Rerun value of ${c.name}: runs the program again in a separate process up to this step and copies all of it (network answers come from the HTTP recording; files it writes are written again)`}
             class="pk-full-btn"
             spin={full?.status === 'pending'}
             onClick={ask}

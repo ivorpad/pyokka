@@ -112,7 +112,7 @@ export interface PanelState {
   http: HttpPanel | null;
   /** the Details pane's "why" tree: the queried step and name and the host's answer (tree null while it computes) */
   why: WhyView | null;
-  /** full values replayed for the Variable pane and the Why tree, by the pane's key; a new run empties it */
+  /** rerun values for the Variable pane and the Why tree, by the pane's key; a new run empties it */
   fullValues: Record<string, FullValueView>;
   /** what the host answers beyond the common messages (`init`) */
   features: PanelFeatures;

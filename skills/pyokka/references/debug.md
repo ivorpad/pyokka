@@ -125,14 +125,14 @@ answer is in that stop's `locals:`.
 
 **`exec --live 'rank = 3'` writes to the paused frame, and the program sees it.** Every stop after
 that says `(values modified from the console)` and a bug report built on it is worth less. Say what
-you changed. A full value of that run (below) is the program's own: the replay runs without it.
+you changed. A rerun value of that run (below) is the program's own: the program runs again without it.
 
 **A recorded value that was cut.** A recording keeps 120 characters of each value, three levels
 deep, so `var --live`, `why --live` and `step --live` print a long one ending in `…(+N chars)` or
 with `{...}` inside, and a `hint:` line under it. At the pause itself, read the live value instead:
 `locals --live --name NAME --text-len 0`, which runs nothing. For a value at another step,
-`pyokka why --live STEP NAME --full` prints all of it, checked against the recording (`Checked`,
-`Differs`, `Went another way`). It replays the run in a separate process up to that step, so the
+`pyokka why --live STEP NAME --rerun` prints all of it, checked against the recording (`Checked`,
+`Differs`, `Went another way`). It runs the program again in a separate process up to that step, so the
 files the program writes are written again: tell the user you ran it. Network answers come from the
 HTTP recording, and a run that called the network with HTTP off is refused.
 

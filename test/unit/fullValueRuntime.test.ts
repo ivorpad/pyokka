@@ -1,5 +1,5 @@
 /**
- * "Full value" against the real runtime (python/, run with python/.venv): a recording run of
+ * "Rerun value" against the real runtime (python/, run with python/.venv): a recording run of
  * invoices.py, then the replay the panel asks for, through the same code (fullValueReplay.ts).
  * Skipped when the checkout has no python/.venv.
  */
@@ -91,7 +91,7 @@ function source(run: Awaited<ReturnType<typeof record>>, overrides: Partial<Repl
   };
 }
 
-runtime('full value, real runtime', () => {
+runtime('rerun value, real runtime', () => {
   it('invoices.py: the whole orders, checked against every value the recording kept', async () => {
     const run = await record(INVOICES);
     // the last snapshot of orders in main is where its change row points; ask for it as the row would
@@ -169,7 +169,7 @@ runtime('full value, real runtime', () => {
   }, 60_000);
 });
 
-runtime('full value, real runtime: str hashing', () => {
+runtime('rerun value, real runtime: str hashing', () => {
   it('a set of strings replays in the order the run iterated it, with the seed the session pins for both runners', async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pk-full-'));
     const file = path.join(dir, 'tags.py');
@@ -196,7 +196,7 @@ runtime('full value, real runtime: str hashing', () => {
   });
 });
 
-runtime('full value, real runtime: code run at a pause', () => {
+runtime('rerun value, real runtime: code run at a pause', () => {
   const PROGRAM = 'import time\n\n\ndef helper(x):\n    y = x * 2\n    return y\n\n\ndef main():\n    total = 0\n    for i in range(3):\n        total += helper(i)\n    stamp = time.time()\n    return total, stamp\n\n\nresult = main()\n';
 
   /** A recording debug run that pauses at main's entry, runs `typed` in the Debug Console there (exec), and continues. */

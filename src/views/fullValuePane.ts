@@ -1,5 +1,5 @@
 /**
- * Host side of "Full value" in the Variable pane and the Why tree: one replay per click, one at a
+ * Host side of "Rerun value" in the Variable pane and the Why tree: one replay per click, one at a
  * time per panel, answered with `fullValue` under the pane's key. A new run drops every answer
  * (`fullValue.reset`): a copy belongs to the run it was replayed against.
  */
@@ -27,10 +27,10 @@ export class FullValueHost {
     const next = this.queue.then(async () => {
       const view = await sessionFullValue(session, { key: msg.key, kind: msg.kind, step: msg.step, name: msg.name, scopeId: msg.scopeId, text: msg.text });
       if (session.isDisposed || session.state.runId !== runId) return; // a newer run reset the pane
-      log.info(`[${session.displayName}] full value ${msg.name} at #${view.step}: ${view.status}${view.ms !== undefined ? ` in ${view.ms} ms` : ''}`);
+      log.info(`[${session.displayName}] rerun value ${msg.name} at #${view.step}: ${view.status}${view.ms !== undefined ? ` in ${view.ms} ms` : ''}`);
       this.post(session, { type: 'fullValue', view });
     });
-    this.queue = next.catch((err) => log.error('full value replay failed', err));
+    this.queue = next.catch((err) => log.error('rerun value failed', err));
     return this.queue;
   }
 }

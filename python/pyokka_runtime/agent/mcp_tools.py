@@ -160,14 +160,14 @@ def tool_definitions() -> list[dict]:
                     "value_id": {"type": "string", "description": "expand: valueBag.data.id from eval with json: true"},
                     "path": {"type": "array", "items": {"type": "string"}, "description": "expand: query path segments"},
                     "depth": {"type": "integer", "description": "why: levels to expand (default 5); origin: most links (default 20)"},
-                    "full": {"type": "boolean", "description": "why, live: also the full value of name on the tree's first line, copied by a replay of the run and checked against the recording. The replay runs the program again in a separate process up to step: files it writes are written again, network answers come from the HTTP recording"},
+                    "rerun": {"type": "boolean", "description": "why, live: also the rerun value of name on the tree's first line: it runs the program again in a separate process up to step, copies the value whole and checks it against the recording. Files it writes are written again, network answers come from the HTTP recording"},
                     "file": {"type": "string", "description": "var: only changes in this file"},
                     "scope": {"type": "string", "description": "var: only changes inside this function"},
                     "limit": {"type": "integer", "description": "var: most changes (default 200)"},
                 },
                 "required": ["action"],
             },
-            # not read-only: why with `full` runs the program again (its network answers come from the recording)
+            # not read-only: why with `rerun` runs the program again (its network answers come from the recording)
             "annotations": {"readOnlyHint": False, "destructiveHint": False, "openWorldHint": False},
         },
         {

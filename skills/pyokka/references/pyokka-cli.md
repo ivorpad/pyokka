@@ -248,31 +248,31 @@ so the line is `= ?   not recorded: ...`. A recording that began at a pause cann
 before step 0 from one first assigned later, and says both: `= ?   made before #0, where the
 recording started, or first assigned at #24 ...`. `· ... not stepped` is a call whose body left no
 steps.
-JSON: `{name, step, depth, nodes, root: {name, text, step, file, line, function, statement, reads: [...], calls: [{name, entryStep, returnStep, inputs}], opaque, firstAssigned?: {step, file, line, function, statement}, beforeRecording?}, full?}`, nested.
+JSON: `{name, step, depth, nodes, root: {name, text, step, file, line, function, statement, reads: [...], calls: [{name, entryStep, returnStep, inputs}], opaque, firstAssigned?: {step, file, line, function, statement}, beforeRecording?}, rerun?}`, nested.
 
-**`why --live STEP NAME --full`** adds the full value of NAME under the tree: the value on the tree's
-first line, copied whole by a replay of the run and checked against the recording. The replay runs
-the program again in a separate process up to that step, so files it writes are written again;
-network answers come from the HTTP recording, and a run that called the network with HTTP off is
-refused rather than replayed. Use it when the tree's value ends in `…(+N chars)` or shows `{...}`:
+**`why --live STEP NAME --rerun`** adds the rerun value of NAME under the tree: the value on the tree's
+first line, copied whole by running the program again and checked against the recording. The program
+runs again in a separate process up to that step, so files it writes are written again; network
+answers come from the HTTP recording, and a run that called the network with HTTP off is refused
+rather than run again. Use it when the tree's value ends in `…(+N chars)` or shows `{...}`:
 the recording keeps 120 characters three levels deep, the copy 30 levels, 5,000 items per
 container and 200,000 characters per string (`…` marks where it stopped). The line after the tree
 says how far the copy is checked: `Checked` (the same steps, and every value the recording kept on
 the way came out the same, as far as the recording kept each), `Path checked` (nothing recorded on
 the way to compare with), `Differs` (the first value that came out different is named, and the
-copy still prints), `Went another way` (the replay left the recording: no copy), `Not available`
-and `Failed` (the sentence after says why). A saved run has no runner to replay in, so `--full`
+copy still prints), `Went another way` (the rerun left the recording's path: no copy), `Not available`
+and `Failed` (the sentence after says why). A saved run has no runner to run it again in, so `--rerun`
 needs `--live`. Wherever `var`, `why`, `step` or `context` print a recorded value that was cut, a
 `hint:` line names this command with the step and the name to give it.
 
 ```sh
-pyokka why --live 53 order --full     # invoices.py, paused in invoice_total
+pyokka why --live 53 order --rerun    # invoices.py, paused in invoice_total
 # why order at #53
 # order = {'items': [{'qty': 2, 'sku': 'KB-01', 'unit_price': 49.9}, {'qty': 1, 'sku': 'MS-07'…(+39 chars)   #53 invoices.py:40 invoice_total   def invoice_total(order):
 #
-# full value of order: Checked
+# rerun value of order: Checked
 # The replay took the same 55 steps, and all 104 values the recording kept on the way came out the same. …
-# replayed in 363 ms: the program ran again in a separate process, so files it writes were written again
+# ran again in 363 ms in a separate process, so files it writes were written again
 #   order = {
 #     'tier': 'gold',
 #     'items': [
@@ -876,7 +876,7 @@ pyokka context RUN N [--line F:L] [--scope]
 pyokka step RUN N --into|--over|--out|--back|--back-over|--back-out|--to M [--count N] [--scope]
 pyokka values RUN --line F:L
 pyokka var RUN NAME [--file F] [--scope NAME] [--limit K]
-pyokka why RUN STEP [NAME] [--depth N] [--full]
+pyokka why RUN STEP [NAME] [--depth N] [--rerun]
 pyokka origin RUN STEP [EXPR] [--depth N]
 pyokka eval RUN EXPRESSION [--frame N] [--text-len N]
 pyokka expand RUN VALUE_ID [--path SEGMENT]...

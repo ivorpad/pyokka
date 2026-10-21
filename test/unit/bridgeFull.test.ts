@@ -1,4 +1,4 @@
-/** The bridge's `why` with `full`, and 0.7.0's `whole` (agent/bridgeWhy.ts, agent/bridgeFull.ts), with the tree and the replay faked. */
+/** The bridge's `why` with `rerun`, and 0.7.0's `whole` (agent/bridgeWhy.ts, agent/bridgeFull.ts), with the tree and the replay faked. */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Provenance } from '../../src/shared/protocol';
 import type { FullValueView } from '../../src/shared/replayProtocol';
@@ -47,32 +47,32 @@ beforeEach(() => {
 });
 
 describe('why over the bridge', () => {
-  it('answers the tree alone unless the full value is asked for: a replay runs the program again', async () => {
+  it('answers the tree alone unless the rerun value is asked for: it runs the program again', async () => {
     const out = await bridgeWhy(session, { type: 'why', step: 12, name: 'config' }, () => trace);
     expect(out['root']).toMatchObject({ name: 'config', step: 12 });
-    expect(out).not.toHaveProperty('full');
+    expect(out).not.toHaveProperty('rerun');
     expect(fake.asked).toHaveLength(0);
   });
 
-  it('with full: the value on the tree\'s first line, redacted like the tree', async () => {
-    const out = await bridgeWhy(session, { type: 'why', step: 12, name: 'config', full: true }, () => trace);
+  it('with rerun: the value on the tree\'s first line, redacted like the tree', async () => {
+    const out = await bridgeWhy(session, { type: 'why', step: 12, name: 'config', rerun: true }, () => trace);
     // the step made the value: the change is read after its statement, picked by its recorded text
     expect(fake.asked).toEqual([{ key: 'bridge', kind: 'change', step: 12, name: 'config', scopeId: 3, text: "{'key': 'sk-…'}" }]);
-    const full = out['full'] as Record<string, unknown>;
-    expect(full).toMatchObject({ status: 'checked', step: 13, name: 'config', matched: 13, ms: 40 });
-    expect(full).not.toHaveProperty('key');
-    expect(JSON.stringify(full)).not.toContain(SECRET);
+    const rerun = out['rerun'] as Record<string, unknown>;
+    expect(rerun).toMatchObject({ status: 'checked', step: 13, name: 'config', matched: 13, ms: 40 });
+    expect(rerun).not.toHaveProperty('key');
+    expect(JSON.stringify(rerun)).not.toContain(SECRET);
   });
 
-  it('with full at a step after the value was made: the value when the step ran', async () => {
+  it('with rerun at a step after the value was made: the value when the step ran', async () => {
     fake.tree = { ...changeAt12(), step: 20, root: { ...changeAt12().root, step: 12 } };
-    await bridgeWhy(session, { type: 'why', step: 20, name: 'config', full: true }, () => trace);
+    await bridgeWhy(session, { type: 'why', step: 20, name: 'config', rerun: true }, () => trace);
     expect(fake.asked).toEqual([{ key: 'bridge', kind: 'at', step: 20, name: 'config' }]);
   });
 
-  it('full needs the name the tree explains, and a step in the run', async () => {
-    await expect(bridgeWhy(session, { type: 'why', step: 12, full: true }, () => trace)).rejects.toThrow('full needs a name');
-    await expect(bridgeWhy(session, { type: 'why', step: 99, name: 'config', full: true }, () => trace)).rejects.toThrow('step 99 is out of range');
+  it('rerun needs the name the tree explains, and a step in the run', async () => {
+    await expect(bridgeWhy(session, { type: 'why', step: 12, rerun: true }, () => trace)).rejects.toThrow('rerun needs a name');
+    await expect(bridgeWhy(session, { type: 'why', step: 99, name: 'config', rerun: true }, () => trace)).rejects.toThrow('step 99 is out of range');
     expect(fake.asked).toHaveLength(0);
   });
 });
@@ -85,7 +85,7 @@ describe('whole, the 0.7.0 request', () => {
     expect(JSON.stringify(out)).not.toContain(SECRET);
   });
 
-  it('a request without step and name points at why with full', async () => {
+  it('a request without step and name points at why with rerun', async () => {
     await expect(bridgeWhole(session, { type: 'whole', step: 12 })).rejects.toThrow('whole needs step and name');
   });
 });

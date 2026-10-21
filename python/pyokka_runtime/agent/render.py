@@ -513,8 +513,8 @@ def render_why(result: dict, source: Any, args: Any) -> list[str]:
         out.append("… more inputs than %d nodes show; ask why for a node's name at its step" % PROVENANCE_NODES)
     if result.get("conclusion"):
         out.append(str(result["conclusion"]))
-    if isinstance(result.get("full"), dict):
-        out.extend(full_lines(result["full"]))
+    if isinstance(result.get("rerun"), dict):
+        out.extend(full_lines(result["rerun"]))
     return out
 
 

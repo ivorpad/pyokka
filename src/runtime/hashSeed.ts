@@ -1,8 +1,8 @@
 /**
  * One seed for str hashing per session. Python salts `hash()` of str and bytes per interpreter,
  * so a set of strings, and anything built by iterating one, comes out in another order in every
- * process, and on macOS every run is a fresh interpreter (runner.py, spawn mode). A full value is
- * replayed in a runner of its own, so the session pins one seed in the environment it gives its
+ * process, and on macOS every run is a fresh interpreter (runner.py, spawn mode). A rerun value
+ * comes from a runner of its own, so the session pins one seed in the environment it gives its
  * runners, which the replay's runner copies (session.ts). The runtime takes the pin back out of
  * the program's environment (child.py, `unpin_hash_seed`), so the program and the processes it
  * starts see what they would without Pyokka. A seed the user set is theirs and stays.

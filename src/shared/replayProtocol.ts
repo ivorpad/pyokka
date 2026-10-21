@@ -48,7 +48,7 @@ export interface ReplayResultEvent extends RunEventBase {
   expected?: { rid: number; depth: number };
   actual?: { rid: number; depth: number };
   message?: string;
-  /** `reached`: the full value of `at.expr` (no registry behind it: nothing to load later) */
+  /** `reached`: the whole value of `at.expr` (no registry behind it: nothing to load later) */
   value?: { data: ValueNode };
   /** `reached`: the expression's name is not defined in that frame */
   missing?: string;
@@ -60,7 +60,7 @@ export interface ReplayResultEvent extends RunEventBase {
 
 /** What a panel host answers beyond the common messages, announced in `init`. */
 export interface PanelFeatures {
-  /** `fullValue.query`: replays for "Full value" (the extension; the browser page has none) */
+  /** `fullValue.query`: reruns for "Rerun value" (the extension; the browser page has none) */
   fullValue?: boolean;
 }
 
@@ -73,7 +73,7 @@ export interface PanelFeatures {
  */
 export type FullValueStatus = 'pending' | 'checked' | 'path' | 'differs' | 'diverged' | 'unavailable' | 'error';
 
-/** "Full value" in the Variable and Why panes: one value copied by a replay of the run, and how far it was checked. */
+/** "Rerun value" in the Variable and Why panes: one value copied by a replay of the run, and how far it was checked. */
 export interface FullValueView {
   /** the pane's own key for the query (`change:12:orders`, `at:59:expected`) */
   key: string;
@@ -83,7 +83,7 @@ export interface FullValueView {
   name: string;
   /** what was compared, or why there is no value: one or two sentences */
   summary: string;
-  /** the full value (`checked`, `path`, `differs`) */
+  /** the whole value (`checked`, `path`, `differs`) */
   value?: ValueNode;
   /** the first value that came out different (`differs`) */
   difference?: { step: number; name: string; recorded: string; replay: string };

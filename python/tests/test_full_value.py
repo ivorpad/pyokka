@@ -1,4 +1,4 @@
-"""``why --live STEP NAME --full`` (agent/full_value.py): the request, the text of the answer, the
+"""``why --live STEP NAME --rerun`` (agent/full_value.py): the request, the text of the answer, the
 refusals, the hint under a value the recording cut, and the MCP form. The bridge is faked
 (test_agent_live.FakeBridge); the replay itself is tested on the extension's side."""
 
@@ -41,13 +41,13 @@ CHECKED = (
 )
 
 
-def why_reply(step: int = 41, name: str = "order", full: dict | None = None) -> dict:
+def why_reply(step: int = 41, name: str = "order", rerun: dict | None = None) -> dict:
     """The bridge's why: the parameter `order` of invoice_total, its text cut by the recorder, and the replay's answer."""
     out = {"name": name, "step": step, "depth": 5, "nodes": 1, "truncated": False, "recordedLocals": True, "root": {
         "name": name, "text": "{'items': [{...}, {...}], 'tier': 'gold'}", "source": "locals", "step": 38, "file": None, "fileId": 1, "line": 40, "function": "invoice_total", "scopeId": 4, "statement": "def invoice_total(order):",
     }}
-    if full is not None:
-        out["full"] = full
+    if rerun is not None:
+        out["rerun"] = rerun
     return out
 
 
@@ -64,61 +64,61 @@ ORDER_LINES = [
 
 # -- the request and the text ---------------------------------------------------------------------------
 
-def test_full_asks_the_bridge_once_and_prints_label_summary_effects_and_the_value(bridge: FakeBridge):
-    bridge.canned["why"] = why_reply(full={"status": "checked", "step": 42, "name": "order", "summary": CHECKED, "value": ORDER, "matched": 42, "ms": 412})
-    code, text = pyokka("why", "--live", "41", "order", "--full")
-    assert bridge.requests[-1] == {"id": 1, "type": "why", "step": 41, "name": "order", "depth": 5, "full": True}
+def test_rerun_asks_the_bridge_once_and_prints_label_summary_effects_and_the_value(bridge: FakeBridge):
+    bridge.canned["why"] = why_reply(rerun={"status": "checked", "step": 42, "name": "order", "summary": CHECKED, "value": ORDER, "matched": 42, "ms": 412})
+    code, text = pyokka("why", "--live", "41", "order", "--rerun")
+    assert bridge.requests[-1] == {"id": 1, "type": "why", "step": 41, "name": "order", "depth": 5, "rerun": True}
     lines = text.splitlines()
     assert code == 0 and lines[0] == "why order at #41"
-    at = lines.index("full value of order: Checked")
+    at = lines.index("rerun value of order: Checked")
     assert lines[at - 1] == "" and lines[at + 1] == CHECKED
-    assert lines[at + 2] == "replayed in 412 ms: the program ran again in a separate process, so files it writes were written again"
+    assert lines[at + 2] == "ran again in 412 ms in a separate process, so files it writes were written again"
     assert lines[at + 3 :] == ORDER_LINES
-    # the value is there: no hint pointing at --full under the tree's cut text
+    # the value is there: no hint pointing at --rerun under the tree's cut text
     assert "hint: a recorded value was cut" not in text
 
 
 def test_json_gives_the_tree_and_the_view(bridge: FakeBridge):
     view = {"status": "checked", "step": 42, "name": "order", "summary": CHECKED, "value": ORDER, "matched": 42, "ms": 412}
-    bridge.canned["why"] = why_reply(full=view)
-    doc = pyokka_json("why", "--live", "41", "order", "--full")
-    assert doc["full"] == view and doc["root"]["name"] == "order"
+    bridge.canned["why"] = why_reply(rerun=view)
+    doc = pyokka_json("why", "--live", "41", "order", "--rerun")
+    assert doc["rerun"] == view and doc["root"]["name"] == "order"
 
 
 def test_a_secret_in_the_copy_or_the_summary_is_masked(bridge: FakeBridge):
     copy = {"type": "dict", "value": "{...}", "id": "r", "queryPath": [], "length": 1, "props": [leaf("key", "str", SECRET, keyRepr="'key'", length=len(SECRET))]}
-    bridge.canned["why"] = why_reply(name="config", full={"status": "differs", "step": 42, "name": "config", "summary": "config came out different: %s" % SECRET, "value": copy, "difference": {"step": 30, "name": "config", "recorded": SECRET, "replay": "x"}, "matched": 42, "ms": 80})
-    code, text = pyokka("why", "--live", "41", "config", "--full")
+    bridge.canned["why"] = why_reply(name="config", rerun={"status": "differs", "step": 42, "name": "config", "summary": "config came out different: %s" % SECRET, "value": copy, "difference": {"step": 30, "name": "config", "recorded": SECRET, "replay": "x"}, "matched": 42, "ms": 80})
+    code, text = pyokka("why", "--live", "41", "config", "--rerun")
     assert code == 0 and SECRET not in text
-    assert "full value of config: Differs" in text and "first difference, #30 config: the recording kept " in text
+    assert "rerun value of config: Differs" in text and "first difference, #30 config: the recording kept " in text
 
 
 def test_a_refusal_reads_as_the_pane_says_it_and_shows_no_value(bridge: FakeBridge):
     network = "This run called the network (one request) and the answers were not recorded, so a replay would call it again, could get other answers and spend tokens. Switch HTTP to Record in Settings, run once, then ask again."
-    bridge.canned["why"] = why_reply(full={"status": "unavailable", "step": 41, "name": "order", "summary": network})
-    code, text = pyokka("why", "--live", "41", "order", "--full")
+    bridge.canned["why"] = why_reply(rerun={"status": "unavailable", "step": 41, "name": "order", "summary": network})
+    code, text = pyokka("why", "--live", "41", "order", "--rerun")
     lines = text.splitlines()
-    at = lines.index("full value of order: Not available")
+    at = lines.index("rerun value of order: Not available")
     assert code == 0 and lines[at + 1 :] == [network]
 
 
-def test_full_needs_a_name_and_a_live_session(bridge: FakeBridge, tmp_path: Path, capsys):
-    code, _ = pyokka("why", "--live", "41", "--full")
-    assert code == 2 and "--full needs NAME" in capsys.readouterr().err
+def test_rerun_needs_a_name_and_a_live_session(bridge: FakeBridge, tmp_path: Path, capsys):
+    code, _ = pyokka("why", "--live", "41", "--rerun")
+    assert code == 2 and "--rerun needs NAME" in capsys.readouterr().err
     assert not [r for r in bridge.requests if r.get("type") == "why"]
     script = tmp_path / "tiny.py"
     script.write_text("orders = {'Ana': [1, 2]}\ntotal = len(orders)\n", encoding="utf-8")
     run = tmp_path / "run.json"
     assert pyokka("run", str(script), "--save", str(run))[0] == 0
     capsys.readouterr()
-    code, _ = pyokka("why", str(run), "1", "orders", "--full")
+    code, _ = pyokka("why", str(run), "1", "orders", "--rerun")
     err = capsys.readouterr().err
     assert code == 2 and SAVED_RUN in err and "pyokka debug FILE --record" in err
 
 
-def test_an_extension_that_ignores_full_is_named(bridge: FakeBridge, capsys):
-    code, _ = pyokka("why", "--live", "21", "total", "--full")  # the fake's own why: no `full` in it, as 0.7.0 answers
-    assert code == 2 and "older than this CLI (its why has no full value)" in capsys.readouterr().err
+def test_an_extension_that_ignores_rerun_is_named(bridge: FakeBridge, capsys):
+    code, _ = pyokka("why", "--live", "21", "total", "--rerun")  # the fake's own why: no `rerun` in it, as 0.7.0 answers
+    assert code == 2 and "older than this CLI (its why has no rerun value)" in capsys.readouterr().err
 
 
 # -- the value as text ----------------------------------------------------------------------------------
@@ -152,10 +152,10 @@ def test_a_long_copy_prints_its_first_lines_and_points_at_json():
 
 # -- the hint under a cut value -------------------------------------------------------------------------
 
-HINT = 'hint: a recorded value was cut: `pyokka why --live {step} {name} --full` runs the program again in a separate process up to that step: files it writes are written again, network answers come from the HTTP recording, and prints all of it (MCP: pyokka_value {{"action": "why", "live": true, "step": {step}, "name": "{name}", "full": true}})'
+HINT = 'hint: a recorded value was cut: `pyokka why --live {step} {name} --rerun` runs the program again in a separate process up to that step: files it writes are written again, network answers come from the HTTP recording, and prints all of it (MCP: pyokka_value {{"action": "why", "live": true, "step": {step}, "name": "{name}", "rerun": true}})'
 
 
-def test_why_with_a_cut_root_names_the_full_command(bridge: FakeBridge):
+def test_why_with_a_cut_root_names_the_rerun_command(bridge: FakeBridge):
     bridge.canned["why"] = why_reply()
     code, text = pyokka("why", "--live", "41", "order")
     assert code == 0 and text.splitlines()[-1] == HINT.format(step=41, name="order")
@@ -170,7 +170,7 @@ def test_var_with_a_cut_change_names_its_step_and_name(bridge: FakeBridge):
     assert code == 0 and text.splitlines()[-1] == HINT.format(step=38, name="order")
     # the session the command named goes with the next one
     code, text = pyokka("var", "--live", "--session", "demo.py", "order")
-    assert "`pyokka why --live --session demo.py 38 order --full`" in text and '"session": "demo.py"' in text
+    assert "`pyokka why --live --session demo.py 38 order --rerun`" in text and '"session": "demo.py"' in text
 
 
 def test_step_with_a_cut_logged_value_names_it(bridge: FakeBridge):
@@ -189,23 +189,23 @@ def test_values_kept_whole_and_saved_runs_get_no_hint(bridge: FakeBridge, tmp_pa
     run = tmp_path / "run.json"
     assert pyokka("run", str(script), "--save", str(run))[0] == 0  # locals recorded, cut at 120 characters
     code, text = pyokka("var", str(run), "orders")
-    assert code == 0 and "…(+" in text and "--full" not in text
+    assert code == 0 and "…(+" in text and "--rerun" not in text
 
 
 # -- MCP -----------------------------------------------------------------------------------------------
 
-def test_mcp_why_takes_full_and_says_what_a_replay_does():
-    words = words_value({"action": "why", "live": True, "step": 41, "name": "order", "full": True})
-    assert words[:2] == ["why", "--live"] and "--full" in words and words[-2:] == ["41", "order"]
-    assert "--full" not in words_value({"action": "why", "live": True, "step": 41, "name": "order"})
+def test_mcp_why_takes_rerun_and_says_what_a_rerun_does():
+    words = words_value({"action": "why", "live": True, "step": 41, "name": "order", "rerun": True})
+    assert words[:2] == ["why", "--live"] and "--rerun" in words and words[-2:] == ["41", "order"]
+    assert "--rerun" not in words_value({"action": "why", "live": True, "step": 41, "name": "order"})
     tool = next(t for t in tool_definitions() if t["name"] == "pyokka_value")
-    assert "runs the program again" in tool["inputSchema"]["properties"]["full"]["description"]
-    assert tool["annotations"]["readOnlyHint"] is False  # with full it runs the program
+    assert "runs the program again" in tool["inputSchema"]["properties"]["rerun"]["description"]
+    assert tool["annotations"]["readOnlyHint"] is False  # with rerun it runs the program
 
 
-def test_mcp_why_full_returns_the_text(bridge: FakeBridge):
-    bridge.canned["why"] = why_reply(full={"status": "checked", "step": 42, "name": "order", "summary": CHECKED, "value": ORDER, "matched": 42, "ms": 412})
-    out = call_tool("pyokka_value", {"action": "why", "live": True, "step": 41, "name": "order", "full": True})
+def test_mcp_why_rerun_returns_the_text(bridge: FakeBridge):
+    bridge.canned["why"] = why_reply(rerun={"status": "checked", "step": 42, "name": "order", "summary": CHECKED, "value": ORDER, "matched": 42, "ms": 412})
+    out = call_tool("pyokka_value", {"action": "why", "live": True, "step": 41, "name": "order", "rerun": True})
     text = out["content"][0]["text"]
-    assert not out["isError"] and "full value of order: Checked" in text and "\n".join(ORDER_LINES) in text
-    assert json.loads(json.dumps(bridge.requests[-1]))["full"] is True
+    assert not out["isError"] and "rerun value of order: Checked" in text and "\n".join(ORDER_LINES) in text
+    assert json.loads(json.dumps(bridge.requests[-1]))["rerun"] is True

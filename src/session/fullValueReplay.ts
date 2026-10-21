@@ -1,5 +1,5 @@
 /**
- * Run one replay for "Full value": a runner of its own (so the session's run, its Time Machine
+ * Run one replay for "Rerun value": a runner of its own (so the session's run, its Time Machine
  * and its finished child stay as they are), the recording run's request with a `replay` field,
  * and the events that come back. vscode-free: the session side (fullValueSession.ts) hands in
  * what the run kept and a way to make a runner, so tests drive it with a fake one.

@@ -41,7 +41,7 @@ from .pure import compile_pure, run_pure
 from .serialize import serialize
 from .values import cut_entry
 
-# what a full value keeps: far past the inline limits (5 levels, 8192 characters), short of unbounded
+# what a rerun value keeps: far past the inline limits (5 levels, 8192 characters), short of unbounded
 FULL = LogLimitSet(depth=30, elements=5000, string_length=200_000)
 
 
