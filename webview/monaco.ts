@@ -8,6 +8,7 @@ import type { Theme } from './model';
 export { monaco };
 
 let booted = false;
+let workerSource: Promise<string> | undefined;
 
 export function bootMonaco(): void {
   if (booted) return;
@@ -19,9 +20,10 @@ export function bootMonaco(): void {
         // no worker available: fall back to a same-thread stub so the editor still renders
         return new Worker(URL.createObjectURL(new Blob([''], { type: 'text/javascript' })));
       }
-      // the bundled worker is an ES module, so wrap it in a same-origin module blob rather than importScripts
-      const src = `import ${JSON.stringify(workerUri)};`;
-      return new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })), { type: 'module' });
+      // the bundled worker has no imports: start its text from a same-origin blob. A blob that imports the
+      // resource URL fails in a VS Code webview, and without a worker the diff editor computes no diff.
+      workerSource ??= fetch(workerUri).then((r) => (r.ok ? r.text() : ''), () => '');
+      return workerSource.then((src) => new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })), { type: 'module' }));
     },
   };
 

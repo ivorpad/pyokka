@@ -117,6 +117,24 @@ class History:
         self._module_scopes: dict[int, set[int]] = {}
         # every step was observed, so a name with no recorded change at the next step of its scope kept its object
         self.observed_all = 0 < len(run.locals_entries) < MAX_LOCALS_ENTRIES
+        # a logged value is a change only when it is not a read: `print(x)` and a bare `x` log the value x already had
+        for ctx, events in self.values_by_context.items():
+            kept: list[dict] = []
+            self.values_by_context[ctx] = kept  # value_at reads the events kept so far, all before this one
+            kept.extend(ev for ev in events if not self.logged_read(ctx, ev))
+
+    def logged_read(self, ctx: str, ev: dict) -> bool:
+        """A logged value of ``ctx`` that its statement did not assign and that equals the value ``ctx`` had before it."""
+        loc = self.run.locate(int(ev.get("rid", -1)))
+        binding = self.run.bindings(int(loc["fileId"])).get(int(ev["rid"])) if loc else None
+        if binding and any(matches_name(a, ctx) for a in binding.get("assigns") or []):
+            return False
+        step = int(ev["step"])
+        where = self.trace.location(step)
+        if where is None:
+            return False
+        before = self.value_at(ctx, step, self.trace.scope_id(step), where[0])
+        return before.get("text") is not None and before["text"] == str(ev.get("text", ""))
 
     def module_scopes(self, file_id: int) -> set[int]:
         if file_id not in self._module_scopes:

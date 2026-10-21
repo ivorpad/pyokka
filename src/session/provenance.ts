@@ -332,13 +332,14 @@ export function stepOfEntry(trace: TraceModel, entry: { step: number; rid: numbe
   return entry.step;
 }
 
-/** The tree with display paths on every node, call, first assignment and argument; the wire shape carries absolute ones. The panel host (views/whyPane.ts) and the browser bridge (web/panes.ts) both send it. */
+/** The tree with display paths on every node, call, first assignment, argument and shared holding; the wire shape carries absolute ones. The panel host (views/whyPane.ts) and the browser bridge (web/panes.ts) both send it. */
 export function withDisplayPaths(tree: Provenance, displayPath: (fileId: number) => string): Provenance {
   const node = (n: ProvenanceNode): ProvenanceNode => ({
     ...n,
     ...(n.fileId !== undefined ? { file: displayPath(n.fileId) } : {}),
     ...(n.firstAssigned?.fileId !== undefined ? { firstAssigned: { ...n.firstAssigned, file: displayPath(n.firstAssigned.fileId) } } : {}),
     ...(n.argument?.fileId !== undefined ? { argument: { ...n.argument, file: displayPath(n.argument.fileId) } } : {}),
+    ...(n.shared?.fileId !== undefined ? { shared: { ...n.shared, file: displayPath(n.shared.fileId) } } : {}),
     ...(n.reads ? { reads: n.reads.map(node) } : {}),
     ...(n.calls ? { calls: n.calls.map((c) => ({ ...c, file: displayPath(c.fileId) })) } : {}),
   });

@@ -455,12 +455,19 @@ def verify_command(args: Any, source: Any) -> dict:
         checks = [_check(after, e["name"], e["expected"]) for e in expectations]
         before_label = "--live" if getattr(before, "live", False) else str(getattr(args, "run", None) or before.path)
         comparison = diff_sides(Side("a", before_label, before), Side("b", label, after), limit=100, ignore=list(getattr(args, "ignore", None) or []))
+        # edited statements first, then the rest, each in step order
+        comparison["statements"].sort(key=lambda e: e["status"] == "same")
         notes = rerun_notes + list(comparison["notes"]) + gap_notes(after)
         result = {**comparison, "checks": checks, "notes": notes,
                   "verified": bool(checks) and all(c["passed"] for c in checks) and after.finished.get("exitCode") == 0,
                   "coverage": _or_note(notes, "coverage", lambda: coverage_report(after)), "exceptions": _or_note(notes, "exceptions", after.exceptions)}
     if not checks:
         result["verdict"] = _verdict_without_expectations(result)
+    elif all(c["passed"] for c in checks) and after.finished.get("exitCode") != 0:
+        # every value holds and the run failed: name the error, not the code
+        uncaught = next((e for e in after.errors if not e.get("handled")), None)
+        error = " (%s: %s)" % (uncaught.get("errorType"), uncaught.get("message")) if uncaught else ""
+        result["next"] = "every expected value holds, but the run ended with exit code %s%s; a passing check counts only in a run that ends without an error" % (after.finished.get("exitCode"), error)
     elif not result["verified"]:
         expects = " ".join("--expect %s" % shlex.quote("%s=%s" % (e["name"], e["expected"])) for e in expectations)
         mcp_expects = json.dumps(["%s=%s" % (e["name"], e["expected"]) for e in expectations])

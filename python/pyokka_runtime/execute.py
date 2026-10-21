@@ -29,7 +29,7 @@ from .instrument import InstrumentOptions, InstrumentedFile, Instrumenter
 from .protocol import RunConfig
 from .replay import ReplayStop
 from .serialize import Registry
-from .spans import module_span
+from .spans import line_span, module_span
 from .tracer import Tracer
 
 RUNTIME_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -361,7 +361,8 @@ class Execution:
                 cache.store(entry, info)
         instrument_ms = (time.perf_counter() - started) * 1000.0
         if not info.ranges:
-            info.ranges = [list(module_span(source))]
+            # a file that did not parse: its one range is the line the compiler named
+            info.ranges = [list(line_span(source, info.error_line) if info.error_line else module_span(source))]
         if self.tracer is not None:
             self.tracer.add_file(info)
         self.emit(info.to_event(path, instrument_ms))
@@ -373,7 +374,8 @@ class Execution:
             self.emit({
                 "type": "error",
                 "fileId": file_id,
-                "rid": base,
+                # parsed but did not compile: the statement on the line the compiler named
+                "rid": self.tracer.rid_at(info, info.error_line) if self.tracer is not None and info.error_line and len(info.ranges) > 1 else base,
                 "step": self.tracer.cur_step if self.tracer else 0,
                 "message": text if name == error_type and text else info.error,  # the type travels in errorType, once
                 "errorType": error_type,

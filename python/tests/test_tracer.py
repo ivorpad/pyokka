@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import os
 
+import pytest
+
 from pyokka_runtime.protocol import COV_COVERED, COV_IGNORED, COV_NOT_RUN, COV_PARTIAL, FLAG_LOG, FLAG_SCOPE_ENTRY, decode_steps
 from pyokka_runtime.trace import Trace
 
@@ -448,3 +450,13 @@ def test_syntax_error_in_scratch_file(run):
     err = out.errors[0]
     assert err["errorType"] == "SyntaxError" and err["handled"] is False and err["stack"][0]["line"] == 1
     assert out.coverage["states"][0] == 3
+
+
+@pytest.mark.parametrize("source", ["x = 1\ny = 2\nos.cpu_count() *\nz = 3\n", "x = 1\ny = 2\nreturn 5\nz = 3\n"])
+def test_syntax_error_is_placed_on_its_line(run, source):
+    # the parser's error (no statements) and the compiler's (statements, nothing runs): the error's range is line 3
+    out = run(source)
+    err = out.errors[0]
+    f = out.file()
+    assert err["errorType"] == "SyntaxError" and err["stack"][0]["line"] == 3
+    assert f["ranges"][err["rid"] - f["rangeBase"]][0] == 3

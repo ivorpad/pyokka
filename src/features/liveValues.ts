@@ -136,7 +136,14 @@ export class LiveValues implements vscode.Disposable {
     if (!editor || !s) return;
     const exp = expressionAtCursor(editor);
     if (!exp) return;
-    const logEv = await vscode.window.withProgress({ location: vscode.ProgressLocation.Window, title: 'Pyokka: evaluating…' }, () => s.evaluateTransient(exp.range, { context: exp.text }));
+    // the value comes from a run of the file: On Save and On Demand ask first
+    const asked = !s.implicitRunsAllowed;
+    if (asked) {
+      const mode = s.runMode === 'onSave' ? 'On Save' : 'On Demand';
+      const pick = await vscode.window.showInformationMessage(`Pyokka: copying the value of "${exp.text}" runs the file, and the run mode is ${mode}.`, 'Run and Copy');
+      if (pick !== 'Run and Copy') return;
+    }
+    const logEv = await vscode.window.withProgress({ location: vscode.ProgressLocation.Window, title: 'Pyokka: evaluating…' }, () => s.evaluateTransient(exp.range, { context: exp.text, asked }));
     if (!logEv) {
       void vscode.window.showWarningMessage(`Pyokka: no value was produced for "${exp.text}" (did the line execute?).`);
       return;

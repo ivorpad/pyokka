@@ -151,10 +151,11 @@ describe('provenance', () => {
   it('prefers the exact name among the rows at the step, else the first', () => {
     const inputs = program();
     const bv = { ...log(12, 13, '2', 'box.v', 'value'), logId: 'l-bv' };
-    const b = { ...log(12, 13, '<Box>', 'box', 'value'), logId: 'l-b' };
+    // `box` logs a value other than the recorded `<Box>`: one equal to it would be a read, not a row (`loggedRead`)
+    const b = { ...log(12, 13, '<Box v=2>', 'box', 'value'), logId: 'l-b' };
     inputs.entriesByRid = new Map([...inputs.entriesByRid, [12, [bv, b]]]);
     expect(provenance(inputs, { step: 13, name: 'box.v' }).root).toMatchObject({ name: 'box.v', text: '2', source: 'value', logId: 'l-bv', step: 13 });
-    expect(provenance(inputs, { step: 13, name: 'box' }).root).toMatchObject({ name: 'box', text: '<Box>', logId: 'l-b', step: 13 });
+    expect(provenance(inputs, { step: 13, name: 'box' }).root).toMatchObject({ name: 'box', text: '<Box v=2>', logId: 'l-b', step: 13 });
     inputs.entriesByRid = new Map([...inputs.entriesByRid, [12, [bv]]]);
     expect(provenance(inputs, { step: 13, name: 'box' }).root).toMatchObject({ name: 'box.v', logId: 'l-bv' });
   });

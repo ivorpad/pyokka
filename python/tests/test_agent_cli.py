@@ -416,6 +416,17 @@ def test_var_lists_every_change_with_its_statement(saved: Path, project: Path):
     assert code == 2
 
 
+def test_var_leaves_out_a_logged_read(tmp_path: Path):
+    # a bare `data` logs the value data already had: a read, not a change; the one after `data["a"] = 2`,
+    # which the locals marker cannot see, differs and stays
+    (tmp_path / "main.py").write_text('data = {"a": 1}\nprint(data)\ndata\ndata["a"] = 2\ndata\n', encoding="utf-8")
+    out = tmp_path / "run.json"
+    assert pyokka("run", str(tmp_path / "main.py"), "--save", str(out))[0] == 0
+    doc = pyokka_json("var", str(out), "data")
+    assert [(r["step"], r["line"], r["source"], r.get("text")) for r in doc["changes"]] == [(0, 1, "locals", "{'a': 1}"), (3, 4, "assign", "{'a': 1}"), (4, 5, "value", "{'a': 2}")]
+    assert pyokka_json("why", str(out), "2", "data")["root"]["line"] == 1  # at the bare read, the assignment on line 1
+
+
 def test_why_walks_back_from_a_value(saved: Path, project: Path):
     doc = pyokka_json("why", str(saved), "10", "total")
     assert (doc["name"], doc["step"], doc["depth"], doc["nodes"], doc["truncated"], doc["recordedLocals"], doc["stale"]) == ("total", 10, 5, 4, False, True, False)

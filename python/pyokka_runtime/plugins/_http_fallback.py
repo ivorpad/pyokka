@@ -149,8 +149,64 @@ def _observe(session: Any, conn: Any, original: Any, method: str, url: str, star
     n = session.next_n()
     response = original(conn)
     size = store.declared_length(response.getheader("content-length"))
-    session.observe(n, "http.client", method, url, response.status, store.reason_phrase(response.status, response.reason), started, size=size, rid=position[0], step=position[1])
+    reason = store.reason_phrase(response.status, response.reason)
+
+    def done(counted: int | None) -> None:
+        session.observe(n, "http.client", method, url, response.status, reason, started, size=counted, rid=position[0], step=position[1])
+
+    if size is None and response.fp is not None and not response.chunked:
+        # no declared length: count what the program reads, write the row when the body closes
+        response.fp = CountingBody(response.fp, done, session)
+    else:
+        done(size)
     return response
+
+
+class CountingBody:
+    """A response's socket file (mode ``off``, no ``content-length``): counts the bytes the program reads and writes
+    the row once, when the body closes or the run ends (``session.pending``), like httpx's recording stream."""
+
+    def __init__(self, fp: Any, done: Any, session: Any) -> None:
+        self._fp = fp
+        self._done = done
+        self._session = session
+        self._size = 0
+        self._written = False
+        session.pending.append(self)
+
+    def _count(self, data: bytes) -> bytes:
+        self._size += len(data or b"")
+        return data
+
+    def read(self, *args: Any) -> bytes:
+        return self._count(self._fp.read(*args))
+
+    def read1(self, *args: Any) -> bytes:
+        return self._count(self._fp.read1(*args))
+
+    def readline(self, *args: Any) -> bytes:
+        return self._count(self._fp.readline(*args))
+
+    def readinto(self, b: Any) -> int:
+        n = self._fp.readinto(b)
+        self._size += n or 0
+        return n
+
+    def close(self) -> None:
+        try:
+            self._fp.close()
+        finally:
+            self.finish()
+
+    def finish(self) -> None:
+        if not self._written:
+            self._written = True
+            if self in self._session.pending:
+                self._session.pending.remove(self)
+            self._done(self._size)
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._fp, name)
 
 
 def _replay(session: Any, conn: Any, original: Any, method: str, url: str, body: bytes, position: tuple[int, int]) -> Any:

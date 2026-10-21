@@ -223,6 +223,12 @@ def comparable(facts: list[dict], with_locals: bool) -> list[dict]:
     return out
 
 
+def without_echoes(facts: list[dict]) -> list[dict]:
+    """An auto-logged value is also a change in the variable history: one fact per name, step and text, the history's."""
+    values = {(f["step"], f["channel"][1], f.get("text")) for f in facts if f["channel"][0] == "value"}
+    return [f for f in facts if not (f["channel"][0] == "log" and (f["step"], f["channel"][1], f.get("text")) in values)]
+
+
 def _locals_note(side: Side) -> str:
     where = "the session's pyokka.timeMachine.recordLocals (Record Variable Changes) is off" if side.label == "--live" else "it was saved with --no-locals"
     return "%s recorded no locals (%s), so assigned values and call arguments are left out; record both with locals to compare them" % (side.tag, where)
@@ -233,7 +239,7 @@ def diff_sides(a: Side, b: Side, *, limit: int = 40, ignore: list[str] | None = 
     raw_a, raw_b = a.collect(), b.collect()
     with_locals = a.recorded_locals and b.recorded_locals
     skip = set(ignore or [])
-    facts_a, facts_b = ([f for f in comparable(raw, with_locals) if not (f["channel"][0] in ("value", "log") and f["channel"][1] in skip)] for raw in (raw_a, raw_b))
+    facts_a, facts_b = ([f for f in without_echoes(comparable(raw, with_locals)) if not (f["channel"][0] in ("value", "log") and f["channel"][1] in skip)] for raw in (raw_a, raw_b))
     for side in (a, b):
         if not side.recorded_locals:
             side.notes.append(_locals_note(side))

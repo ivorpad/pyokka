@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+- `var`, `why`, Variable History and the Why card no longer count a read as a change. `print(pyokka)`
+  and a bare `pyokka` log the value `pyokka` already had; `var pyokka` lists only the assignment on
+  line 9, and `why` at a later step starts there. A logged value that differs from the known one
+  stays, since it can show a change locals miss (`d[k] = v` on an existing key, an attribute).
+- A SyntaxError is placed on the line Python names: `raised demo.py:20` in Exceptions, the gutter,
+  the inline message and `pyokka exceptions`, where it said line 1. A file that parses but does not
+  compile (`return` at module level) is placed on that statement too.
+- Compare marks the lines that differ again. Monaco's diff worker failed to start in the VS Code
+  panel, so no diff was computed; the panel now starts it from the worker's own text.
+- Copy Value in On Save and On Demand asks before it runs the file ("Run and Copy") and then copies
+  the value. It used to copy nothing.
+- Verify Fix lists the statements whose code changed first, and a baseline pinned during the Time
+  Machine is compared with a rerun that logs the same values, so the auto-logged values no longer
+  read as differences (24 differences became 10 on `demo.py`). A logged value and its variable
+  change print once. When every expected value holds but the run fails, the verdict says so and
+  names the error instead of "fix the code".
+- The Why tree's shared note prints a display path (`orders/billing.py:3`), not an absolute one.
+- The HTTP view and `pyokka http` give the size of a response without `Content-Length` (urllib,
+  http.client) as the bytes the program read: `12 B`, where it said `—` and `0 B`.
+
 - `why`'s conclusion no longer names one call's result as the value when the statement called the
   same function more than once. `coltypes = [_column_type(c) for c in cols]` read
   `_column_type(...) returned <class 'str'>`, the first column's type; it now says what the statement

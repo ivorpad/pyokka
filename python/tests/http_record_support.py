@@ -184,6 +184,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 self.wfile.flush()
                 time.sleep(0.02)
             self.wfile.write(b"0\r\n\r\n")
+        elif path == "/nolength":  # no Content-Length: the body ends when the server closes the connection
+            self.send_response(200)
+            self.send_header("Connection", "close")
+            self.end_headers()
+            self.wfile.write(b'{"ok": true}')
+            self.close_connection = True
         elif path == "/json":
             self.reply(200, b'{"hello": "world"}', {"Content-Type": "application/json", "X-Count": str(self.server.hits)})
         else:

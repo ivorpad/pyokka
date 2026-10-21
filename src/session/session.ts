@@ -741,8 +741,9 @@ export class Session extends EventEmitter<SessionEvents> {
    * Run once with a transient marker and return the log it produced (Value Peek, Copy Value).
    * Returns undefined without running when the run mode forbids implicit runs.
    */
-  async evaluateTransient(range: Range4, init: { kind?: 'value' | 'time'; context?: string; exp?: string } = {}): Promise<LogEvent | undefined> {
-    if (!this.implicitRunsAllowed) {
+  /** `asked`: the person agreed to a run (Copy Value's "Run and Copy"), so On Save and On Demand run too. */
+  async evaluateTransient(range: Range4, init: { kind?: 'value' | 'time'; context?: string; exp?: string; asked?: boolean } = {}): Promise<LogEvent | undefined> {
+    if (!this.implicitRunsAllowed && !init.asked) {
       this.scheduleImplicitRun('evaluate');
       return undefined;
     }

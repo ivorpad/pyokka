@@ -108,7 +108,9 @@ export class Decorator {
     const file = state.files.get(fileId);
     const cov = state.coverage.get(fileId);
     if (!file || !cov) return out;
-    for (const local of file.statements) {
+    // a file that did not parse has no statements: its one range is the line the compiler named (ErrorSource)
+    const locals = file.statements.length ? file.statements : cov.states[0] === CoverageState.ErrorSource ? [0] : [];
+    for (const local of locals) {
       const range = file.ranges[local];
       const st = (cov.states[local] ?? 0) as CoverageState;
       if (!range) continue;

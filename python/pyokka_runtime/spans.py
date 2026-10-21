@@ -114,6 +114,18 @@ def module_span(source: str) -> Span:
     return (1, 0, len(lines), len(lines[-1]))
 
 
+def line_span(source: str, line: int) -> Span:
+    """The text of one line (1-based), the last line when ``line`` is past the end (an unclosed bracket at EOF)."""
+    lines = source.split("\n")
+    if lines and lines[-1] == "":
+        lines.pop()
+    if not lines:
+        return (1, 0, 1, 0)
+    n = min(max(line, 1), len(lines))
+    text = lines[n - 1].rstrip("\r")
+    return (n, len(text) - len(text.lstrip()), n, len(text.rstrip()))
+
+
 def is_docstring(stmt: ast.stmt, index: int) -> bool:
     return (
         index == 0

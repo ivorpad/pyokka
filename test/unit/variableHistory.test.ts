@@ -130,7 +130,7 @@ describe('variableHistory', () => {
 
   it('counts an autoExpand log (`# ?+`) as a value', () => {
     const inputs = loop();
-    inputs.entriesByRid = new Map([[4, [log(4, 6, '1', 'total', 'autoExpand'), log(4, 6, '1', 'total', 'time')]]]);
+    inputs.entriesByRid = new Map([[4, [log(4, 6, '2', 'total', 'autoExpand'), log(4, 6, '2', 'total', 'time')]]]);
     const h = variableHistory(inputs, 'total');
     expect(h.changes.map((c) => [c.step, c.source, c.logId])).toEqual([
       [0, 'locals', undefined],
@@ -139,6 +139,17 @@ describe('variableHistory', () => {
       [6, 'value', 'l-4-6'],
     ]);
     expect(h.changes[3]!.reads).toEqual([{ name: 'total', text: '1', step: 5 }]);
+  });
+
+  it('leaves out a logged value its statement read: `print(total)` logs the value total already had', () => {
+    const inputs = loop();
+    inputs.entriesByRid = new Map([[4, [log(4, 6, '1', 'total')]]]);
+    const h = variableHistory(inputs, 'total');
+    expect(h.changes.map((c) => [c.step, c.source])).toEqual([
+      [0, 'locals'],
+      [3, 'assign'],
+      [5, 'locals'],
+    ]);
   });
 
   it('lists assignment sites alone when nothing recorded the value', () => {

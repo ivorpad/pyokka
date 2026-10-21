@@ -227,6 +227,18 @@ def test_http_client_off_leaves_the_response_untouched(plugin, server):
     assert http_record.after({})["http"]["mode"] == "off" and not os.path.exists(plugin.path) and server.hits == 2
 
 
+def test_http_client_off_counts_a_body_without_content_length(plugin, server):
+    # the size is what the program read, written when the body closes; a body never read gets its row at the run's end
+    http_record.before_each({})
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    assert opener.open(server.url + "/nolength").read() == b'{"ok": true}'
+    unread = opener.open(server.url + "/nolength")
+    assert [(e["n"], e["bytes"]) for e in rows(plugin)] == [(1, 12)]
+    assert http_record.after({})["http"]["requests"] == 2
+    assert [(e["n"], e["bytes"]) for e in rows(plugin)] == [(1, 12), (2, 0)]
+    unread.close()
+
+
 def test_requests_over_http_client_records_once(plugin, server):
     def drive():
         s = requests.Session()

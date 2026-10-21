@@ -149,6 +149,23 @@ export class History {
       }
     }
     for (const list of this.valuesByContext.values()) list.sort((a, b) => a.step - b.step);
+    // a logged value is a change only when it is not a read: `print(x)` and a bare `x` log the value x already had
+    for (const [ctx, events] of this.valuesByContext) {
+      const kept: LogEvent[] = [];
+      this.valuesByContext.set(ctx, kept); // valueAt reads the events kept so far, all before this one
+      for (const e of events) if (!this.loggedRead(ctx, e)) kept.push(e);
+    }
+  }
+
+  /** A logged value of `ctx` that its statement did not assign and that equals the value `ctx` had before it. */
+  private loggedRead(ctx: string, e: LogEvent): boolean {
+    const loc = this.inputs.files.locate(e.rid);
+    const binding = loc ? this.inputs.bindings.get(loc.fileId)?.get(e.rid) : undefined;
+    if (binding?.assigns.some((a) => matchesName(a, ctx))) return false;
+    const where = this.trace.location(e.step);
+    if (!where) return false;
+    const before = this.valueAt(ctx, e.step, this.trace.scopeId(e.step), where.fileId);
+    return before.text !== undefined && before.text === e.text;
   }
 
   private get trace(): TraceModel {

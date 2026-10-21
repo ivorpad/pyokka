@@ -157,3 +157,38 @@ def test_pin_copies_the_run_byte_for_byte_and_refuses_to_overwrite(runs: dict[st
     code, _ = pyokka("pin", runs["before"], "--out", out)
     assert code == 2
     assert out.read_bytes() == b"kept"
+
+
+def test_verify_says_why_when_the_values_hold_but_the_run_failed(runs: dict[str, Path], tmp_path: Path):
+    # the fix plus an error after it: PASS and "not verified" must give the same reason, not "fix the code"
+    shutil.copyfile(PORT / "cart_fixed.py", runs["app"])
+    with runs["app"].open("a", encoding="utf-8") as f:
+        f.write('\nraise ValueError("after the fix")\n')
+    pyokka("run", runs["app"], "--save", tmp_path / "failed.json")
+    code, text = pyokka("verify", runs["before"], "--after", tmp_path / "failed.json", "--expect", "total=22")
+    lines = text.rstrip().splitlines()
+    assert code == 1 and lines[-2].startswith("PASS total = 22")
+    assert lines[-1].startswith("not verified: every expected value holds, but the run ended with exit code 1 (ValueError: after the fix)")
+
+
+def test_verify_lists_the_edited_statement_first(tmp_path: Path):
+    # a value that differs on every run (the clock) comes before the edit in step order; the edit is listed first
+    app = tmp_path / "loop.py"
+    app.write_text("import time\nstamp = time.time_ns()\ntotal = 0\nfor n in range(1, 4):\n    total += n\n", encoding="utf-8")
+    pyokka("run", app, "--save", tmp_path / "a.json")
+    app.write_text(app.read_text(encoding="utf-8").replace("range(1, 4)", "range(1, 5)"), encoding="utf-8")
+    pyokka("run", app, "--save", tmp_path / "b.json")
+    _, result = pyokka_json("verify", tmp_path / "a.json", "--after", tmp_path / "b.json")
+    assert [e["status"] for e in result["statements"]][0] == "edited"
+    assert result["firstDifference"]["lineB"] == 2  # still the earliest by step
+
+
+def test_verify_lists_an_auto_logged_value_once(tmp_path: Path):
+    # auto-logged runs (the Time Machine's): the logged value and the variable history's change are one fact
+    app = tmp_path / "loop.py"
+    app.write_text("total = 0\nfor n in range(1, 4):\n    total += n\n", encoding="utf-8")
+    pyokka("run", app, "--save", tmp_path / "a.json", "--auto-log")
+    app.write_text(app.read_text(encoding="utf-8").replace("range(1, 4)", "range(1, 5)"), encoding="utf-8")
+    pyokka("run", app, "--save", tmp_path / "b.json", "--auto-log")
+    _, text = pyokka("verify", tmp_path / "a.json", "--after", tmp_path / "b.json", "--expect", "total=10")
+    assert text.count("total = 10   only in b") == 1

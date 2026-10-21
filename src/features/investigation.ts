@@ -41,7 +41,8 @@ export function registerInvestigation(context: vscode.ExtensionContext, runtimeD
     const doc = sessionRecording(s);
     if (!doc) throw new Error('Run the file first: there is no recording to read.');
     // what `verify --rerun` and Verify Fix read back: the settings and arguments this run had
-    Object.assign(doc.meta as Record<string, unknown>, { config: { ...s.config.run, recordLocals: s.recordLocals, http: s.http }, argv: s.argvOverride ?? s.config.argv });
+    // the session's autoLog, which the Time Machine turns on: a rerun logs the same values
+    Object.assign(doc.meta as Record<string, unknown>, { config: { ...s.config.run, autoLog: s.autoLog, recordLocals: s.recordLocals, http: s.http }, argv: s.argvOverride ?? s.config.argv });
     const file = path.join(dir, `run-${++serial}.json`);
     fs.writeFileSync(file, JSON.stringify(doc), { mode: 0o600 });
     return file;
@@ -120,16 +121,20 @@ export function registerInvestigation(context: vscode.ExtensionContext, runtimeD
     const expected = args.expect ?? (await vscode.window.showInputBox({ prompt: 'Expected final value, NAME=VALUE as its repr (total=42). Leave empty to compare only.', ignoreFocusOut: true }));
     if (expected === undefined) return;
     const originalHttp = s.http;
-    const baselineConfig = (JSON.parse(fs.readFileSync(baseline, 'utf8')) as { meta?: { config?: { http?: string } } }).meta?.config;
+    const originalAutoLog = s.autoLog;
+    const baselineConfig = (JSON.parse(fs.readFileSync(baseline, 'utf8')) as { meta?: { config?: { http?: string; autoLog?: boolean } } }).meta?.config;
     try {
       // a baseline that recorded its HTTP calls is compared with a rerun that replays them, not new live calls
       if (baselineConfig?.http === 'record') s.setHttp('replay');
+      // a baseline pinned during the Time Machine logged every value: the rerun logs them too
+      if (baselineConfig?.autoLog !== undefined) s.setAutoLog(baselineConfig.autoLog);
       s.setRecordLocals(true);
       await s.runNow('verify fix');
       const after = await snapshot(s);
       await show(await cli(s, ['verify', baseline, '--after', after, ...(expected ? ['--expect', expected] : [])]));
     } finally {
       s.setHttp(originalHttp);
+      s.setAutoLog(originalAutoLog);
     }
   });
 }
