@@ -244,7 +244,10 @@ JSON: `{name, total, truncated, recordedLocals, changes: [{step, file, line, fun
 
 **`why RUN STEP [NAME] [--depth N]`** walks backwards: the statement that made the value, the
 names it read with their values (each expanded in turn), the calls it made with their arguments
-and results, five levels down. `why RUN STEP` alone explains the statement.
+and results, five levels down. `why RUN STEP` alone explains the statement. A parameter's line ends with
+`passed X at #N`, the argument its call site passed, and the tree goes on from `X`. After the
+conclusion come the `answer:`, `signpost:` or `summary:` lines; [why.md](why.md) says how to read
+them and what to run next.
 
 ```sh
 pyokka why run.json 124 fused_ranking
@@ -263,7 +266,7 @@ so the line is `= ?   not recorded: ...`. A recording that began at a pause cann
 before step 0 from one first assigned later, and says both: `= ?   made before #0, where the
 recording started, or first assigned at #24 ...`. `· ... not stepped` is a call whose body left no
 steps.
-JSON: `{name, step, depth, nodes, root: {name, text, step, file, line, function, statement, reads: [...], calls: [{name, entryStep, returnStep, inputs}], opaque, firstAssigned?: {step, file, line, function, statement}, beforeRecording?}, rerun?}`, nested.
+JSON: `{name, step, depth, nodes, root: {name, text, step, file, line, function, statement, reads: [...], calls: [{name, entryStep, returnStep, inputs}], opaque, firstAssigned?: {step, file, line, function, statement}, beforeRecording?, argument?}, summary?, followObjects?, rerun?}`, nested; [why.md](why.md), "JSON", has `argument` and `summary`.
 
 **`why --live STEP NAME --rerun`** adds the rerun value of NAME under the tree: the value on the tree's
 first line, copied whole by running the program again and checked against the recording. The program
@@ -304,7 +307,7 @@ JSON: `full` is `{status, step, name, summary, value?, difference?: {step, name,
 
 **`origin RUN STEP [EXPR] [--depth N]`** follows one bad value back to where it was made, across
 calls and containers, as one chain. Use it on an exception's step (`exceptions RUN` lists them)
-when `why` stops at a parameter. Without `EXPR` it takes the value the exception is about: the
+and when `why` stops at a parameter without `passed X at #N` (a callback, a wrapper, a default). Without `EXPR` it takes the value the exception is about: the
 odd-typed operand of a `TypeError`, the dict of a `KeyError`, the name that is `None` in an
 `AttributeError`, the short sequence of an `IndexError`. At a step with no exception, give
 `EXPR` (a name, a subscript or an attribute path: `items[0]["price"]`, `lines[0].unit_price`,

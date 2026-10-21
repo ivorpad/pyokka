@@ -43,7 +43,7 @@ whole (a prompt, a model reply).
 | `step RUN N --into/--over/--out/--back` | move the cursor and show the new step |
 | `values RUN --line F:L` | every hit of one line, for a loop |
 | `var RUN NAME` | every recorded change of a name, with what the statement read |
-| `why RUN STEP NAME` | why a value is what it is, five levels back |
+| `why RUN STEP NAME` | why a value is what it is, five levels back; its `answer:` or `signpost:` line is the finding's first sentence ([why.md](why.md)) |
 | `eval RUN EXPR` | a pure expression over the finished run (needs `--keep` or `--live`) |
 | `exceptions RUN` | every exception, where it was raised and caught, broad handlers flagged |
 | `http RUN` | every HTTP request, with the statement that made it |

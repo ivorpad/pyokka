@@ -48,7 +48,8 @@ What the person says decides what you do, before you answer them:
   `pyokka review try --expr EXPR` or `--code FILE` with inputs that test the claim (the boundary,
   an empty value, the other branch). Answer with the try's result and the step that shows it.
 - They ask what a value is or where it came from: `pyokka eval --live EXPR` at the pause (`review look
-  --expr EXPR` in a `--full` review), `origin --live STEP EXPR` for its chain (quote the root), and for
+  --expr EXPR` in a `--full` review), `why --live STEP NAME` for its chain (quote its `answer:` or `signpost:` line, [why.md](why.md)),
+  `origin --live STEP EXPR` for one value across calls (quote the root), and for
   a recorded value cut to `…(+N chars)` or `{...}`, `why --live STEP NAME --rerun` (it runs the program again).
 - They ask why the code is like this: `git log -L L,L:FILE` or `git blame` on the line, and the
   PR text; say which source answered.

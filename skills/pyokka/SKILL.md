@@ -124,10 +124,6 @@ and an example of each verb, for when a command fails or the help does not say e
 Say what the program held or did only after a command in this session printed it. The source says
 what could happen, and only a recording or a pause says what did.
 
-When `why` ends at a line that does not explain a shared dict, list or object, record again with
-`--follow-objects`; for a cut value, `why --live STEP NAME --rerun` (it runs the program again).
-`references/debug.md`, "At a pause", says when to use each.
-
 ## Tools
 
 The commands are also MCP tools: `pyokka_run`, `pyokka_map`, `pyokka_step`, `pyokka_value`,
@@ -154,6 +150,7 @@ Each file is for one situation. Open it when the situation is yours, not before.
 | the `band` tool (`mcp__pyokka-band__band`) is in your tool list, or `printenv CLAUDECODE` prints `1` | [references/band.md](references/band.md): what the band shows, its actions and the `/pk` keys |
 | a debug command fails, or its help leaves the question open | [references/live-debugger.md](references/live-debugger.md) |
 | a command refuses, nothing pauses after a start, a pause lands on a line you did not set, or an answer looks older than the build | [references/recovery.md](references/recovery.md): the signature, what it means, the one command it asks for |
+| `why` printed a tree, or the person asks why a value is what it is | [references/why.md](references/why.md): the `answer:`, `signpost:` and `summary:` lines, `passed X at #N`, what to run next |
 | a JSON shape, or an example of a verb over a recording | [references/pyokka-cli.md](references/pyokka-cli.md) |
 | a tool's arguments, or the tool for a CLI command | [references/mcp.md](references/mcp.md) |
 
